@@ -1,0 +1,6 @@
+docs
+*.bak
+.vs
+out
+*.aps
+/CMakeSettings.json
