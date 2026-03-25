@@ -26,7 +26,7 @@ class UpxUnpacker(speakeasy.Speakeasy):
             up.write(self.mem_read(mm.base, mm.size))
             # TODO: Fixup the import table after dumping
 
-    def code_hook(self, emu, addr, size, ctx):
+    def code_hook(self, emu, addr, size):
         if self.end_addr >= addr >= self.start_addr:
             print("[*] Section hop signature hit, dumping module")
             self.save_unpacked_file()

@@ -207,7 +207,7 @@ class WindowsEmulator(BinaryEmulator):
         if self.tmp_code_hook:
             self.tmp_code_hook.disable()
 
-    def _module_access_hook(self, emu, addr, size, ctx):
+    def _module_access_hook(self, emu, addr, size):
         symbol = self.get_symbol_from_address(addr)
         if symbol:
             logger.debug("module_access: %s", symbol)
@@ -1354,7 +1354,7 @@ class WindowsEmulator(BinaryEmulator):
         data_addr = self.api.call_data_func(module, func, data_ptr)  # type: ignore[union-attr]
         return data_addr
 
-    def _handle_invalid_fetch(self, emu, address, size, value, ctx):
+    def _handle_invalid_fetch(self, emu, address, size, value):
         """
         Called when an attempt to emulate an instruction from an invalid address
         """
@@ -1653,7 +1653,7 @@ class WindowsEmulator(BinaryEmulator):
 
             # Is this function being called from a dynamcially allocated memory segment?
             if mm and "virtualalloc" in mm.tag.lower():
-                self._dynamic_code_cb(self, ret, 0, {})
+                self._fire_dyn_code_hooks(ret)
 
             # Log the API args and return value
             self.log_api(call_pc, imp_api, rv, argv)
@@ -1717,7 +1717,7 @@ class WindowsEmulator(BinaryEmulator):
             )
             self.on_run_complete()
 
-    def _hook_mem_unmapped(self, emu, access, address, size, value, ctx):
+    def _hook_mem_unmapped(self, emu, access, address, size, value):
         """
         High level function used to catch all invalid memory accesses that occur during
         emulation
@@ -1745,21 +1745,21 @@ class WindowsEmulator(BinaryEmulator):
                         self.do_call_return(len(args), pc)
                         self._unset_emu_hooks()
                     return True
-                return self._handle_invalid_fetch(emu, address, size, value, ctx)
+                return self._handle_invalid_fetch(emu, address, size, value)
 
             elif access == common.INVALID_MEM_READ:
-                return self._handle_invalid_read(emu, address, size, value, ctx)
+                return self._handle_invalid_read(emu, address, size, value)
 
             elif access == common.INVAL_PERM_MEM_EXEC:
-                return self._handle_prot_fetch(emu, address, size, value, ctx)
+                return self._handle_prot_fetch(emu, address, size, value)
             elif access == common.INVALID_MEM_WRITE:
                 fakeout = address & 0xFFFFFFFFFFFFF000
                 self.mem_map(self.page_size, base=fakeout)
                 self.tmp_maps.append((fakeout, self.page_size))
 
-                return self._handle_invalid_write(emu, address, size, value, ctx)
+                return self._handle_invalid_write(emu, address, size, value)
             elif access == common.INVAL_PERM_MEM_WRITE:
-                return self._handle_prot_write(emu, address, size, value, ctx)
+                return self._handle_prot_write(emu, address, size, value)
         except Exception as e:
             logger.exception("Invalid memory exception")
             error = self.get_error_info(str(e), self.get_pc(), traceback=traceback.format_exc())
@@ -1767,7 +1767,7 @@ class WindowsEmulator(BinaryEmulator):
             self.on_emu_complete()
             return False
 
-    def _handle_prot_write(self, emu, address, size, value, ctx):
+    def _handle_prot_write(self, emu, address, size, value):
 
         fakeout = address & 0xFFFFFFFFFFFFF000
         self.mem_map(self.page_size, base=fakeout)
@@ -1796,7 +1796,7 @@ class WindowsEmulator(BinaryEmulator):
             symbol = "{}.{}".format(*sym)
         return symbol
 
-    def _hook_mem_read(self, emu, access, address, size, value, ctx):
+    def _hook_mem_read(self, emu, access, address, size, value):
         """
         Hook each memory read event that occurs. This hook is used to lookup symbols and modules
         that are read from during emulation.
@@ -1872,7 +1872,7 @@ class WindowsEmulator(BinaryEmulator):
             self.on_emu_complete()
             return False
 
-    def _hook_mem_write(self, emu, access, address, size, value, ctx):
+    def _hook_mem_write(self, emu, access, address, size, value):
         """
         Hook each memory write event that occurs. This hook is used to track memory modifications
         to interesting memory locations.
@@ -1925,7 +1925,7 @@ class WindowsEmulator(BinaryEmulator):
             self.on_emu_complete()
             return False
 
-    def _handle_invalid_read(self, emu, address, size, value, ctx):
+    def _handle_invalid_read(self, emu, address, size, value):
         """
         Hook each invalid memory read event that occurs.
         """
@@ -1953,7 +1953,7 @@ class WindowsEmulator(BinaryEmulator):
         self.on_run_complete()
         return True
 
-    def _handle_prot_fetch(self, emu, address, size, value, ctx):
+    def _handle_prot_fetch(self, emu, address, size, value):
         """
         Called when non-executable code is emulated
         """
@@ -1973,7 +1973,7 @@ class WindowsEmulator(BinaryEmulator):
         self.handle_import_func(mod_name, fn)
         return True
 
-    def _handle_invalid_write(self, emu, address, size, value, ctx):
+    def _handle_invalid_write(self, emu, address, size, value):
         """
         Called when non-writable address is written to
         """
@@ -1996,7 +1996,7 @@ class WindowsEmulator(BinaryEmulator):
         self.on_run_complete()
         return True
 
-    def _hook_code_core(self, emu, addr, size, ctx):
+    def _hook_code_core(self, emu, addr, size):
         """
         Transient code hook for deferred work: SEH dispatch, run lifecycle,
         temp map cleanup, and import data queue processing. Enabled on demand
@@ -2048,7 +2048,7 @@ class WindowsEmulator(BinaryEmulator):
             self.on_emu_complete()
             return False
 
-    def _hook_code_coverage(self, emu, addr, size, ctx):
+    def _hook_code_coverage(self, emu, addr, size):
         """
         Persistent code hook that records every executed address for coverage.
         """
@@ -2062,7 +2062,7 @@ class WindowsEmulator(BinaryEmulator):
             self.on_emu_complete()
             return False
 
-    def _hook_code_tracing(self, emu, addr, size, ctx):
+    def _hook_code_tracing(self, emu, addr, size):
         """
         Persistent code hook for memory tracing: instruction counting,
         symbol execution tracking, and per-region execution tracking.
@@ -2131,7 +2131,7 @@ class WindowsEmulator(BinaryEmulator):
             self.on_emu_complete()
             return False
 
-    def _hook_code_debug(self, emu, addr, size, ctx):
+    def _hook_code_debug(self, emu, addr, size):
         """
         Persistent code hook that prints disassembly and register state
         for every instruction when debug mode is enabled.
@@ -2707,17 +2707,10 @@ class WindowsEmulator(BinaryEmulator):
         hnd = self.om.get_handle(mtx)  # type: ignore[union-attr]
         return hnd, mtx
 
-    def _hook_interrupt(self, emu, intnum, ctx=[]):
+    def _hook_interrupt(self, emu, intnum):
         """
         Called when software interrupts occur
         """
-
-        def _tmp_hook(emu, addr, size, ctx):
-            ret = self.pop_stack()
-            self.set_pc(ret)
-            hook_obj = ctx.pop(0)
-            hook_obj.disable()
-
         exception_list = self._get_exception_list()
         if exception_list and self.config.exceptions.dispatch_handlers:
             # Catch software breakpoint interrupts
@@ -2748,7 +2741,14 @@ class WindowsEmulator(BinaryEmulator):
             ecx = self.reg_read(_arch.X86_REG_ECX)
             # Cookie security init failed, just return since we are in __security_init_cookie
             if ecx == 6:
-                ctx.append(self.add_code_hook(cb=_tmp_hook, ctx=ctx))
+                hook_ref = [None]
+
+                def _tmp_hook(emu, addr, size):
+                    ret = self.pop_stack()
+                    self.set_pc(ret)
+                    hook_ref[0].disable()
+
+                hook_ref[0] = self.add_code_hook(cb=_tmp_hook)
                 return True
 
         pc = self.get_pc()

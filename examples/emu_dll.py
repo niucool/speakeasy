@@ -29,7 +29,7 @@ def hook_messagebox(emu, api_name, func, params):
     return rv
 
 
-def hook_mem_write(emu, access, address, size, value, ctx):
+def hook_mem_write(emu, access, address, size, value):
     """
     Hook that is called whenever memory is written to
     Args:

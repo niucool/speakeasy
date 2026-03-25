@@ -213,7 +213,7 @@ class EmuEngine:
         timeout = self._sec_to_usec(timeout)
         return self.emu.emu_start(addr, 0xFFFFFFFF, timeout=timeout, count=count)  # type: ignore[union-attr]
 
-    def hook_add(self, addr=None, cb=None, htype=None, ctx=None, begin=1, end=0, arg1=0):
+    def hook_add(self, addr=None, cb=None, htype=None, begin=1, end=0, arg1=0):
         """
         Add a callback function for a specific event type or address
         """
@@ -238,7 +238,7 @@ class EmuEngine:
         elif hook_type == uc.UC_HOOK_MEM_INVALID:
             cb = ct.cast(UC_HOOK_MEM_INVALID_CB(cb), UC_HOOK_MEM_INVALID_CB)
         else:
-            return self.emu.hook_add(htype=hook_type, callback=cb, user_data=ctx, begin=begin, end=end)  # type: ignore[union-attr]
+            return self.emu.hook_add(htype=hook_type, callback=cb, begin=begin, end=end)  # type: ignore[union-attr]
         ptr = ct.cast(cb, ct.c_void_p)
         # uc_hook_add requires an additional paramter for the hook type UC_HOOK_INSN
         if hook_type == uc.UC_HOOK_INSN:
