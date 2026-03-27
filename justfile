@@ -1,9 +1,11 @@
+set quiet
+
 format:
-    uvx ruff format
+    uvx --quiet ruff format --quiet
 
 ruff:
-    uvx ruff check --fix
-    uvx ruff check --select I --fix
+    uvx --quiet ruff check --quiet --fix
+    uvx --quiet ruff check --quiet --select I --fix
 
 # lots of errors due to dynamic access to C structures
 # address this later
@@ -13,7 +15,7 @@ ruff:
 lint: format ruff
 
 test:
-    ./.venv/bin/pytest -q tests/
+    ./.venv/bin/pytest -x -q --no-header tests/
 
 test-pma:
-    ./.venv/bin/pytest -q tests/test_pma_samples.py
+    ./.venv/bin/pytest -x -q --no-header tests/test_pma_samples.py
