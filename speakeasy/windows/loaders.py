@@ -443,8 +443,8 @@ class ApiModuleLoader:
             all_exports = func_names
         all_exports += data_exports
 
-        jit = JitPeFile(self._arch, base=self._base)
-        img_data = jit.get_decoy_pe_image(self._name, all_exports)
+        jit = JitPeFile(self._arch, base=self._base, mod_name=self._name, exports=all_exports)
+        img_data = jit.basepe.get_memory_mapped_image(max_virtual_address=0xF0000000)
         image_size = jit.basepe.OPTIONAL_HEADER.SizeOfImage
 
         text_sect = jit.get_section_by_name(jit.basepe, ".text")

@@ -414,7 +414,7 @@ class JitPeFile:
     so malware can parse it.
     """
 
-    def __init__(self, arch, base=0):
+    def __init__(self, arch, base=0, *, mod_name="", exports=()):
 
         if arch == _arch.ARCH_X86:
             husk = EMPTY_PE_32
@@ -430,6 +430,9 @@ class JitPeFile:
 
         if base > 0:
             self.basepe.OPTIONAL_HEADER.ImageBase = base
+
+        if exports:
+            self._build_decoy_pe(mod_name, exports)
 
     def get_section_by_name(self, pe, name):
         """
@@ -522,7 +525,7 @@ class JitPeFile:
         padding = b"\x00" * (aligned_offset - cur_offset)
         self.append_data(padding)
 
-    def get_decoy_pe_image(self, mod_name, exports):
+    def _build_decoy_pe(self, mod_name, exports):
         text_chars = (
             ImageSectionCharacteristics.IMAGE_SCN_MEM_READ
             | ImageSectionCharacteristics.IMAGE_SCN_MEM_EXECUTE
