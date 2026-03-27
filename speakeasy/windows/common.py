@@ -628,7 +628,7 @@ class JitPeFile:
                 raise Exception("Functions offset exceeds total PE size")
 
             # Add the ordinals
-            self.basepe.set_dword_at_rva(ord_rva, (i + 1) - dest_export_dir.Base)
+            self.basepe.set_word_at_rva(ord_rva, (i + 1) - dest_export_dir.Base)
             ord_rva += 2
             if ord_rva > sec_rva + exports_size:
                 raise Exception("Ordinals offset exceeds total PE size")
