@@ -1091,6 +1091,8 @@ class WindowsEmulator(BinaryEmulator):
                 if not exp.name:
                     continue
                 _api_mod, func_attrs = self.api.get_export_func_handler(mod_base_name_no_ext, exp.name)
+                if not func_attrs:
+                    _api_mod, func_attrs = self.normalize_import_miss(mod_base_name_no_ext, exp.name)
                 if func_attrs:
                     self.symbols[exp.address] = (mod_base_name_no_ext, exp.name)
                     has_api_exports = True
