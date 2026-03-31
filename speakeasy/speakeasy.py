@@ -37,7 +37,7 @@ class Speakeasy:
 
         return wrap
 
-    def __init__(self, config=None, argv=[], debug=False, exit_event=None, gdb_port=None, volumes=None):
+    def __init__(self, config=None, argv=None, debug=False, exit_event=None, gdb_port=None, volumes=None):
 
         if volumes:
             if isinstance(config, SpeakeasyConfig):
@@ -51,18 +51,18 @@ class Speakeasy:
         self._init_config(config)
         self.emu: Win32Emulator | WinKernelEmulator | None = None
         self.api_hooks: list[tuple[Callable, str, str, int, object | None]] = []
-        self.code_hooks: list[tuple[Callable, int, int, dict]] = []
-        self.dyn_code_hooks: list[tuple[Callable, dict]] = []
-        self.invalid_insn_hooks: list[tuple[Callable, list]] = []
+        self.code_hooks: list[tuple[Callable, int, int]] = []
+        self.dyn_code_hooks: list[tuple[Callable]] = []
+        self.invalid_insn_hooks: list[tuple[Callable]] = []
         self.mem_read_hooks: list[tuple[Callable, int, int]] = []
-        self.argv = argv
+        self.argv = argv if argv is not None else []
         self.exit_event = exit_event
         self.debug = debug
         self.gdb_port = gdb_port
         self.loaded_bins: list[str | None] = []
         self.mem_write_hooks: list[tuple[Callable, int, int]] = []
         self.mem_invalid_hooks: list[tuple[Callable]] = []
-        self.interrupt_hooks: list[tuple[Callable, dict]] = []
+        self.interrupt_hooks: list[tuple[Callable]] = []
         self.mem_map_hooks: list[tuple[Callable, int, int]] = []
 
     def __enter__(self):
@@ -142,16 +142,16 @@ class Speakeasy:
             self.add_api_hook(cb, mod, func, argc, cconv)
         while self.code_hooks:
             h = self.code_hooks.pop(0)
-            cb, begin, end, ctx = h
-            self.add_code_hook(cb, begin, end, ctx)
+            cb, begin, end = h
+            self.add_code_hook(cb, begin, end)
         while self.dyn_code_hooks:
             h = self.dyn_code_hooks.pop(0)
-            cb, ctx = h
-            self.add_dyn_code_hook(cb, ctx)
+            (cb,) = h
+            self.add_dyn_code_hook(cb)
         while self.invalid_insn_hooks:
             h = self.invalid_insn_hooks.pop(0)
-            cb, ctx = h
-            self.add_invalid_instruction_hook(cb, ctx)
+            (cb,) = h
+            self.add_invalid_instruction_hook(cb)
         while self.mem_read_hooks:
             h = self.mem_read_hooks.pop(0)
             cb, begin, end = h
@@ -166,8 +166,8 @@ class Speakeasy:
             self.add_mem_invalid_hook(cb)
         while self.interrupt_hooks:
             h = self.interrupt_hooks.pop(0)
-            cb, ctx = h
-            self.add_interrupt_hook(cb, ctx)
+            (cb,) = h
+            self.add_interrupt_hook(cb)
         while self.mem_map_hooks:
             h = self.mem_map_hooks.pop(0)
             self.add_mem_map_hook(h)
@@ -429,7 +429,7 @@ class Speakeasy:
         output_active_config(self.config, logger)
         return self.emu.call(addr, params=params)  # type: ignore[no-any-return, union-attr]
 
-    def add_code_hook(self, cb: Callable, begin=1, end=0, ctx={}):
+    def add_code_hook(self, cb: Callable, begin=1, end=0):
         """
         Set a callback to fire for every CPU instruction that is emulated
 
@@ -437,29 +437,27 @@ class Speakeasy:
             cb: Callable python function to execute
             begin: beginning of the address range to hook
             end: end of the address range to hook
-            ctx: Optional context to pass back and forth between the hook function
         return:
             Hook object for newly registered hooks
         """
         if not self.emu:
-            self.code_hooks.append((cb, begin, end, ctx))
+            self.code_hooks.append((cb, begin, end))
             return
-        return self.emu.add_code_hook(cb, begin=begin, end=end, ctx=ctx, emu=self)
+        return self.emu.add_code_hook(cb, begin=begin, end=end, emu=self)
 
-    def add_dyn_code_hook(self, cb: Callable, ctx={}):
+    def add_dyn_code_hook(self, cb: Callable):
         """
         Set a callback to fire when dynamically generated/copied code is executed
 
         args:
             cb: Callable python function to execute
-            ctx: Optional context to pass back and forth between the hook function
         return:
             Hook object for newly registered hooks
         """
         if not self.emu:
-            self.dyn_code_hooks.append((cb, ctx))
+            self.dyn_code_hooks.append((cb,))
             return
-        return self.emu.add_dyn_code_hook(cb, ctx=ctx, emu=self)
+        return self.emu.add_dyn_code_hook(cb, emu=self)
 
     def add_mem_read_hook(self, cb: Callable, begin=1, end=0):
         """
@@ -525,7 +523,7 @@ class Speakeasy:
             return
         return self.emu.add_instruction_hook(cb, begin=begin, end=end, emu=self, insn=700)
 
-    def add_invalid_instruction_hook(self, cb: Callable, ctx=[]):
+    def add_invalid_instruction_hook(self, cb: Callable):
         """
         Set a callback to fire when an invalid instruction is attempted
         to be executed
@@ -536,9 +534,9 @@ class Speakeasy:
             Hook object for newly registered hooks
         """
         if not self.emu:
-            self.invalid_insn_hooks.append((cb, ctx))
+            self.invalid_insn_hooks.append((cb,))
             return
-        return self.emu.add_invalid_instruction_hook(cb, ctx)
+        return self.emu.add_invalid_instruction_hook(cb)
 
     def add_mem_invalid_hook(self, cb: Callable):
         """
@@ -554,20 +552,19 @@ class Speakeasy:
             return
         return self.emu.add_mem_invalid_hook(cb, emu=self)
 
-    def add_interrupt_hook(self, cb: Callable, ctx={}):
+    def add_interrupt_hook(self, cb: Callable):
         """
         Get a callback for software interrupts
 
         args:
             cb: Callable python function to execute
-            ctx: Optional context to pass back and forth between the hook function
         return:
             Hook object for newly registered hooks
         """
         if not self.emu:
-            self.interrupt_hooks.append((cb, ctx))
+            self.interrupt_hooks.append((cb,))
             return
-        return self.emu.add_interrupt_hook(cb, ctx=ctx, emu=self)
+        return self.emu.add_interrupt_hook(cb, emu=self)
 
     def get_registry_key(self, handle=0, path=""):
         """

@@ -894,14 +894,14 @@ class BinaryEmulator(MemoryManager, ABC):
         self.hooks.update({common.HOOK_API: obj})
         return hook
 
-    def add_code_hook(self, cb, begin=1, end=0, ctx={}, emu=None):
+    def add_code_hook(self, cb, begin=1, end=0, emu=None):
         """
         Add a hook that will fire for every CPU instruction
         """
         hl = self.hooks.get(common.HOOK_CODE, [])
         if not emu:
             emu = self
-        hook = common.CodeHook(self, self.emu_eng, cb, begin, end, ctx)
+        hook = common.CodeHook(self, self.emu_eng, cb, begin, end)
         if not hl:
             self.hooks.update(
                 {
@@ -918,11 +918,7 @@ class BinaryEmulator(MemoryManager, ABC):
 
         return hook
 
-    def _dynamic_code_cb(self, emu, addr, size, ctx={}):
-        """
-        Call all subscribers that want callbacks dynamic code callbacks
-        """
-
+    def _fire_dyn_code_hooks(self, addr):
         profiler = self.get_profiler()
         mm = self.get_address_map(addr)
         if profiler:
@@ -932,13 +928,7 @@ class BinaryEmulator(MemoryManager, ABC):
         for h in self.hooks.get(common.HOOK_DYN_CODE, []):
             h.cb(mm)
 
-        # Delete the code hook that got us here
-        if ctx and isinstance(ctx, dict):
-            h = ctx.get("_delete_hook")
-            if h:
-                h.disable()
-
-    def _set_dyn_code_hook(self, addr, size, ctx={}):
+    def _set_dyn_code_hook(self, addr, size):
         """
         Set the top level dispatch hook for dynamic code execution
         """
@@ -946,10 +936,16 @@ class BinaryEmulator(MemoryManager, ABC):
         if size > max_hook_size:
             size = max_hook_size
 
-        ch = self.add_code_hook(cb=self._dynamic_code_cb, begin=addr, end=addr + size, ctx=ctx)
-        ctx.update({"_delete_hook": ch})
+        hook_ref = [None]
 
-    def add_dyn_code_hook(self, cb, ctx=[], emu=None):
+        def _dynamic_code_cb(emu, addr, size):
+            self._fire_dyn_code_hooks(addr)
+            if hook_ref[0]:
+                hook_ref[0].disable()
+
+        hook_ref[0] = self.add_code_hook(cb=_dynamic_code_cb, begin=addr, end=addr + size)
+
+    def add_dyn_code_hook(self, cb, emu=None):
         """
         Add a hook that will fire when dynamically generated/copied code is executed
         """
@@ -957,7 +953,7 @@ class BinaryEmulator(MemoryManager, ABC):
             emu = self
         hl = self.hooks.get(common.HOOK_DYN_CODE, [])
 
-        hook = common.DynCodeHook(emu, self.emu_eng, cb, ctx)
+        hook = common.DynCodeHook(emu, self.emu_eng, cb)
         if not hl:
             self.hooks.update(
                 {
@@ -1043,7 +1039,7 @@ class BinaryEmulator(MemoryManager, ABC):
 
         return hook
 
-    def _hook_mem_invalid_dispatch(self, emu, access, address, size, value, ctx):
+    def _hook_mem_invalid_dispatch(self, emu, access, address, size, value):
         """
         This handler will dispatch other invalid memory hooks
         """
@@ -1052,7 +1048,7 @@ class BinaryEmulator(MemoryManager, ABC):
         rv = True
         for mem_access_hook in hl[1:]:
             if mem_access_hook.enabled:
-                rv = mem_access_hook.cb(emu, access, address, size, value, ctx)
+                rv = mem_access_hook.cb(emu, access, address, size, value)
                 if rv is False:
                     break
         return rv
@@ -1079,13 +1075,13 @@ class BinaryEmulator(MemoryManager, ABC):
 
         return hook
 
-    def add_interrupt_hook(self, cb, ctx=[], emu=None):
+    def add_interrupt_hook(self, cb, emu=None):
         """
         Add a hook that will fire for software interrupts
         """
         if not emu:
             emu = self
-        hook = common.InterruptHook(emu, self.emu_eng, cb, ctx=[])
+        hook = common.InterruptHook(emu, self.emu_eng, cb)
         hl = self.hooks.get(common.HOOK_INTERRUPT)
         if not hl:
             self.hooks.update(
@@ -1103,13 +1099,13 @@ class BinaryEmulator(MemoryManager, ABC):
 
         return hook
 
-    def add_instruction_hook(self, cb, begin=1, end=0, ctx=[], emu=None, insn=None):
+    def add_instruction_hook(self, cb, begin=1, end=0, emu=None, insn=None):
         """
         Add a hook that will fire for IN, SYSCALL, or SYSENTER instructions
         """
         if not emu:
             emu = self
-        hook = common.InstructionHook(emu, self.emu_eng, cb, ctx=[], insn=insn)
+        hook = common.InstructionHook(emu, self.emu_eng, cb, insn=insn)
         hl = self.hooks.get(common.HOOK_INSN)
         if not hl:
             self.hooks.update(
@@ -1127,11 +1123,11 @@ class BinaryEmulator(MemoryManager, ABC):
 
         return hook
 
-    def add_invalid_instruction_hook(self, cb, ctx=[], emu=None):
+    def add_invalid_instruction_hook(self, cb, emu=None):
         if not emu:
             emu = self
 
-        hook = common.InvalidInstructionHook(emu, self.emu_eng, cb, ctx=[])
+        hook = common.InvalidInstructionHook(emu, self.emu_eng, cb)
         hl = self.hooks.get(common.HOOK_INSN_INVALID)
 
         if not hl:

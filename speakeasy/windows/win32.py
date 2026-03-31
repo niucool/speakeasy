@@ -31,13 +31,13 @@ class Win32Emulator(WindowsEmulator):
     User Mode Windows Emulator Class
     """
 
-    def __init__(self, config, argv=[], debug=False, exit_event=None, gdb_port=None):
+    def __init__(self, config, argv=None, debug=False, exit_event=None, gdb_port=None):
         super().__init__(config, debug=debug, exit_event=exit_event, gdb_port=gdb_port)
 
         self.last_error = 0
         self.peb_addr = 0
         self.heap_allocs = []
-        self.argv = argv
+        self.argv = argv if argv is not None else []
         self.sessman = SessionManager(config)
         self.com = COM(config)
 
@@ -608,7 +608,7 @@ class Win32Emulator(WindowsEmulator):
         self.enable_code_hook()
         self.run_complete = True
 
-    def _hook_mem_unmapped(self, emu, access, address, size, value, ctx):
+    def _hook_mem_unmapped(self, emu, access, address, size, value):
         _access = self.emu_eng.mem_access.get(access)  # type: ignore[union-attr]
 
         if _access == common.INVALID_MEM_READ:
@@ -618,7 +618,7 @@ class Win32Emulator(WindowsEmulator):
                 self.mem_map_reserve(pld.address)
                 self.init_peb(self._ordered_peb_modules())
                 return True
-        return super()._hook_mem_unmapped(emu, access, address, size, value, ctx)
+        return super()._hook_mem_unmapped(emu, access, address, size, value)
 
     def set_hooks(self):
         """Set the emulator callbacks"""

@@ -55,13 +55,12 @@ class Hook:
     Base class for all emulator hooks
     """
 
-    def __init__(self, se_obj, emu_eng, cb, ctx=[], native_hook=False):
+    def __init__(self, se_obj, emu_eng, cb, native_hook=False):
         """
         Arguments:
             se_obj: speakeasy emulator object
             emu_eng: emulation engine object
             cb: Python callback function
-            ctx: Arbitrary context that be passed between hook callbacks
             native_hook: When set to True, a new, raw callback will be registered with
                          with the underlying emulation engine that is called directly by the DLL.
                          Otherwise, this hook will be dispatched via a wrapper hook
@@ -74,7 +73,6 @@ class Hook:
         self.native_hook = native_hook
         self.emu_eng = emu_eng
         self.se_obj = se_obj
-        self.ctx = ctx
 
     def enable(self):
         self.enabled = True
@@ -84,48 +82,48 @@ class Hook:
         self.enabled = False
         self.emu_eng.hook_disable(self.handle)
 
-    def _wrap_code_cb(self, emu, addr, size, ctx=[]):
+    def _wrap_code_cb(self, emu, addr, size, ctx=None):
         try:
             if self.enabled:
                 if self.se_obj.exit_event and self.se_obj.exit_event.is_set():
                     self.se_obj.stop()
                     return False
-                return self.cb(self.se_obj, addr, size, self.ctx)
+                return self.cb(self.se_obj, addr, size)
             return True
         except KeyboardInterrupt:
             self.se_obj.stop()
             return False
 
-    def _wrap_intr_cb(self, emu, num, ctx=[]):
+    def _wrap_intr_cb(self, emu, num, ctx=None):
         if self.enabled:
-            return self.cb(self.se_obj, num, self.ctx)
+            return self.cb(self.se_obj, num)
         return True
 
-    def _wrap_in_insn_cb(self, emu, port, size, ctx=[]):
+    def _wrap_in_insn_cb(self, emu, port, size, ctx=None):
         if self.enabled:
             return self.cb(self.se_obj, port, size)
         return True
 
-    def _wrap_syscall_insn_cb(self, emu, ctx=[]):
+    def _wrap_syscall_insn_cb(self, emu, ctx=None):
         if self.enabled:
             return self.cb(self.se_obj)
         return True
 
-    def _wrap_memory_access_cb(self, emu, access, addr, size, value, ctx):
+    def _wrap_memory_access_cb(self, emu, access, addr, size, value, ctx=None):
         try:
             if self.enabled:
                 if self.se_obj.exit_event and self.se_obj.exit_event.is_set():
                     self.se_obj.stop()
                     return False
-                return self.cb(self.se_obj, access, addr, size, value, ctx)
+                return self.cb(self.se_obj, access, addr, size, value)
             return True
         except KeyboardInterrupt:
             self.se_obj.stop()
             return False
 
-    def _wrap_invalid_insn_cb(self, emu, ctx=[]):
+    def _wrap_invalid_insn_cb(self, emu, ctx=None):
         if self.enabled:
-            return self.cb(self.se_obj, self.ctx)
+            return self.cb(self.se_obj)
         return True
 
 
@@ -148,7 +146,7 @@ class DynCodeHook(Hook):
     Currently, this will only fire once per dynamic code mapping. Could be useful for unpacking.
     """
 
-    def __init__(self, se_obj, emu_eng, cb, ctx=[]):
+    def __init__(self, se_obj, emu_eng, cb):
         super().__init__(se_obj, emu_eng, cb)
 
 
@@ -157,8 +155,8 @@ class CodeHook(Hook):
     This hook callback will fire for every CPU instruction
     """
 
-    def __init__(self, se_obj, emu_eng, cb, begin=1, end=0, ctx=[], native_hook=True):
-        super().__init__(se_obj, emu_eng, cb, ctx=ctx, native_hook=native_hook)
+    def __init__(self, se_obj, emu_eng, cb, begin=1, end=0, native_hook=True):
+        super().__init__(se_obj, emu_eng, cb, native_hook=native_hook)
         self.begin = begin
         self.end = end
 
@@ -242,8 +240,8 @@ class InterruptHook(Hook):
     This hook will fire each time a a software interrupt is triggered
     """
 
-    def __init__(self, se_obj, emu_eng, cb, ctx=[], native_hook=True):
-        super().__init__(se_obj, emu_eng, cb, ctx=ctx, native_hook=native_hook)
+    def __init__(self, se_obj, emu_eng, cb, native_hook=True):
+        super().__init__(se_obj, emu_eng, cb, native_hook=native_hook)
 
     def add(self):
         if not self.added and self.native_hook:
@@ -258,8 +256,8 @@ class InstructionHook(Hook):
     Only the instructions: IN, OUT, SYSCALL, and SYSENTER are supported by unicorn.
     """
 
-    def __init__(self, se_obj, emu_eng, cb, ctx=[], native_hook=True, insn=None):
-        super().__init__(se_obj, emu_eng, cb, ctx=ctx, native_hook=native_hook)
+    def __init__(self, se_obj, emu_eng, cb, native_hook=True, insn=None):
+        super().__init__(se_obj, emu_eng, cb, native_hook=native_hook)
         self.insn = insn
 
     def add(self):
@@ -275,8 +273,8 @@ class InvalidInstructionHook(Hook):
     to be executed
     """
 
-    def __init__(self, se_obj, emu_eng, cb, ctx=[], native_hook=True):
-        super().__init__(se_obj, emu_eng, cb, ctx=ctx, native_hook=native_hook)
+    def __init__(self, se_obj, emu_eng, cb, native_hook=True):
+        super().__init__(se_obj, emu_eng, cb, native_hook=native_hook)
 
     def add(self):
         if not self.added and self.native_hook:
