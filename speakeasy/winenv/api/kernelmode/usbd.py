@@ -9,7 +9,7 @@ class Usbd(api.ApiHandler):
     Implements the USB stack driver (USBD.sys)
     """
 
-    name = 'usbd'
+    name = "usbd"
     apihook = api.ApiHandler.apihook
     impdata = api.ApiHandler.impdata
 
@@ -18,15 +18,15 @@ class Usbd(api.ApiHandler):
 
     def __init__(self, emu):
 
-        super(Usbd, self).__init__(emu)
+        super().__init__(emu)
 
         self.funcs = {}
         self.data = {}
 
-        super(Usbd, self).__get_hook_attrs__(self)
+        super().__get_hook_attrs__(self)
 
-    @apihook('USBD_ValidateConfigurationDescriptor', argc=5)
-    def USBD_ValidateConfigurationDescriptor(self, emu, argv, ctx={}):
+    @apihook("USBD_ValidateConfigurationDescriptor", argc=5)
+    def USBD_ValidateConfigurationDescriptor(self, emu, argv, ctx: api.ApiContext = None):
         """
         USBD_STATUS USBD_ValidateConfigurationDescriptor(
           PUSB_CONFIGURATION_DESCRIPTOR ConfigDesc,

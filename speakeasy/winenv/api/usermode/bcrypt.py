@@ -2,30 +2,31 @@
 
 import base64
 
-from .. import api
-
 import speakeasy.winenv.defs.nt.ddk as ntdefs
+
+from .. import api
 
 
 class Bcrypt(api.ApiHandler):
     """
     Implements exported functions from bcrypt.dll
     """
-    name = 'bcrypt'
+
+    name = "bcrypt"
     apihook = api.ApiHandler.apihook
     impdata = api.ApiHandler.impdata
 
     def __init__(self, emu):
 
-        super(Bcrypt, self).__init__(emu)
+        super().__init__(emu)
 
         self.funcs = {}
         self.data = {}
 
-        super(Bcrypt, self).__get_hook_attrs__(self)
+        super().__get_hook_attrs__(self)
 
-    @apihook('BCryptOpenAlgorithmProvider', argc=4)
-    def BCryptOpenAlgorithmProvider(self, emu, argv, ctx={}):
+    @apihook("BCryptOpenAlgorithmProvider", argc=4)
+    def BCryptOpenAlgorithmProvider(self, emu, argv, ctx: api.ApiContext = None):
         """
         NTSTATUS BCryptOpenAlgorithmProvider(
           BCRYPT_ALG_HANDLE *phAlgorithm,
@@ -40,7 +41,7 @@ class Bcrypt(api.ApiHandler):
         if algid:
             argv[1] = algid
 
-        implementation = ''
+        implementation = ""
         if pszImplementation:
             implementation = self.read_wide_string(pszImplementation)
             if implementation:
@@ -49,14 +50,13 @@ class Bcrypt(api.ApiHandler):
         cm = emu.get_crypt_manager()
         hnd = cm.crypt_open(pname=implementation, ptype=algid, flags=dwFlags)
         if hnd:
-            self.mem_write(phAlgorithm,
-                           hnd.to_bytes(emu.get_ptr_size(), 'little'))
+            self.mem_write(phAlgorithm, hnd.to_bytes(emu.get_ptr_size(), "little"))
             argv[0] = hnd
 
         return ntdefs.STATUS_SUCCESS
 
-    @apihook('BCryptImportKeyPair', argc=7)
-    def BCryptImportKeyPair(self, emu, argv, ctx={}):
+    @apihook("BCryptImportKeyPair", argc=7)
+    def BCryptImportKeyPair(self, emu, argv, ctx: api.ApiContext = None):
         """
         NTSTATUS BCryptImportKeyPair(
           BCRYPT_ALG_HANDLE hAlgorithm,
@@ -68,32 +68,28 @@ class Bcrypt(api.ApiHandler):
           ULONG             dwFlags
         );
         """
-        hAlgorithm, hImportKey, pszBlobType, phKey, pbInput, cbInput, dwFlags \
-            = argv
+        ctx = ctx or {}
+        hAlgorithm, hImportKey, pszBlobType, phKey, pbInput, cbInput, dwFlags = argv
 
         blob_type = self.read_wide_string(pszBlobType)
         argv[2] = blob_type
 
         cbInput = cbInput & 0xFFFFFFFF
         blob = self.mem_read(pbInput, cbInput)
-        argv[4] = base64.b64encode(blob).decode('utf-8')
+        argv[4] = base64.b64encode(blob).decode("utf-8")
 
         cm = emu.get_crypt_manager()
         if hAlgorithm and phKey:
             ctx = cm.crypt_get(hAlgorithm)
-            hnd = ctx.import_key(blob_type=blob_type,
-                                 blob=blob,
-                                 blob_len=cbInput,
-                                 flags=dwFlags)
+            hnd = ctx.import_key(blob_type=blob_type, blob=blob, blob_len=cbInput, flags=dwFlags)
             if hnd:
-                self.mem_write(phKey,
-                               hnd.to_bytes(emu.get_ptr_size(), 'little'))
+                self.mem_write(phKey, hnd.to_bytes(emu.get_ptr_size(), "little"))
                 argv[3] = hnd
 
         return ntdefs.STATUS_SUCCESS
 
-    @apihook('BCryptCloseAlgorithmProvider', argc=2)
-    def BCryptCloseAlgorithmProvider(self, emu, argv, ctx={}):
+    @apihook("BCryptCloseAlgorithmProvider", argc=2)
+    def BCryptCloseAlgorithmProvider(self, emu, argv, ctx: api.ApiContext = None):
         """
         NTSTATUS BCryptCloseAlgorithmProvider(
           BCRYPT_ALG_HANDLE hAlgorithm,
@@ -108,8 +104,8 @@ class Bcrypt(api.ApiHandler):
 
         return ntdefs.STATUS_SUCCESS
 
-    @apihook('BCryptGetProperty', argc=6)
-    def BCryptGetProperty(self, emu, argv, ctx={}):
+    @apihook("BCryptGetProperty", argc=6)
+    def BCryptGetProperty(self, emu, argv, ctx: api.ApiContext = None):
         """
         NTSTATUS BCryptGetProperty(
           BCRYPT_HANDLE hObject,
@@ -130,14 +126,15 @@ class Bcrypt(api.ApiHandler):
 
         return ntdefs.STATUS_SUCCESS
 
-    @apihook('BCryptDestroyKey', argc=1)
-    def BCryptDestroyKey(self, emu, argv, ctx={}):
+    @apihook("BCryptDestroyKey", argc=1)
+    def BCryptDestroyKey(self, emu, argv, ctx: api.ApiContext = None):
         """
         NTSTATUS BCryptDestroyKey(
           BCRYPT_KEY_HANDLE hKey
         );
         """
-        hKey, = argv
+        ctx = ctx or {}
+        (hKey,) = argv
         cm = emu.get_crypt_manager()
         for hnd, ctx in cm.ctx_handles.items():
             hnd_key = ctx.get_key(hKey)

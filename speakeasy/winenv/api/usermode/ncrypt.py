@@ -11,21 +11,22 @@ class Ncrypt(api.ApiHandler):
     """
     Implements exported functions from ncrypt.dll
     """
-    name = 'ncrypt'
+
+    name = "ncrypt"
     apihook = api.ApiHandler.apihook
     impdata = api.ApiHandler.impdata
 
     def __init__(self, emu):
 
-        super(Ncrypt, self).__init__(emu)
+        super().__init__(emu)
 
         self.funcs = {}
         self.data = {}
 
-        super(Ncrypt, self).__get_hook_attrs__(self)
+        super().__get_hook_attrs__(self)
 
-    @apihook('NCryptOpenStorageProvider', argc=3)
-    def NCryptOpenStorageProvider(self, emu, argv, ctx={}):
+    @apihook("NCryptOpenStorageProvider", argc=3)
+    def NCryptOpenStorageProvider(self, emu, argv, ctx: api.ApiContext = None):
         """
         SECURITY_STATUS NCryptOpenStorageProvider(
             NCRYPT_PROV_HANDLE *phProvider,
@@ -41,12 +42,12 @@ class Ncrypt(api.ApiHandler):
             cm = emu.get_crypt_manager()
             hnd = cm.crypt_open(pname=prov_str, flags=dwFlags)
             if hnd:
-                self.mem_write(phProvider, hnd.to_bytes(emu.get_ptr_size(), 'little'))
+                self.mem_write(phProvider, hnd.to_bytes(emu.get_ptr_size(), "little"))
 
         return windefs.ERROR_SUCCESS
 
-    @apihook('NCryptImportKey', argc=8)
-    def NCryptImportKey(self, emu, argv, ctx={}):
+    @apihook("NCryptImportKey", argc=8)
+    def NCryptImportKey(self, emu, argv, ctx: api.ApiContext = None):
         """
         SECURITY_STATUS NCryptImportKey(
             NCRYPT_PROV_HANDLE hProvider,
@@ -59,35 +60,39 @@ class Ncrypt(api.ApiHandler):
             DWORD              dwFlags
         );
         """
+        ctx = ctx or {}
         hProvider, hImportKey, pszBlobType, pParameterList, phKey, pbData, cbData, dwFlags = argv
         blob_type = self.read_wide_string(pszBlobType)
         argv[2] = blob_type
 
         blob = self.mem_read(pbData, cbData)
-        argv[5] = base64.b64encode(blob).decode('utf-8')
+        argv[5] = base64.b64encode(blob).decode("utf-8")
 
         cm = emu.get_crypt_manager()
         if hProvider and phKey:
             ctx = cm.crypt_get(hProvider)
-            hnd = ctx.import_key(blob_type=blob_type,
-                                 blob=blob,
-                                 blob_len=cbData,
-                                 hnd_import_key=hImportKey,
-                                 param_list=pParameterList,
-                                 flags=dwFlags)
+            hnd = ctx.import_key(
+                blob_type=blob_type,
+                blob=blob,
+                blob_len=cbData,
+                hnd_import_key=hImportKey,
+                param_list=pParameterList,
+                flags=dwFlags,
+            )
             if hnd:
-                self.mem_write(phKey, hnd.to_bytes(emu.get_ptr_size(), 'little'))
+                self.mem_write(phKey, hnd.to_bytes(emu.get_ptr_size(), "little"))
 
         return windefs.ERROR_SUCCESS
 
-    @apihook('NCryptDeleteKey', argc=2)
-    def NCryptDeleteKey(self, emu, argv, ctx={}):
+    @apihook("NCryptDeleteKey", argc=2)
+    def NCryptDeleteKey(self, emu, argv, ctx: api.ApiContext = None):
         """
         SECURITY_STATUS NCryptDeleteKey(
             NCRYPT_KEY_HANDLE hKey,
             DWORD             dwFlags
         );
         """
+        ctx = ctx or {}
         hKey, dwFlags = argv
         cm = emu.get_crypt_manager()
         for hnd, ctx in cm.ctx_handles.items():
@@ -98,13 +103,14 @@ class Ncrypt(api.ApiHandler):
 
         return windefs.ERROR_SUCCESS
 
-    @apihook('NCryptFreeObject', argc=1)
-    def NCryptFreeObject(self, emu, argv, ctx={}):
+    @apihook("NCryptFreeObject", argc=1)
+    def NCryptFreeObject(self, emu, argv, ctx: api.ApiContext = None):
         """
         SECURITY_STATUS NCryptFreeObject(
             NCRYPT_HANDLE hObject
         );
         """
+        ctx = ctx or {}
         hObject = argv[0]
         cm = emu.get_crypt_manager()
 
