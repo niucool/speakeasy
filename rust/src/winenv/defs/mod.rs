@@ -1,2 +1,10 @@
+pub mod ndis;
+pub mod nt;
+pub mod registry;
+pub mod usb;
+pub mod wdf;
+pub mod wfp;
+pub mod wininet;
 pub mod windows;
-pub mod windef;
+pub mod winsock;
+pub mod wsk;

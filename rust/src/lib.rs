@@ -1,22 +1,25 @@
 // Speakeasy - Windows Malware Emulation Framework
 // Copyright (C) Mandiant. All Rights Reserved.
 
-pub mod winenv;
-pub mod config;
-pub mod common;
-pub mod speakeasy;
-pub mod memmgr;
-pub mod binemu;
-pub mod errors;
-pub mod engines;
-pub mod profiler;
-pub mod report;
-pub mod windows;
-pub mod version;
-pub mod profiler_events;
-pub mod structs;
 pub mod artifacts;
+pub mod binemu;
+pub mod cli;
+pub mod cli_config;
+pub mod common;
+pub mod config;
+pub mod engines;
+pub mod errors;
+pub mod memmgr;
+pub mod profiler;
+pub mod profiler_events;
+pub mod report;
+pub mod r#struct;
+pub mod speakeasy;
+pub mod structs;
+pub mod version;
 pub mod volumes;
+pub mod windows;
+pub mod winenv;
 
 pub use speakeasy::Speakeasy;
 pub use windows::win32::Win32Emulator;

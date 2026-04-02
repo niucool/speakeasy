@@ -63,6 +63,11 @@ impl RegistryManager {
         handle
     }
 
+    pub fn create_key_path(&mut self, path: &str) -> &mut RegKey {
+        let handle = self.create_key(path);
+        self.get_key_from_handle(handle).expect("created key must exist")
+    }
+
     pub fn open_key(&mut self, path: &str, create: bool) -> Option<u64> {
         let path = self.normalize_reg_path(path);
         
@@ -93,5 +98,31 @@ impl RegistryManager {
             }
         }
         subkeys
+    }
+
+    pub fn set_key_value(&mut self, handle: u64, name: &str, val_type: u32, data: Vec<u8>) -> bool {
+        let Some(key) = self.get_key_from_handle(handle) else {
+            return false;
+        };
+
+        if let Some(value) = key.values.iter_mut().find(|value| value.name.eq_ignore_ascii_case(name)) {
+            value.val_type = val_type;
+            value.data = data;
+            return true;
+        }
+
+        key.values.push(RegValue {
+            name: name.to_string(),
+            val_type,
+            data,
+        });
+        true
+    }
+
+    pub fn get_key_value(&mut self, handle: u64, name: &str) -> Option<&RegValue> {
+        let key = self.get_key_from_handle(handle)?;
+        key.values
+            .iter()
+            .find(|value| value.name.eq_ignore_ascii_case(name))
     }
 }

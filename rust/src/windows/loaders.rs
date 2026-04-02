@@ -157,7 +157,36 @@ pub struct ShellcodeLoader {
 
 impl Loader for ShellcodeLoader {
     fn make_image(&self) -> LoadedImage {
-        unimplemented!()
+        let entry = 0x1000u64;
+        LoadedImage {
+            arch: self.arch.clone(),
+            module_type: "shellcode".to_string(),
+            name: "shellcode".to_string(),
+            emu_path: "shellcode".to_string(),
+            image_base: entry,
+            image_size: self.data.len() as u32,
+            regions: vec![MemoryRegion {
+                base: entry,
+                data: self.data.clone(),
+                name: "shellcode".to_string(),
+                perms: 0x40,
+            }],
+            imports: Vec::new(),
+            exports: Vec::new(),
+            default_export_mode: "intercepted".to_string(),
+            entry_points: vec![entry],
+            visible_in_peb: false,
+            stack_size: 0x12000,
+            tls_callbacks: Vec::new(),
+            tls_directory_va: None,
+            sections: vec![SectionEntry {
+                name: ".text".to_string(),
+                virtual_address: 0,
+                virtual_size: self.data.len() as u32,
+                perms: 0x40,
+            }],
+            pe_metadata: None,
+        }
     }
 }
 
@@ -170,7 +199,35 @@ pub struct ApiModuleLoader {
 
 impl Loader for ApiModuleLoader {
     fn make_image(&self) -> LoadedImage {
-        unimplemented!()
+        LoadedImage {
+            arch: self.arch.clone(),
+            module_type: "dll".to_string(),
+            name: self.name.clone(),
+            emu_path: self.emu_path.clone(),
+            image_base: self.base,
+            image_size: 0x1000,
+            regions: vec![MemoryRegion {
+                base: self.base,
+                data: vec![0; 0x1000],
+                name: self.name.clone(),
+                perms: 0x20,
+            }],
+            imports: Vec::new(),
+            exports: Vec::new(),
+            default_export_mode: "intercepted".to_string(),
+            entry_points: Vec::new(),
+            visible_in_peb: true,
+            stack_size: 0x12000,
+            tls_callbacks: Vec::new(),
+            tls_directory_va: None,
+            sections: vec![SectionEntry {
+                name: ".text".to_string(),
+                virtual_address: 0,
+                virtual_size: 0x1000,
+                perms: 0x20,
+            }],
+            pe_metadata: None,
+        }
     }
 }
 
@@ -183,6 +240,34 @@ pub struct DecoyLoader {
 
 impl Loader for DecoyLoader {
     fn make_image(&self) -> LoadedImage {
-        unimplemented!()
+        LoadedImage {
+            arch: "x86".to_string(),
+            module_type: "decoy".to_string(),
+            name: self.name.clone(),
+            emu_path: self.emu_path.clone(),
+            image_base: self.base,
+            image_size: self.image_size,
+            regions: vec![MemoryRegion {
+                base: self.base,
+                data: vec![0; self.image_size as usize],
+                name: self.name.clone(),
+                perms: 0x20,
+            }],
+            imports: Vec::new(),
+            exports: Vec::new(),
+            default_export_mode: "intercepted".to_string(),
+            entry_points: Vec::new(),
+            visible_in_peb: true,
+            stack_size: 0x12000,
+            tls_callbacks: Vec::new(),
+            tls_directory_va: None,
+            sections: vec![SectionEntry {
+                name: ".text".to_string(),
+                virtual_address: 0,
+                virtual_size: self.image_size,
+                perms: 0x20,
+            }],
+            pe_metadata: None,
+        }
     }
 }

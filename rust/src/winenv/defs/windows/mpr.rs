@@ -1,0 +1,15 @@
+pub const RESOURCE_CONNECTED: u32 = 1;
+pub const RESOURCE_GLOBALNET: u32 = 2;
+pub const RESOURCE_REMEMBERED: u32 = 3;
+pub const RESOURCE_CONTEXT: u32 = 5;
+
+pub const RESOURCETYPE_ANY: u32 = 0;
+pub const RESOURCETYPE_DISK: u32 = 1;
+pub const RESOURCETYPE_PRINT: u32 = 2;
+
+pub const RESOURCEUSAGE_CONNECTABLE: u32 = 1;
+pub const RESOURCEUSAGE_CONTAINER: u32 = 2;
+pub const RESOURCEUSAGE_ATTACHED: u32 = 0x10;
+pub const RESOURCEUSAGE_ALL: u32 = 0x13;
+
+pub const ERROR_NO_NETWORK: u32 = 0x4C6;

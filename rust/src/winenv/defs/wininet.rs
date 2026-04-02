@@ -1,0 +1,91 @@
+use crate::r#struct::{EmuStruct, Ptr};
+
+pub const INTERNET_FLAG_ASYNC: u32 = 0x1000_0000;
+pub const INTERNET_FLAG_DONT_CACHE: u32 = 0x0400_0000;
+pub const INTERNET_FLAG_EXISTING_CONNECT: u32 = 0x2000_0000;
+pub const INTERNET_FLAG_FROM_CACHE: u32 = 0x0100_0000;
+pub const INTERNET_FLAG_IGNORE_CERT_CN_INVALID: u32 = 0x0000_1000;
+pub const INTERNET_FLAG_IGNORE_CERT_DATE_INVALID: u32 = 0x0000_2000;
+pub const INTERNET_FLAG_KEEP_CONNECTION: u32 = 0x0040_0000;
+pub const INTERNET_FLAG_NO_AUTO_REDIRECT: u32 = 0x0020_0000;
+pub const INTERNET_FLAG_NO_COOKIES: u32 = 0x0008_0000;
+pub const INTERNET_FLAG_NO_UI: u32 = 0x0000_0200;
+pub const INTERNET_FLAG_OFFLINE: u32 = 0x0100_0000;
+pub const INTERNET_FLAG_PASSIVE: u32 = 0x0800_0000;
+pub const INTERNET_FLAG_PRAGMA_NOCACHE: u32 = 0x0000_0100;
+pub const INTERNET_FLAG_RAW_DATA: u32 = 0x4000_0000;
+pub const INTERNET_FLAG_RELOAD: u32 = 0x8000_0000;
+pub const INTERNET_FLAG_SECURE: u32 = 0x0080_0000;
+pub const INTERNET_FLAG_TRANSFER_ASCII: u32 = 0x1;
+pub const INTERNET_FLAG_TRANSFER_BINARY: u32 = 0x2;
+
+pub const INTERNET_OPTION_SECURITY_FLAGS: u32 = 31;
+pub const INTERNET_OPTION_SUPPRESS_SERVER_AUTH: u32 = 104;
+pub const SECURITY_FLAG_SECURE: u32 = 1;
+pub const ERROR_INSUFFICIENT_BUFFER: u32 = 122;
+
+pub const WINHTTP_QUERY_CONTENT_TYPE: u32 = 1;
+pub const WINHTTP_QUERY_CONTENT_LENGTH: u32 = 5;
+pub const WINHTTP_QUERY_STATUS_CODE: u32 = 19;
+pub const WINHTTP_QUERY_STATUS_TEXT: u32 = 20;
+pub const WINHTTP_QUERY_RAW_HEADERS: u32 = 21;
+pub const WINHTTP_QUERY_CONTENT_ENCODING: u32 = 29;
+pub const WINHTTP_QUERY_USER_AGENT: u32 = 39;
+pub const WINHTTP_QUERY_HOST: u32 = 55;
+pub const WINHTTP_QUERY_MAX: u32 = 78;
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct URL_COMPONENTS {
+    pub dwStructSize: u32,
+    pub lpszScheme: Ptr,
+    pub dwSchemeLength: u32,
+    pub nScheme: u32,
+    pub lpszHostName: Ptr,
+    pub dwHostNameLength: u32,
+    pub nPort: u16,
+    pub lpszUserName: Ptr,
+    pub dwUserNameLength: u32,
+    pub lpszPassword: Ptr,
+    pub dwPasswordLength: u32,
+    pub lpszUrlPath: Ptr,
+    pub dwUrlPathLength: u32,
+    pub lpszExtraInfo: Ptr,
+    pub dwExtraInfoLength: u32,
+}
+impl EmuStruct for URL_COMPONENTS {}
+
+pub fn get_flag_defines(flags: u32) -> Vec<&'static str> {
+    const DEFINES: &[(u32, &str)] = &[
+        (INTERNET_FLAG_ASYNC, "INTERNET_FLAG_ASYNC"),
+        (INTERNET_FLAG_DONT_CACHE, "INTERNET_FLAG_DONT_CACHE"),
+        (INTERNET_FLAG_EXISTING_CONNECT, "INTERNET_FLAG_EXISTING_CONNECT"),
+        (INTERNET_FLAG_FROM_CACHE, "INTERNET_FLAG_FROM_CACHE"),
+        (INTERNET_FLAG_IGNORE_CERT_CN_INVALID, "INTERNET_FLAG_IGNORE_CERT_CN_INVALID"),
+        (INTERNET_FLAG_IGNORE_CERT_DATE_INVALID, "INTERNET_FLAG_IGNORE_CERT_DATE_INVALID"),
+        (INTERNET_FLAG_KEEP_CONNECTION, "INTERNET_FLAG_KEEP_CONNECTION"),
+        (INTERNET_FLAG_NO_AUTO_REDIRECT, "INTERNET_FLAG_NO_AUTO_REDIRECT"),
+        (INTERNET_FLAG_NO_COOKIES, "INTERNET_FLAG_NO_COOKIES"),
+        (INTERNET_FLAG_NO_UI, "INTERNET_FLAG_NO_UI"),
+        (INTERNET_FLAG_OFFLINE, "INTERNET_FLAG_OFFLINE"),
+        (INTERNET_FLAG_PASSIVE, "INTERNET_FLAG_PASSIVE"),
+        (INTERNET_FLAG_PRAGMA_NOCACHE, "INTERNET_FLAG_PRAGMA_NOCACHE"),
+        (INTERNET_FLAG_RAW_DATA, "INTERNET_FLAG_RAW_DATA"),
+        (INTERNET_FLAG_RELOAD, "INTERNET_FLAG_RELOAD"),
+        (INTERNET_FLAG_SECURE, "INTERNET_FLAG_SECURE"),
+        (INTERNET_FLAG_TRANSFER_ASCII, "INTERNET_FLAG_TRANSFER_ASCII"),
+        (INTERNET_FLAG_TRANSFER_BINARY, "INTERNET_FLAG_TRANSFER_BINARY"),
+    ];
+    DEFINES
+        .iter()
+        .filter_map(|(value, name)| if flags & value == *value { Some(*name) } else { None })
+        .collect()
+}
+
+pub fn get_option_define(opt: u32) -> Option<&'static str> {
+    match opt {
+        INTERNET_OPTION_SECURITY_FLAGS => Some("INTERNET_OPTION_SECURITY_FLAGS"),
+        INTERNET_OPTION_SUPPRESS_SERVER_AUTH => Some("INTERNET_OPTION_SUPPRESS_SERVER_AUTH"),
+        _ => None,
+    }
+}
