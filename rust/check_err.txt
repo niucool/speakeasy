@@ -1,0 +1,189 @@
+﻿cargo :    Compiling speakeasy v3.0.0 
+(C:\Projects\github\speakeasy\rust)
+At line:1 char:1
++ cargo check --lib --color=never 2>&1 | Out-File 
+-Encoding utf8 check_ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compili 
+   ng sp...speakeasy\rust):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: unused import: `std::collections::HashMap`
+ --> src\profiler.rs:4:5
+  |
+4 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: unused import: `pelite::pe64::PeFile`
+ --> src\windows\loaders.rs:3:5
+  |
+3 | use pelite::pe64::PeFile;
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `name` found for enum 
+`pelite::pe64::exports::Export<'a>` in the current scope
+   --> src\windows\loaders.rs:137:58
+    |
+137 | ...                   if let Ok(name) = 
+export.name() {
+    |                                                
+^^^^
+    |
+help: there is a method `ne` with a similar name, but 
+with different arguments
+   --> C:\Users\juncai\.rustup\toolchains\stable-x86_64-
+pc-windows-msvc\lib/rustlib/src/rust\library\core\src\cm
+p.rs:264:5
+    |
+264 |     fn ne(&self, other: &Rhs) -> bool {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed
+   --> src\windows\loaders.rs:139:52
+    |
+139 | ...                   name: 
+Some(name.to_string()),
+    |                                  ^^^^ cannot 
+infer type
+
+error[E0599]: no method named `rva` found for enum 
+`pelite::pe64::exports::Export<'a>` in the current scope
+   --> src\windows\loaders.rs:140:77
+    |
+140 | ...                   address: loaded.image_base 
++ export.rva() as u64,
+    |                                                   
+        ^^^ method not found in 
+`pelite::pe64::exports::Export<'_>`
+
+error[E0599]: no method named `ordinal` found for enum 
+`pelite::pe64::exports::Export<'a>` in the current scope
+   --> src\windows\loaders.rs:141:57
+    |
+141 | ...                   ordinal: export.ordinal(),
+    |                                       ^^^^^^^ 
+method not found in `pelite::pe64::exports::Export<'_>`
+
+error[E0599]: no method named `name` found for enum 
+`pelite::pe64::exports::Export<'a>` in the current scope
+   --> src\windows\loaders.rs:161:58
+    |
+161 | ...                   if let Ok(name) = 
+export.name() {
+    |                                                
+^^^^
+    |
+help: there is a method `ne` with a similar name, but 
+with different arguments
+   --> C:\Users\juncai\.rustup\toolchains\stable-x86_64-
+pc-windows-msvc\lib/rustlib/src/rust\library\core\src\cm
+p.rs:264:5
+    |
+264 |     fn ne(&self, other: &Rhs) -> bool {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed
+   --> src\windows\loaders.rs:163:52
+    |
+163 | ...                   name: 
+Some(name.to_string()),
+    |                                  ^^^^ cannot 
+infer type
+
+error[E0599]: no method named `rva` found for enum 
+`pelite::pe64::exports::Export<'a>` in the current scope
+   --> src\windows\loaders.rs:164:77
+    |
+164 | ...                   address: loaded.image_base 
++ export.rva() as u64,
+    |                                                   
+        ^^^ method not found in 
+`pelite::pe64::exports::Export<'_>`
+
+error[E0599]: no method named `ordinal` found for enum 
+`pelite::pe64::exports::Export<'a>` in the current scope
+   --> src\windows\loaders.rs:165:57
+    |
+165 | ...                   ordinal: export.ordinal() 
+as u32,
+    |                                       ^^^^^^^ 
+method not found in `pelite::pe64::exports::Export<'_>`
+
+warning: variable does not need to be mutable
+  --> src\engines\unicorn_eng.rs:68:13
+   |
+68 |         let mut emu = match 
+unicorn::Unicorn::new(arch, mode) {
+   |             ----^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: unused variable: `hfile`
+  --> src\windows\fileman.rs:71:43
+   |
+71 |     pub fn file_create_mapping(&mut self, hfile: 
+u64, name: &str, size: u64, prot: u32) -> u64 {
+   |                                           ^^^^^ 
+help: if this is intentional, prefix it with an 
+underscore: `_hfile`
+   |
+   = note: `#[warn(unused_variables)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: unused variable: `arch`
+ --> src\windows\kernel_mods\kernel_mod.rs:6:25
+  |
+6 |     fn ioctl(&mut self, arch: &str, code: u32, 
+inbuf: &[u8]) -> Result<Vec<u8>, ()> {
+  |                         ^^^^ help: if this is 
+intentional, prefix it with an underscore: `_arch`
+
+warning: unused variable: `code`
+ --> src\windows\kernel_mods\kernel_mod.rs:6:37
+  |
+6 |     fn ioctl(&mut self, arch: &str, code: u32, 
+inbuf: &[u8]) -> Result<Vec<u8>, ()> {
+  |                                     ^^^^ help: if 
+this is intentional, prefix it with an underscore: 
+`_code`
+
+warning: unused variable: `inbuf`
+ --> src\windows\kernel_mods\kernel_mod.rs:6:48
+  |
+6 |     fn ioctl(&mut self, arch: &str, code: u32, 
+inbuf: &[u8]) -> Result<Vec<u8>, ()> {
+  |                                                
+^^^^^ help: if this is intentional, prefix it with an 
+underscore: `_inbuf`
+
+warning: variable does not need to be mutable
+  --> src\windows\objman.rs:95:34
+   |
+95 |     pub fn add_object(&mut self, mut obj: 
+Arc<Mutex<dyn KernelObject>>) {
+   |                                  ----^^^
+   |                                  |
+   |                                  help: remove this 
+`mut`
+
+warning: unused variable: `path`
+  --> src\windows\win32.rs:50:41
+   |
+50 |     pub fn emulate_shellcode(&mut self, path: 
+&str, data: &[u8], arch: &str) -> Result<()> {
+   |                                         ^^^^ help: 
+if this is intentional, prefix it with an underscore: 
+`_path`
+
+Some errors have detailed explanations: E0282, E0599.
+For more information about an error, try `rustc 
+--explain E0282`.
+warning: `speakeasy` (lib) generated 9 warnings
+error: could not compile `speakeasy` (lib) due to 8 
+previous errors; 9 warnings emitted

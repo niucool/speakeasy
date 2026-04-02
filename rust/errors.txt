@@ -1,0 +1,72 @@
+   Compiling speakeasy v3.0.0 (C:\Projects\github\speakeasy\rust)
+error[E0432]: unresolved import `sha2::Sha1`
+ --> src\utils.rs:3:20
+  |
+3 | use sha2::{Digest, Sha1, Sha256};
+  |                    ^^^^ no `Sha1` in the root
+  |
+  = help: consider importing this variant instead:
+          uuid::Version::Sha1
+
+warning: unused import: `std::collections::HashMap`
+ --> src\profiler.rs:4:5
+  |
+4 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0119]: conflicting implementations of trait `Clone` for type `report::Report`
+   --> src\report.rs:6:17
+    |
+  6 | #[derive(Debug, Clone, Serialize, Deserialize)]
+    |                 ^^^^^ conflicting implementation for `report::Report`
+    |
+   ::: src\emulator\mod.rs:127:1
+    |
+127 | impl Clone for Report {
+    | --------------------- first implementation here
+
+error[E0599]: no associated item named `ALL` found for struct `Protection` in the current scope
+  --> src\emulator\cpu.rs:76:76
+   |
+76 |             if let Err(e) = emu.mem_map(*addr, *size, unicorn::Protection::ALL) {
+   |                                                                            ^^^ associated item not found in `Protection`
+
+error[E0599]: `md5::Digest` doesn't implement `std::fmt::Display`
+  --> src\utils.rs:42:24
+   |
+42 |     md5::compute(data).to_string()
+   |                        ^^^^^^^^^ method cannot be called on `md5::Digest` due to unsatisfied trait bounds
+   |
+  ::: C:\Users\juncai\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\md5-0.7.0\src\lib.rs:45:1
+   |
+45 | pub struct Digest(pub [u8; 16]);
+   | ----------------- doesn't satisfy `md5::Digest: ToString` or `md5::Digest: std::fmt::Display`
+   |
+   = note: the following trait bounds were not satisfied:
+           `md5::Digest: std::fmt::Display`
+           which is required by `md5::Digest: ToString`
+           `[u8; 16]: std::fmt::Display`
+           which is required by `[u8; 16]: ToString`
+           `[u8]: std::fmt::Display`
+           which is required by `[u8]: ToString`
+
+warning: unused variable: `module_name`
+  --> src\emulator\mod.rs:55:30
+   |
+55 |     pub fn run_module(&self, module_name: &str) -> Result<()> {
+   |                              ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_module_name`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `arch`
+  --> src\emulator\mod.rs:65:47
+   |
+65 |     pub fn load_shellcode(&self, data: &[u8], arch: &str) -> Result<u64> {
+   |                                               ^^^^ help: if this is intentional, prefix it with an underscore: `_arch`
+
+Some errors have detailed explanations: E0119, E0432, E0599.
+For more information about an error, try `rustc --explain E0119`.
+warning: `speakeasy` (lib) generated 3 warnings
+error: could not compile `speakeasy` (lib) due to 4 previous errors; 3 warnings emitted

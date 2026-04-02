@@ -1,0 +1,72 @@
+[package]
+name = "speakeasy"
+version = "3.0.0"
+edition = "2021"
+authors = ["Andrew Davis"]
+license = "MIT"
+description = "Speakeasy malware emulation framework"
+repository = "https://github.com/mandiant/speakeasy"
+
+[dependencies]
+# Emulation
+unicorn = "0.3"
+
+# PE file parsing
+goblin = "0.8"
+
+# Disassembly
+capstone = "0.12"
+
+# Compression
+lznt1 = "0.1"
+
+# Cryptography
+ring = "0.17"
+md5 = "0.7"
+
+# Data serialization/validation
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_repr = "0.1"
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+colored = "2.1"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Utilities
+bytes = "1.5"
+lazy_static = "1.4"
+regex = "1.10"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+hex = "0.4"
+pelite = "0.10.0"
+
+# Windows-specific (if targeting Windows directly)
+[target.'cfg(windows)'.dependencies]
+winapi-util = "0.1"
+
+[dev-dependencies]
+tempfile = "3.8"
+pretty_assertions = "1.4"
+
+[[bin]]
+name = "speakeasy"
+path = "src/bin/cli.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

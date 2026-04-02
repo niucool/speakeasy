@@ -1,0 +1,133 @@
+   Compiling speakeasy v3.0.0 (C:\Projects\github\speakeasy\rust)
+warning: unused import: `std::collections::HashMap`
+ --> src\profiler.rs:4:5
+  |
+4 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> src\emulator\cpu.rs:68:13
+   |
+68 |         let mut emu = match unicorn::Unicorn::new(arch, mode) {
+   |             ----^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `inner` is never read
+   --> src\emulator\mod.rs:104:5
+    |
+103 | pub struct Win32Emulator {
+    |            ------------- field in this struct
+104 |     inner: Speakeasy,
+    |     ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `inner` is never read
+   --> src\emulator\mod.rs:108:5
+    |
+107 | pub struct WinKernelEmulator {
+    |            ----------------- field in this struct
+108 |     inner: Speakeasy,
+    |     ^^^^^
+
+warning: fields `stack_size` and `stack_pointer` are never read
+  --> src\emulator\memory.rs:7:5
+   |
+ 6 | pub struct MemoryManager {
+   |            ------------- fields in this struct
+ 7 |     stack_size: usize,
+   |     ^^^^^^^^^^
+...
+10 |     stack_pointer: u64,
+   |     ^^^^^^^^^^^^^
+
+warning: field `kernel_objects` is never read
+ --> src\windows\kernel.rs:6:5
+  |
+5 | pub struct KernelManager {
+  |            ------------- field in this struct
+6 |     kernel_objects: Vec<String>,
+  |     ^^^^^^^^^^^^^^
+
+warning: field `directories` is never read
+ --> src\windows\file_system.rs:8:5
+  |
+6 | pub struct FileSystemManager {
+  |            ----------------- field in this struct
+7 |     files: HashMap<String, VirtualFile>,
+8 |     directories: HashMap<String, Vec<String>>,
+  |     ^^^^^^^^^^^
+
+warning: `speakeasy` (lib) generated 7 warnings (run `cargo fix --lib -p speakeasy` to apply 2 suggestions)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+   --> src\bin\cli.rs:104:40
+    |
+ 92 | fn main() {
+    | --------- this function should return `Result` or `Option` to accept `?`
+...
+104 |             let json = config.to_json()?;
+    |                                        ^ cannot use the `?` operator in a function that returns `()`
+    |
+help: consider adding return type
+    |
+ 92 | fn main() -> Result<(), Box<dyn std::error::Error>> {
+    |           +++++++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+   --> src\bin\cli.rs:107:38
+    |
+ 92 | fn main() {
+    | --------- this function should return `Result` or `Option` to accept `?`
+...
+107 |                 fs::write(&out, json)?;
+    |                                      ^ cannot use the `?` operator in a function that returns `()`
+    |
+help: consider adding return type
+    |
+ 92 | fn main() -> Result<(), Box<dyn std::error::Error>> {
+    |           +++++++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+   --> src\bin\cli.rs:117:46
+    |
+ 92 | fn main() {
+    | --------- this function should return `Result` or `Option` to accept `?`
+...
+117 |                 run_emulation(&target, &args)?;
+    |                                              ^ cannot use the `?` operator in a function that returns `()`
+    |
+help: consider adding return type
+    |
+ 92 | fn main() -> Result<(), Box<dyn std::error::Error>> {
+    |           +++++++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+   --> src\bin\cli.rs:119:63
+    |
+ 92 | fn main() {
+    | --------- this function should return `Result` or `Option` to accept `?`
+...
+119 |                 run_emulation(target.to_str().unwrap(), &args)?;
+    |                                                               ^ cannot use the `?` operator in a function that returns `()`
+    |
+help: consider adding return type
+    |
+ 92 | fn main() -> Result<(), Box<dyn std::error::Error>> {
+    |           +++++++++++++++++++++++++++++++++++++++++
+
+warning: unused variable: `level`
+  --> src\bin\cli.rs:85:9
+   |
+85 |     let level = if verbose { "debug" } else { "info" };
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_level`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0277`.
+warning: `speakeasy` (bin "speakeasy") generated 1 warning
+error: could not compile `speakeasy` (bin "speakeasy") due to 4 previous errors; 1 warning emitted

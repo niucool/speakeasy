@@ -1,0 +1,69 @@
+   Compiling speakeasy v3.0.0 (C:\Projects\github\speakeasy\rust)
+warning: unused import: `std::collections::HashMap`
+ --> src\profiler.rs:4:5
+  |
+4 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> src\engines\unicorn_eng.rs:68:13
+   |
+68 |         let mut emu = match unicorn::Unicorn::new(arch, mode) {
+   |             ----^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `inner` is never read
+   --> src\speakeasy.rs:100:5
+    |
+ 99 | pub struct Win32Emulator {
+    |            ------------- field in this struct
+100 |     inner: Speakeasy,
+    |     ^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `inner` is never read
+   --> src\speakeasy.rs:104:5
+    |
+103 | pub struct WinKernelEmulator {
+    |            ----------------- field in this struct
+104 |     inner: Speakeasy,
+    |     ^^^^^
+
+warning: fields `stack_size` and `stack_pointer` are never read
+  --> src\memmgr.rs:7:5
+   |
+ 6 | pub struct MemoryManager {
+   |            ------------- fields in this struct
+ 7 |     stack_size: usize,
+   |     ^^^^^^^^^^
+...
+10 |     stack_pointer: u64,
+   |     ^^^^^^^^^^^^^
+
+warning: field `directories` is never read
+ --> src\windows\fileman.rs:8:5
+  |
+6 | pub struct FileSystemManager {
+  |            ----------------- field in this struct
+7 |     files: HashMap<String, VirtualFile>,
+8 |     directories: HashMap<String, Vec<String>>,
+  |     ^^^^^^^^^^^
+
+warning: field `kernel_objects` is never read
+ --> src\windows\kernel.rs:6:5
+  |
+5 | pub struct KernelManager {
+  |            ------------- field in this struct
+6 |     kernel_objects: Vec<String>,
+  |     ^^^^^^^^^^^^^^
+
+warning: `speakeasy` (lib) generated 7 warnings (run `cargo fix --lib -p speakeasy` to apply 2 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.91s
+warning: the following packages contain code that will be rejected by a future version of Rust: bitflags v0.6.0
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`

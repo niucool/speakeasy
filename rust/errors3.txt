@@ -1,0 +1,30 @@
+   Compiling speakeasy v3.0.0 (C:\Projects\github\speakeasy\rust)
+warning: unused import: `std::collections::HashMap`
+ --> src\profiler.rs:4:5
+  |
+4 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0599]: no associated item named `READ` found for struct `Protection` in the current scope
+  --> src\emulator\cpu.rs:76:45
+   |
+76 |             let prot = unicorn::Protection::READ | unicorn::Protection::WRITE | unicorn::Protection::EXEC;
+   |                                             ^^^^ associated item not found in `Protection`
+
+error[E0599]: no associated item named `WRITE` found for struct `Protection` in the current scope
+  --> src\emulator\cpu.rs:76:73
+   |
+76 |             let prot = unicorn::Protection::READ | unicorn::Protection::WRITE | unicorn::Protection::EXEC;
+   |                                                                         ^^^^^ associated item not found in `Protection`
+
+error[E0599]: no associated item named `EXEC` found for struct `Protection` in the current scope
+  --> src\emulator\cpu.rs:76:102
+   |
+76 |             let prot = unicorn::Protection::READ | unicorn::Protection::WRITE | unicorn::Protection::EXEC;
+   |                                                                                                      ^^^^ associated item not found in `Protection`
+
+For more information about this error, try `rustc --explain E0599`.
+warning: `speakeasy` (lib) generated 1 warning
+error: could not compile `speakeasy` (lib) due to 3 previous errors; 1 warning emitted

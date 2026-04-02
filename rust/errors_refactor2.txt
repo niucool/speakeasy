@@ -1,0 +1,163 @@
+   Compiling speakeasy v3.0.0 (C:\Projects\github\speakeasy\rust)
+error[E0432]: unresolved import `crate::error`
+ --> src\windows\fileman.rs:3:12
+  |
+3 | use crate::error::Result;
+  |            ^^^^^
+  |            |
+  |            unresolved import
+  |            help: a similar path exists: `clap::error`
+
+error[E0432]: unresolved import `crate::error`
+ --> src\windows\regman.rs:3:12
+  |
+3 | use crate::error::Result;
+  |            ^^^^^
+  |            |
+  |            unresolved import
+  |            help: a similar path exists: `clap::error`
+
+error[E0432]: unresolved import `crate::error`
+ --> src\windows\netman.rs:3:12
+  |
+3 | use crate::error::Result;
+  |            ^^^^^
+  |            |
+  |            unresolved import
+  |            help: a similar path exists: `clap::error`
+
+error[E0432]: unresolved import `crate::error`
+ --> src\windows\objman.rs:3:12
+  |
+3 | use crate::error::Result;
+  |            ^^^^^
+  |            |
+  |            unresolved import
+  |            help: a similar path exists: `clap::error`
+
+error[E0432]: unresolved import `file_system`
+  --> src\windows\mod.rs:12:9
+   |
+12 | pub use file_system::FileSystemManager;
+   |         ^^^^^^^^^^^ use of unresolved module or unlinked crate `file_system`
+   |
+   = help: if you wanted to use a crate named `file_system`, use `cargo add file_system` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `registry`
+  --> src\windows\mod.rs:13:9
+   |
+13 | pub use registry::RegistryManager;
+   |         ^^^^^^^^ use of unresolved module or unlinked crate `registry`
+   |
+   = help: if you wanted to use a crate named `registry`, use `cargo add registry` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `network`
+  --> src\windows\mod.rs:14:9
+   |
+14 | pub use network::NetworkManager;
+   |         ^^^^^^^ use of unresolved module or unlinked crate `network`
+   |
+   = help: if you wanted to use a crate named `network`, use `cargo add network` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `objects`
+  --> src\windows\mod.rs:15:9
+   |
+15 | pub use objects::ObjectManager;
+   |         ^^^^^^^ use of unresolved module or unlinked crate `objects`
+   |
+   = help: if you wanted to use a crate named `objects`, use `cargo add objects` to add it to your `Cargo.toml`
+
+error[E0425]: cannot find value `module_name` in this scope
+  --> src\windows\api\mod.rs:37:17
+   |
+37 |                 module_name, api_name
+   |                 ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `api_name` in this scope
+  --> src\windows\api\mod.rs:37:30
+   |
+37 |                 module_name, api_name
+   |                              ^^^^^^^^ not found in this scope
+
+error[E0433]: failed to resolve: unresolved import
+  --> src\windows\fileman.rs:46:24
+   |
+46 |                 crate::error::SpeakeasyError::FileError(format!("File not found: {}", path))
+   |                        ^^^^^ unresolved import
+   |
+help: a similar path exists
+   |
+46 |                 crate::clap::error::SpeakeasyError::FileError(format!("File not found: {}", path))
+   |                        ++++++
+help: consider importing this enum through its public re-export
+   |
+ 3 + use crate::SpeakeasyError;
+   |
+help: if you import `SpeakeasyError`, refer to it directly
+   |
+46 -                 crate::error::SpeakeasyError::FileError(format!("File not found: {}", path))
+46 +                 SpeakeasyError::FileError(format!("File not found: {}", path))
+   |
+
+error[E0433]: failed to resolve: unresolved import
+  --> src\windows\regman.rs:74:28
+   |
+74 |                 Err(crate::error::SpeakeasyError::ConfigError(
+   |                            ^^^^^ unresolved import
+   |
+help: a similar path exists
+   |
+74 |                 Err(crate::clap::error::SpeakeasyError::ConfigError(
+   |                            ++++++
+help: consider importing this enum through its public re-export
+   |
+ 3 + use crate::SpeakeasyError;
+   |
+help: if you import `SpeakeasyError`, refer to it directly
+   |
+74 -                 Err(crate::error::SpeakeasyError::ConfigError(
+74 +                 Err(SpeakeasyError::ConfigError(
+   |
+
+error[E0433]: failed to resolve: unresolved import
+  --> src\windows\regman.rs:79:24
+   |
+79 |             Err(crate::error::SpeakeasyError::ConfigError(
+   |                        ^^^^^ unresolved import
+   |
+help: a similar path exists
+   |
+79 |             Err(crate::clap::error::SpeakeasyError::ConfigError(
+   |                        ++++++
+help: consider importing this enum through its public re-export
+   |
+ 3 + use crate::SpeakeasyError;
+   |
+help: if you import `SpeakeasyError`, refer to it directly
+   |
+79 -             Err(crate::error::SpeakeasyError::ConfigError(
+79 +             Err(SpeakeasyError::ConfigError(
+   |
+
+warning: unused import: `std::collections::HashMap`
+ --> src\profiler.rs:4:5
+  |
+4 | use std::collections::HashMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> src\engines\unicorn_eng.rs:68:13
+   |
+68 |         let mut emu = match unicorn::Unicorn::new(arch, mode) {
+   |             ----^^^
+   |             |
+   |             help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0425, E0432, E0433.
+For more information about an error, try `rustc --explain E0425`.
+warning: `speakeasy` (lib) generated 2 warnings
+error: could not compile `speakeasy` (lib) due to 13 previous errors; 2 warnings emitted
