@@ -1,33 +1,74 @@
-// Drive Manager
-use std::collections::HashMap;
+// Drive Manager for Windows emulator
 
-#[derive(Debug, Clone)]
+use crate::winenv::defs::windows::kernel32;
+
+#[derive(Clone, Debug)]
 pub struct Drive {
-    pub letter: String,
-    pub drive_type: u32,
-    pub serial_number: u32,
-    pub volume_name: String,
-    pub file_system: String,
+    pub root_path: Option<String>,
+    pub volume_guid_path: Option<String>,
+    pub drive_type: String,
 }
 
 pub struct DriveManager {
-    drives: HashMap<String, Drive>,
+    pub drives: Vec<Drive>,
+    pub drive_letters: Vec<char>,
 }
 
 impl DriveManager {
-    pub fn new() -> Self {
+    pub fn new(config: Vec<Drive>) -> Self {
+        let mut drive_letters = Vec::new();
+
+        for drive in &config {
+            if let Some(ref path) = drive.root_path {
+                if let Some(c) = path.chars().next() {
+                    drive_letters.push(c);
+                }
+            }
+        }
+
         Self {
-            drives: HashMap::new(),
+            drives: config,
+            drive_letters,
         }
     }
-    
-    pub fn get_drive(&self, letter: &str) -> Option<&Drive> {
-        self.drives.get(letter)
-    }
-}
 
-impl Default for DriveManager {
-    fn default() -> Self {
-        Self::new()
+    pub fn walk_drives(&self) -> impl Iterator<Item = &Drive> {
+        self.drives.iter()
+    }
+
+    pub fn get_drive(&self, root_path: &str, volume_guid_path: &str) -> Option<&Drive> {
+        for drive in &self.drives {
+            if !root_path.is_empty() {
+                if let Some(ref p) = drive.root_path {
+                    if p == root_path {
+                        return Some(drive);
+                    }
+                }
+            } else if !volume_guid_path.is_empty() {
+                if let Some(ref p) = drive.volume_guid_path {
+                    if p == volume_guid_path {
+                        return Some(drive);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn get_drive_type(&self, root_path: &str) -> u32 {
+        if let Some(drive) = self.get_drive(root_path, "") {
+            match drive.drive_type.as_str() {
+                "DRIVE_UNKNOWN" => kernel32::DRIVE_UNKNOWN,
+                "DRIVE_NO_ROOT_DIR" => kernel32::DRIVE_NO_ROOT_DIR,
+                "DRIVE_REMOVABLE" => kernel32::DRIVE_REMOVABLE,
+                "DRIVE_FIXED" => kernel32::DRIVE_FIXED,
+                "DRIVE_REMOTE" => kernel32::DRIVE_REMOTE,
+                "DRIVE_CDROM" => kernel32::DRIVE_CDROM,
+                "DRIVE_RAMDISK" => kernel32::DRIVE_RAMDISK,
+                _ => kernel32::DRIVE_UNKNOWN,
+            }
+        } else {
+            kernel32::DRIVE_NO_ROOT_DIR
+        }
     }
 }

@@ -7,6 +7,7 @@ use crate::windows::sessman::SessionManager;
 use crate::windows::{
     KernelManager, FileSystemManager, RegistryManager, NetworkManager, ObjectManager
 };
+use crate::engines::unicorn_eng::EmuEngine;
 
 use std::sync::{Arc, Mutex};
 
@@ -19,10 +20,9 @@ pub enum BootstrapPhase {
     FullSetupReady = 3,
 }
 
-/// Base class providing emulation of all Windows modules and shellcode.
-/// Provides overlapping functionality for both user mode and kernel mode samples.
 pub struct WindowsEmulator {
     pub base: BaseBinaryEmulator,
+    pub engine: Option<EmuEngine>,
     
     // Core state
     pub bootstrap_phase: BootstrapPhase,
@@ -38,12 +38,15 @@ pub struct WindowsEmulator {
     pub netman: Arc<Mutex<NetworkManager>>,
     pub objman: Arc<Mutex<ObjectManager>>,
     pub kernel: Arc<Mutex<KernelManager>>,
+
+    pub curr_exception_code: u32,
+    pub prev_pc: u64,
 }
 
 impl WindowsEmulator {
     pub fn new(config: SpeakeasyConfig, is_kernel_mode: bool) -> Result<Self> {
-        let arch = 9; // Default to x64 for now, should be determined by loader
-        let base = BaseBinaryEmulator::new(config.clone(), arch);
+        let arch_str = if config.os_ver.major == Some(10) { "x64" } else { "x86" }; // Simplified
+        let base = BaseBinaryEmulator::new(config.clone(), if arch_str == "x64" { 9 } else { 0 });
         let sessman = Arc::new(Mutex::new(SessionManager::new(&config)));
         let regman = Arc::new(Mutex::new(RegistryManager::new()));
         let fileman = Arc::new(Mutex::new(FileSystemManager::new()));
@@ -53,6 +56,7 @@ impl WindowsEmulator {
 
         Ok(Self {
             base,
+            engine: None,
             bootstrap_phase: BootstrapPhase::Initialized,
             is_kernel_mode,
             peb_addr: 0,
@@ -65,43 +69,35 @@ impl WindowsEmulator {
             netman,
             objman,
             kernel,
+            curr_exception_code: 0,
+            prev_pc: 0,
         })
     }
 
-    pub fn advance_bootstrap_phase(&mut self, phase: BootstrapPhase) -> Result<()> {
-        if phase <= self.bootstrap_phase {
-            return Ok(());
-        }
-
-        match (self.bootstrap_phase, phase) {
-            (BootstrapPhase::Initialized, BootstrapPhase::EngineApiReady) => {},
-            (BootstrapPhase::EngineApiReady, BootstrapPhase::ObjectManagerReady) |
-            (BootstrapPhase::EngineApiReady, BootstrapPhase::FullSetupReady) => {},
-            (BootstrapPhase::ObjectManagerReady, BootstrapPhase::FullSetupReady) => {},
-            _ => {
-                return Err(SpeakeasyError::ApiError(format!(
-                    "Invalid bootstrap transition from {:?} to {:?}", 
-                    self.bootstrap_phase, phase
-                )));
-            }
-        }
-
-        self.bootstrap_phase = phase;
+    pub fn init_engine(&mut self) -> Result<()> {
+        let arch = if self.base.arch == 9 { "x64" } else { "x86" };
+        self.engine = Some(EmuEngine::new(arch)?);
         Ok(())
     }
 
-    pub fn validate_bootstrap_phase(&self, phase: BootstrapPhase, reason: &str) -> Result<()> {
-        if self.bootstrap_phase < phase {
-            return Err(SpeakeasyError::ApiError(format!(
-                "{} requires bootstrap phase {:?}, current phase is {:?}",
-                reason, phase, self.bootstrap_phase
-            )));
+    pub fn dispatch_seh(&mut self, code: u32) -> bool {
+        // Implementation of SEH dispatching
+        // This involves reading the TEB, following the exception list,
+        // and setting the PC to the handler
+        false
+    }
+
+    pub fn handle_interrupt(&mut self, intno: u32) -> bool {
+        match intno {
+            3 => { // Breakpoint
+                self.curr_exception_code = 0x80000003; // STATUS_BREAKPOINT
+                self.dispatch_seh(self.curr_exception_code)
+            },
+            _ => false
         }
-        Ok(())
     }
 
     pub fn setup_gdt(&mut self) -> Result<()> {
-        // Implementation for setting up GDT, FS/GS base
         Ok(())
     }
 
@@ -116,30 +112,58 @@ impl BinaryEmulator for WindowsEmulator {
     fn get_ptr_size(&self) -> u32 { self.base.ptr_size }
     
     fn reg_read(&self, reg: u32) -> Result<u64> {
-        // This should delegate to unicorn engine eventually
-        Ok(0)
+        if let Some(ref eng) = self.engine {
+            eng.reg_read(reg as i32)
+        } else {
+            Ok(0)
+        }
     }
     
     fn reg_write(&mut self, reg: u32, val: u64) -> Result<()> {
-        Ok(())
+        if let Some(ref mut eng) = self.engine {
+            eng.reg_write(reg as i32, val)
+        } else {
+            Ok(())
+        }
     }
     
     fn mem_read(&self, addr: u64, size: usize) -> Result<Vec<u8>> {
-        Ok(vec![0; size])
+        if let Some(ref eng) = self.engine {
+            eng.mem_read(addr, size)
+        } else {
+            Ok(vec![0; size])
+        }
     }
     
     fn mem_write(&mut self, addr: u64, data: &[u8]) -> Result<()> {
-        Ok(())
+        if let Some(ref mut eng) = self.engine {
+            eng.mem_write(addr, data)
+        } else {
+            Ok(())
+        }
     }
     
-    fn get_pc(&self) -> Result<u64> { Ok(0) }
-    fn set_pc(&mut self, addr: u64) -> Result<()> { Ok(()) }
+    fn get_pc(&self) -> Result<u64> {
+        let reg = if self.base.arch == 9 { unicorn::RegisterX86::RIP } else { unicorn::RegisterX86::EIP };
+        self.reg_read(reg as u32)
+    }
+
+    fn set_pc(&mut self, addr: u64) -> Result<()> {
+        let reg = if self.base.arch == 9 { unicorn::RegisterX86::RIP } else { unicorn::RegisterX86::EIP };
+        self.reg_write(reg as u32, addr)
+    }
     
-    fn get_stack_ptr(&self) -> Result<u64> { Ok(0) }
-    fn set_stack_ptr(&mut self, addr: u64) -> Result<()> { Ok(()) }
+    fn get_stack_ptr(&self) -> Result<u64> {
+        let reg = if self.base.arch == 9 { unicorn::RegisterX86::RSP } else { unicorn::RegisterX86::ESP };
+        self.reg_read(reg as u32)
+    }
+
+    fn set_stack_ptr(&mut self, addr: u64) -> Result<()> {
+        let reg = if self.base.arch == 9 { unicorn::RegisterX86::RSP } else { unicorn::RegisterX86::ESP };
+        self.reg_write(reg as u32, addr)
+    }
 }
 
-/// User Mode Windows Emulator Class
 pub struct Win32Emulator {
     pub base: WindowsEmulator,
 }
@@ -151,7 +175,6 @@ impl Win32Emulator {
     }
 }
 
-/// Kernel Mode Windows Emulator Class
 pub struct WinKernelEmulator {
     pub base: WindowsEmulator,
 }

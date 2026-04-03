@@ -1,3 +1,5 @@
+// Windows macro and type definitions
+
 use crate::r#struct::EmuStruct;
 
 #[repr(C)]
@@ -23,7 +25,7 @@ impl EmuStruct for RECT {}
 pub struct MONITORINFO {
     pub cbSize: u32,
     pub rcMonitor: RECT,
-    pub rcWORK: RECT,
+    pub rcWork: RECT,
     pub dwFlags: u32,
 }
 impl EmuStruct for MONITORINFO {}

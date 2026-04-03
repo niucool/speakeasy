@@ -1,32 +1,45 @@
-// Network activity emulation
+// Network Manager for Windows emulator
 
+use crate::errors::{Result, SpeakeasyError};
 use std::collections::HashMap;
-use std::io::Cursor;
+use std::sync::atomic::{AtomicU32, Ordering};
 
+static CURR_FD: AtomicU32 = AtomicU32::new(4);
+static CURR_WININET_HANDLE: AtomicU32 = AtomicU32::new(0x20);
+
+fn get_next_fd() -> u32 {
+    CURR_FD.fetch_add(4, Ordering::SeqCst)
+}
+
+fn get_next_wininet_handle() -> u32 {
+    CURR_WININET_HANDLE.fetch_add(4, Ordering::SeqCst)
+}
+
+#[derive(Clone, Debug)]
 pub struct Socket {
     pub fd: u32,
     pub family: u32,
-    pub socket_type: u32,
+    pub stype: u32,
     pub protocol: u32,
     pub flags: u32,
     pub connected_host: String,
     pub connected_port: u16,
-    pub curr_packet: Cursor<Vec<u8>>,
-    pub packet_queue: Vec<Vec<u8>>,
+    pub recv_buffer: Vec<u8>,
+    pub recv_cursor: usize,
 }
 
 impl Socket {
-    pub fn new(fd: u32, family: u32, socket_type: u32, protocol: u32, flags: u32) -> Self {
+    pub fn new(family: u32, stype: u32, protocol: u32, flags: u32) -> Self {
         Self {
-            fd,
+            fd: get_next_fd(),
             family,
-            socket_type,
+            stype,
             protocol,
             flags,
             connected_host: String::new(),
             connected_port: 0,
-            curr_packet: Cursor::new(Vec::new()),
-            packet_queue: Vec::new(),
+            recv_buffer: Vec::new(),
+            recv_cursor: 0,
         }
     }
 
@@ -34,56 +47,41 @@ impl Socket {
         self.connected_host = host;
         self.connected_port = port;
     }
-
-    pub fn get_connection_info(&self) -> (&str, u16) {
-        (&self.connected_host, self.connected_port)
-    }
 }
 
 pub struct WininetRequest {
     pub handle: u32,
     pub verb: String,
     pub objname: String,
-    pub ver: String,
-    pub referrer: Option<String>,
-    pub accept_types: Option<Vec<String>>,
-    pub flags: u32,
-    pub ctx: u32,
-    pub session_handle: u32,
-    pub headers: Option<String>,
-    pub body: Vec<u8>,
+    pub version: String,
+    pub referrer: String,
     pub response: Vec<u8>,
-    pub read_offset: usize,
+    pub response_cursor: usize,
 }
 
 pub struct WininetSession {
     pub handle: u32,
     pub server: String,
     pub port: u16,
-    pub user: Option<String>,
-    pub password: Option<String>,
-    pub service: u32,
-    pub flags: u32,
-    pub ctx: u32,
-    pub instance_handle: u32,
     pub requests: HashMap<u32, WininetRequest>,
 }
 
 pub struct WininetInstance {
     pub handle: u32,
-    pub user_agent: Option<String>,
-    pub access: u32,
-    pub proxy: Option<String>,
-    pub bypass: Option<String>,
-    pub flags: u32,
+    pub user_agent: String,
     pub sessions: HashMap<u32, WininetSession>,
+}
+
+pub enum WininetObject {
+    Instance(u32),
+    Session(u32, u32), // Instance handle, Session handle
+    Request(u32, u32, u32), // Instance handle, Session handle, Request handle
 }
 
 pub struct NetworkManager {
     pub sockets: HashMap<u32, Socket>,
     pub wininets: HashMap<u32, WininetInstance>,
-    curr_fd: u32,
-    curr_handle: u32,
+    pub dns_names: HashMap<String, String>,
 }
 
 impl NetworkManager {
@@ -91,224 +89,69 @@ impl NetworkManager {
         Self {
             sockets: HashMap::new(),
             wininets: HashMap::new(),
-            curr_fd: 4,
-            curr_handle: 0x20,
+            dns_names: HashMap::new(),
         }
     }
 
-    fn new_handle(&mut self) -> u32 {
-        let tmp = self.curr_handle;
-        self.curr_handle += 4;
-        tmp
-    }
-
     pub fn new_socket(&mut self, family: u32, stype: u32, protocol: u32, flags: u32) -> u32 {
-        let fd = self.curr_fd;
-        self.curr_fd += 4;
-        let sock = Socket::new(fd, family, stype, protocol, flags);
+        let sock = Socket::new(family, stype, protocol, flags);
+        let fd = sock.fd;
         self.sockets.insert(fd, sock);
         fd
     }
 
-    pub fn new_wininet_inst(
-        &mut self,
-        user_agent: Option<String>,
-        access: u32,
-        proxy: Option<String>,
-        bypass: Option<String>,
-        flags: u32,
-    ) -> u32 {
-        let handle = self.new_handle();
-        let inst = WininetInstance {
-            handle,
-            user_agent,
-            access,
-            proxy,
-            bypass,
-            flags,
-            sessions: HashMap::new(),
-        };
-        self.wininets.insert(handle, inst);
-        handle
-    }
-
-    pub fn new_wininet_session(
-        &mut self,
-        instance_handle: u32,
-        server: String,
-        port: u16,
-        user: Option<String>,
-        password: Option<String>,
-        service: u32,
-        flags: u32,
-        ctx: u32,
-    ) -> Option<u32> {
-        let handle = self.new_handle();
-        let session = WininetSession {
-            handle,
-            server,
-            port,
-            user,
-            password,
-            service,
-            flags,
-            ctx,
-            instance_handle,
-            requests: HashMap::new(),
-        };
-        let inst = self.wininets.get_mut(&instance_handle)?;
-        inst.sessions.insert(handle, session);
-        Some(handle)
-    }
-
-    pub fn new_wininet_request(
-        &mut self,
-        session_handle: u32,
-        verb: String,
-        objname: String,
-        ver: String,
-        referrer: Option<String>,
-        accept_types: Option<Vec<String>>,
-        flags: u32,
-        ctx: u32,
-    ) -> Option<u32> {
-        let handle = self.new_handle();
-        let request = WininetRequest {
-            handle,
-            verb,
-            objname,
-            ver,
-            referrer,
-            accept_types,
-            flags,
-            ctx,
-            session_handle,
-            headers: None,
-            body: Vec::new(),
-            response: Vec::new(),
-            read_offset: 0,
-        };
-
-        for inst in self.wininets.values_mut() {
-            if let Some(session) = inst.sessions.get_mut(&session_handle) {
-                session.requests.insert(handle, request);
-                return Some(handle);
-            }
-        }
-        None
-    }
-
-    pub fn get_wininet_instance(&self, handle: u32) -> Option<&WininetInstance> {
-        self.wininets.get(&handle)
-    }
-
-    pub fn get_wininet_session(&self, handle: u32) -> Option<&WininetSession> {
-        self.wininets
-            .values()
-            .find_map(|inst| inst.sessions.get(&handle))
-    }
-
-    pub fn get_wininet_session_mut(&mut self, handle: u32) -> Option<&mut WininetSession> {
-        for inst in self.wininets.values_mut() {
-            if let Some(session) = inst.sessions.get_mut(&handle) {
-                return Some(session);
-            }
-        }
-        None
-    }
-
-    pub fn get_wininet_request(&self, handle: u32) -> Option<&WininetRequest> {
-        self.wininets.values().find_map(|inst| {
-            inst.sessions
-                .values()
-                .find_map(|session| session.requests.get(&handle))
-        })
-    }
-
-    pub fn get_wininet_request_mut(&mut self, handle: u32) -> Option<&mut WininetRequest> {
-        for inst in self.wininets.values_mut() {
-            for session in inst.sessions.values_mut() {
-                if let Some(request) = session.requests.get_mut(&handle) {
-                    return Some(request);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn get_wininet_server_port(&self, handle: u32) -> Option<(String, u16)> {
-        if let Some(session) = self.get_wininet_session(handle) {
-            return Some((session.server.clone(), session.port));
-        }
-        if let Some(request) = self.get_wininet_request(handle) {
-            if let Some(session) = self.get_wininet_session(request.session_handle) {
-                return Some((session.server.clone(), session.port));
-            }
-        }
-        None
-    }
-
-    pub fn set_wininet_request_state(
-        &mut self,
-        handle: u32,
-        headers: Option<String>,
-        body: Vec<u8>,
-        response: Vec<u8>,
-    ) -> bool {
-        if let Some(request) = self.get_wininet_request_mut(handle) {
-            request.headers = headers;
-            request.body = body;
-            request.response = response;
-            request.read_offset = 0;
-            return true;
-        }
-        false
-    }
-
-    pub fn read_wininet_response(&mut self, handle: u32, size: usize) -> Option<Vec<u8>> {
-        let request = self.get_wininet_request_mut(handle)?;
-        let start = request.read_offset;
-        let end = (start + size).min(request.response.len());
-        let chunk = request.response[start..end].to_vec();
-        request.read_offset = end;
-        Some(chunk)
-    }
-
-    pub fn get_wininet_bytes_available(&self, handle: u32) -> Option<usize> {
-        let request = self.get_wininet_request(handle)?;
-        Some(request.response.len().saturating_sub(request.read_offset))
-    }
-
-    pub fn close_wininet_object(&mut self, handle: u32) -> bool {
-        if self.wininets.remove(&handle).is_some() {
-            return true;
-        }
-
-        for inst in self.wininets.values_mut() {
-            if inst.sessions.remove(&handle).is_some() {
-                return true;
-            }
-            for session in inst.sessions.values_mut() {
-                if session.requests.remove(&handle).is_some() {
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
-
-    pub fn get_socket(&mut self, fd: u32) -> Option<&mut Socket> {
+    pub fn get_socket_mut(&mut self, fd: u32) -> Option<&mut Socket> {
         self.sockets.get_mut(&fd)
     }
 
     pub fn close_socket(&mut self, fd: u32) {
         self.sockets.remove(&fd);
     }
-}
 
-impl Default for NetworkManager {
-    fn default() -> Self {
-        Self::new()
+    pub fn name_lookup(&self, domain: &str) -> Option<String> {
+        self.dns_names.get(&domain.to_lowercase())
+            .or_else(|| self.dns_names.get("default"))
+            .cloned()
+    }
+
+    pub fn new_wininet_instance(&mut self, ua: String) -> u32 {
+        let handle = get_next_wininet_handle();
+        let inst = WininetInstance {
+            handle,
+            user_agent: ua,
+            sessions: HashMap::new(),
+        };
+        self.wininets.insert(handle, inst);
+        handle
+    }
+
+    pub fn new_wininet_session(&mut self, inst_handle: u32, server: String, port: u16) -> Result<u32> {
+        let inst = self.wininets.get_mut(&inst_handle).ok_or(SpeakeasyError::ApiError("Invalid wininet instance".to_string()))?;
+        let handle = get_next_wininet_handle();
+        let sess = WininetSession {
+            handle,
+            server,
+            port,
+            requests: HashMap::new(),
+        };
+        inst.sessions.insert(handle, sess);
+        Ok(handle)
+    }
+
+    pub fn new_wininet_request(&mut self, inst_handle: u32, sess_handle: u32, verb: String, obj: String) -> Result<u32> {
+        let inst = self.wininets.get_mut(&inst_handle).ok_or(SpeakeasyError::ApiError("Invalid wininet instance".to_string()))?;
+        let sess = inst.sessions.get_mut(&sess_handle).ok_or(SpeakeasyError::ApiError("Invalid wininet session".to_string()))?;
+        let handle = get_next_wininet_handle();
+        let req = WininetRequest {
+            handle,
+            verb,
+            objname: obj,
+            version: "HTTP/1.1".to_string(),
+            referrer: String::new(),
+            response: Vec::new(),
+            response_cursor: 0,
+        };
+        sess.requests.insert(handle, req);
+        Ok(handle)
     }
 }

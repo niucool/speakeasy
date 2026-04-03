@@ -1,150 +1,74 @@
 // CPU emulation using Unicorn engine
 
 use crate::errors::{Result, SpeakeasyError};
+use unicorn::{Unicorn, Arch, Mode, PROT_ALL, RegisterX86};
+use crate::common;
 
-pub struct CpuEmulator {
-    state: EmulatorState,
-    pub arch: String,
+pub trait EngineCallback: Send + Sync {
+    fn on_code(&mut self, addr: u64, size: u32);
+    fn on_mem_invalid(&mut self, access: i32, addr: u64, size: usize, value: i64) -> bool;
+    fn on_intr(&mut self, intno: u32);
 }
 
-#[derive(Debug, Clone)]
-pub struct EmulatorState {
-    pub registers: Registers,
-    pub running: bool,
-    pub instruction_count: u64,
+pub struct EmuEngine {
+    pub uc: Unicorn,
 }
 
-#[derive(Debug, Clone)]
-pub struct Registers {
-    pub eax: u32,
-    pub ebx: u32,
-    pub ecx: u32,
-    pub edx: u32,
-    pub esi: u32,
-    pub edi: u32,
-    pub ebp: u32,
-    pub esp: u32,
-    pub eip: u32,
-}
-
-impl CpuEmulator {
+impl EmuEngine {
     pub fn new(arch: &str) -> Result<Self> {
-        Ok(Self {
-            arch: arch.to_string(),
-            state: EmulatorState {
-                registers: Registers {
-                    eax: 0,
-                    ebx: 0,
-                    ecx: 0,
-                    edx: 0,
-                    esi: 0,
-                    edi: 0,
-                    ebp: 0,
-                    esp: 0xfffff000,
-                    eip: 0x400000,
-                },
-                running: false,
-                instruction_count: 0,
-            },
-        })
-    }
-
-    /// Execute the emulator
-    pub fn execute(&mut self, memory_map: &[(u64, usize)], entry_point: u64) -> Result<()> {
-        self.state.running = true;
-        
-        let arch = if self.arch == "amd64" {
-            unicorn::Arch::X86
+        let (uarch, mode) = if arch == "amd64" || arch == "x64" {
+            (Arch::X86, Mode::MODE_64)
         } else {
-            unicorn::Arch::X86
+            (Arch::X86, Mode::MODE_32)
         };
-        
-        let mode = if self.arch == "amd64" {
-            unicorn::Mode::MODE_64
-        } else {
-            unicorn::Mode::MODE_32
-        };
-        
-        let mut emu = match unicorn::Unicorn::new(arch, mode) {
-            Ok(e) => e,
-            Err(e) => return Err(SpeakeasyError::Unknown(format!("Unicorn init error: {:?}", e))),
-        };
-        
-        // Map memory safely to avoid unmapped memory exception
-        for (addr, size) in memory_map {
-            // Memory already aligned by `MemoryManager::allocate` page boundaries
-            let prot = unicorn::PROT_ALL;
-            if let Err(e) = emu.mem_map(*addr, *size, prot) {
-                return Err(SpeakeasyError::MemoryError(
-                    format!("Failed to map memory at {:#x}: {:?}", addr, e)
-                ));
-            }
-        }
-        
-        // Setup simple registers
-        if mode == unicorn::Mode::MODE_32 {
-            // These registers correspond to X86
-            let _ = emu.reg_write(unicorn::RegisterX86::EAX as i32, self.state.registers.eax as u64);
-            let _ = emu.reg_write(unicorn::RegisterX86::EBX as i32, self.state.registers.ebx as u64);
-            let _ = emu.reg_write(unicorn::RegisterX86::ECX as i32, self.state.registers.ecx as u64);
-            let _ = emu.reg_write(unicorn::RegisterX86::EDX as i32, self.state.registers.edx as u64);
-            let _ = emu.reg_write(unicorn::RegisterX86::ESI as i32, self.state.registers.esi as u64);
-            let _ = emu.reg_write(unicorn::RegisterX86::EDI as i32, self.state.registers.edi as u64);
-            let _ = emu.reg_write(unicorn::RegisterX86::EBP as i32, self.state.registers.ebp as u64);
-            let _ = emu.reg_write(unicorn::RegisterX86::ESP as i32, self.state.registers.esp as u64);
-        }
 
-        // Start emulation until exhaustion or crash
-        let _ = emu.emu_start(entry_point, 0, 0, 0);
+        let uc = Unicorn::new(uarch, mode)
+            .map_err(|e| SpeakeasyError::Unknown(format!("Unicorn init error: {:?}", e)))?;
 
-        // Read out registers after emulation
-        if mode == unicorn::Mode::MODE_32 {
-            self.state.registers.eax = emu.reg_read(unicorn::RegisterX86::EAX as i32).unwrap_or(0) as u32;
-            self.state.registers.ebx = emu.reg_read(unicorn::RegisterX86::EBX as i32).unwrap_or(0) as u32;
-            self.state.registers.ecx = emu.reg_read(unicorn::RegisterX86::ECX as i32).unwrap_or(0) as u32;
-            self.state.registers.edx = emu.reg_read(unicorn::RegisterX86::EDX as i32).unwrap_or(0) as u32;
-            self.state.registers.esi = emu.reg_read(unicorn::RegisterX86::ESI as i32).unwrap_or(0) as u32;
-            self.state.registers.edi = emu.reg_read(unicorn::RegisterX86::EDI as i32).unwrap_or(0) as u32;
-            self.state.registers.ebp = emu.reg_read(unicorn::RegisterX86::EBP as i32).unwrap_or(0) as u32;
-            self.state.registers.esp = emu.reg_read(unicorn::RegisterX86::ESP as i32).unwrap_or(0) as u32;
-            self.state.registers.eip = emu.reg_read(unicorn::RegisterX86::EIP as i32).unwrap_or(unicorn::RegisterX86::EIP as u64) as u32;
-        }
-
-        // Set running state false
-        self.state.running = false;
-        Ok(())
+        Ok(Self { uc })
     }
 
-    /// Get current register state
-    pub fn get_registers(&self) -> &Registers {
-        &self.state.registers
+    pub fn mem_map(&mut self, addr: u64, size: usize, prot: u32) -> Result<()> {
+        let uprot = self.convert_prot(prot);
+        self.uc.mem_map(addr, size, uprot)
+            .map_err(|e| SpeakeasyError::MemoryError(format!("mem_map error: {:?}", e)))
     }
 
-    /// Set register value
-    pub fn set_register(&mut self, name: &str, value: u32) -> Result<()> {
-        match name {
-            "eax" => self.state.registers.eax = value,
-            "ebx" => self.state.registers.ebx = value,
-            "ecx" => self.state.registers.ecx = value,
-            "edx" => self.state.registers.edx = value,
-            "esi" => self.state.registers.esi = value,
-            "edi" => self.state.registers.edi = value,
-            "ebp" => self.state.registers.ebp = value,
-            "esp" => self.state.registers.esp = value,
-            "eip" => self.state.registers.eip = value,
-            _ => return Err(SpeakeasyError::Unknown(format!("Unknown register: {}", name))),
-        }
-        Ok(())
+    pub fn mem_write(&mut self, addr: u64, data: &[u8]) -> Result<()> {
+        self.uc.mem_write(addr, data)
+            .map_err(|e| SpeakeasyError::MemoryError(format!("mem_write error: {:?}", e)))
     }
 
-    /// Get instruction count
-    pub fn get_instruction_count(&self) -> u64 {
-        self.state.instruction_count
+    pub fn mem_read(&self, addr: u64, size: usize) -> Result<Vec<u8>> {
+        self.uc.mem_read(addr, size)
+            .map_err(|e| SpeakeasyError::MemoryError(format!("mem_read error: {:?}", e)))
     }
-}
 
-impl Default for CpuEmulator {
-    fn default() -> Self {
-        Self::new("x86").unwrap()
+    pub fn reg_write(&mut self, reg: i32, val: u64) -> Result<()> {
+        self.uc.reg_write(reg, val)
+            .map_err(|e| SpeakeasyError::Unknown(format!("reg_write error: {:?}", e)))
+    }
+
+    pub fn reg_read(&self, reg: i32) -> Result<u64> {
+        self.uc.reg_read(reg)
+            .map_err(|e| SpeakeasyError::Unknown(format!("reg_read error: {:?}", e)))
+    }
+
+    pub fn start(&mut self, addr: u64, timeout: u64, count: usize) -> Result<()> {
+        self.uc.emu_start(addr, 0xFFFFFFFF, timeout, count)
+            .map_err(|e| SpeakeasyError::Unknown(format!("emu_start error: {:?}", e)))
+    }
+
+    pub fn stop(&mut self) -> Result<()> {
+        self.uc.emu_stop()
+            .map_err(|e| SpeakeasyError::Unknown(format!("emu_stop error: {:?}", e)))
+    }
+
+    fn convert_prot(&self, prot: u32) -> u32 {
+        let mut u = unicorn::PROT_NONE;
+        if prot & common::PERM_MEM_READ != 0 { u |= unicorn::PROT_READ; }
+        if prot & common::PERM_MEM_WRITE != 0 { u |= unicorn::PROT_WRITE; }
+        if prot & common::PERM_MEM_EXEC != 0 { u |= unicorn::PROT_EXEC; }
+        u
     }
 }
