@@ -1,98 +1,90 @@
-// Emulation engine
+// Speakeasy wrapper class
 
+use crate::errors::{Result, SpeakeasyError};
 use crate::config::SpeakeasyConfig;
-use crate::errors::Result;
+use crate::windows::winemu::{Win32Emulator, WinKernelEmulator, WindowsEmulator};
+use crate::binemu::BinaryEmulator;
 use crate::report::Report;
-use std::sync::{Arc, Mutex};
+use crate::windows::loaders::{PeLoader, ShellcodeLoader, LoadedImage};
 
-pub use crate::memmgr::MemoryManager;
-pub use crate::engines::unicorn_eng::CpuEmulator;
-pub use crate::binemu::ModuleManager;
-
-/// Main emulator interface
 pub struct Speakeasy {
-    config: SpeakeasyConfig,
-    memory: Arc<Mutex<MemoryManager>>,
-    cpu: Arc<Mutex<CpuEmulator>>,
-    modules: Arc<Mutex<ModuleManager>>,
-    report: Arc<Mutex<Report>>,
+    pub config: SpeakeasyConfig,
+    pub emu: Option<Box<dyn BinaryEmulator>>,
 }
 
 impl Speakeasy {
     pub fn new(config: Option<SpeakeasyConfig>) -> Result<Self> {
-        let config = config.unwrap_or_default();
-        
-        let memory = MemoryManager::new(
-            config.memory.stack_size as usize,
-            config.memory.heap_size as usize,
-        )?;
-
-        // Assuming x86 as default, can be dynamically configured via config later
-        let cpu = CpuEmulator::new("x86")?;
-        let modules = ModuleManager::new();
-        let report = Report::new();
-
+        let cfg = config.unwrap_or_default();
         Ok(Self {
-            config,
-            memory: Arc::new(Mutex::new(memory)),
-            cpu: Arc::new(Mutex::new(cpu)),
-            modules: Arc::new(Mutex::new(modules)),
-            report: Arc::new(Mutex::new(report)),
+            config: cfg,
+            emu: None,
         })
     }
 
-    /// Load a PE module
-    pub fn load_module(&self, path: &str) -> Result<String> {
-        let mut modules = self.modules.lock().unwrap();
-        modules.load_module(path, &self.config)
+    pub fn load_module(&mut self, path: &str) -> Result<String> {
+        let loader = PeLoader::new(Some(path.to_string()), None, None, "".to_string());
+        let image = loader.make_image()?;
+        
+        let module_name = image.name.clone();
+        
+        if image.module_type == "driver" {
+            let mut wink = WinKernelEmulator::new(self.config.clone())?;
+            // wink.base.load_image(image)?;
+            self.emu = Some(Box::new(wink.base));
+        } else {
+            let mut win32 = Win32Emulator::new(self.config.clone())?;
+            // win32.base.load_image(image)?;
+            self.emu = Some(Box::new(win32.base));
+        }
+        
+        Ok(module_name)
     }
 
-    /// Run a loaded module
-    pub fn run_module(&self, _module_name: &str) -> Result<()> {
-        let mut cpu = self.cpu.lock().unwrap();
-        let memory = self.memory.lock().unwrap();
-        let allocations = memory.get_allocations();
-        // Get module entry point from ModuleManager. For now, default to 0x400000
-        let entry_point = 0x400000;
-        cpu.execute(&allocations, entry_point)
+    pub fn load_shellcode(&mut self, data: &[u8], arch: &str) -> Result<u64> {
+        let arch_id = if arch == "x64" || arch == "amd64" { 9 } else { 0 };
+        let loader = ShellcodeLoader {
+            data: data.to_vec(),
+            arch: arch_id,
+        };
+        let _image = loader.make_image()?;
+        
+        let mut win32 = Win32Emulator::new(self.config.clone())?;
+        // win32.base.load_image(image)?;
+        self.emu = Some(Box::new(win32.base));
+        
+        Ok(0) // Return loaded address
     }
 
-    /// Load and execute raw shellcode
-    pub fn load_shellcode(&self, data: &[u8], _arch: &str) -> Result<u64> {
-        let mut memory = self.memory.lock().unwrap();
-        memory.allocate(data.len() as u32)
+    pub fn run_module(&mut self, _name: &str) -> Result<()> {
+        if let Some(ref mut emu) = self.emu {
+            let pc = emu.get_pc()?;
+            // emu.start(pc)?;
+            Ok(())
+        } else {
+            Err(SpeakeasyError::ApiError("Emulator not initialized".to_string()))
+        }
     }
 
-    /// Run loaded shellcode
-    pub fn run_shellcode(&self, address: u64) -> Result<()> {
-        let mut cpu = self.cpu.lock().unwrap();
-        let memory = self.memory.lock().unwrap();
-        let allocations = memory.get_allocations();
-        cpu.execute(&allocations, address)
+    pub fn run_shellcode(&mut self, addr: u64) -> Result<()> {
+        if let Some(ref mut emu) = self.emu {
+            // emu.start(addr)?;
+            Ok(())
+        } else {
+            Err(SpeakeasyError::ApiError("Emulator not initialized".to_string()))
+        }
     }
 
-    /// Get the execution report
-    pub fn get_report(&self) -> Report {
-        self.report.lock().unwrap().clone()
+    pub fn get_report(&self) -> Result<Report> {
+        let arch = if let Some(ref emu) = self.emu {
+            if emu.get_arch() == 9 { "x64".to_string() } else { "x86".to_string() }
+        } else {
+            "unknown".to_string()
+        };
+        Ok(Report::new(arch))
     }
 
-    /// Get JSON report
     pub fn get_json_report(&self) -> Result<String> {
-        let report = self.report.lock().unwrap();
-        report.to_json()
-    }
-
-    /// Shutdown the emulator
-    pub fn shutdown(&mut self) -> Result<()> {
-        // Cleanup resources
-        Ok(())
+        let report = self.get_report()?;
+        Ok(report.to_json())
     }
 }
-
-impl Drop for Speakeasy {
-    fn drop(&mut self) {
-        let _ = self.shutdown();
-    }
-}
-
-

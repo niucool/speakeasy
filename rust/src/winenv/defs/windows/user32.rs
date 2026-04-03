@@ -19,7 +19,7 @@ pub const WH_SYSMSGFILTER: i32 = 6;
 pub const WM_KEYDOWN: u32 = 0x0100;
 pub const WM_SYSKEYDOWN: u32 = 0x0104;
 pub const WM_TIMER: u32 = 0x0113;
-pub const WM_PAINT: u32 = 0x000F;
+pub const WM_PAINT: u32 = 0x0F;
 pub const WM_INITDIALOG: u32 = 0x0110;
 
 #[repr(C)]
@@ -35,3 +35,41 @@ pub struct MSG {
     pub lPrivate: u32,
 }
 impl EmuStruct for MSG {}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct KBDLLHOOKSTRUCT {
+    pub vkCode: u32,
+    pub scanCode: u32,
+    pub flags: u32,
+    pub time: u32,
+    pub dwExtraInfo: Ptr,
+}
+impl EmuStruct for KBDLLHOOKSTRUCT {}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct USEROBJECTFLAGS {
+    pub fInherit: u32,
+    pub fReserved: u32,
+    pub dwFlags: u32,
+}
+impl EmuStruct for USEROBJECTFLAGS {}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct WNDCLASSEX {
+    pub cbSize: u32,
+    pub style: u32,
+    pub lpfnWndProc: Ptr,
+    pub cbClsExtra: u32,
+    pub cbWndExtra: u32,
+    pub hInstance: Ptr,
+    pub hIcon: Ptr,
+    pub hCursor: Ptr,
+    pub hbrBackground: Ptr,
+    pub lpszMenuName: Ptr,
+    pub lpszClassName: Ptr,
+    pub hIconSm: Ptr,
+}
+impl EmuStruct for WNDCLASSEX {}

@@ -1,128 +1,108 @@
+// Registry Manager for Windows emulator
+
+use crate::errors::{Result, SpeakeasyError};
+use crate::winenv::defs::registry::reg;
 use std::collections::HashMap;
 
+#[derive(Clone, Debug)]
+pub enum RegData {
+    String(String),
+    Dword(u32),
+    Qword(u64),
+    Binary(Vec<u8>),
+}
+
+#[derive(Clone, Debug)]
 pub struct RegValue {
     pub name: String,
     pub val_type: u32,
-    pub data: Vec<u8>,
+    pub data: RegData,
 }
 
 pub struct RegKey {
     pub path: String,
     pub values: Vec<RegValue>,
-    pub handle: u64,
+    pub handle: u32,
 }
 
 pub struct RegistryManager {
-    keys: Vec<RegKey>,
-    handles: HashMap<u64, usize>,
-    next_handle: u64,
+    pub keys: Vec<RegKey>,
+    pub handle_table: HashMap<u32, String>,
+    pub next_handle: u32,
 }
 
 impl RegistryManager {
     pub fn new() -> Self {
-        Self {
+        let mut mgr = Self {
             keys: Vec::new(),
-            handles: HashMap::new(),
+            handle_table: HashMap::new(),
             next_handle: 0x180,
+        };
+
+        // Initialize root keys
+        mgr.create_key("HKEY_CLASSES_ROOT".to_string());
+        mgr.create_key("HKEY_CURRENT_USER".to_string());
+        mgr.create_key("HKEY_LOCAL_MACHINE".to_string());
+        mgr.create_key("HKEY_USERS".to_string());
+
+        mgr
+    }
+
+    pub fn normalize_path(&self, path: &str) -> String {
+        let p = path.to_lowercase();
+        if p.starts_with("\\registry\\machine\\") {
+            format!("HKEY_LOCAL_MACHINE\\{}", &path[18..])
+        } else if p.starts_with("hklm\\") {
+            format!("HKEY_LOCAL_MACHINE\\{}", &path[5..])
+        } else {
+            path.to_string()
         }
     }
 
-    pub fn normalize_reg_path(&self, path: &str) -> String {
-        let n = path.to_lowercase();
-        if n.starts_with("\\registry\\machine\\") || n.starts_with("hklm\\") {
-            let offset = if n.starts_with("hklm\\") { 5 } else { 18 };
-            return format!("HKEY_LOCAL_MACHINE\\{}", &path[offset..]);
-        }
-        path.to_string()
-    }
-
-    pub fn get_key_from_handle(&mut self, handle: u64) -> Option<&mut RegKey> {
-        let idx = *self.handles.get(&handle)?;
-        self.keys.get_mut(idx)
-    }
-
-    pub fn create_key(&mut self, path: &str) -> u64 {
-        let path = self.normalize_reg_path(path);
-        if let Some(idx) = self.keys.iter().position(|k| k.path.to_lowercase() == path.to_lowercase()) {
-            return self.keys[idx].handle;
+    pub fn create_key(&mut self, path: String) -> u32 {
+        let path = self.normalize_path(&path);
+        if let Some(key) = self.keys.iter().find(|k| k.path == path) {
+            return key.handle;
         }
 
         let handle = self.next_handle;
         self.next_handle += 4;
 
         let key = RegKey {
-            path,
+            path: path.clone(),
             values: Vec::new(),
             handle,
         };
-
-        let idx = self.keys.len();
         self.keys.push(key);
-        self.handles.insert(handle, idx);
-
+        self.handle_table.insert(handle, path);
         handle
     }
 
-    pub fn create_key_path(&mut self, path: &str) -> &mut RegKey {
-        let handle = self.create_key(path);
-        self.get_key_from_handle(handle).expect("created key must exist")
+    pub fn open_key(&mut self, path: &str) -> Option<u32> {
+        let path = self.normalize_path(path);
+        self.keys.iter().find(|k| k.path.to_lowercase() == path.to_lowercase()).map(|k| k.handle)
     }
 
-    pub fn open_key(&mut self, path: &str, create: bool) -> Option<u64> {
-        let path = self.normalize_reg_path(path);
+    pub fn set_value(&mut self, handle: u32, name: String, val_type: u32, data: RegData) -> Result<()> {
+        let path = self.handle_table.get(&handle).ok_err(|| SpeakeasyError::ApiError("Invalid handle".to_string()))?;
+        let key = self.keys.iter_mut().find(|k| &k.path == path).unwrap();
         
-        if let Some(idx) = self.keys.iter().position(|k| k.path.to_lowercase() == path.to_lowercase()) {
-            return Some(self.keys[idx].handle);
-        }
-
-        if create {
-            Some(self.create_key(&path))
+        if let Some(val) = key.values.iter_mut().find(|v| v.name == name) {
+            val.val_type = val_type;
+            val.data = data;
         } else {
-            None
+            key.values.push(RegValue { name, val_type, data });
         }
+        Ok(())
     }
+}
 
-    pub fn get_subkeys(&self, path: &str) -> Vec<String> {
-        let parent = path.to_lowercase();
-        let mut subkeys = Vec::new();
+trait OptionExt<T> {
+    fn ok_err<E>(self, err: E) -> core::result::Result<T, E>;
+}
 
-        for k in &self.keys {
-            let test = k.path.to_lowercase();
-            if test.starts_with(&parent) && test.len() > parent.len() {
-                let sub = test[parent.len()..].trim_start_matches('\\');
-                if let Some(end) = sub.find('\\') {
-                    subkeys.push(sub[..end].to_string());
-                } else if !sub.is_empty() {
-                    subkeys.push(sub.to_string());
-                }
-            }
-        }
-        subkeys
-    }
-
-    pub fn set_key_value(&mut self, handle: u64, name: &str, val_type: u32, data: Vec<u8>) -> bool {
-        let Some(key) = self.get_key_from_handle(handle) else {
-            return false;
-        };
-
-        if let Some(value) = key.values.iter_mut().find(|value| value.name.eq_ignore_ascii_case(name)) {
-            value.val_type = val_type;
-            value.data = data;
-            return true;
-        }
-
-        key.values.push(RegValue {
-            name: name.to_string(),
-            val_type,
-            data,
-        });
-        true
-    }
-
-    pub fn get_key_value(&mut self, handle: u64, name: &str) -> Option<&RegValue> {
-        let key = self.get_key_from_handle(handle)?;
-        key.values
-            .iter()
-            .find(|value| value.name.eq_ignore_ascii_case(name))
+impl<T> OptionExt<T> for Option<T> {
+    fn ok_err<E>(self, err: E) -> core::result::Result<T, E> {
+        self.ok_or(err)
     }
 }

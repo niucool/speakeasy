@@ -4,6 +4,38 @@ use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{Read, Result as IoResult};
 
+// Emulation hook types
+pub const HOOK_CODE: u32 = 1000;
+pub const HOOK_MEM_INVALID: u32 = 1001;
+pub const HOOK_MEM_PERM_EXEC: u32 = 1002;
+pub const HOOK_MEM_READ: u32 = 1003;
+pub const HOOK_MEM_WRITE: u32 = 1004;
+pub const HOOK_INTERRUPT: u32 = 1005;
+pub const HOOK_MEM_ACCESS: u32 = 1006;
+pub const HOOK_MEM_PERM_WRITE: u32 = 1007;
+pub const HOOK_API: u32 = 1008;
+pub const HOOK_DYN_CODE: u32 = 1009;
+pub const HOOK_INSN: u32 = 1010;
+pub const HOOK_MEM_MAP: u32 = 1011;
+pub const HOOK_INSN_INVALID: u32 = 1012;
+
+// Emulation memory protection types
+pub const PERM_MEM_NONE: u32 = 0;
+pub const PERM_MEM_EXEC: u32 = 0x10;
+pub const PERM_MEM_READ: u32 = 0x02;
+pub const PERM_MEM_WRITE: u32 = 0x04;
+pub const PERM_MEM_RW: u32 = PERM_MEM_READ | PERM_MEM_WRITE;
+pub const PERM_MEM_RX: u32 = PERM_MEM_READ | PERM_MEM_EXEC;
+pub const PERM_MEM_RWX: u32 = PERM_MEM_READ | PERM_MEM_WRITE | PERM_MEM_EXEC;
+
+// Emulation memory access types
+pub const INVALID_MEM_EXEC: u32 = 2000;
+pub const INVALID_MEM_READ: u32 = 2001;
+pub const INVALID_MEM_WRITE: u32 = 2002;
+pub const INVAL_PERM_MEM_WRITE: u32 = 2003;
+pub const INVAL_PERM_MEM_EXEC: u32 = 2004;
+pub const INVAL_PERM_MEM_READ: u32 = 2005;
+
 /// Calculate SHA256 hash of file contents
 pub fn sha256_file(path: &str) -> IoResult<String> {
     let mut file = File::open(path)?;
@@ -36,8 +68,6 @@ pub fn sha1_bytes(_data: &[u8]) -> String {
 
 /// Calculate MD5 hash of bytes
 pub fn md5_bytes(data: &[u8]) -> String {
-    // MD5 is inherently insecure but still needed for compatibility
-    // In production, consider using a cryptographic library
     format!("{:x}", md5::compute(data))
 }
 

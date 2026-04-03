@@ -21,16 +21,20 @@ pub const IPPROTO_UDP: u32 = 17;
 pub const IPPROTO_ICMPV6: u32 = 58;
 pub const IPPROTO_RM: u32 = 113;
 
-pub fn get_addr_family(value: u32) -> Option<&'static str> {
-    match value {
-        AF_UNSPEC => Some("AF_UNSPEC"),
-        AF_INET => Some("AF_INET"),
-        AF_IPX => Some("AF_IPX"),
-        AF_APPLETALK => Some("AF_APPLETALK"),
-        AF_NETBIOS => Some("AF_NETBIOS"),
-        AF_INET6 => Some("AF_INET6"),
-        AF_IRDA => Some("AF_IRDA"),
-        AF_BTH => Some("AF_BTH"),
-        _ => None,
-    }
-}
+pub const WSA_FLAG_OVERLAPPED: u32 = 1;
+pub const WSA_FLAG_ACCESS_SYSTEM_SECURITY: u32 = 0x40;
+pub const WSA_FLAG_NO_HANDLE_INHERIT: u32 = 0x80;
+
+pub const HOST_NOT_FOUND: u32 = 11001;
+pub const WSAENOTSOCK: u32 = 10038;
+
+pub const MSG_PEEK: u32 = 0x2;
+
+pub const AI_NUMERICHOST: u32 = 4;
+
+pub const SOL_SOCKET: u32 = 0xFFFF;
+
+pub const SO_SNDBUF: u32 = 0x1001;
+pub const SO_RCVBUF: u32 = 0x1002;
+
+pub const SOCK_BUF_SIZE: usize = 0x2000;

@@ -1,3 +1,5 @@
+// Profiler Events for Speakeasy
+
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -12,20 +14,20 @@ pub struct TracePosition {
 #[serde(tag = "event")]
 pub enum AnyEvent {
     #[serde(rename = "api")]
-    ApiEvent {
+    Api {
         pos: TracePosition,
         api_name: String,
         args: Vec<String>,
         ret_val: Option<String>,
     },
     #[serde(rename = "process_create")]
-    ProcessCreateEvent {
+    ProcessCreate {
         pos: TracePosition,
         path: String,
         cmdline: String,
     },
     #[serde(rename = "mem_alloc")]
-    MemAllocEvent {
+    MemAlloc {
         pos: TracePosition,
         path: String,
         base: String,
@@ -33,23 +35,23 @@ pub enum AnyEvent {
         protect: Option<String>,
     },
     #[serde(rename = "mem_write")]
-    MemWriteEvent {
+    MemWrite {
         pos: TracePosition,
         path: String,
         base: String,
-        size: u32,
+        size: usize,
         data_ref: Option<String>,
     },
     #[serde(rename = "mem_read")]
-    MemReadEvent {
+    MemRead {
         pos: TracePosition,
         path: String,
         base: String,
-        size: u32,
+        size: usize,
         data_ref: Option<String>,
     },
     #[serde(rename = "mem_protect")]
-    MemProtectEvent {
+    MemProtect {
         pos: TracePosition,
         path: String,
         base: String,
@@ -57,36 +59,22 @@ pub enum AnyEvent {
         protect: Option<String>,
     },
     #[serde(rename = "mem_free")]
-    MemFreeEvent {
+    MemFree {
         pos: TracePosition,
         path: String,
         base: String,
         size: String,
     },
     #[serde(rename = "module_load")]
-    ModuleLoadEvent {
+    ModuleLoad {
         pos: TracePosition,
         name: String,
         path: String,
         base: String,
         size: String,
     },
-    #[serde(rename = "thread_create")]
-    ThreadCreateEvent {
-        pos: TracePosition,
-        path: String,
-        start_addr: String,
-        param: String,
-    },
-    #[serde(rename = "thread_inject")]
-    ThreadInjectEvent {
-        pos: TracePosition,
-        path: String,
-        start_addr: String,
-        param: String,
-    },
     #[serde(rename = "file_create")]
-    FileCreateEvent {
+    FileCreate {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
@@ -94,7 +82,7 @@ pub enum AnyEvent {
         access_flags: Option<Vec<String>>,
     },
     #[serde(rename = "file_open")]
-    FileOpenEvent {
+    FileOpen {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
@@ -102,25 +90,25 @@ pub enum AnyEvent {
         access_flags: Option<Vec<String>>,
     },
     #[serde(rename = "file_read")]
-    FileReadEvent {
+    FileRead {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
-        size: Option<u32>,
+        size: Option<usize>,
         data_ref: Option<String>,
         buffer: Option<String>,
     },
     #[serde(rename = "file_write")]
-    FileWriteEvent {
+    FileWrite {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
-        size: Option<u32>,
+        size: Option<usize>,
         data_ref: Option<String>,
         buffer: Option<String>,
     },
     #[serde(rename = "reg_open_key")]
-    RegOpenKeyEvent {
+    RegOpenKey {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
@@ -128,7 +116,7 @@ pub enum AnyEvent {
         access_flags: Option<Vec<String>>,
     },
     #[serde(rename = "reg_create_key")]
-    RegCreateKeyEvent {
+    RegCreateKey {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
@@ -136,39 +124,39 @@ pub enum AnyEvent {
         access_flags: Option<Vec<String>>,
     },
     #[serde(rename = "reg_read_value")]
-    RegReadValueEvent {
+    RegReadValue {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
         value_name: Option<String>,
-        size: Option<u32>,
+        size: Option<usize>,
         data_ref: Option<String>,
         buffer: Option<String>,
     },
     #[serde(rename = "reg_write_value")]
-    RegWriteValueEvent {
+    RegWriteValue {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
         value_name: Option<String>,
-        size: Option<u32>,
+        size: Option<usize>,
         data_ref: Option<String>,
         buffer: Option<String>,
     },
     #[serde(rename = "reg_list_subkeys")]
-    RegListSubkeysEvent {
+    RegListSubkeys {
         pos: TracePosition,
         path: String,
         handle: Option<String>,
     },
     #[serde(rename = "net_dns")]
-    NetDnsEvent {
+    NetDns {
         pos: TracePosition,
         query: String,
         response: Option<String>,
     },
     #[serde(rename = "net_traffic")]
-    NetTrafficEvent {
+    NetTraffic {
         pos: TracePosition,
         server: String,
         port: u16,
@@ -178,7 +166,7 @@ pub enum AnyEvent {
         method: Option<String>,
     },
     #[serde(rename = "net_http")]
-    NetHttpEvent {
+    NetHttp {
         pos: TracePosition,
         server: String,
         port: u16,
@@ -187,7 +175,7 @@ pub enum AnyEvent {
         body_ref: Option<String>,
     },
     #[serde(rename = "exception")]
-    ExceptionEvent {
+    Exception {
         pos: TracePosition,
         instr: String,
         exception_code: String,

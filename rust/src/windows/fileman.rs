@@ -1,88 +1,76 @@
+// File Manager for Windows emulator
+
+use crate::errors::{Result, SpeakeasyError};
 use std::collections::HashMap;
-
-pub struct MapView {
-    pub base: u64,
-    pub offset: u64,
-    pub size: u64,
-    pub protect: u32,
-}
-
-pub struct FileMap {
-    pub name: String,
-    pub size: u64,
-    pub prot: u32,
-    pub views: HashMap<u64, MapView>,
-    pub handle: u64,
-}
+use std::io::{Read, Write, Seek, SeekFrom};
 
 pub struct File {
     pub path: String,
     pub data: Vec<u8>,
+    pub cursor: usize,
     pub is_dir: bool,
-    pub curr_offset: u64,
-    pub handle: u64,
+    pub handle: u32,
 }
 
-pub struct Pipe {
-    pub path: String,
-    pub mode: u32,
-    pub handle: u64,
+impl File {
+    pub fn new(path: String, data: Vec<u8>, is_dir: bool, handle: u32) -> Self {
+        Self {
+            path,
+            data,
+            cursor: 0,
+            is_dir,
+            handle,
+        }
+    }
+
+    pub fn read(&mut self, size: usize) -> Vec<u8> {
+        let end = (self.cursor + size).min(self.data.len());
+        let result = self.data[self.cursor..end].to_vec();
+        self.cursor = end;
+        result
+    }
+
+    pub fn write(&mut self, data: &[u8]) {
+        let end = self.cursor + data.len();
+        if end > self.data.len() {
+            self.data.resize(end, 0);
+        }
+        self.data[self.cursor..end].copy_from_slice(data);
+        self.cursor = end;
+    }
 }
 
-pub struct FileSystemManager {
-    files: HashMap<u64, File>,
-    maps: HashMap<u64, FileMap>,
-    pipes: HashMap<u64, Pipe>,
-    next_handle: u64,
+pub struct FileManager {
+    pub files: Vec<File>,
+    pub handle_table: HashMap<u32, String>,
+    pub next_handle: u32,
 }
 
-impl FileSystemManager {
+impl FileManager {
     pub fn new() -> Self {
         Self {
-            files: HashMap::new(),
-            maps: HashMap::new(),
-            pipes: HashMap::new(),
+            files: Vec::new(),
+            handle_table: HashMap::new(),
             next_handle: 0x80,
         }
     }
 
-    pub fn file_open(&mut self, path: &str, create: bool, _truncate: bool) -> Option<u64> {
-        if !create {
-            for (hnd, file) in &self.files {
-                if file.path.to_lowercase() == path.to_lowercase() {
-                    return Some(*hnd);
-                }
-            }
-            return None;
-        }
-
-        let handle = self.next_handle;
-        self.next_handle += 4;
-        self.files.insert(handle, File {
-            path: path.to_string(),
-            data: Vec::new(),
-            is_dir: false,
-            curr_offset: 0,
-            handle,
-        });
-        Some(handle)
-    }
-
-    pub fn file_create_mapping(&mut self, hfile: u64, name: &str, size: u64, prot: u32) -> u64 {
+    pub fn create_file(&mut self, path: String, data: Vec<u8>) -> u32 {
         let handle = self.next_handle;
         self.next_handle += 4;
         
-        self.maps.insert(handle, FileMap {
-            name: name.to_string(),
-            size,
-            prot,
-            views: HashMap::new(),
-            handle,
-        });
+        let file = File::new(path.clone(), data, false, handle);
+        self.files.push(file);
+        self.handle_table.insert(handle, path);
         handle
     }
 
-    pub fn get_file_from_handle(&mut self, handle: u64) -> Option<&mut File> {
-        self.files.get_mut(&handle)
+    pub fn open_file(&mut self, path: &str) -> Option<u32> {
+        self.files.iter().find(|f| f.path.to_lowercase() == path.to_lowercase()).map(|f| f.handle)
+    }
+
+    pub fn get_file_mut(&mut self, handle: u32) -> Option<&mut File> {
+        let path = self.handle_table.get(&handle)?;
+        self.files.iter_mut().find(|f| &f.path == path)
     }
 }

@@ -1,102 +1,98 @@
-// Profiler events and data collection
+// Profiler for Speakeasy
 
-use serde::{Deserialize, Serialize};
+use crate::profiler_events::{AnyEvent, TracePosition};
+use crate::report::{Report, EntryPoint, ErrorInfo};
 use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProfilerEvent {
-    pub timestamp: u64,
-    pub event_type: EventType,
-    pub data: String,
+#[derive(Debug, Clone)]
+pub struct MemAccess {
+    pub base: u64,
+    pub size: u64,
+    pub sym: Option<String>,
+    pub reads: u32,
+    pub writes: u32,
+    pub execs: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum EventType {
-    ApiCall,
-    MemoryAlloc,
-    MemoryFree,
-    FileAccess,
-    RegistryAccess,
-    NetworkActivity,
-    Exception,
-    DllLoad,
-    DllUnload,
+pub struct Run {
+    pub instr_cnt: u64,
+    pub start_addr: u64,
+    pub run_type: String,
+    pub events: Vec<AnyEvent>,
+    pub args: Vec<u64>,
+    pub error: Option<ErrorInfo>,
+    pub ret_val: Option<u64>,
+}
+
+impl Run {
+    pub fn new(start_addr: u64, run_type: String) -> Self {
+        Self {
+            instr_cnt: 0,
+            start_addr,
+            run_type,
+            events: Vec::new(),
+            args: Vec::new(),
+            error: None,
+            ret_val: None,
+        }
+    }
 }
 
 pub struct Profiler {
-    events: Vec<ProfilerEvent>,
-    start_time: u64,
-    stats: ProfilerStats,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ProfilerStats {
-    pub api_calls: u32,
-    pub memory_allocations: u32,
-    pub memory_deallocations: u32,
-    pub file_accesses: u32,
-    pub registry_accesses: u32,
-    pub network_operations: u32,
-    pub exceptions: u32,
+    pub start_time: SystemTime,
+    pub runs: Vec<Run>,
+    pub meta: HashMap<String, String>,
 }
 
 impl Profiler {
     pub fn new() -> Self {
         Self {
-            events: vec![],
-            start_time: 0,
-            stats: ProfilerStats::default(),
+            start_time: SystemTime::now(),
+            runs: Vec::new(),
+            meta: HashMap::new(),
         }
     }
 
-    pub fn start(&mut self) {
-        self.start_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
+    pub fn add_run(&mut self, run: Run) {
+        self.runs.push(run);
     }
 
-    pub fn record_event(&mut self, event_type: EventType, data: String) {
-        self.events.push(ProfilerEvent {
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as u64,
-            event_type: event_type.clone(),
-            data,
-        });
-
-        // Update stats
-        match event_type {
-            EventType::ApiCall => self.stats.api_calls += 1,
-            EventType::MemoryAlloc => self.stats.memory_allocations += 1,
-            EventType::MemoryFree => self.stats.memory_deallocations += 1,
-            EventType::FileAccess => self.stats.file_accesses += 1,
-            EventType::RegistryAccess => self.stats.registry_accesses += 1,
-            EventType::NetworkActivity => self.stats.network_operations += 1,
-            EventType::Exception => self.stats.exceptions += 1,
-            _ => {}
+    pub fn record_api_event(&mut self, run_idx: usize, pos: TracePosition, name: String, ret: Option<u64>, args: Vec<String>) {
+        if let Some(run) = self.runs.get_mut(run_idx) {
+            let event = AnyEvent::Api {
+                pos,
+                api_name: name,
+                args,
+                ret_val: ret.map(|r| format!("0x{:x}", r)),
+            };
+            run.events.push(event);
         }
     }
 
-    pub fn get_events(&self) -> &[ProfilerEvent] {
-        &self.events
-    }
+    pub fn get_report(&self, arch: String) -> Report {
+        let mut entry_points = Vec::new();
+        for run in &self.runs {
+            entry_points.push(EntryPoint {
+                ep_type: run.run_type.clone(),
+                start_addr: run.start_addr,
+                ep_args: run.args.clone(),
+                instr_count: run.instr_cnt as u32,
+                error: run.error.clone(),
+            });
+        }
 
-    pub fn get_stats(&self) -> &ProfilerStats {
-        &self.stats
-    }
+        let timestamp = self.start_time
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
 
-    pub fn get_event_count(&self, event_type: &EventType) -> usize {
-        self.events
-            .iter()
-            .filter(|e| std::mem::discriminant(&e.event_type) == std::mem::discriminant(event_type))
-            .count()
-    }
-}
-
-impl Default for Profiler {
-    fn default() -> Self {
-        Self::new()
+        Report {
+            report_version: "3.0.0".to_string(),
+            emulation_total_runtime: self.start_time.elapsed().map(|e| e.as_secs_f64()).unwrap_or(0.0),
+            timestamp,
+            arch,
+            entry_points,
+        }
     }
 }

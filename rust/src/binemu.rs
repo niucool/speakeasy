@@ -1,78 +1,76 @@
-// Module (DLL/EXE) management
+// Binary Emulator for Speakeasy
 
-use crate::config::SpeakeasyConfig;
 use crate::errors::{Result, SpeakeasyError};
-use std::collections::HashMap;
+use crate::memmgr::MemoryManager;
+use crate::config::SpeakeasyConfig;
+use crate::common;
+use crate::profiler::Profiler;
 
-#[derive(Debug, Clone)]
-pub struct Module {
-    pub name: String,
-    pub path: String,
-    pub base_address: u64,
-    pub size: u32,
-    pub entry_point: u32,
+/// Base trait for all binary emulators
+pub trait BinaryEmulator: Send {
+    fn get_arch(&self) -> u32;
+    fn get_ptr_size(&self) -> u32;
+    
+    // Register access
+    fn reg_read(&self, reg: u32) -> Result<u64>;
+    fn reg_write(&mut self, reg: u32, val: u64) -> Result<()>;
+    
+    // Memory access (delegated to MemoryManager in implementation)
+    fn mem_read(&self, addr: u64, size: usize) -> Result<Vec<u8>>;
+    fn mem_write(&mut self, addr: u64, data: &[u8]) -> Result<()>;
+    
+    // PC access
+    fn get_pc(&self) -> Result<u64>;
+    fn set_pc(&mut self, addr: u64) -> Result<()>;
+    
+    // Stack management
+    fn get_stack_ptr(&self) -> Result<u64>;
+    fn set_stack_ptr(&mut self, addr: u64) -> Result<()>;
 }
 
-pub struct ModuleManager {
-    modules: HashMap<String, Module>,
-    base_address: u64,
+/// Core emulator state
+pub struct BaseBinaryEmulator {
+    pub mem: MemoryManager,
+    pub config: SpeakeasyConfig,
+    pub profiler: Profiler,
+    pub arch: u32,
+    pub ptr_size: u32,
 }
 
-impl ModuleManager {
-    pub fn new() -> Self {
+impl BaseBinaryEmulator {
+    pub fn new(config: SpeakeasyConfig, arch: u32) -> Self {
+        let ptr_size = if arch == 9 { 8 } else { 4 }; // ARCH_AMD64 = 9
         Self {
-            modules: HashMap::new(),
-            base_address: 0x400000,
+            mem: MemoryManager::new(),
+            config,
+            profiler: Profiler::new(),
+            arch,
+            ptr_size,
         }
     }
 
-    /// Load a PE module
-    pub fn load_module(&mut self, path: &str, _config: &SpeakeasyConfig) -> Result<String> {
-        // This would parse a PE file using goblin/pelite
-        let module_name = std::path::Path::new(path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown")
-            .to_string();
-
-        let module = Module {
-            name: module_name.clone(),
-            path: path.to_string(),
-            base_address: self.base_address,
-            size: 0x10000, // Placeholder
-            entry_point: 0x401000,
+    pub fn push_stack(&mut self, emu: &mut dyn BinaryEmulator, val: u64) -> Result<()> {
+        let mut sp = emu.get_stack_ptr()?;
+        sp -= self.ptr_size as u64;
+        let bytes = if self.ptr_size == 8 {
+            val.to_le_bytes().to_vec()
+        } else {
+            (val as u32).to_le_bytes().to_vec()
         };
-
-        self.modules.insert(module_name.clone(), module);
-        self.base_address += 0x100000; // Allocate 1MB per module
-
-        Ok(module_name)
-    }
-
-    /// Get a loaded module
-    pub fn get_module(&self, name: &str) -> Option<&Module> {
-        self.modules.get(name)
-    }
-
-    /// Get all loaded modules
-    pub fn get_modules(&self) -> Vec<&Module> {
-        self.modules.values().collect()
-    }
-
-    /// Unload a module
-    pub fn unload_module(&mut self, name: &str) -> Result<()> {
-        if self.modules.remove(name).is_none() {
-            return Err(SpeakeasyError::InvalidModule(format!(
-                "Module not found: {}",
-                name
-            )));
-        }
+        emu.mem_write(sp, &bytes)?;
+        emu.set_stack_ptr(sp)?;
         Ok(())
     }
-}
 
-impl Default for ModuleManager {
-    fn default() -> Self {
-        Self::new()
+    pub fn pop_stack(&mut self, emu: &mut dyn BinaryEmulator) -> Result<u64> {
+        let sp = emu.get_stack_ptr()?;
+        let bytes = emu.mem_read(sp, self.ptr_size as usize)?;
+        let val = if self.ptr_size == 8 {
+            u64::from_le_bytes(bytes.try_into().map_err(|_| SpeakeasyError::ApiError("Failed to read stack".to_string()))?)
+        } else {
+            u32::from_le_bytes(bytes.try_into().map_err(|_| SpeakeasyError::ApiError("Failed to read stack".to_string()))?) as u64
+        };
+        emu.set_stack_ptr(sp + self.ptr_size as u64)?;
+        Ok(val)
     }
 }

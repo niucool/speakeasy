@@ -44,3 +44,17 @@ pub struct hostent {
     pub h_addr_list: Ptr,
 }
 impl EmuStruct for hostent {}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct addrinfo {
+    pub ai_flags: u32,
+    pub ai_family: u32,
+    pub ai_socktype: u32,
+    pub ai_protocol: u32,
+    pub ai_addrlen: usize,
+    pub ai_canonname: Ptr,
+    pub ai_addr: Ptr,
+    pub ai_next: Ptr,
+}
+impl EmuStruct for addrinfo {}

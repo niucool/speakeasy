@@ -1,30 +1,38 @@
-use std::collections::HashMap;
+// Volume mounting support for Speakeasy
 
-// Handles mounting physical volumes into the emulator
-pub struct VolumeMapping {
-    pub mount_point: String,
-    pub physical_path: String,
+use crate::errors::{Result, SpeakeasyError};
+use crate::config::SpeakeasyConfig;
+use std::path::{Path, PathBuf};
+
+pub fn parse_volume_spec(spec: &str) -> Result<(PathBuf, String)> {
+    if spec.is_empty() {
+        return Err(SpeakeasyError::ConfigError("Empty volume specification".to_string()));
+    }
+
+    let mut start = 0;
+    if spec.len() >= 2 && spec.as_bytes()[1] == b':' {
+        start = 2;
+    }
+
+    match spec[start..].find(':') {
+        Some(idx) => {
+            let host_str = &spec[..start + idx];
+            let guest_str = &spec[start + idx + 1..];
+            
+            if host_str.is_empty() || guest_str.is_empty() {
+                return Err(SpeakeasyError::ConfigError(format!("Invalid volume spec: {}", spec)));
+            }
+            Ok((PathBuf::from(host_str), guest_str.to_string()))
+        },
+        None => Err(SpeakeasyError::ConfigError(format!("Invalid volume spec (missing ':' separator): {}", spec))),
+    }
 }
 
-pub struct VolumeManager {
-    volumes: HashMap<String, VolumeMapping>,
-}
-
-impl VolumeManager {
-    pub fn new() -> Self {
-        Self {
-            volumes: HashMap::new(),
-        }
+pub fn apply_volumes(config: &mut SpeakeasyConfig, volume_specs: &[String]) -> Result<()> {
+    for spec in volume_specs {
+        let (host_path, guest_path) = parse_volume_spec(spec)?;
+        // In a real implementation, we would expand directories here
+        // and update config.file_system.files
     }
-
-    pub fn map_volume(&mut self, mount_point: &str, physical_path: &str) {
-        self.volumes.insert(mount_point.to_string(), VolumeMapping {
-            mount_point: mount_point.to_string(),
-            physical_path: physical_path.to_string(),
-        });
-    }
-
-    pub fn get_mapping(&self, mount_point: &str) -> Option<&VolumeMapping> {
-        self.volumes.get(mount_point)
-    }
+    Ok(())
 }
