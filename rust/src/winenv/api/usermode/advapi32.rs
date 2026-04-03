@@ -1,6 +1,8 @@
 use crate::windows::cryptman::CryptoManager;
 use crate::windows::regman::RegistryManager;
 use crate::winenv::api::ApiHandler;
+use crate::binemu::BinaryEmulator;
+use crate::errors::Result;
 use crate::winenv::defs::registry::reg as regdefs;
 use crate::winenv::defs::windows::windows as windefs;
 
@@ -76,11 +78,6 @@ impl Advapi32Handler {
         true
     }
 
-    pub fn crypt_import_key(&mut self, handle: u32, blob: &[u8], flags: u32) -> Option<u32> {
-        let ctx = self.cryptman.crypt_get(handle)?;
-        Some(ctx.import_key(None, Some(blob.to_vec()), Some(blob.len() as u32), None, None, Some(flags)))
-    }
-
     pub fn registry_type_name(value_type: u32) -> Option<&'static str> {
         regdefs::get_value_type(value_type)
     }
@@ -93,17 +90,128 @@ impl Default for Advapi32Handler {
 }
 
 impl ApiHandler for Advapi32Handler {
-    fn call(&mut self, args: &[u64]) -> u64 {
-        match args.len() {
-            3 => self.reg_create_key("HKEY_CURRENT_USER", Some("Software\\Speakeasy")),
-            5 => self
-                .crypt_acquire_context(None, None, Some(args[2] as u32), Some(args[3] as u32))
-                as u64,
-            6 => self
-                .reg_query_value_ex(args[0], "Default")
-                .map(|(_, data)| data.len() as u64)
-                .unwrap_or(windefs::ERROR_FILE_NOT_FOUND as u64),
-            _ => 0,
+    fn call(&mut self, emu: &mut dyn BinaryEmulator, name: &str, args: &[u64]) -> Result<u64> {
+        match name {
+            "RegOpenKeyA" | "RegOpenKeyW" | "RegOpenKeyExA" | "RegOpenKeyExW" => {
+                Ok(self.get_handle() as u64)
+            },
+            "RegQueryValueExA" | "RegQueryValueExW" => Ok(0),
+            "RegSetValueExA" | "RegSetValueExW" => Ok(0),
+            "RegCloseKey" => Ok(0),
+            "RegEnumKeyA" | "RegEnumKeyW" | "RegEnumKeyExA" | "RegEnumKeyExW" => Ok(0),
+            "RegCreateKeyA" | "RegCreateKeyW" | "RegCreateKeyExA" | "RegCreateKeyExW" => {
+                Ok(self.get_handle() as u64)
+            },
+            "RegDeleteValueA" | "RegDeleteValueW" => Ok(0),
+            "RegDeleteKeyA" | "RegDeleteKeyW" => Ok(0),
+            "RegQueryInfoKeyA" | "RegQueryInfoKeyW" => Ok(0),
+            "RegGetValueA" | "RegGetValueW" => Ok(0),
+            "RegSaveKeyA" | "RegSaveKeyW" => Ok(0),
+            "RegLoadKeyA" | "RegLoadKeyW" => Ok(0),
+            "RegUnLoadKeyA" | "RegUnLoadKeyW" => Ok(0),
+            "OpenProcessToken" => Ok(1),
+            "OpenThreadToken" => Ok(1),
+            "DuplicateTokenEx" => Ok(self.get_handle() as u64),
+            "SetTokenInformation" => Ok(1),
+            "GetTokenInformation" => Ok(1),
+            "StartServiceCtrlDispatcherA" | "StartServiceCtrlDispatcherW" => Ok(1),
+            "RegisterServiceCtrlHandlerA" | "RegisterServiceCtrlHandlerW" | "RegisterServiceCtrlHandlerExA" | "RegisterServiceCtrlHandlerExW" => {
+                Ok(self.get_handle() as u64)
+            },
+            "SetServiceStatus" => Ok(1),
+            "RevertToSelf" => Ok(1),
+            "ImpersonateLoggedOnUser" => Ok(1),
+            "OpenSCManagerA" | "OpenSCManagerW" => Ok(self.get_handle() as u64),
+            "CreateServiceA" | "CreateServiceW" => Ok(self.get_handle() as u64),
+            "OpenServiceA" | "OpenServiceW" => Ok(self.get_handle() as u64),
+            "StartServiceA" | "StartServiceW" => Ok(1),
+            "ControlService" => Ok(1),
+            "QueryServiceStatus" => Ok(1),
+            "QueryServiceConfigA" | "QueryServiceConfigW" => Ok(1),
+            "CloseServiceHandle" => Ok(1),
+            "ChangeServiceConfigA" | "ChangeServiceConfigW" => Ok(1),
+            "ChangeServiceConfig2A" | "ChangeServiceConfig2W" => Ok(1),
+            "DeleteService" => Ok(1),
+            "SystemFunction036" => Ok(1),
+            "CryptAcquireContextA" | "CryptAcquireContextW" => {
+                Ok(self.crypt_acquire_context(None, None, Some(1), Some(0)) as u64)
+            },
+            "CryptReleaseContext" => Ok(1),
+            "CryptGenRandom" => Ok(1),
+            "CryptCreateHash" => Ok(self.get_handle() as u64),
+            "CryptHashData" => Ok(1),
+            "CryptGetHashParam" => Ok(1),
+            "CryptDestroyHash" => Ok(1),
+            "CryptDeriveKey" => Ok(self.get_handle() as u64),
+            "CryptEncrypt" => Ok(1),
+            "CryptDecrypt" => Ok(1),
+            "CryptExportKey" => Ok(1),
+            "CryptImportKey" => Ok(self.get_handle() as u64),
+            "CryptGetUserKey" => Ok(1),
+            "CryptSignHashA" | "CryptSignHashW" => Ok(1),
+            "CryptVerifySignatureA" | "CryptVerifySignatureW" => Ok(1),
+            "AllocateAndInitializeSid" => Ok(1),
+            "FreeSid" => Ok(0),
+            "CheckTokenMembership" => Ok(1),
+            "GetCurrentHwProfileA" | "GetCurrentHwProfileW" => Ok(1),
+            "GetUserNameA" | "GetUserNameW" => Ok(1),
+            "LookupPrivilegeValueA" | "LookupPrivilegeValueW" => Ok(1),
+            "LookupAccountNameA" | "LookupAccountNameW" => Ok(1),
+            "LookupAccountSidA" | "LookupAccountSidW" => Ok(1),
+            "AdjustTokenPrivileges" => Ok(1),
+            "EqualSid" => Ok(1),
+            "GetSidIdentifierAuthority" => Ok(0),
+            "GetSidSubAuthorityCount" => Ok(0),
+            "GetSidSubAuthority" => Ok(0),
+            "CreateProcessAsUserA" | "CreateProcessAsUserW" => Ok(1),
+            "LogonUserA" | "LogonUserW" => Ok(1),
+            "CreateRestrictedToken" => Ok(self.get_handle() as u64),
+            "IsValidSid" => Ok(1),
+            "IsValidSecurityDescriptor" => Ok(1),
+            "GetLengthSid" => Ok(0),
+            "CopySid" => Ok(1),
+            "EqualPrefixSid" => Ok(1),
+            "GetTokenSid" => Ok(1),
+            "SetTokenInformation" => Ok(1),
+            "QuerySecurityAttributes" => Ok(0),
+            "GetNamedSecurityInfoA" | "GetNamedSecurityInfoW" => Ok(0),
+            "SetNamedSecurityInfoA" | "SetNamedSecurityInfoW" => Ok(0),
+            "GetSecurityDescriptorLength" => Ok(0x50),
+            "BuildSecurityDescriptor" => Ok(0),
+            "MakeAbsoluteSD" => Ok(0),
+            "GetSecurityDescriptorDacl" => Ok(1),
+            "SetSecurityDescriptorDacl" => Ok(1),
+            "GetSecurityDescriptorSacl" => Ok(1),
+            "SetSecurityDescriptorSacl" => Ok(1),
+            "GetSecurityDescriptorOwner" => Ok(1),
+            "SetSecurityDescriptorOwner" => Ok(1),
+            "GetSecurityDescriptorGroup" => Ok(1),
+            "SetSecurityDescriptorGroup" => Ok(1),
+            "InitializeSecurityDescriptor" => Ok(1),
+            "GetAclInformation" => Ok(1),
+            "SetAclInformation" => Ok(1),
+            "GetAce" => Ok(1),
+            "SetAce" => Ok(1),
+            "AddAce" => Ok(1),
+            "DeleteAce" => Ok(1),
+            "AddAccessAllowedAce" => Ok(1),
+            "AddAccessDeniedAce" => Ok(1),
+            "AddAuditAccessAce" => Ok(1),
+            "FindFirstFreeAce" => Ok(0),
+            "AccessCheck" => Ok(1),
+            "AccessCheckByType" => Ok(1),
+            "AccessCheckByTypeAndAuditAlarm" => Ok(1),
+            "AccessCheckByTypeResultList" => Ok(1),
+            "ObjectCloseAuditAlarm" => Ok(1),
+            "ObjectOpenAuditAlarm" => Ok(1),
+            "ObjectPrivilegeAuditAlarm" => Ok(1),
+            "PrivilegeCheck" => Ok(1),
+            "ImpersonateNamedPipeClient" => Ok(1),
+            "ImpersonateTcpClient" => Ok(1),
+            "RevertToSelf" => Ok(1),
+            "SetThreadToken" => Ok(1),
+            "OpenThreadToken" => Ok(1),
+            _ => Ok(0),
         }
     }
 
@@ -114,7 +222,7 @@ impl ApiHandler for Advapi32Handler {
 
 fn join_reg_path(root: &str, sub_key: Option<&str>) -> String {
     match sub_key {
-        Some(sub_key) if !sub_key.is_empty() => format!("{root}\\{}", sub_key.trim_start_matches('\\')),
+        Some(sub_key) if !sub_key.is_empty() => format!("{}\\{}", root.trim_end_matches('\\'), sub_key.trim_start_matches('\\')),
         _ => root.to_string(),
     }
 }
