@@ -1,7 +1,7 @@
 // Kernel Manager for Windows emulator
 
 use crate::errors::{Result, SpeakeasyError};
-use crate::windows::objman::{ObjectManager, ObjectType, Handle};
+use crate::windows::objman::{Handle, ObjectManager, ObjectType};
 use crate::winenv::defs::nt::ddk;
 use std::sync::{Arc, Mutex};
 

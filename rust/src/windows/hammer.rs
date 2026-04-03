@@ -1,8 +1,8 @@
 // API Hammering detection and mitigation
 
-use crate::errors::Result;
-use crate::config::SpeakeasyConfig;
 use crate::binemu::BinaryEmulator;
+use crate::config::SpeakeasyConfig;
+use crate::errors::Result;
 use std::collections::HashMap;
 
 pub struct ApiHammer {
@@ -25,7 +25,9 @@ impl ApiHammer {
     }
 
     pub fn is_allowed_api(&self, name: &str) -> bool {
-        self.allow_list.iter().any(|a| a.to_lowercase() == name.to_lowercase())
+        self.allow_list
+            .iter()
+            .any(|a| a.to_lowercase() == name.to_lowercase())
     }
 
     pub fn handle_import_func(&mut self, _emu: &mut dyn BinaryEmulator, name: &str) -> Result<()> {

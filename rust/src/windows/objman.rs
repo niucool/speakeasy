@@ -64,7 +64,12 @@ impl ObjectManager {
         h
     }
 
-    pub fn add_object(&mut self, address: u64, name: String, obj_type: ObjectType) -> Arc<Mutex<BaseObject>> {
+    pub fn add_object(
+        &mut self,
+        address: u64,
+        name: String,
+        obj_type: ObjectType,
+    ) -> Arc<Mutex<BaseObject>> {
         let id = self.new_id();
         let obj = Arc::new(Mutex::new(BaseObject {
             id,
@@ -84,18 +89,24 @@ impl ObjectManager {
         }
         let handle = self.new_handle();
         self.handle_table.insert(handle, address);
-        
+
         let obj = self.objects.get(&address).unwrap();
         obj.lock().unwrap().handles.push(handle);
-        
+
         Ok(handle)
     }
 
     pub fn get_object_by_handle(&self, handle: Handle) -> Option<Arc<Mutex<BaseObject>>> {
-        self.handle_table.get(&handle).and_then(|addr| self.objects.get(addr)).cloned()
+        self.handle_table
+            .get(&handle)
+            .and_then(|addr| self.objects.get(addr))
+            .cloned()
     }
 
     pub fn get_object_by_name(&self, name: &str) -> Option<Arc<Mutex<BaseObject>>> {
-        self.objects.values().find(|o| o.lock().unwrap().name.to_lowercase() == name.to_lowercase()).cloned()
+        self.objects
+            .values()
+            .find(|o| o.lock().unwrap().name.to_lowercase() == name.to_lowercase())
+            .cloned()
     }
 }

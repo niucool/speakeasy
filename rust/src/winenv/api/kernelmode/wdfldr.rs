@@ -1,5 +1,5 @@
-use crate::winenv::api::ApiHandler;
-use crate::winenv::defs::wdf::WDF_BIND_INFO;
+use crate::binemu::BinaryEmulator;
+use crate::winenv::api::{ApiHandler, Result};
 
 pub struct WdfldrHandler {
     version_major: u32,
@@ -14,19 +14,7 @@ impl WdfldrHandler {
         }
     }
 
-    pub fn wdf_version_bind(&self, bind_info: Option<&WDF_BIND_INFO>) -> u32 {
-        if bind_info.is_some() {
-            0
-        } else {
-            1
-        }
-    }
-
-    pub fn wdf_version_unbind(&self) -> bool {
-        true
-    }
-
-    pub fn get_version(&self) -> (u32, u32) {
+    fn get_version(&self) -> (u32, u32) {
         (self.version_major, self.version_minor)
     }
 }
@@ -38,15 +26,15 @@ impl Default for WdfldrHandler {
 }
 
 impl ApiHandler for WdfldrHandler {
-    fn call(&mut self, args: &[u64]) -> u64 {
-        match args.len() {
-            0 => {
+    fn call(&mut self, _emu: &mut dyn BinaryEmulator, name: &str, _args: &[u64]) -> Result<u64> {
+        match name {
+            "WdfVersionBind" => Ok(0),
+            "WdfVersionUnbind" => Ok(1),
+            "WdfDriverGetVersion" => {
                 let (major, minor) = self.get_version();
-                ((major as u64) << 32) | minor as u64
+                Ok(((major as u64) << 32) | minor as u64)
             }
-            1 => self.wdf_version_bind(None) as u64,
-            2 => u64::from(self.wdf_version_unbind()),
-            _ => 0,
+            _ => Ok(0),
         }
     }
 

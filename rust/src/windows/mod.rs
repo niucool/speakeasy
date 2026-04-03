@@ -1,7 +1,7 @@
 // Windows subsystems
 
-pub mod common;
 pub mod com;
+pub mod common;
 pub mod cryptman;
 pub mod driveman;
 pub mod fileman;
@@ -17,8 +17,13 @@ pub mod sessman;
 pub mod win32;
 pub mod winemu;
 
+pub use cryptman::CryptoManager;
+pub use driveman::DriveManager;
+pub use fileman::FileManager as FileSystemManager;
+pub use fileman::FileManager as FileSystemManager;
+pub use hammer::ApiHammer;
 pub use kernel::KernelManager;
-pub use fileman::FileSystemManager;
-pub use regman::RegistryManager;
 pub use netman::NetworkManager;
 pub use objman::ObjectManager;
+pub use regman::RegistryManager;
+pub use regman::RegistryManager;

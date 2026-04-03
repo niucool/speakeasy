@@ -30,6 +30,9 @@ pub struct SpeakeasyConfig {
     /// Logging configuration
     pub logging: LoggingConfig,
 
+    /// API hammering detection
+    pub api_hammering: ApiHammeringConfig,
+
     /// Custom environment variables
     pub env_vars: HashMap<String, String>,
 }
@@ -157,12 +160,24 @@ pub struct LoggingConfig {
     pub source_locations: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiHammeringConfig {
+    /// Enable API hammering detection
+    pub enabled: bool,
+
+    /// Threshold for API hammering detection
+    pub threshold: u32,
+
+    /// APIs to allow without threshold
+    pub allow_list: Option<Vec<String>>,
+}
+
 impl Default for SpeakeasyConfig {
     fn default() -> Self {
         Self {
             memory: MemoryConfig {
-                stack_size: 2 * 1024 * 1024,      // 2MB
-                heap_size: 512 * 1024 * 1024,     // 512MB
+                stack_size: 2 * 1024 * 1024,  // 2MB
+                heap_size: 512 * 1024 * 1024, // 512MB
                 track_accesses: false,
                 max_allocations: 0,
             },
@@ -208,6 +223,11 @@ impl Default for SpeakeasyConfig {
                 file: None,
                 timestamps: true,
                 source_locations: false,
+            },
+            api_hammering: ApiHammeringConfig {
+                enabled: false,
+                threshold: 1000,
+                allow_list: None,
             },
             env_vars: HashMap::new(),
         }

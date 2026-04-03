@@ -1,8 +1,8 @@
 // Session manager
 
+use crate::config::SpeakeasyConfig;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
-use crate::config::SpeakeasyConfig;
 
 static CURR_HANDLE: AtomicU32 = AtomicU32::new(0x120);
 
@@ -179,7 +179,7 @@ impl SessionManager {
         let name = class_name.clone().unwrap_or_default();
         let wc = WindowClass::new(class_obj, name.clone());
         let handle = wc.handle;
-        
+
         self.window_classes_by_handle.insert(handle, wc.clone());
         if !name.is_empty() {
             self.window_classes_by_name.insert(name, wc);
@@ -187,10 +187,14 @@ impl SessionManager {
         handle
     }
 
-    pub fn create_window(&mut self, window_name: Option<String>, class_name: Option<String>) -> u32 {
+    pub fn create_window(
+        &mut self,
+        window_name: Option<String>,
+        class_name: Option<String>,
+    ) -> u32 {
         let wc = Window::new(window_name.clone(), class_name);
         let handle = wc.handle;
-        
+
         self.windows_by_handle.insert(handle, wc.clone());
         if let Some(name) = window_name {
             self.windows_by_name.insert(name, wc);
@@ -201,7 +205,7 @@ impl SessionManager {
     pub fn get_window_class_by_handle(&self, handle: u32) -> Option<&WindowClass> {
         self.window_classes_by_handle.get(&handle)
     }
-    
+
     pub fn get_window_class_by_name(&self, name: &str) -> Option<&WindowClass> {
         self.window_classes_by_name.get(name)
     }
@@ -209,7 +213,7 @@ impl SessionManager {
     pub fn get_window_by_handle(&self, handle: u32) -> Option<&Window> {
         self.windows_by_handle.get(&handle)
     }
-    
+
     pub fn get_window_by_name(&self, name: &str) -> Option<&Window> {
         self.windows_by_name.get(name)
     }

@@ -1,7 +1,7 @@
 // Loaders for Windows binaries
 
-use crate::errors::{Result, SpeakeasyError};
 use crate::common;
+use crate::errors::{Result, SpeakeasyError};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -102,7 +102,12 @@ pub struct PeLoader {
 }
 
 impl PeLoader {
-    pub fn new(path: Option<String>, data: Option<Vec<u8>>, base_override: Option<u64>, emu_path: String) -> Self {
+    pub fn new(
+        path: Option<String>,
+        data: Option<Vec<u8>>,
+        base_override: Option<u64>,
+        emu_path: String,
+    ) -> Self {
         Self {
             path,
             data,
@@ -117,7 +122,9 @@ impl PeLoader {
         } else if let Some(ref p) = self.path {
             std::fs::read(p).map_err(|e| SpeakeasyError::ConfigError(e.to_string()))?
         } else {
-            return Err(SpeakeasyError::ConfigError("No data or path provided for PeLoader".to_string()));
+            return Err(SpeakeasyError::ConfigError(
+                "No data or path provided for PeLoader".to_string(),
+            ));
         };
 
         // Delegate to native PeParser logic mimicking python's _PeParser
@@ -126,7 +133,9 @@ impl PeLoader {
         } else if let Ok(pe) = pelite::pe32::PeFile::from_bytes(&bytes) {
             self.parse_pe32(pe, bytes)
         } else {
-            Err(SpeakeasyError::ConfigError("Failed to parse PE file via pelite".to_string()))
+            Err(SpeakeasyError::ConfigError(
+                "Failed to parse PE file via pelite".to_string(),
+            ))
         }
     }
 
@@ -135,11 +144,13 @@ impl PeLoader {
         let opt = pe.optional_header();
         let arch = 9; // ARCH_AMD64
         let image_base = self.base_override.unwrap_or(opt.ImageBase);
-        
+
         let mut sections = Vec::new();
         for sect in pe.section_headers() {
             sections.push(SectionEntry {
-                name: String::from_utf8_lossy(&sect.Name).trim_end_matches('\0').to_string(),
+                name: String::from_utf8_lossy(&sect.Name)
+                    .trim_end_matches('\0')
+                    .to_string(),
                 virtual_address: sect.VirtualAddress as u64,
                 virtual_size: sect.VirtualSize,
                 perms: self.perms_from_chars(sect.Characteristics),
@@ -161,7 +172,7 @@ impl PeLoader {
                                             dll_name: dll.clone(),
                                             func_name: name.to_string(),
                                         });
-                                    },
+                                    }
                                     pelite::pe64::imports::Import::ByOrdinal { ord } => {
                                         imports.push(ImportEntry {
                                             iat_address: 0,
@@ -216,7 +227,9 @@ impl PeLoader {
             entry_points.push(image_base + opt.AddressOfEntryPoint as u64);
         }
 
-        let name = self.path.as_ref()
+        let name = self
+            .path
+            .as_ref()
             .and_then(|p| std::path::Path::new(p).file_stem())
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
@@ -252,11 +265,13 @@ impl PeLoader {
         let opt = pe.optional_header();
         let arch = 0; // ARCH_X86
         let image_base = self.base_override.unwrap_or(opt.ImageBase as u64);
-        
+
         let mut sections = Vec::new();
         for sect in pe.section_headers() {
             sections.push(SectionEntry {
-                name: String::from_utf8_lossy(&sect.Name).trim_end_matches('\0').to_string(),
+                name: String::from_utf8_lossy(&sect.Name)
+                    .trim_end_matches('\0')
+                    .to_string(),
                 virtual_address: sect.VirtualAddress as u64,
                 virtual_size: sect.VirtualSize,
                 perms: self.perms_from_chars(sect.Characteristics),
@@ -278,7 +293,7 @@ impl PeLoader {
                                             dll_name: dll.clone(),
                                             func_name: name.to_string(),
                                         });
-                                    },
+                                    }
                                     pelite::pe32::imports::Import::ByOrdinal { ord } => {
                                         imports.push(ImportEntry {
                                             iat_address: 0,
@@ -333,7 +348,9 @@ impl PeLoader {
             entry_points.push(image_base + opt.AddressOfEntryPoint as u64);
         }
 
-        let name = self.path.as_ref()
+        let name = self
+            .path
+            .as_ref()
             .and_then(|p| std::path::Path::new(p).file_stem())
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
@@ -366,9 +383,15 @@ impl PeLoader {
 
     fn perms_from_chars(&self, chars: u32) -> u32 {
         let mut perms = common::PERM_MEM_NONE;
-        if chars & 0x40000000 != 0 { perms |= common::PERM_MEM_READ; }
-        if chars & 0x80000000 != 0 { perms |= common::PERM_MEM_WRITE; }
-        if chars & 0x20000000 != 0 { perms |= common::PERM_MEM_EXEC; }
+        if chars & 0x40000000 != 0 {
+            perms |= common::PERM_MEM_READ;
+        }
+        if chars & 0x80000000 != 0 {
+            perms |= common::PERM_MEM_WRITE;
+        }
+        if chars & 0x20000000 != 0 {
+            perms |= common::PERM_MEM_EXEC;
+        }
         perms
     }
 }

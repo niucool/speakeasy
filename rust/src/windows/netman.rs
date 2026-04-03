@@ -74,7 +74,7 @@ pub struct WininetInstance {
 
 pub enum WininetObject {
     Instance(u32),
-    Session(u32, u32), // Instance handle, Session handle
+    Session(u32, u32),      // Instance handle, Session handle
     Request(u32, u32, u32), // Instance handle, Session handle, Request handle
 }
 
@@ -109,7 +109,8 @@ impl NetworkManager {
     }
 
     pub fn name_lookup(&self, domain: &str) -> Option<String> {
-        self.dns_names.get(&domain.to_lowercase())
+        self.dns_names
+            .get(&domain.to_lowercase())
             .or_else(|| self.dns_names.get("default"))
             .cloned()
     }
@@ -125,8 +126,18 @@ impl NetworkManager {
         handle
     }
 
-    pub fn new_wininet_session(&mut self, inst_handle: u32, server: String, port: u16) -> Result<u32> {
-        let inst = self.wininets.get_mut(&inst_handle).ok_or(SpeakeasyError::ApiError("Invalid wininet instance".to_string()))?;
+    pub fn new_wininet_session(
+        &mut self,
+        inst_handle: u32,
+        server: String,
+        port: u16,
+    ) -> Result<u32> {
+        let inst = self
+            .wininets
+            .get_mut(&inst_handle)
+            .ok_or(SpeakeasyError::ApiError(
+                "Invalid wininet instance".to_string(),
+            ))?;
         let handle = get_next_wininet_handle();
         let sess = WininetSession {
             handle,
@@ -138,9 +149,25 @@ impl NetworkManager {
         Ok(handle)
     }
 
-    pub fn new_wininet_request(&mut self, inst_handle: u32, sess_handle: u32, verb: String, obj: String) -> Result<u32> {
-        let inst = self.wininets.get_mut(&inst_handle).ok_or(SpeakeasyError::ApiError("Invalid wininet instance".to_string()))?;
-        let sess = inst.sessions.get_mut(&sess_handle).ok_or(SpeakeasyError::ApiError("Invalid wininet session".to_string()))?;
+    pub fn new_wininet_request(
+        &mut self,
+        inst_handle: u32,
+        sess_handle: u32,
+        verb: String,
+        obj: String,
+    ) -> Result<u32> {
+        let inst = self
+            .wininets
+            .get_mut(&inst_handle)
+            .ok_or(SpeakeasyError::ApiError(
+                "Invalid wininet instance".to_string(),
+            ))?;
+        let sess = inst
+            .sessions
+            .get_mut(&sess_handle)
+            .ok_or(SpeakeasyError::ApiError(
+                "Invalid wininet session".to_string(),
+            ))?;
         let handle = get_next_wininet_handle();
         let req = WininetRequest {
             handle,

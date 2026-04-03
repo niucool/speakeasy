@@ -1,6 +1,6 @@
+use crate::binemu::BinaryEmulator;
 use crate::winenv::api::usermode::wininet::WininetHandler;
-use crate::winenv::api::ApiHandler;
-use crate::winenv::defs::wininet as windefs;
+use crate::winenv::api::{ApiHandler, Result};
 
 pub struct WinhttpHandler {
     wininet: WininetHandler,
@@ -12,39 +12,6 @@ impl WinhttpHandler {
             wininet: WininetHandler::new(),
         }
     }
-
-    pub fn win_http_open(&mut self, user_agent: Option<String>, access: u32, flags: u32) -> u32 {
-        self.wininet
-            .internet_open(user_agent, access, None, None, flags)
-    }
-
-    pub fn win_http_connect(&mut self, session: u32, server: &str, port: u16) -> u32 {
-        self.wininet
-            .internet_connect(session, server, port, None, None, 0, 0, 0)
-    }
-
-    pub fn win_http_open_request(&mut self, connect: u32, verb: &str, object_name: &str, flags: u32) -> u32 {
-        self.wininet
-            .http_open_request(connect, verb, object_name, Some("HTTP/1.1".to_string()), None, flags, 0)
-    }
-
-    pub fn win_http_send_request(&mut self, request: u32, headers: Option<String>, body: &[u8]) -> bool {
-        self.wininet.http_send_request(request, headers, body)
-    }
-
-    pub fn win_http_query_headers(&self, query: u32) -> Option<&'static str> {
-        match query {
-            windefs::WINHTTP_QUERY_CONTENT_TYPE => Some("WINHTTP_QUERY_CONTENT_TYPE"),
-            windefs::WINHTTP_QUERY_CONTENT_LENGTH => Some("WINHTTP_QUERY_CONTENT_LENGTH"),
-            windefs::WINHTTP_QUERY_STATUS_CODE => Some("WINHTTP_QUERY_STATUS_CODE"),
-            windefs::WINHTTP_QUERY_STATUS_TEXT => Some("WINHTTP_QUERY_STATUS_TEXT"),
-            windefs::WINHTTP_QUERY_RAW_HEADERS => Some("WINHTTP_QUERY_RAW_HEADERS"),
-            windefs::WINHTTP_QUERY_CONTENT_ENCODING => Some("WINHTTP_QUERY_CONTENT_ENCODING"),
-            windefs::WINHTTP_QUERY_USER_AGENT => Some("WINHTTP_QUERY_USER_AGENT"),
-            windefs::WINHTTP_QUERY_HOST => Some("WINHTTP_QUERY_HOST"),
-            _ => None,
-        }
-    }
 }
 
 impl Default for WinhttpHandler {
@@ -54,11 +21,114 @@ impl Default for WinhttpHandler {
 }
 
 impl ApiHandler for WinhttpHandler {
-    fn call(&mut self, args: &[u64]) -> u64 {
-        match args.len() {
-            5 => self.win_http_open(None, args[1] as u32, args[4] as u32) as u64,
-            8 => self.win_http_connect(args[0] as u32, "example.com", args[2] as u16) as u64,
-            _ => 0,
+    fn call(&mut self, emu: &mut dyn BinaryEmulator, name: &str, args: &[u64]) -> Result<u64> {
+        match name {
+            "WinHttpOpen" => {
+                let user_agent_ptr = args[0];
+                let user_agent = if user_agent_ptr != 0 {
+                    if let Ok(data) = emu.mem_read(user_agent_ptr, 256) {
+                        Some(
+                            String::from_utf8_lossy(&data)
+                                .trim_end_matches('\0')
+                                .to_string(),
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                Ok(self.wininet.internet_open(
+                    user_agent,
+                    args[1] as u32,
+                    None,
+                    None,
+                    args[4] as u32,
+                ) as u64)
+            }
+            "WinHttpConnect" => {
+                let server_ptr = args[1];
+                let server = if let Ok(data) = emu.mem_read(server_ptr, 256) {
+                    String::from_utf8_lossy(&data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                } else {
+                    "example.com".to_string()
+                };
+                Ok(self.wininet.internet_connect(
+                    args[0] as u32,
+                    &server,
+                    args[2] as u16,
+                    None,
+                    None,
+                    0,
+                    0,
+                    0,
+                ) as u64)
+            }
+            "WinHttpOpenRequest" => {
+                let verb_ptr = args[1];
+                let verb = if let Ok(data) = emu.mem_read(verb_ptr, 32) {
+                    String::from_utf8_lossy(&data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                } else {
+                    "GET".to_string()
+                };
+                let object_ptr = args[2];
+                let object_name = if let Ok(data) = emu.mem_read(object_ptr, 1024) {
+                    String::from_utf8_lossy(&data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                } else {
+                    "/".to_string()
+                };
+                Ok(self.wininet.http_open_request(
+                    args[0] as u32,
+                    &verb,
+                    &object_name,
+                    Some("HTTP/1.1".to_string()),
+                    None,
+                    args[5] as u32,
+                    0,
+                ) as u64)
+            }
+            "WinHttpSendRequest" => {
+                let headers_ptr = args[1];
+                let headers = if headers_ptr != 0 {
+                    if let Ok(data) = emu.mem_read(headers_ptr, 1024) {
+                        Some(
+                            String::from_utf8_lossy(&data)
+                                .trim_end_matches('\0')
+                                .to_string(),
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                let body_len = args[3] as usize;
+                let body = if body_len > 0 {
+                    let body_ptr = args[4];
+                    if let Ok(data) = emu.mem_read(body_ptr, body_len) {
+                        data.to_vec()
+                    } else {
+                        vec![]
+                    }
+                } else {
+                    vec![]
+                };
+                Ok(u64::from(self.wininet.http_send_request(
+                    args[0] as u32,
+                    headers,
+                    &body,
+                )))
+            }
+            "WinHttpReceiveResponse" => Ok(1),
+            "WinHttpQueryHeaders" => Ok(0),
+            "WinHttpCloseHandle" => Ok(1),
+            _ => Ok(0),
         }
     }
 

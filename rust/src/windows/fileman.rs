@@ -2,7 +2,7 @@
 
 use crate::errors::{Result, SpeakeasyError};
 use std::collections::HashMap;
-use std::io::{Read, Write, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 pub struct File {
     pub path: String,
@@ -58,7 +58,7 @@ impl FileManager {
     pub fn create_file(&mut self, path: String, data: Vec<u8>) -> u32 {
         let handle = self.next_handle;
         self.next_handle += 4;
-        
+
         let file = File::new(path.clone(), data, false, handle);
         self.files.push(file);
         self.handle_table.insert(handle, path);
@@ -66,7 +66,10 @@ impl FileManager {
     }
 
     pub fn open_file(&mut self, path: &str) -> Option<u32> {
-        self.files.iter().find(|f| f.path.to_lowercase() == path.to_lowercase()).map(|f| f.handle)
+        self.files
+            .iter()
+            .find(|f| f.path.to_lowercase() == path.to_lowercase())
+            .map(|f| f.handle)
     }
 
     pub fn get_file_mut(&mut self, handle: u32) -> Option<&mut File> {

@@ -14,7 +14,7 @@ pub struct Win32Emulator {
 impl Win32Emulator {
     pub fn new(config: SpeakeasyConfig, argv: Option<Vec<String>>) -> Result<Self> {
         let base = WindowsEmulator::new(config, false)?;
-        
+
         Ok(Self {
             base,
             last_error: 0,

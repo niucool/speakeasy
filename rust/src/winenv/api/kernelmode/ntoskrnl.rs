@@ -1,8 +1,8 @@
 // Ntoskrnl API implementations
 
-use crate::winenv::api::{ApiHandler, ApiContext};
 use crate::binemu::BinaryEmulator;
 use crate::errors::Result;
+use crate::winenv::api::ApiHandler;
 
 pub struct NtoskrnlHandler;
 
@@ -12,12 +12,14 @@ impl ApiHandler for NtoskrnlHandler {
             "ExAllocatePoolWithTag" | "ExAllocatePool" => {
                 let _pool_type = args[0] as u32;
                 let size = args[1] as usize;
-                let _tag = if name == "ExAllocatePoolWithTag" { args[2] as u32 } else { 0 };
+                let _tag = if name == "ExAllocatePoolWithTag" {
+                    args[2] as u32
+                } else {
+                    0
+                };
                 Ok(0xBAADF00D)
-            },
-            "ExFreePoolWithTag" | "ExFreePool" => {
-                Ok(0)
-            },
+            }
+            "ExFreePoolWithTag" | "ExFreePool" => Ok(0),
             "IoCreateDevice" => {
                 let _driver_obj = args[0];
                 let _ext_size = args[1];
@@ -28,21 +30,25 @@ impl ApiHandler for NtoskrnlHandler {
                 let out_ptr = args[6];
                 emu.mem_write(out_ptr, &(0xDEADC0DEu64).to_le_bytes())?;
                 Ok(0) // STATUS_SUCCESS
-            },
+            }
             "IoCreateSymbolicLink" => {
                 let _sym_link = args[0];
                 let _dev_name = args[1];
                 Ok(0)
-            },
+            }
             "MmIsAddressValid" => {
                 let addr = args[0];
-                if addr != 0 { Ok(1) } else { Ok(0) }
-            },
+                if addr != 0 {
+                    Ok(1)
+                } else {
+                    Ok(0)
+                }
+            }
             "KeQuerySystemTime" => {
                 let out_ptr = args[0];
                 emu.mem_write(out_ptr, &(131911108955110000u64).to_le_bytes())?;
                 Ok(0)
-            },
+            }
             "PsCreateSystemThread" => {
                 let h_thread_ptr = args[0];
                 let _access = args[1];
@@ -54,13 +60,13 @@ impl ApiHandler for NtoskrnlHandler {
 
                 emu.mem_write(h_thread_ptr, &(0x200u64).to_le_bytes())?;
                 Ok(0)
-            },
+            }
             "KeInitializeEvent" => {
                 let _event = args[0];
                 let _etype = args[1];
                 let _state = args[2];
                 Ok(0)
-            },
+            }
             "ObReferenceObjectByHandle" => {
                 let _handle = args[0];
                 let _access = args[1];
@@ -71,10 +77,14 @@ impl ApiHandler for NtoskrnlHandler {
 
                 emu.mem_write(out_obj, &(0xDEADC0DEu64).to_le_bytes())?;
                 Ok(0)
-            },
+            }
             "PsGetCurrentProcess" => Ok(0xDEADC0DE),
             "PsGetCurrentThread" => Ok(0xDEADC0DF),
             _ => Ok(0),
         }
+    }
+
+    fn get_name(&self) -> &str {
+        "Ntoskrnl"
     }
 }

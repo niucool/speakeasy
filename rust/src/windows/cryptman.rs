@@ -28,7 +28,12 @@ pub struct CryptContext {
 }
 
 impl CryptContext {
-    pub fn new(cname: Option<String>, pname: Option<String>, ptype: Option<u32>, flags: Option<u32>) -> Self {
+    pub fn new(
+        cname: Option<String>,
+        pname: Option<String>,
+        ptype: Option<u32>,
+        flags: Option<u32>,
+    ) -> Self {
         Self {
             container_name: cname,
             provider_name: pname,

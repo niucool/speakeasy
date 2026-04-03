@@ -1,22 +1,22 @@
 // Windows Emulator base class
 
+use crate::binemu::{BaseBinaryEmulator, BinaryEmulator};
+use crate::common;
 use crate::config::SpeakeasyConfig;
+use crate::engines::unicorn_eng::EmuEngine;
 use crate::errors::{Result, SpeakeasyError};
-use crate::binemu::{BinaryEmulator, BaseBinaryEmulator};
 use crate::memmgr::MemMap;
 use crate::profiler::Run;
+use crate::r#struct::EmuStruct;
 use crate::windows::sessman::SessionManager;
 use crate::windows::{
-    KernelManager, FileSystemManager, RegistryManager, NetworkManager, ObjectManager,
-    CryptoManager, DriveManager, ApiHammer
+    ApiHammer, CryptoManager, DriveManager, FileSystemManager, KernelManager, NetworkManager,
+    ObjectManager, RegistryManager,
 };
-use crate::engines::unicorn_eng::EmuEngine;
-use crate::winenv::defs::windows::windows::{UNICODE_STRING, CONTEXT, CONTEXT64};
-use crate::r#struct::EmuStruct;
-use crate::common;
+use crate::winenv::defs::windows::windows::{CONTEXT, CONTEXT64, UNICODE_STRING};
 
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// Represents the Bootstrap phase of the emulator
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -30,14 +30,14 @@ pub enum BootstrapPhase {
 pub struct WindowsEmulator {
     pub base: BaseBinaryEmulator,
     pub engine: Option<EmuEngine>,
-    
+
     // Core state
     pub bootstrap_phase: BootstrapPhase,
     pub is_kernel_mode: bool,
     pub peb_addr: u64,
     pub fs_addr: u64,
     pub gs_addr: u64,
-    
+
     // Subsystem Managers
     pub sessman: Arc<Mutex<SessionManager>>,
     pub regman: Arc<Mutex<RegistryManager>>,
@@ -63,7 +63,11 @@ pub struct WindowsEmulator {
 
 impl WindowsEmulator {
     pub fn new(config: SpeakeasyConfig, is_kernel_mode: bool) -> Result<Self> {
-        let arch = if config.os_ver.major == Some(10) { 9 } else { 0 }; // Simplified
+        let arch = if config.os_ver.major == Some(10) {
+            9
+        } else {
+            0
+        }; // Simplified
         let base = BaseBinaryEmulator::new(config.clone(), arch);
         let sessman = Arc::new(Mutex::new(SessionManager::new(&config)));
         let regman = Arc::new(Mutex::new(RegistryManager::new()));
@@ -83,7 +87,7 @@ impl WindowsEmulator {
             peb_addr: 0,
             fs_addr: 0,
             gs_addr: 0,
-            
+
             sessman,
             regman,
             fileman,
@@ -137,7 +141,7 @@ impl WindowsEmulator {
         teb_data[8..16].copy_from_slice(&stack_base.to_le_bytes());
         teb_data[16..24].copy_from_slice(&stack_limit.to_le_bytes());
         teb_data[48..56].copy_from_slice(&teb_addr.to_le_bytes()); // Self
-        
+
         self.mem_write(teb_addr, &teb_data)?;
         Ok(teb_addr)
     }
@@ -152,14 +156,16 @@ impl WindowsEmulator {
 
     pub fn handle_interrupt(&mut self, intno: u32) -> bool {
         match intno {
-            3 | 0x2D => { // Breakpoint
+            3 | 0x2D => {
+                // Breakpoint
                 self.curr_exception_code = 0x80000003; // STATUS_BREAKPOINT
                 self.dispatch_seh(self.curr_exception_code)
-            },
-            0 => { // Divide by zero
+            }
+            0 => {
+                // Divide by zero
                 self.curr_exception_code = 0xC0000094; // STATUS_INTEGER_DIVIDE_BY_ZERO
                 self.dispatch_seh(self.curr_exception_code)
-            },
+            }
             _ => {
                 log::error!("Unhandled interrupt: 0x{:x}", intno);
                 false
@@ -169,7 +175,13 @@ impl WindowsEmulator {
 
     pub fn log_api(&self, pc: u64, name: &str, rv: u64, args: &[u64]) {
         let args_str: Vec<String> = args.iter().map(|a| format!("0x{:x}", a)).collect();
-        log::info!("0x{:x}: {}({}) -> 0x{:x}", pc, name, args_str.join(", "), rv);
+        log::info!(
+            "0x{:x}: {}({}) -> 0x{:x}",
+            pc,
+            name,
+            args_str.join(", "),
+            rv
+        );
     }
 
     pub fn handle_import_func(&mut self, dll: &str, name: &str) -> Result<u64> {
@@ -180,25 +192,29 @@ impl WindowsEmulator {
 }
 
 impl BinaryEmulator for WindowsEmulator {
-    fn get_arch(&self) -> u32 { self.base.arch }
-    fn get_ptr_size(&self) -> u32 { self.base.ptr_size }
-    
-    fn reg_read(&self, reg: i32) -> Result<u64> {
+    fn get_arch(&self) -> u32 {
+        self.base.arch
+    }
+    fn get_ptr_size(&self) -> u32 {
+        self.base.ptr_size
+    }
+
+    fn reg_read(&self, reg: u32) -> Result<u64> {
         if let Some(ref eng) = self.engine {
             eng.reg_read(reg)
         } else {
             Ok(0)
         }
     }
-    
-    fn reg_write(&mut self, reg: i32, val: u64) -> Result<()> {
+
+    fn reg_write(&mut self, reg: u32, val: u64) -> Result<()> {
         if let Some(ref mut eng) = self.engine {
             eng.reg_write(reg, val)
         } else {
             Ok(())
         }
     }
-    
+
     fn mem_read(&self, addr: u64, size: usize) -> Result<Vec<u8>> {
         if let Some(ref eng) = self.engine {
             eng.mem_read(addr, size)
@@ -206,7 +222,7 @@ impl BinaryEmulator for WindowsEmulator {
             Ok(vec![0; size])
         }
     }
-    
+
     fn mem_write(&mut self, addr: u64, data: &[u8]) -> Result<()> {
         if let Some(ref mut eng) = self.engine {
             eng.mem_write(addr, data)
@@ -214,24 +230,40 @@ impl BinaryEmulator for WindowsEmulator {
             Ok(())
         }
     }
-    
+
     fn get_pc(&self) -> Result<u64> {
-        let reg = if self.base.arch == 9 { unicorn::RegisterX86::RIP } else { unicorn::RegisterX86::EIP };
+        let reg = if self.base.arch == 9 {
+            unicorn::RegisterX86::RIP
+        } else {
+            unicorn::RegisterX86::EIP
+        };
         self.reg_read(reg as i32)
     }
 
     fn set_pc(&mut self, addr: u64) -> Result<()> {
-        let reg = if self.base.arch == 9 { unicorn::RegisterX86::RIP } else { unicorn::RegisterX86::EIP };
+        let reg = if self.base.arch == 9 {
+            unicorn::RegisterX86::RIP
+        } else {
+            unicorn::RegisterX86::EIP
+        };
         self.reg_write(reg as i32, addr)
     }
-    
+
     fn get_stack_ptr(&self) -> Result<u64> {
-        let reg = if self.base.arch == 9 { unicorn::RegisterX86::RSP } else { unicorn::RegisterX86::ESP };
+        let reg = if self.base.arch == 9 {
+            unicorn::RegisterX86::RSP
+        } else {
+            unicorn::RegisterX86::ESP
+        };
         self.reg_read(reg as i32)
     }
 
     fn set_stack_ptr(&mut self, addr: u64) -> Result<()> {
-        let reg = if self.base.arch == 9 { unicorn::RegisterX86::RSP } else { unicorn::RegisterX86::ESP };
+        let reg = if self.base.arch == 9 {
+            unicorn::RegisterX86::RSP
+        } else {
+            unicorn::RegisterX86::ESP
+        };
         self.reg_write(reg as i32, addr)
     }
 }

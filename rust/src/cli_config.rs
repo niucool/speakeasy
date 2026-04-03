@@ -1,37 +1,38 @@
 // CLI configuration for Speakeasy
 
-use clap::Parser;
-use serde::{Serialize, Deserialize};
+use crate::config::SpeakeasyConfig;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-pub struct CliArgs {
-    /// Path to the input file
-    #[arg(short, long)]
-    pub file: String,
-
-    /// Architecture (x86 or x64)
-    #[arg(short, long)]
-    pub arch: Option<String>,
-
-    /// Timeout in seconds
-    #[arg(short, long, default_value_t = 60)]
-    pub timeout: u32,
-
-    /// Output report file
-    #[arg(short, long)]
-    pub output: Option<String>,
+pub fn get_default_config_dict() -> crate::errors::Result<String> {
+    let config = SpeakeasyConfig::default();
+    Ok(serde_json::to_string_pretty(&config)?)
 }
 
-pub struct CliConfig {
-    pub args: CliArgs,
+pub fn load_merged_config(config_path: Option<&str>) -> crate::errors::Result<SpeakeasyConfig> {
+    let mut config = SpeakeasyConfig::default();
+    if let Some(path) = config_path {
+        let file_config = SpeakeasyConfig::from_file(path)?;
+        config = file_config;
+    }
+    Ok(config)
 }
 
-impl CliConfig {
-    pub fn parse() -> Self {
-        Self {
-            args: CliArgs::parse(),
+pub fn apply_env_overrides(
+    config: &mut SpeakeasyConfig,
+    env_vars: &[String],
+) -> crate::errors::Result<()> {
+    for env in env_vars {
+        if let Some((key, value)) = env.split_once('=') {
+            config.env_vars.insert(key.to_string(), value.to_string());
         }
+    }
+    Ok(())
+}
+
+pub fn apply_module_paths(config: &mut SpeakeasyConfig, paths: &[PathBuf]) {
+    for path in paths {
+        config.modules.module_paths.push(path.clone());
     }
 }

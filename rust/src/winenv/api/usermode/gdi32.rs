@@ -1,4 +1,5 @@
-use crate::winenv::api::ApiHandler;
+use crate::binemu::BinaryEmulator;
+use crate::winenv::api::{ApiHandler, Result};
 
 pub struct Gdi32Handler {
     next_dc: u32,
@@ -9,27 +10,23 @@ impl Gdi32Handler {
         Self { next_dc: 0x5000 }
     }
 
-    pub fn create_compatible_dc(&mut self) -> u32 {
+    fn create_compatible_dc(&mut self) -> u32 {
         let dc = self.next_dc;
         self.next_dc += 4;
         dc
     }
 
-    pub fn delete_dc(&self, dc: u32) -> bool {
+    fn delete_dc(&self, dc: u32) -> bool {
         dc != 0
     }
 
-    pub fn get_device_caps(&self, _dc: u32, index: i32) -> i32 {
+    fn get_device_caps(&self, _dc: u32, index: i32) -> i32 {
         match index {
             8 => 800,
             10 => 600,
             12 => 32,
             _ => 1,
         }
-    }
-
-    pub fn set_bk_mode(&self, _dc: u32, mode: i32) -> i32 {
-        mode
     }
 }
 
@@ -40,12 +37,12 @@ impl Default for Gdi32Handler {
 }
 
 impl ApiHandler for Gdi32Handler {
-    fn call(&mut self, args: &[u64]) -> u64 {
-        match args.len() {
-            0 => self.create_compatible_dc() as u64,
-            1 => u64::from(self.delete_dc(args[0] as u32)),
-            2 => self.get_device_caps(args[0] as u32, args[1] as i32) as u64,
-            _ => 0,
+    fn call(&mut self, _emu: &mut dyn BinaryEmulator, name: &str, args: &[u64]) -> Result<u64> {
+        match name {
+            "CreateCompatibleDC" => Ok(self.create_compatible_dc() as u64),
+            "DeleteDC" => Ok(u64::from(self.delete_dc(args[0] as u32))),
+            "GetDeviceCaps" => Ok(self.get_device_caps(args[0] as u32, args[1] as i32) as u64),
+            _ => Ok(0),
         }
     }
 

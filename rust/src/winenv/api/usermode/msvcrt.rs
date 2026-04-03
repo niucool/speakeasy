@@ -1,5 +1,6 @@
+use crate::binemu::BinaryEmulator;
 use crate::common;
-use crate::winenv::api::ApiHandler;
+use crate::winenv::api::{ApiHandler, Result};
 
 pub struct MsvcrtHandler;
 
@@ -8,42 +9,21 @@ impl MsvcrtHandler {
         Self
     }
 
-    pub fn memcpy(dst: &mut [u8], src: &[u8]) -> usize {
-        let count = dst.len().min(src.len());
-        dst[..count].copy_from_slice(&src[..count]);
-        count
+    fn strlen(&self, ptr: u64, emu: &mut dyn BinaryEmulator) -> usize {
+        if let Ok(data) = emu.mem_read(ptr, 256) {
+            let s = String::from_utf8_lossy(&data);
+            s.trim_end_matches('\0').len()
+        } else {
+            0
+        }
     }
 
-    pub fn memset(dst: &mut [u8], value: u8) -> usize {
-        dst.fill(value);
-        dst.len()
-    }
-
-    pub fn strlen(value: &str) -> usize {
-        value.len()
-    }
-
-    pub fn strcmp(left: &str, right: &str) -> i32 {
+    fn strcmp(&self, left: &str, right: &str) -> i32 {
         match left.cmp(right) {
             std::cmp::Ordering::Less => -1,
             std::cmp::Ordering::Equal => 0,
             std::cmp::Ordering::Greater => 1,
         }
-    }
-
-    pub fn sprintf(format_string: &str, args: &[u64]) -> String {
-        if args.is_empty() {
-            format_string.to_string()
-        } else {
-            format!("{format_string} {:?}", args)
-        }
-    }
-
-    pub fn rand(seed: u32) -> u32 {
-        common::sha256_bytes(&seed.to_le_bytes())
-            .get(..8)
-            .and_then(|hex| u32::from_str_radix(hex, 16).ok())
-            .unwrap_or(seed)
     }
 }
 
@@ -54,12 +34,33 @@ impl Default for MsvcrtHandler {
 }
 
 impl ApiHandler for MsvcrtHandler {
-    fn call(&mut self, args: &[u64]) -> u64 {
-        match args.len() {
-            0 => Self::rand(0) as u64,
-            1 => Self::strlen("speakeasy") as u64,
-            2 => Self::strcmp("a", "b") as u64,
-            _ => 0,
+    fn call(&mut self, emu: &mut dyn BinaryEmulator, name: &str, args: &[u64]) -> Result<u64> {
+        match name {
+            "rand" => Ok(common::sha256_bytes(&[0u8; 4])
+                .get(..4)
+                .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                .unwrap_or(0) as u64),
+            "strlen" => Ok(self.strlen(args[0], emu) as u64),
+            "strcmp" => {
+                let left_ptr = args[0];
+                let right_ptr = args[1];
+                let left = if let Ok(data) = emu.mem_read(left_ptr, 256) {
+                    String::from_utf8_lossy(&data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                } else {
+                    String::new()
+                };
+                let right = if let Ok(data) = emu.mem_read(right_ptr, 256) {
+                    String::from_utf8_lossy(&data)
+                        .trim_end_matches('\0')
+                        .to_string()
+                } else {
+                    String::new()
+                };
+                Ok(self.strcmp(&left, &right) as u64)
+            }
+            _ => Ok(0),
         }
     }
 

@@ -1,5 +1,7 @@
 use crate::r#struct::{EmuStruct, Ptr};
-use crate::winenv::defs::windows::windows::{KSYSTEM_TIME, LARGE_INTEGER, LIST_ENTRY, UNICODE_STRING};
+use crate::winenv::defs::windows::windows::{
+    KSYSTEM_TIME, LARGE_INTEGER, LIST_ENTRY, UNICODE_STRING,
+};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -274,7 +276,7 @@ pub struct DEVICE_OBJECT {
     pub AlignmentRequirement: u32,
     // Note: Nested structures might need proper implementation if their size is fixed
     pub DeviceQueue: [u8; 32], // Placeholder for KDEVICE_QUEUE
-    pub Dpc: [u8; 64],        // Placeholder for KDPC
+    pub Dpc: [u8; 64],         // Placeholder for KDPC
     pub ActiveThreadCount: u32,
     pub SecurityDescriptor: Ptr,
     pub DeviceLock: KEVENT,
@@ -365,7 +367,7 @@ pub struct NT_TIB {
     pub Reserved1: Ptr,
     pub Reserved2: Ptr,
     pub Reserved3: Ptr,
-    pub Self: Ptr,
+    pub Self_: Ptr,
 }
 impl EmuStruct for NT_TIB {}
 

@@ -1,9 +1,8 @@
+use crate::binemu::BinaryEmulator;
+use crate::errors::Result;
 use crate::windows::cryptman::CryptoManager;
 use crate::windows::regman::RegistryManager;
 use crate::winenv::api::ApiHandler;
-use crate::binemu::BinaryEmulator;
-use crate::errors::Result;
-use crate::winenv::defs::registry::reg as regdefs;
 use crate::winenv::defs::windows::windows as windefs;
 
 pub struct Advapi32Handler {
@@ -26,7 +25,11 @@ impl Advapi32Handler {
         self.curr_handle
     }
 
-    pub fn reg_open_key(&mut self, root: &str, sub_key: Option<&str>) -> Result<u64, u32> {
+    pub fn reg_open_key(
+        &mut self,
+        root: &str,
+        sub_key: Option<&str>,
+    ) -> std::result::Result<u64, u32> {
         let path = join_reg_path(root, sub_key);
         self.regman
             .open_key(&path, false)
@@ -55,7 +58,11 @@ impl Advapi32Handler {
         }
     }
 
-    pub fn reg_query_value_ex(&mut self, key: u64, value_name: &str) -> Result<(u32, Vec<u8>), u32> {
+    pub fn reg_query_value_ex(
+        &mut self,
+        key: u64,
+        value_name: &str,
+    ) -> std::result::Result<(u32, Vec<u8>), u32> {
         self.regman
             .get_key_value(key, value_name)
             .map(|value| (value.val_type, value.data.clone()))
@@ -79,7 +86,17 @@ impl Advapi32Handler {
     }
 
     pub fn registry_type_name(value_type: u32) -> Option<&'static str> {
-        regdefs::get_value_type(value_type)
+        match value_type {
+            0 => Some("REG_NONE"),
+            1 => Some("REG_SZ"),
+            2 => Some("REG_EXPAND_SZ"),
+            3 => Some("REG_BINARY"),
+            4 => Some("REG_DWORD"),
+            5 => Some("REG_DWORD_LITTLE_ENDIAN"),
+            6 => Some("REG_QWORD"),
+            7 => Some("REG_QWORD_LITTLE_ENDIAN"),
+            _ => None,
+        }
     }
 }
 
@@ -94,14 +111,14 @@ impl ApiHandler for Advapi32Handler {
         match name {
             "RegOpenKeyA" | "RegOpenKeyW" | "RegOpenKeyExA" | "RegOpenKeyExW" => {
                 Ok(self.get_handle() as u64)
-            },
+            }
             "RegQueryValueExA" | "RegQueryValueExW" => Ok(0),
             "RegSetValueExA" | "RegSetValueExW" => Ok(0),
             "RegCloseKey" => Ok(0),
             "RegEnumKeyA" | "RegEnumKeyW" | "RegEnumKeyExA" | "RegEnumKeyExW" => Ok(0),
             "RegCreateKeyA" | "RegCreateKeyW" | "RegCreateKeyExA" | "RegCreateKeyExW" => {
                 Ok(self.get_handle() as u64)
-            },
+            }
             "RegDeleteValueA" | "RegDeleteValueW" => Ok(0),
             "RegDeleteKeyA" | "RegDeleteKeyW" => Ok(0),
             "RegQueryInfoKeyA" | "RegQueryInfoKeyW" => Ok(0),
@@ -115,9 +132,10 @@ impl ApiHandler for Advapi32Handler {
             "SetTokenInformation" => Ok(1),
             "GetTokenInformation" => Ok(1),
             "StartServiceCtrlDispatcherA" | "StartServiceCtrlDispatcherW" => Ok(1),
-            "RegisterServiceCtrlHandlerA" | "RegisterServiceCtrlHandlerW" | "RegisterServiceCtrlHandlerExA" | "RegisterServiceCtrlHandlerExW" => {
-                Ok(self.get_handle() as u64)
-            },
+            "RegisterServiceCtrlHandlerA"
+            | "RegisterServiceCtrlHandlerW"
+            | "RegisterServiceCtrlHandlerExA"
+            | "RegisterServiceCtrlHandlerExW" => Ok(self.get_handle() as u64),
             "SetServiceStatus" => Ok(1),
             "RevertToSelf" => Ok(1),
             "ImpersonateLoggedOnUser" => Ok(1),
@@ -135,7 +153,7 @@ impl ApiHandler for Advapi32Handler {
             "SystemFunction036" => Ok(1),
             "CryptAcquireContextA" | "CryptAcquireContextW" => {
                 Ok(self.crypt_acquire_context(None, None, Some(1), Some(0)) as u64)
-            },
+            }
             "CryptReleaseContext" => Ok(1),
             "CryptGenRandom" => Ok(1),
             "CryptCreateHash" => Ok(self.get_handle() as u64),
@@ -222,7 +240,11 @@ impl ApiHandler for Advapi32Handler {
 
 fn join_reg_path(root: &str, sub_key: Option<&str>) -> String {
     match sub_key {
-        Some(sub_key) if !sub_key.is_empty() => format!("{}\\{}", root.trim_end_matches('\\'), sub_key.trim_start_matches('\\')),
+        Some(sub_key) if !sub_key.is_empty() => format!(
+            "{}\\{}",
+            root.trim_end_matches('\\'),
+            sub_key.trim_start_matches('\\')
+        ),
         _ => root.to_string(),
     }
 }

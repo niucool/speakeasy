@@ -1,8 +1,8 @@
 // CPU emulation using Unicorn engine
 
-use crate::errors::{Result, SpeakeasyError};
-use unicorn::{Unicorn, Arch, Mode, PROT_ALL, RegisterX86};
 use crate::common;
+use crate::errors::{Result, SpeakeasyError};
+use unicorn::{Arch, Mode, Unicorn};
 
 pub trait EngineCallback: Send + Sync {
     fn on_code(&mut self, addr: u64, size: u32);
@@ -30,45 +30,58 @@ impl EmuEngine {
 
     pub fn mem_map(&mut self, addr: u64, size: usize, prot: u32) -> Result<()> {
         let uprot = self.convert_prot(prot);
-        self.uc.mem_map(addr, size, uprot)
+        self.uc
+            .mem_map(addr, size, uprot)
             .map_err(|e| SpeakeasyError::MemoryError(format!("mem_map error: {:?}", e)))
     }
 
     pub fn mem_write(&mut self, addr: u64, data: &[u8]) -> Result<()> {
-        self.uc.mem_write(addr, data)
+        self.uc
+            .mem_write(addr, data)
             .map_err(|e| SpeakeasyError::MemoryError(format!("mem_write error: {:?}", e)))
     }
 
     pub fn mem_read(&self, addr: u64, size: usize) -> Result<Vec<u8>> {
-        self.uc.mem_read(addr, size)
+        self.uc
+            .mem_read(addr, size)
             .map_err(|e| SpeakeasyError::MemoryError(format!("mem_read error: {:?}", e)))
     }
 
-    pub fn reg_write(&mut self, reg: i32, val: u64) -> Result<()> {
-        self.uc.reg_write(reg, val)
+    pub fn reg_write(&mut self, reg: u32, val: u64) -> Result<()> {
+        self.uc
+            .reg_write(reg, val)
             .map_err(|e| SpeakeasyError::Unknown(format!("reg_write error: {:?}", e)))
     }
 
-    pub fn reg_read(&self, reg: i32) -> Result<u64> {
-        self.uc.reg_read(reg)
+    pub fn reg_read(&self, reg: u32) -> Result<u64> {
+        self.uc
+            .reg_read(reg)
             .map_err(|e| SpeakeasyError::Unknown(format!("reg_read error: {:?}", e)))
     }
 
     pub fn start(&mut self, addr: u64, timeout: u64, count: usize) -> Result<()> {
-        self.uc.emu_start(addr, 0xFFFFFFFF, timeout, count)
+        self.uc
+            .emu_start(addr, 0xFFFFFFFF, timeout, count)
             .map_err(|e| SpeakeasyError::Unknown(format!("emu_start error: {:?}", e)))
     }
 
     pub fn stop(&mut self) -> Result<()> {
-        self.uc.emu_stop()
+        self.uc
+            .emu_stop()
             .map_err(|e| SpeakeasyError::Unknown(format!("emu_stop error: {:?}", e)))
     }
 
-    fn convert_prot(&self, prot: u32) -> u32 {
-        let mut u = unicorn::PROT_NONE;
-        if prot & common::PERM_MEM_READ != 0 { u |= unicorn::PROT_READ; }
-        if prot & common::PERM_MEM_WRITE != 0 { u |= unicorn::PROT_WRITE; }
-        if prot & common::PERM_MEM_EXEC != 0 { u |= unicorn::PROT_EXEC; }
+    fn convert_prot(&self, prot: u32) -> unicorn::Protection {
+        let mut u = unicorn::Protection::NONE;
+        if prot & common::PERM_MEM_READ != 0 {
+            u |= unicorn::Protection::READ;
+        }
+        if prot & common::PERM_MEM_WRITE != 0 {
+            u |= unicorn::Protection::WRITE;
+        }
+        if prot & common::PERM_MEM_EXEC != 0 {
+            u |= unicorn::Protection::EXEC;
+        }
         u
     }
 }

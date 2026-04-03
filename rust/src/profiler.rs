@@ -1,7 +1,7 @@
 // Profiler for Speakeasy
 
 use crate::profiler_events::{AnyEvent, TracePosition};
-use crate::report::{Report, EntryPoint, ErrorInfo};
+use crate::report::{EntryPoint, ErrorInfo, Report};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -58,7 +58,14 @@ impl Profiler {
         self.runs.push(run);
     }
 
-    pub fn record_api_event(&mut self, run_idx: usize, pos: TracePosition, name: String, ret: Option<u64>, args: Vec<String>) {
+    pub fn record_api_event(
+        &mut self,
+        run_idx: usize,
+        pos: TracePosition,
+        name: String,
+        ret: Option<u64>,
+        args: Vec<String>,
+    ) {
         if let Some(run) = self.runs.get_mut(run_idx) {
             let event = AnyEvent::Api {
                 pos,
@@ -82,17 +89,23 @@ impl Profiler {
             });
         }
 
-        let timestamp = self.start_time
+        let timestamp = self
+            .start_time
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
 
         Report {
             report_version: "3.0.0".to_string(),
-            emulation_total_runtime: self.start_time.elapsed().map(|e| e.as_secs_f64()).unwrap_or(0.0),
+            emulation_total_runtime: self
+                .start_time
+                .elapsed()
+                .map(|e| e.as_secs_f64())
+                .unwrap_or(0.0),
             timestamp,
             arch,
             entry_points,
+            data: None,
         }
     }
 }

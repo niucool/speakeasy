@@ -80,18 +80,34 @@ impl RegistryManager {
 
     pub fn open_key(&mut self, path: &str) -> Option<u32> {
         let path = self.normalize_path(path);
-        self.keys.iter().find(|k| k.path.to_lowercase() == path.to_lowercase()).map(|k| k.handle)
+        self.keys
+            .iter()
+            .find(|k| k.path.to_lowercase() == path.to_lowercase())
+            .map(|k| k.handle)
     }
 
-    pub fn set_value(&mut self, handle: u32, name: String, val_type: u32, data: RegData) -> Result<()> {
-        let path = self.handle_table.get(&handle).ok_err(|| SpeakeasyError::ApiError("Invalid handle".to_string()))?;
+    pub fn set_value(
+        &mut self,
+        handle: u32,
+        name: String,
+        val_type: u32,
+        data: RegData,
+    ) -> Result<()> {
+        let path = self
+            .handle_table
+            .get(&handle)
+            .ok_err(|| SpeakeasyError::ApiError("Invalid handle".to_string()))?;
         let key = self.keys.iter_mut().find(|k| &k.path == path).unwrap();
-        
+
         if let Some(val) = key.values.iter_mut().find(|v| v.name == name) {
             val.val_type = val_type;
             val.data = data;
         } else {
-            key.values.push(RegValue { name, val_type, data });
+            key.values.push(RegValue {
+                name,
+                val_type,
+                data,
+            });
         }
         Ok(())
     }
