@@ -3,7 +3,6 @@
 use crate::errors::{Result, SpeakeasyError};
 use crate::common;
 use std::collections::HashMap;
-use goblin::pe::PE;
 
 #[derive(Clone, Debug)]
 pub struct ImportEntry {
@@ -121,59 +120,100 @@ impl PeLoader {
             return Err(SpeakeasyError::ConfigError("No data or path provided for PeLoader".to_string()));
         };
 
-        let pe = PE::parse(&bytes).map_err(|e| SpeakeasyError::ConfigError(e.to_string()))?;
-        
-        let arch = if pe.is_64 { 9 } else { 0 }; // ARCH_AMD64 = 9, ARCH_X86 = 0
-        let image_base = self.base_override.unwrap_or(pe.image_base);
+        // Delegate to native PeParser logic mimicking python's _PeParser
+        if let Ok(pe) = pelite::pe64::PeFile::from_bytes(&bytes) {
+            self.parse_pe64(pe, bytes)
+        } else if let Ok(pe) = pelite::pe32::PeFile::from_bytes(&bytes) {
+            self.parse_pe32(pe, bytes)
+        } else {
+            Err(SpeakeasyError::ConfigError("Failed to parse PE file via pelite".to_string()))
+        }
+    }
+
+    fn parse_pe64(&self, pe: pelite::pe64::PeFile, bytes: Vec<u8>) -> Result<LoadedImage> {
+        use pelite::pe64::Pe;
+        let opt = pe.optional_header();
+        let arch = 9; // ARCH_AMD64
+        let image_base = self.base_override.unwrap_or(opt.ImageBase);
         
         let mut sections = Vec::new();
-        for sect in &pe.sections {
+        for sect in pe.section_headers() {
             sections.push(SectionEntry {
-                name: sect.name().unwrap_or("").to_string(),
-                virtual_address: sect.virtual_address as u64,
-                virtual_size: sect.virtual_size,
-                perms: self.perms_from_chars(sect.characteristics),
+                name: String::from_utf8_lossy(&sect.Name).trim_end_matches('\0').to_string(),
+                virtual_address: sect.VirtualAddress as u64,
+                virtual_size: sect.VirtualSize,
+                perms: self.perms_from_chars(sect.Characteristics),
             });
         }
 
         let mut imports = Vec::new();
-        for import in &pe.imports {
-            imports.push(ImportEntry {
-                iat_address: import.offset as u64,
-                dll_name: import.dll.to_string(),
-                func_name: import.name.to_string(),
-            });
+        if let Ok(pe_imports) = pe.imports() {
+            for desc in pe_imports {
+                if let Ok(dll_name) = desc.dll_name() {
+                    let dll = dll_name.to_lowercase().replace(".dll", "");
+                    if let Ok(int) = desc.int() {
+                        for imp in int {
+                            if let Ok(import) = imp {
+                                match import {
+                                    pelite::pe64::imports::Import::ByName { hint: _, name } => {
+                                        imports.push(ImportEntry {
+                                            iat_address: 0, // Should be resolved natively
+                                            dll_name: dll.clone(),
+                                            func_name: name.to_string(),
+                                        });
+                                    },
+                                    pelite::pe64::imports::Import::ByOrdinal { ord } => {
+                                        imports.push(ImportEntry {
+                                            iat_address: 0,
+                                            dll_name: dll.clone(),
+                                            func_name: format!("ordinal_{}", ord),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         let mut exports = Vec::new();
-        for export in &pe.exports {
-            exports.push(ExportEntry {
-                name: export.name.map(|n| n.to_string()),
-                address: export.rva as u64 + image_base,
-                ordinal: export.ordinal as u32,
-            });
+        if let Ok(pe_exports) = pe.exports() {
+            if let Ok(by) = pe_exports.by() {
+                for export_result in by.iter() {
+                    if let Ok(export) = export_result {
+                        if let Ok(name) = export.name() {
+                            exports.push(ExportEntry {
+                                name: Some(name.to_string()),
+                                address: image_base + export.rva() as u64,
+                                ordinal: export.ordinal() as u32,
+                            });
+                        }
+                    }
+                }
+            }
         }
 
         let pe_metadata = PeMetadata {
-            subsystem: pe.header.optional_header.map(|h| h.windows_fields.subsystem).unwrap_or(0),
-            timestamp: pe.header.coff_header.time_date_stamp,
-            machine: pe.header.coff_header.machine,
-            magic: pe.header.optional_header.map(|h| h.standard_fields.magic).unwrap_or(0),
-            resources: Vec::new(), // TODO: Implement resource parsing
+            subsystem: opt.Subsystem,
+            timestamp: pe.file_header().TimeDateStamp,
+            machine: pe.file_header().Machine,
+            magic: opt.Magic,
+            resources: Vec::new(),
             string_table: HashMap::new(),
         };
 
         let module_type = if pe_metadata.subsystem == 1 {
             "driver".to_string()
-        } else if pe.header.coff_header.characteristics & 0x2000 != 0 {
+        } else if pe.file_header().Characteristics & 0x2000 != 0 {
             "dll".to_string()
         } else {
             "exe".to_string()
         };
 
         let mut entry_points = Vec::new();
-        if pe.entry != 0 {
-            entry_points.push(image_base + pe.entry as u64);
+        if opt.AddressOfEntryPoint != 0 {
+            entry_points.push(image_base + opt.AddressOfEntryPoint as u64);
         }
 
         let name = self.path.as_ref()
@@ -182,10 +222,9 @@ impl PeLoader {
             .unwrap_or("unknown")
             .to_string();
 
-        // Placeholder for memory mapping - in reality we should map sections to a buffer
         let region = MemoryRegion {
             base: image_base,
-            data: bytes, // Simplified: should be mapped image
+            data: bytes,
             name: "pe_image".to_string(),
             perms: common::PERM_MEM_RWX,
         };
@@ -196,15 +235,132 @@ impl PeLoader {
             name,
             emu_path: self.emu_path.clone(),
             image_base,
-            image_size: pe.header.optional_header.map(|h| h.windows_fields.size_of_image).unwrap_or(0),
+            image_size: opt.SizeOfImage,
             regions: vec![region],
             imports,
             exports,
             entry_points,
             sections,
             pe_metadata: Some(pe_metadata),
-            stack_size: pe.header.optional_header.map(|h| h.windows_fields.size_of_stack_reserve as u32).unwrap_or(0x12000),
-            tls_callbacks: Vec::new(), // TODO: Implement TLS callback parsing
+            stack_size: opt.SizeOfStackReserve as u32,
+            tls_callbacks: Vec::new(),
+        })
+    }
+
+    fn parse_pe32(&self, pe: pelite::pe32::PeFile, bytes: Vec<u8>) -> Result<LoadedImage> {
+        use pelite::pe32::Pe;
+        let opt = pe.optional_header();
+        let arch = 0; // ARCH_X86
+        let image_base = self.base_override.unwrap_or(opt.ImageBase as u64);
+        
+        let mut sections = Vec::new();
+        for sect in pe.section_headers() {
+            sections.push(SectionEntry {
+                name: String::from_utf8_lossy(&sect.Name).trim_end_matches('\0').to_string(),
+                virtual_address: sect.VirtualAddress as u64,
+                virtual_size: sect.VirtualSize,
+                perms: self.perms_from_chars(sect.Characteristics),
+            });
+        }
+
+        let mut imports = Vec::new();
+        if let Ok(pe_imports) = pe.imports() {
+            for desc in pe_imports {
+                if let Ok(dll_name) = desc.dll_name() {
+                    let dll = dll_name.to_lowercase().replace(".dll", "");
+                    if let Ok(int) = desc.int() {
+                        for imp in int {
+                            if let Ok(import) = imp {
+                                match import {
+                                    pelite::pe32::imports::Import::ByName { hint: _, name } => {
+                                        imports.push(ImportEntry {
+                                            iat_address: 0,
+                                            dll_name: dll.clone(),
+                                            func_name: name.to_string(),
+                                        });
+                                    },
+                                    pelite::pe32::imports::Import::ByOrdinal { ord } => {
+                                        imports.push(ImportEntry {
+                                            iat_address: 0,
+                                            dll_name: dll.clone(),
+                                            func_name: format!("ordinal_{}", ord),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut exports = Vec::new();
+        if let Ok(pe_exports) = pe.exports() {
+            if let Ok(by) = pe_exports.by() {
+                for export_result in by.iter() {
+                    if let Ok(export) = export_result {
+                        if let Ok(name) = export.name() {
+                            exports.push(ExportEntry {
+                                name: Some(name.to_string()),
+                                address: image_base + export.rva() as u64,
+                                ordinal: export.ordinal() as u32,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        let pe_metadata = PeMetadata {
+            subsystem: opt.Subsystem,
+            timestamp: pe.file_header().TimeDateStamp,
+            machine: pe.file_header().Machine,
+            magic: opt.Magic,
+            resources: Vec::new(),
+            string_table: HashMap::new(),
+        };
+
+        let module_type = if pe_metadata.subsystem == 1 {
+            "driver".to_string()
+        } else if pe.file_header().Characteristics & 0x2000 != 0 {
+            "dll".to_string()
+        } else {
+            "exe".to_string()
+        };
+
+        let mut entry_points = Vec::new();
+        if opt.AddressOfEntryPoint != 0 {
+            entry_points.push(image_base + opt.AddressOfEntryPoint as u64);
+        }
+
+        let name = self.path.as_ref()
+            .and_then(|p| std::path::Path::new(p).file_stem())
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let region = MemoryRegion {
+            base: image_base,
+            data: bytes,
+            name: "pe_image".to_string(),
+            perms: common::PERM_MEM_RWX,
+        };
+
+        Ok(LoadedImage {
+            arch,
+            module_type,
+            name,
+            emu_path: self.emu_path.clone(),
+            image_base,
+            image_size: opt.SizeOfImage,
+            regions: vec![region],
+            imports,
+            exports,
+            entry_points,
+            sections,
+            pe_metadata: Some(pe_metadata),
+            stack_size: opt.SizeOfStackReserve,
+            tls_callbacks: Vec::new(),
         })
     }
 
@@ -263,7 +419,17 @@ pub struct ApiModuleLoader {
 
 impl ApiModuleLoader {
     pub fn make_image(&self) -> Result<LoadedImage> {
-        // Implementation for generating JIT PE
+        let arch_str = if self.arch == 9 { "x64" } else { "x86" };
+        let jit = common::JitPeFile::new(arch_str, self.base, &self.name, &[]);
+        let bytes = jit.get_raw_pe();
+
+        let region = MemoryRegion {
+            base: self.base,
+            data: bytes,
+            name: "api_module".to_string(),
+            perms: common::PERM_MEM_RWX,
+        };
+
         Ok(LoadedImage {
             arch: self.arch,
             module_type: "dll".to_string(),
@@ -271,7 +437,7 @@ impl ApiModuleLoader {
             emu_path: self.emu_path.clone(),
             image_base: self.base,
             image_size: 0x1000, // Placeholder
-            regions: Vec::new(),
+            regions: vec![region],
             imports: Vec::new(),
             exports: Vec::new(),
             entry_points: Vec::new(),
