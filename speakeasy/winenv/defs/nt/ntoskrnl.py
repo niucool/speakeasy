@@ -1,9 +1,9 @@
 # Copyright (C) 2020 FireEye, Inc. All Rights Reserved.
 
-from speakeasy.struct import EmuStruct, EmuUnion, Ptr
 import ctypes as ct
 
-from speakeasy.winenv.defs import * # noqa
+from speakeasy.struct import EmuStruct, EmuUnion, Ptr
+from speakeasy.winenv.defs import *  # noqa
 
 
 class KSYSTEM_TIME(EmuStruct):
@@ -529,14 +529,14 @@ class PEB(EmuStruct):
         self.TlsBitmap = Ptr
         self.TlsBitmapBits = ct.c_uint32 * 2
         self.ReadOnlySharedMemoryBase = Ptr
-        self.SharedData = Ptr # HotpatchInformation
+        self.SharedData = Ptr  # HotpatchInformation
         self.ReadOnlyStaticServerData = Ptr
         self.AnsiCodePageData = Ptr
         self.OemCodePageData = Ptr
         self.UnicodeCaseTableData = Ptr
         self.NumberOfProcessors = ct.c_uint32
         self.NtGlobalFlag = ct.c_uint32
-        self.CriticalSectionTimeout = ct.c_longlong # LARGE_INTEGER
+        self.CriticalSectionTimeout = ct.c_longlong  # LARGE_INTEGER
         self.HeapSegmentReserve = Ptr
         self.HeapSegmentCommit = Ptr
         self.HeapDeCommitTotalFreeThreshold = Ptr
@@ -565,8 +565,8 @@ class PEB(EmuStruct):
         self.TlsExpansionBitmap = Ptr
         self.TlsExpansionBitmapBits = ct.c_uint32 * 32
         self.SessionId = Ptr
-        self.AppCompatFlags = ct.c_ulonglong # ULARGE_INTEGER
-        self.AppCompatFlagsUser = ct.c_ulonglong # ULARGE_INTEGER
+        self.AppCompatFlags = ct.c_ulonglong  # ULARGE_INTEGER
+        self.AppCompatFlagsUser = ct.c_ulonglong  # ULARGE_INTEGER
         self.pShimData = Ptr
         self.AppCompatInfo = Ptr
         self.CSDVersion = UNICODE_STRING
@@ -582,7 +582,7 @@ class PEB(EmuStruct):
         self.FlsHighIndex = Ptr
         self.WerRegistrationData = Ptr
         self.WerShipAssertPtr = Ptr
-        self.pUnused = Ptr # pContextData
+        self.pUnused = Ptr  # pContextData
         self.pImageHeaderHash = Ptr
         self.TracingFlags = ct.c_uint64
         self.CsrServerReadOnlySharedMemoryBase = ct.c_uint64
@@ -627,10 +627,40 @@ class LARGE_INTEGER(EmuStruct):
         self.HighPart = ct.c_uint32
 
 
+class CURDIR(EmuStruct):
+    def __init__(self, ptr_size):
+        super().__init__(ptr_size)
+        self.DosPath = UNICODE_STRING
+        self.Handle = Ptr
+
+
 class RTL_USER_PROCESS_PARAMETERS(EmuStruct):
     def __init__(self, ptr_size):
         super().__init__(ptr_size)
-        self.Reserved1 = ct.c_uint8 * 16
-        self.Reserved2 = ct.c_uint32 * 10
+        self.MaximumLength = ct.c_uint32
+        self.Length = ct.c_uint32
+        self.Flags = ct.c_uint32
+        self.DebugFlags = ct.c_uint32
+        self.ConsoleHandle = Ptr
+        self.ConsoleFlags = ct.c_uint32
+        self.StandardInput = Ptr
+        self.StandardOutput = Ptr
+        self.StandardError = Ptr
+        self.CurrentDirectory = CURDIR
+        self.DllPath = UNICODE_STRING
         self.ImagePathName = UNICODE_STRING
         self.CommandLine = UNICODE_STRING
+        self.Environment = Ptr
+        self.StartingX = ct.c_uint32
+        self.StartingY = ct.c_uint32
+        self.CountX = ct.c_uint32
+        self.CountY = ct.c_uint32
+        self.CountCharsX = ct.c_uint32
+        self.CountCharsY = ct.c_uint32
+        self.FillAttribute = ct.c_uint32
+        self.WindowFlags = ct.c_uint32
+        self.ShowWindowFlags = ct.c_uint32
+        self.WindowTitle = UNICODE_STRING
+        self.DesktopInfo = UNICODE_STRING
+        self.ShellInfo = UNICODE_STRING
+        self.RuntimeData = UNICODE_STRING

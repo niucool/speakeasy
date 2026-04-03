@@ -1,27 +1,39 @@
+import time
+
 from .. import api
 
-import time
 
 class Winmm(api.ApiHandler):
     """
     Emulates functions from winmm.dll
     """
 
-    name = 'winmm'
+    name = "winmm"
     apihook = api.ApiHandler.apihook
     impdata = api.ApiHandler.impdata
 
     def __init__(self, emu):
-        
-        super(Winmm, self).__init__(emu)
-        super(Winmm, self).__get_hook_attrs__(self)
 
-    @apihook('timeGetTime', argc=0)
-    def timeGetTime(self, emu, argv, ctx={}):        
-        '''
+        super().__init__(emu)
+        super().__get_hook_attrs__(self)
+
+    @apihook("timeBeginPeriod", argc=1)
+    def timeBeginPeriod(self, emu, argv, ctx={}):
+        """
+        MMRESULT timeBeginPeriod(UINT uPeriod);
+        """
+        return 0  # TIMERR_NOERROR
+
+    @apihook("timeEndPeriod", argc=1)
+    def timeEndPeriod(self, emu, argv, ctx={}):
+        """
+        MMRESULT timeEndPeriod(UINT uPeriod);
+        """
+        return 0  # TIMERR_NOERROR
+
+    @apihook("timeGetTime", argc=0)
+    def timeGetTime(self, emu, argv, ctx: api.ApiContext = None):
+        """
         DWORD timeGetTime(); // return the system time, in milliseconds
-        '''
-        return int(time.monotonic() * 1000) & 0xffffffff
-        
-
-        
+        """
+        return int(time.monotonic() * 1000) & 0xFFFFFFFF
