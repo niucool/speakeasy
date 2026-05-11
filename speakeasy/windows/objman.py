@@ -477,6 +477,7 @@ class Process(KernelObject):
             list_entry = self.address + 0x188
             self.emu.mem_write(list_entry, list_entry.to_bytes(8, "little"))
             self.emu.mem_write(list_entry + 8, list_entry.to_bytes(8, "little"))
+        self.ldr_entries: list[LdrDataTableEntry] = []
         self.name: str = name
         self.base: int = base
         self.pid: int = self.id
