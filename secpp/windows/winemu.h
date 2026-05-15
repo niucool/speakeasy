@@ -25,6 +25,8 @@
 #include "../common.h"
 #include "common.h"
 #include "objman.h"
+#include "fileman.h"
+#include "regman.h"
 #include "errors.h"
 #include "../struct.h"
 using speakeasy::EmuStruct;
@@ -334,6 +336,8 @@ public:
     std::tuple<int, void*> create_event(const std::string& name = "");
     int dec_ref(void* obj);
     std::tuple<int, void*> create_mutant(const std::string& name = "");
+    void* dev_ioctl(uint32_t ctl_code, void* in_buf, size_t in_len,
+                    void* out_buf, size_t out_len);
 
     // ── Process / thread creation ─────────────────────────────
     void* create_process(const std::string& path = "", const std::string& cmdline = "",

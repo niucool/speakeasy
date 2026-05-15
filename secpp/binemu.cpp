@@ -656,3 +656,52 @@ std::tuple<uint64_t, uint64_t> BinaryEmulator::alloc_stack(size_t size) {
     return {sp, sp + size};
 }
 
+void BinaryEmulator::clean_stack_args(int argc) {
+    int ps = get_ptr_size();
+    uint64_t sp = get_stack_ptr();
+    sp += ps;  // skip ret addr
+    sp += argc * ps;
+    set_stack_ptr(sp);
+}
+
+std::vector<std::tuple<int, std::string>> BinaryEmulator::get_ansi_strings(
+    const std::vector<uint8_t>& data, int min_len) {
+    std::vector<std::tuple<int, std::string>> result;
+    std::string current;
+    int start = -1;
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (data[i] >= 0x20 && data[i] <= 0x7e) {
+            if (start == -1) start = static_cast<int>(i);
+            current += static_cast<char>(data[i]);
+        } else {
+            if ((int)current.length() >= min_len) {
+                result.push_back({start, current});
+            }
+            current.clear();
+            start = -1;
+        }
+    }
+    if ((int)current.length() >= min_len) result.push_back({start, current});
+    return result;
+}
+
+std::vector<std::tuple<int, std::string>> BinaryEmulator::get_unicode_strings(
+    const std::vector<uint8_t>& data, int min_len) {
+    std::vector<std::tuple<int, std::string>> result;
+    std::string current;
+    int start = -1;
+    for (size_t i = 0; i + 1 < data.size(); i += 2) {
+        uint16_t ch = data[i] | (static_cast<uint16_t>(data[i+1]) << 8);
+        if (ch >= 0x20 && ch <= 0x7e) {
+            if (start == -1) start = static_cast<int>(i);
+            current += static_cast<char>(ch);
+        } else {
+            if ((int)current.length() >= min_len) result.push_back({start, current});
+            current.clear();
+            start = -1;
+        }
+    }
+    if ((int)current.length() >= min_len) result.push_back({start, current});
+    return result;
+}
+

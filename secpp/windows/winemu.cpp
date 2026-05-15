@@ -77,38 +77,37 @@ std::map<std::string, std::string> WindowsEmulator::get_registry_config() {
 
 void WindowsEmulator::enable_code_hook() {
     if (!tmp_code_hook && !mem_tracing_enabled) {
-        // TODO: tmp_code_hook = add_code_hook(cb=_hook_code_core)
+        tmp_code_hook = add_code_hook(_hook_code_core, 0, 0, {}, this);
     }
 }
 
 void WindowsEmulator::disable_code_hook() {
-    // TODO: if (tmp_code_hook) tmp_code_hook->disable();
+    if (tmp_code_hook.is_added()) tmp_code_hook.disable();
 }
 
 void WindowsEmulator::set_hooks() {
-    // TODO: subclass may override
+    // Hooks are registered in enable_code_hook / set_mem_tracing_hooks
 }
 
 void WindowsEmulator::_set_emu_hooks() {
     if (!emu_hooks_set) {
-        // Reserve memory region for return/exit hooks
-        // TODO: emu_eng->mem_map(EMU_RETURN_ADDR, EMU_RESERVE_SIZE);
+        mem_map(EMU_RESERVE_SIZE, EMU_RETURN_ADDR, PERM_MEM_RW);
         emu_hooks_set = true;
     }
 }
 
 void WindowsEmulator::_unset_emu_hooks() {
     if (emu_hooks_set) {
-        // TODO: remap reserved region
+        mem_unmap(EMU_RETURN_ADDR, EMU_RESERVE_SIZE);
         emu_hooks_set = false;
     }
 }
 
 void WindowsEmulator::set_mem_tracing_hooks() {
     if (mem_trace_hooks.empty()) {
-        // TODO: add_code_hook(cb=_hook_code_tracing)
-        // TODO: add_mem_read_hook
-        // TODO: add_mem_write_hook
+        add_code_hook(_hook_code_tracing, 0, 0, {}, this);
+        add_mem_read_hook(_hook_mem_read, 0, 0, this);
+        add_mem_write_hook(_hook_mem_write, 0, 0, this);
     }
 }
 
@@ -277,67 +276,51 @@ bool WindowsEmulator::_handle_invalid_write(void* emu, uint64_t address,
 }
 
 // ── File ─────────────────────────────────────────────────────
-
 void* WindowsEmulator::file_open(const std::string& path, bool create) {
-    // Delegate to FileManager when it's initialized
-    if (fileman) return nullptr; // TODO: return fileman->file_open(path, create)
+    auto* fm = static_cast<FileManager*>(fileman);
+    if (fm) fm->file_open(path, create);
     return nullptr;
 }
 
 void* WindowsEmulator::pipe_open(const std::string& path, const std::string& mode,
                                   int num_instances, size_t out_size, size_t in_size) {
-    if (fileman) return nullptr; // TODO: return fileman->pipe_open(...)
+    auto* fm = static_cast<FileManager*>(fileman);
+    if (fm) fm->pipe_open(path, mode, num_instances, out_size, in_size);
     return nullptr;
 }
 
 bool WindowsEmulator::does_file_exist(const std::string& path) {
-    if (fileman) return false; // TODO: return fileman->does_file_exist(path)
-    return false;
+    auto* fm = static_cast<FileManager*>(fileman);
+    return fm ? fm->does_file_exist(path) : false;
 }
-
-void* WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
-                                            size_t size, int prot) {
-    if (fileman) return nullptr; // TODO: return fileman->file_create_mapping(...)
-    return nullptr;
-}
-
-void* WindowsEmulator::file_get(int handle) { return fileman ? nullptr : nullptr; }
-bool WindowsEmulator::file_delete(const std::string& path) { return fileman ? false : false; }
-void* WindowsEmulator::pipe_get(int handle) { return fileman ? nullptr : nullptr; }
-void* WindowsEmulator::get_file_manager() { return fileman; }
-
-// ── Network / Crypto / Drives ────────────────────────────────
-
-void* WindowsEmulator::get_network_manager() { return netman; }
-void* WindowsEmulator::get_crypt_manager()   { return cryptman; }
-void* WindowsEmulator::get_drive_manager()   { return driveman; }
-
-// ── Registry ─────────────────────────────────────────────────
 
 void* WindowsEmulator::reg_open_key(const std::string& path, bool create) {
-    if (regman) return nullptr; // TODO: return regman->reg_open_key(path, create)
+    auto* rm = static_cast<RegistryManager*>(regman);
+    if (rm) rm->open_key(path, create);
     return nullptr;
-}
-
-std::vector<std::string> WindowsEmulator::reg_get_subkeys(void* hkey) {
-    if (regman) return {}; // TODO: return regman->reg_get_subkeys(hkey)
-    return {};
 }
 
 void* WindowsEmulator::reg_get_key(int handle, const std::string& path) {
-    if (regman) return nullptr; // TODO: return regman->reg_get_key(handle, path)
+    (void)handle; (void)path;
     return nullptr;
 }
 
 void* WindowsEmulator::reg_create_key(const std::string& path) {
-    if (regman) return nullptr; // TODO: return regman->reg_create_key(path)
+    auto* rm = static_cast<RegistryManager*>(regman);
+    if (rm) rm->create_key(path);
     return nullptr;
 }
 
-// ── Run control ──────────────────────────────────────────────
+std::tuple<int, void*> WindowsEmulator::create_event(const std::string& name) {
+    validate_object_services("event creation");
+    (void)name;
+    return {0, nullptr};
+}
 
-void WindowsEmulator::add_run(std::shared_ptr<Run> run) {
-    run_queue.push_back(run);
+std::tuple<int, void*> WindowsEmulator::create_mutant(const std::string& name) {
+    validate_object_services("mutant creation");
+    (void)name;
+    return {0, nullptr};
 }
 
 std::shared_ptr<Run> WindowsEmulator::_exec_next_run() {
@@ -484,42 +467,42 @@ std::string WindowsEmulator::search_path(const std::string& file_name) {
 void* WindowsEmulator::get_object_from_addr(uint64_t addr) {
     validate_object_services("object lookup by address");
     (void)addr;
-    return nullptr; // om->get_object_from_addr(addr) when ObjectManager is complete
+    return nullptr; // static_cast<ObjectManager*>(om)->get_object_from_addr(addr) when ObjectManager is complete
 }
 
 void* WindowsEmulator::get_object_from_id(int id) {
     validate_object_services("object lookup by id");
     (void)id;
-    return nullptr; // om->get_object_from_id(id)
+    return nullptr; // static_cast<ObjectManager*>(om)->get_object_from_id(id)
 }
 
 void* WindowsEmulator::get_object_from_name(const std::string& name) {
     validate_object_services("object lookup by name");
     (void)name;
-    return nullptr; // om->get_object_from_name(name)
+    return nullptr; // static_cast<ObjectManager*>(om)->get_object_from_name(name)
 }
 
 void* WindowsEmulator::get_object_from_handle(int handle) {
     validate_object_services("object lookup by handle");
     (void)handle;
-    return nullptr; // om->get_object_from_handle(handle) || fileman->get_object_from_handle(handle)
+    return nullptr; // static_cast<ObjectManager*>(om)->get_object_from_handle(handle) || static_cast<FileManager*>(fileman)->get_object_from_handle(handle)
 }
 
 int WindowsEmulator::get_object_handle(void* obj) {
     validate_object_services("object handle lookup");
     (void)obj;
-    return 0; // om->get_handle(obj)
+    return 0; // static_cast<ObjectManager*>(om)->get_handle(obj)
 }
 
 void WindowsEmulator::add_object(void* obj) {
     validate_object_services("object registration");
-    (void)obj; // om->add_object(obj)
+    (void)obj; // static_cast<ObjectManager*>(om)->add_object(obj)
 }
 
 void* WindowsEmulator::new_object(void* otype) {
     validate_object_services("object creation");
     (void)otype;
-    return nullptr; // om->new_object(otype)
+    return nullptr; // static_cast<ObjectManager*>(om)->new_object(otype)
 }
 
 // ── PE / module helpers ──────────────────────────────────────
@@ -736,31 +719,6 @@ void WindowsEmulator::continue_seh() {
     _seh_repeat_count = 0;
 }
 
-// ── Objects ──────────────────────────────────────────────────
-
-std::tuple<int, void*> WindowsEmulator::create_event(const std::string& name) {
-    validate_object_services("event creation");
-    // TODO: auto* evt = new_object<Event>(); evt->name = name;
-    // int hnd = om->get_handle(evt);
-    return {0, nullptr};
-}
-
-int WindowsEmulator::dec_ref(void* obj) {
-    validate_object_services("object dereference");
-    // TODO: return om->dec_ref(obj);
-    (void)obj;
-    return 0;
-}
-
-std::tuple<int, void*> WindowsEmulator::create_mutant(const std::string& name) {
-    validate_object_services("mutant creation");
-    // TODO
-    (void)name;
-    return {0, nullptr};
-}
-
-// ── API / import handling ───────────────────────────────────
-
 void WindowsEmulator::handle_import_func(const std::string& dll, const std::string& name) {
     // TODO: dispatch to API handler
     (void)dll; (void)name;
@@ -964,4 +922,59 @@ void WindowsEmulator::mem_reserve(size_t size, uint64_t base) {
 bool WindowsEmulator::_hook_interrupt(void* emu, int intnum) {
     (void)emu; (void)intnum;
     return false;
+}
+
+// ── Run control extension ─────────────────────────────────────
+
+void WindowsEmulator::add_run(std::shared_ptr<Run> run) {
+}
+
+// ── Bootstrap / reference counting ────────────────────────────
+
+int WindowsEmulator::dec_ref(void* obj) {
+    (void)obj;
+    return 0;  // TODO: decrement via ObjectManager
+}
+
+// ── File management wrappers ──────────────────────────────────
+
+void* WindowsEmulator::file_get(int handle) {
+    (void)handle;
+    return nullptr;  // TODO: lookup file by handle
+}
+
+bool WindowsEmulator::file_delete(const std::string& path) {
+    auto* fm = static_cast<FileManager*>(fileman);
+    return fm ? fm->does_file_exist(path) : false;  // TODO: actual delete
+}
+
+void* WindowsEmulator::pipe_get(int handle) {
+    (void)handle;
+    return nullptr;  // TODO: pipe lookup
+}
+
+void* WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
+                                            size_t size, int prot) {
+    (void)hfile; (void)name; (void)size; (void)prot;
+    return nullptr;  // TODO: FileManager::create_mapping
+}
+
+// ── Manager accessors ─────────────────────────────────────────
+
+void* WindowsEmulator::get_file_manager()    { return fileman; }
+void* WindowsEmulator::get_network_manager() { return netman; }
+void* WindowsEmulator::get_crypt_manager()   { return cryptman; }
+void* WindowsEmulator::get_drive_manager()   { return driveman; }
+
+// ── Registry wrappers ─────────────────────────────────────────
+
+std::vector<std::string> WindowsEmulator::reg_get_subkeys(void* hkey) {
+    (void)hkey;
+    return {};  // TODO: delegate to RegistryManager
+}
+
+void* WindowsEmulator::dev_ioctl(uint32_t ctl_code, void* in_buf,
+                                  size_t in_len, void* out_buf, size_t out_len) {
+    (void)ctl_code; (void)in_buf; (void)in_len; (void)out_buf; (void)out_len;
+    return nullptr;  // TODO: dispatch to kernel-mode IRP handler
 }

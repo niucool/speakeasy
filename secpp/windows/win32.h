@@ -1,6 +1,9 @@
 // win32.h
-#ifndef WIN32_H
-#define WIN32_H
+#ifdef WIN32
+#undef WIN32
+#endif
+#ifndef SPEAKEASY_WIN32_H
+#define SPEAKEASY_WIN32_H
 
 #include <string>
 #include <vector>
@@ -362,4 +365,4 @@ public:
     void unset_hooks();
 };
 
-#endif // WIN32_H
+#endif // SPEAKEASY_WIN32_H

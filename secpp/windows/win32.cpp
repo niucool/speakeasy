@@ -719,8 +719,7 @@ void Win32Emulator::on_run_complete() {
 }
 
 uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {
-    // uint64_t addr = mem_map(size, base=nullptr, tag='api.heap.%s' % (heap));
-    // heap_allocs.push_back(std::make_tuple(addr, size, heap));
-    // return addr;
-    return 0;
+    uint64_t addr = mem_map(size, 0ULL, "api.heap." + heap);
+    heap_allocs.push_back({addr, size, heap});
+    return addr;
 }
