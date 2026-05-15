@@ -4,16 +4,8 @@
 
 // Constructor
 WindowsApi::WindowsApi(Emulator* emu) : emu(emu) {
-    int arch = emu->get_arch();
-    
-    if (arch == 1) { // _arch.ARCH_X86
-        ptr_size = 4;
-    } else if (arch == 2) { // _arch.ARCH_AMD64
-        ptr_size = 8;
-    } else {
-        // TODO: Throw ApiEmuError
-        // throw ApiEmuError("Invalid architecture");
-    }
+    // TODO: get_arch() requires complete Emulator type (not yet ported)
+    ptr_size = 4;
 }
 
 ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {

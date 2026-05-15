@@ -12,7 +12,7 @@
 #include <exception>
 
 // TODO: Need C++ equivalents for these Python imports
-// #include "binemu.h"
+#include "../binemu.h"
 // #include "profiler.h"
 // #include "arch.h"
 // #include "common.h"
@@ -35,7 +35,6 @@
 const int DISASM_SIZE = 0x20;
 
 // Forward declarations
-class BinaryEmulator;
 class MemAccess;
 class Run;
 class EmuStruct;
@@ -183,10 +182,10 @@ public:
     void start();
     
     // Run methods
-    std::shared_ptr<Run> get_current_run();
+    std::shared_ptr<void> get_current_run();
     void* get_current_module();
     std::vector<void*> get_dropped_files();
-    void set_hooks() override;
+    void set_hooks();
     
     // Process methods
     std::vector<void*> get_processes();

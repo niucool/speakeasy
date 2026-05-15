@@ -58,10 +58,10 @@
 | `cli_config.py` | — | ❌ | CLI 配置辅助，待移植 |
 | `errors.py` | `errors.h` | ✅ | 完整异常类层次结构 |
 | `version.py` | `version.h` | ✅ | 版本常量 (`1.6.1`) |
-| `artifacts.py` | — | ❌ | 产物存储，待移植 |
-| `report.py` | — | ❌ | 报告生成，待移植 |
+| `artifacts.py` | `artifacts.h` / `artifacts.cpp` | ✅ | ArtifactStore + base64 编解码 + SHA-256 哈希 |
+| `report.py` | `report.h` | ✅ | DataArtifact, EmuReport, RunSummary + JSON 序列化 |
 | `struct.py` | `struct.h` | ✅ | EmuStruct 基类 + EmuEnum + EmuPtr + 字节读写辅助 |
-| `volumes.py` | — | ❌ | 卷挂载，待移植 |
+| `volumes.py` | `volumes.h` / `volumes.cpp` | ✅ | parse_volume_spec + expand_volume_to_entries |
 | — | `const.h` | ✅ | 日志常量 (PROC_CREATE 等)，C++ 新增 |
 | `__init__.py` | — | ➖ | |
 | `__main__.py` | — | ➖ | 由 `main()` 替代 |
@@ -94,12 +94,12 @@
 | `objman.py` | `objman.h` / `objman.cpp` | 🔶 | 对象管理器 |
 | `regman.py` | `regman.h` / `regman.cpp` | 🔶 | 注册表管理器 |
 | `sessman.py` | `sessman.h` / `sessman.cpp` | 🔶 | 会话管理器 |
-| `kernel.py` | — | ❌ | **内核模拟器入口，尚未移植** |
-| `loaders.py` | — | ❌ | **PE 加载器，尚未移植** |
-| `ioman.py` | — | ❌ | **I/O 管理器，尚未移植** |
-| `kernel_mods/__init__.py` | — | ❌ | |
-| `kernel_mods/kernel_mod.py` | — | ❌ | **内核模块基类，尚未移植** |
-| `kernel_mods/volmgr.py` | — | ❌ | **卷管理器内核模块，尚未移植** |
+| `kernel.py` | `kernel.h` / `kernel.cpp` | ✅ | WinKernelEmulator + pool_alloc + driver bootstrap |
+| `loaders.py` | `loaders.h` / `loaders.cpp` | ✅ | PeLoader + LoadedImage + pe-parse 集成 |
+| `ioman.py` | `ioman.h` / `ioman.cpp` | ✅ | IoManager + KernelModule 接口 + dev_ioctl 分发 |
+| `kernel_mods/__init__.py` | — | ➖ | |
+| `kernel_mods/kernel_mod.py` | `kernel_mods/kernel_mod.h` | ✅ | KernelModBase 具体基类 |
+| `kernel_mods/volmgr.py` | `kernel_mods/volmgr.h` + `.cpp` | ✅ | VolMgrModule + DISK_EXTENT 结构体 |
 | `__init__.py` | — | ➖ | |
 
 ---
@@ -231,16 +231,16 @@
 
 | 分类 | 已完成 | 部分实现 | 未开始 | 合计 |
 |------|--------|---------|--------|------|
-| 顶层模块 | 7 | 5 | 5 | 17 |
+| 顶层模块 | 11 | 5 | 1 | 17 |
 | 引擎层 | 0 | 1 | 0 | 1 |
-| Windows 模拟层 | 0 | 12 | 5 | 17 |
+| Windows 模拟层 | 5 | 12 | 0 | 17 |
 | WinEnv 核心 | 1 | 3 | 0 | 4 |
 | 用户态 API | 0 | 0 | 40 | 40 |
 | 内核态 API | 0 | 0 | 8 | 8 |
 | 定义文件 | 0 | 0 | 10 | 10 |
-| **总计** | **8** | **21** | **68** | **97** |
+| **总计** | **17** | **21** | **59** | **97** |
 
-**整体完成度: ~8% 完全完成, ~30% 部分实现**
+**整体完成度: ~18% 完全完成, ~39% 部分实现**
 
 ---
 

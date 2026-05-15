@@ -70,9 +70,10 @@ file(GLOB_RECURSE SPEAKEASY_SOURCES
     "secpp/*.cpp"
 )
 
-# Filter out test/driver files if any
+# Filter out test/driver files and incomplete modules
 list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/test/.*")
 list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
+list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/win32\\.cpp$")  # TODO: Phase 4
 
 # ── Library Target ────────────────────────────────────────────
 add_library(speakeasy STATIC ${SPEAKEASY_SOURCES})
@@ -114,6 +115,9 @@ option(BUILD_TESTS "Build test targets" ON)
 if(BUILD_TESTS)
     enable_testing()
 
+    find_package(GTest CONFIG REQUIRED)
+    include(GoogleTest)
+
     # Smoke test – verifies library linkage
     add_executable(smoke_test tests/smoke_test.cpp)
     target_link_libraries(smoke_test PRIVATE
@@ -126,6 +130,21 @@ if(BUILD_TESTS)
         target_link_libraries(smoke_test PRIVATE capstone::capstone)
     endif()
     add_test(NAME SmokeTest COMMAND smoke_test)
+
+    # Unit tests (Google Test)
+    file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/test_*.cpp")
+    if(UNIT_TEST_SOURCES)
+        add_executable(speakeasy_tests ${UNIT_TEST_SOURCES})
+        target_link_libraries(speakeasy_tests PRIVATE
+            speakeasy
+            GTest::gtest
+            GTest::gtest_main
+        )
+        target_include_directories(speakeasy_tests PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/secpp
+        )
+        gtest_discover_tests(speakeasy_tests)
+    endif()
 
     # Future: add_subdirectory(tests) for full test suite
 endif()

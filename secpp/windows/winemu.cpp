@@ -447,7 +447,7 @@ void WindowsEmulator::start() {
     */
 }
 
-std::shared_ptr<Run> WindowsEmulator::get_current_run() {
+std::shared_ptr<void> WindowsEmulator::get_current_run() {
     // Get the current run that is being emulated
     return curr_run;
 }
