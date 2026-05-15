@@ -15,7 +15,20 @@
 | CMake 配置 | `cmake -B build` | ✅ 通过 |
 | CTest | `ctest` | ✅ 1/1 Passed |
 
-**当前阶段: Phase 1 — 基础设施补全** (include 路径修复 + 实现补全)
+**当前阶段: Phase 2 — 配置与结构体** (实现缺失核心模块)
+
+### Phase 1 进展 — 编译修复
+
+| 类别 | 修复数 | 说明 |
+|------|--------|------|
+| include 路径修复 | 6 处 | `binemu.h`, `profiler.h`, `unicorn_eng.h` 等 |
+| C++ 语法错误 | 3 处 | `WILDCARD_FLAG`, `sizeof` 关键字, `reg_read` 参数 |
+| virtual/override 不匹配 | 12 处 | PeFile, KernelObject, File, WindowsEmulator 等 |
+| private/protected 访问 | 8 处 | MemMap, FileMap, KernelObject, GuiObject 等 |
+| 类型/构造函数 | 5 处 | 初始化列表, tuple 元素, Thread/Token 默认构造 |
+| enable_shared_from_this | 2 处 | WininetSession, WininetInstance |
+
+**编译状态**: 15/20 个 `.cpp` 文件通过编译，34 个剩余错误集中在 `win32.cpp`（基类前向声明问题，Phase 4 解决）
 
 ---
 
@@ -39,15 +52,15 @@
 | `common.py` | `common.h` / `common.cpp` | 🔶 | Hook 体系定义完整 (312+335 行)，回调包装器有占位 |
 | `memmgr.py` | `memmgr.h` / `memmgr.cpp` | 🔶 | MemMap + MemoryManager 类完整 (240+511 行)，底层引擎交互有占位 |
 | `profiler.py` | `profiler.h` / `profiler.cpp` | 🔶 | Run/Profiler 类定义 (201+206 行)，JSON 输出含 TODO |
-| `profiler_events.py` | — | ❌ | 事件类型枚举，尚未移植 |
-| `config.py` | — | ❌ | 配置解析与验证，待移植 |
+| `profiler_events.py` | `profiler_events.h` | ✅ | 事件类型常量 + 23 个 event struct，含 JSON 序列化 |
+| `config.py` | `config.h` / `config.cpp` | ✅ | EmuConfig 结构体 + JSON 加载/验证 |
 | `cli.py` | — | ❌ | CLI 入口，待移植 |
 | `cli_config.py` | — | ❌ | CLI 配置辅助，待移植 |
 | `errors.py` | `errors.h` | ✅ | 完整异常类层次结构 |
 | `version.py` | `version.h` | ✅ | 版本常量 (`1.6.1`) |
 | `artifacts.py` | — | ❌ | 产物存储，待移植 |
 | `report.py` | — | ❌ | 报告生成，待移植 |
-| `struct.py` | — | ❌ | 模拟结构体，待移植 |
+| `struct.py` | `struct.h` | ✅ | EmuStruct 基类 + EmuEnum + EmuPtr + 字节读写辅助 |
 | `volumes.py` | — | ❌ | 卷挂载，待移植 |
 | — | `const.h` | ✅ | 日志常量 (PROC_CREATE 等)，C++ 新增 |
 | `__init__.py` | — | ➖ | |
@@ -218,16 +231,16 @@
 
 | 分类 | 已完成 | 部分实现 | 未开始 | 合计 |
 |------|--------|---------|--------|------|
-| 顶层模块 | 3 | 5 | 9 | 17 |
+| 顶层模块 | 7 | 5 | 5 | 17 |
 | 引擎层 | 0 | 1 | 0 | 1 |
 | Windows 模拟层 | 0 | 12 | 5 | 17 |
 | WinEnv 核心 | 1 | 3 | 0 | 4 |
 | 用户态 API | 0 | 0 | 40 | 40 |
 | 内核态 API | 0 | 0 | 8 | 8 |
 | 定义文件 | 0 | 0 | 10 | 10 |
-| **总计** | **4** | **21** | **72** | **97** |
+| **总计** | **8** | **21** | **68** | **97** |
 
-**整体完成度: ~4% 完全完成, ~25% 部分实现**
+**整体完成度: ~8% 完全完成, ~30% 部分实现**
 
 ---
 
