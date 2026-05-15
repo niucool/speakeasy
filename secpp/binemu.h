@@ -32,12 +32,13 @@ const bool WILDCARD_FLAG = true;  // sentinel for wildcard API/module matching
 // Generic emulator class for binary code
 class BinaryEmulator : public MemoryManager {
 private:
-    uint64_t stack_base;
     uint64_t page_size;
     uint64_t inst_count;
     uint64_t curr_instr_size;
     void* disasm_eng;
     bool builtin_hooks_set;
+protected:
+    uint64_t stack_base;
     EmuEngine* emu_eng;
     std::vector<void*> maps;
     std::map<std::string, std::string> config;

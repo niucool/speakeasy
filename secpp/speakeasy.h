@@ -10,8 +10,10 @@
 #include <cstdint>
 #include <nlohmann/json.hpp>
 
-// TODO: Replace Python imports with C++ equivalents
-// #include "pefile.h"
+#include "windows/win32.h"
+#include "windows/winemu.h"
+#include "windows/kernel.h"
+#include "windows/common.h"
 // #include "win32.h"
 // #include "winkernel.h"
 // #include "errors.h"
@@ -29,7 +31,7 @@ class Speakeasy {
 private:
     void* logger;
     nlohmann::json config;
-    Emulator* emu;
+    WindowsEmulator* emu;
     std::vector<std::tuple<std::function<void()>, std::string, std::string, int, std::string>> api_hooks;
     std::vector<std::tuple<std::function<void()>, uint64_t, uint64_t, std::map<std::string, std::string>>> code_hooks;
     std::vector<std::tuple<std::function<void()>, std::map<std::string, std::string>>> dyn_code_hooks;

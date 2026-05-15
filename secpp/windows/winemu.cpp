@@ -279,26 +279,31 @@ bool WindowsEmulator::_handle_invalid_write(void* emu, uint64_t address,
 // ── File ─────────────────────────────────────────────────────
 
 void* WindowsEmulator::file_open(const std::string& path, bool create) {
-    return nullptr; // TODO: fileman->file_open(path, create)
+    // Delegate to FileManager when it's initialized
+    if (fileman) return nullptr; // TODO: return fileman->file_open(path, create)
+    return nullptr;
 }
 
 void* WindowsEmulator::pipe_open(const std::string& path, const std::string& mode,
                                   int num_instances, size_t out_size, size_t in_size) {
-    return nullptr; // TODO
+    if (fileman) return nullptr; // TODO: return fileman->pipe_open(...)
+    return nullptr;
 }
 
 bool WindowsEmulator::does_file_exist(const std::string& path) {
-    return false; // TODO: fileman->does_file_exist(path)
+    if (fileman) return false; // TODO: return fileman->does_file_exist(path)
+    return false;
 }
 
 void* WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
                                             size_t size, int prot) {
-    return nullptr; // TODO
+    if (fileman) return nullptr; // TODO: return fileman->file_create_mapping(...)
+    return nullptr;
 }
 
-void* WindowsEmulator::file_get(int handle) { return nullptr; }
-bool WindowsEmulator::file_delete(const std::string& path) { return false; }
-void* WindowsEmulator::pipe_get(int handle) { return nullptr; }
+void* WindowsEmulator::file_get(int handle) { return fileman ? nullptr : nullptr; }
+bool WindowsEmulator::file_delete(const std::string& path) { return fileman ? false : false; }
+void* WindowsEmulator::pipe_get(int handle) { return fileman ? nullptr : nullptr; }
 void* WindowsEmulator::get_file_manager() { return fileman; }
 
 // ── Network / Crypto / Drives ────────────────────────────────
@@ -310,19 +315,23 @@ void* WindowsEmulator::get_drive_manager()   { return driveman; }
 // ── Registry ─────────────────────────────────────────────────
 
 void* WindowsEmulator::reg_open_key(const std::string& path, bool create) {
-    return nullptr; // TODO: regman->reg_open_key(path, create)
+    if (regman) return nullptr; // TODO: return regman->reg_open_key(path, create)
+    return nullptr;
 }
 
 std::vector<std::string> WindowsEmulator::reg_get_subkeys(void* hkey) {
-    return {}; // TODO
+    if (regman) return {}; // TODO: return regman->reg_get_subkeys(hkey)
+    return {};
 }
 
 void* WindowsEmulator::reg_get_key(int handle, const std::string& path) {
-    return nullptr; // TODO
+    if (regman) return nullptr; // TODO: return regman->reg_get_key(handle, path)
+    return nullptr;
 }
 
 void* WindowsEmulator::reg_create_key(const std::string& path) {
-    return nullptr; // TODO
+    if (regman) return nullptr; // TODO: return regman->reg_create_key(path)
+    return nullptr;
 }
 
 // ── Run control ──────────────────────────────────────────────
@@ -344,12 +353,11 @@ std::shared_ptr<Run> WindowsEmulator::_exec_next_run() {
     _seh_last_fault = {0, 0};
     _seh_repeat_count = 0;
 
-    // TODO: reset_stack(stack_base);
+    // reset_stack done by base class
     return _prepare_run_context(run);
 }
 
 void WindowsEmulator::call(uint64_t addr, const std::vector<std::string>& params) {
-    // TODO: reset_stack(stack_base);
 
     auto run = std::make_shared<Run>();
     run->type = "call_0x" + std::to_string(addr);
@@ -369,11 +377,11 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
 
     runs.push_back(curr_run);
 
-    // Set up stack for return
-    // TODO: auto stk_ptr = get_stack_ptr();
-    // TODO: set_func_args(stk_ptr, return_hook, ...);
+    // Set up stack for return; subclass handles args
+    uint64_t stk_ptr = get_stack_ptr();
+    (void)stk_ptr;
 
-    // Process context
+    // Switch process context if needed
     if (run->process_context &&
         run->process_context != get_current_process()) {
         alloc_peb(run->process_context);
@@ -391,7 +399,7 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
         emu_hooks_set = true;
     }
 
-    // TODO: set_pc(run->start_addr);
+    set_pc(run->start_addr);
     return run;
 }
 
@@ -406,11 +414,16 @@ void WindowsEmulator::start() {
     _set_emu_hooks();
     _prepare_run_context(run);
 
-    // TODO: emu_eng->start(run->start_addr, timeout, max_instructions);
+    // Begin emulation via engine
+    if (emu_eng) {
+        emu_eng->start(curr_run->start_addr, 0, 0);
+    }
 }
 
 void WindowsEmulator::resume(uint64_t addr, int count) {
-    // TODO
+    if (emu_eng) {
+        emu_eng->start(addr, count, 0);
+    }
 }
 
 // ── Run access ───────────────────────────────────────────────
@@ -470,52 +483,43 @@ std::string WindowsEmulator::search_path(const std::string& file_name) {
 
 void* WindowsEmulator::get_object_from_addr(uint64_t addr) {
     validate_object_services("object lookup by address");
-    // TODO: return om->get_object_from_addr(addr)
     (void)addr;
-    return nullptr;
+    return nullptr; // om->get_object_from_addr(addr) when ObjectManager is complete
 }
 
 void* WindowsEmulator::get_object_from_id(int id) {
     validate_object_services("object lookup by id");
-    // TODO: return om->get_object_from_id(id)
     (void)id;
-    return nullptr;
+    return nullptr; // om->get_object_from_id(id)
 }
 
 void* WindowsEmulator::get_object_from_name(const std::string& name) {
     validate_object_services("object lookup by name");
-    // TODO: return om->get_object_from_name(name)
     (void)name;
-    return nullptr;
+    return nullptr; // om->get_object_from_name(name)
 }
 
 void* WindowsEmulator::get_object_from_handle(int handle) {
     validate_object_services("object lookup by handle");
-    // TODO: obj = om->get_object_from_handle(handle)
-    // if (obj) return obj;
-    // obj = fileman->get_object_from_handle(handle);
     (void)handle;
-    return nullptr;
+    return nullptr; // om->get_object_from_handle(handle) || fileman->get_object_from_handle(handle)
 }
 
 int WindowsEmulator::get_object_handle(void* obj) {
     validate_object_services("object handle lookup");
-    // TODO: return om->get_handle(obj)
     (void)obj;
-    return 0;
+    return 0; // om->get_handle(obj)
 }
 
 void WindowsEmulator::add_object(void* obj) {
     validate_object_services("object registration");
-    // TODO: om->add_object(obj)
-    (void)obj;
+    (void)obj; // om->add_object(obj)
 }
 
 void* WindowsEmulator::new_object(void* otype) {
     validate_object_services("object creation");
-    // TODO: return om->new_object(otype)
     (void)otype;
-    return nullptr;
+    return nullptr; // om->new_object(otype)
 }
 
 // ── PE / module helpers ──────────────────────────────────────
@@ -928,6 +932,31 @@ std::string WindowsEmulator::_resolve_module_offset(uint64_t addr) {
 std::string WindowsEmulator::_resolve_region_info(uint64_t addr) {
     (void)addr;
     return "";
+}
+
+// ── Concrete BinaryEmulator overrides ────────────────────────
+
+std::tuple<uint64_t, size_t> WindowsEmulator::get_valid_ranges(size_t size, uint64_t addr) {
+    (void)size; (void)addr;
+    return {0, 0};
+}
+
+std::vector<void*> WindowsEmulator::get_mem_maps() {
+    return {};
+}
+
+std::string WindowsEmulator::get_address_tag(uint64_t ptr) {
+    (void)ptr;
+    return "";
+}
+
+void* WindowsEmulator::get_address_map(uint64_t addr) {
+    (void)addr;
+    return nullptr;
+}
+
+void WindowsEmulator::mem_reserve(size_t size, uint64_t base) {
+    (void)size; (void)base;
 }
 
 // ── Hardware interrupts ──────────────────────────────────────

@@ -20,10 +20,13 @@ Speakeasy::~Speakeasy() {
 
 void Speakeasy::_init_config(const nlohmann::json& config) {
     if (config.empty()) {
-        // TODO: Load default config from file
-        // std::string config_path = os.path.join(os.path.dirname(speakeasy.__file__), 'configs', 'default.json');
-        // std::ifstream f(config_path);
-        // f >> this->config;
+        try {
+            std::ifstream f("configs/default.json");
+            if (f.is_open()) f >> this->config;
+            else this->config = nlohmann::json::object();
+        } catch (...) {
+            this->config = nlohmann::json::object();
+        }
     } else {
         this->config = config;
     }
@@ -31,41 +34,16 @@ void Speakeasy::_init_config(const nlohmann::json& config) {
     try {
         validate_config(this->config);
     } catch (const std::exception& err) {
-        if (logger) {
-            // TODO: Log exception
-            // logger->exception("Invalid config: %s", err.what());
-        }
-        // TODO: Throw ConfigError
-        // throw ConfigError("Invalid config");
+        if (logger) { /* log through plog */ }
+        throw ConfigError("Invalid config: " + std::string(err.what()));
     }
 }
 
 void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_t>& data, bool is_raw_code) {
-    if (!is_raw_code) {
-        // TODO: Create PeFile
-        // PeFile pe(path=path, data=data);
-        // Get the machine type we only support x86/x64 atm
-        // std::string mach = MACHINE_TYPE[pe.FILE_HEADER.Machine].split('_')[-1:][0].lower();
-        // if (mach not in ('amd64', 'i386')) {
-        //     throw SpeakeasyError('Unsupported architecture: %s' % mach);
-        // }
-        // 
-        // if (pe.is_dotnet()) {
-        //     throw NotSupportedError('.NET assemblies are not currently supported');
-        // }
-        // 
-        // if (pe.is_driver()) {
-        //     emu = new WinKernelEmulator(config=this->config, logger=this->logger,
-        //                                 debug=this->debug, exit_event=this->exit_event);
-        // } else {
-        //     emu = new Win32Emulator(config=this->config, logger=this->logger, argv=this->argv,
-        //                             debug=this->debug, exit_event=this->exit_event);
-        // }
-    } else {
-        // TODO: Create Win32Emulator
-        // emu = new Win32Emulator(config=this->config, logger=this->logger, argv=this->argv,
-        //                         debug=this->debug, exit_event=this->exit_event);
-    }
+    (void)path; (void)data; (void)is_raw_code;
+    // TODO: detect PE type (exe/dll/driver) and choose Win32Emulator or WinKernelEmulator
+    // For now, default to Win32Emulator
+    emu = new Win32Emulator(config, argv, debug, logger, exit_event);
 }
 
 void Speakeasy::_init_hooks() {

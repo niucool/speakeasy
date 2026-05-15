@@ -348,6 +348,13 @@ public:
     std::string _resolve_module_offset(uint64_t addr);
     std::string _resolve_region_info(uint64_t addr);
 
+    // ── Concrete implementations of BinaryEmulator pure virtuals ─
+    std::tuple<uint64_t, size_t> get_valid_ranges(size_t size, uint64_t addr = 0) override;
+    std::vector<void*> get_mem_maps() override;
+    std::string get_address_tag(uint64_t ptr) override;
+    void* get_address_map(uint64_t addr) override;
+    void mem_reserve(size_t size, uint64_t base = 0) override;
+
     // ── Hardware interrupts ───────────────────────────────────
     bool _hook_interrupt(void* emu, int intnum);
 };
