@@ -50,8 +50,10 @@ private:
     
     // Config fields
     std::map<std::string, std::string> osversion;
+protected:
     std::map<std::string, std::string> env;
     std::map<std::string, std::string> user_config;
+private:
     std::string domain;
     std::string hostname;
     std::vector<std::string> symlinks;

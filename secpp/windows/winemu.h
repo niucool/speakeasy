@@ -26,6 +26,11 @@
 #include "common.h"
 #include "objman.h"
 #include "errors.h"
+#include "../struct.h"
+using speakeasy::EmuStruct;
+using speakeasy::write_le;
+using speakeasy::read_le;
+using speakeasy::hex_str;
 
 // Forward declarations for defs (not yet ported)
 // #include "winenv/defs/nt/ddk.h"
@@ -48,7 +53,6 @@ enum class BootstrapPhase {
 
 class MemAccess;
 class Run;
-class EmuStruct;
 class WindowsEmuError;
 
 // ── WindowsEmulator ──────────────────────────────────────────
@@ -175,6 +179,15 @@ public:
     void _unset_emu_hooks();
     void set_mem_tracing_hooks();
     bool _module_access_hook(void* emu, uint64_t addr, size_t size, void* ctx);
+    bool _hook_code_core(void* emu, uint64_t addr, size_t size);
+
+    // ── Memory exception handlers ───────────────────────────────
+    bool _handle_invalid_read(void* emu, uint64_t addr, size_t size, uint64_t value);
+    bool _handle_prot_fetch(void* emu, uint64_t addr, size_t size, uint64_t value);
+    bool _handle_invalid_write(void* emu, uint64_t addr, size_t size, uint64_t value);
+
+    // ── Shared data ─────────────────────────────────────────────
+    void _populate_user_shared_data(uint64_t base);
 
     // ── Memory ────────────────────────────────────────────────
     EmuStruct* cast(EmuStruct* obj, const std::vector<uint8_t>& bytez);
@@ -213,6 +226,7 @@ public:
     // ── Run control ───────────────────────────────────────────
     void add_run(std::shared_ptr<Run> run);
     std::shared_ptr<Run> _exec_next_run();
+    std::shared_ptr<Run> _prepare_run_context(std::shared_ptr<Run> run);
     void call(uint64_t addr, const std::vector<std::string>& params = {});
     std::shared_ptr<Run> _exec_run(std::shared_ptr<Run> run);
     void start();
@@ -231,6 +245,40 @@ public:
     void set_current_process(void* process);
     void set_current_thread(void* thread);
 
+    // ── Environment ────────────────────────────────────────────
+    std::string get_system_root();
+    std::string get_windows_dir();
+    std::string get_cd();
+    void set_cd(const std::string& path);
+    std::map<std::string, std::string> get_env();
+    void set_env(const std::string& var, const std::string& val);
+    std::string search_path(const std::string& file_name);
+    void setup() {}
+
+    // ── Object management ──────────────────────────────────────
+    void* get_object_from_addr(uint64_t addr);
+    void* get_object_from_id(int id);
+    void* get_object_from_name(const std::string& name);
+    void* get_object_from_handle(int handle);
+    int get_object_handle(void* obj);
+    void add_object(void* obj);
+    void* new_object(void* otype);
+
+    // ── PE / module helpers ────────────────────────────────────
+    void* get_mod_from_addr(uint64_t addr);
+    uint64_t _alloc_sentinel();
+    void* get_mod_by_name(const std::string& name);
+    std::vector<void*> get_peb_modules();
+
+    // ── PE initialization ─────────────────────────────────────
+    void init_peb(void* user_mods, void* proc = nullptr);
+    void init_teb(void* thread, void* peb);
+    void init_tls(void* thread);
+    void* load_pe(const std::string& path = "", const std::vector<uint8_t>& data = {},
+                  uint64_t imp_id = 0);
+    void* load_image(void* image);
+    void ensure_pe_import_hooks(uint64_t base_addr);
+
     // ── Module loading ────────────────────────────────────────
     std::string get_native_module_path(const std::string& mod_name = "");
     void* load_library(const std::string& mod_name);
@@ -243,12 +291,42 @@ public:
         const std::vector<void*>& user_modules = {});
     std::vector<void*> init_sys_modules(const std::vector<void*>& modules_config);
     std::vector<void*> init_user_modules(const std::vector<void*>& modules_config);
+    std::vector<void*> _init_module_group(const std::vector<void*>& modules_config, uint64_t default_base = 0);
 
     // ── Thread context ────────────────────────────────────────
     void* get_thread_context(void* thread = nullptr);
     void load_thread_context(void* ctx, void* thread = nullptr);
 
+    // ── API / import handling ──────────────────────────────────
+    void handle_import_func(const std::string& dll, const std::string& name);
+    void log_api(uint64_t pc, const std::string& api, uint64_t rv, const std::vector<uint64_t>& argv);
+    void handle_import_data(const std::string& mod, const std::string& sym, uint64_t data_ptr = 0);
+    void* get_proc(const std::string& mod_name, const std::string& func_name);
+    void add_callback(const std::string& mod_name, const std::string& func_name);
+    std::string get_symbol_from_address(uint64_t address);
+    std::tuple<std::string, std::string> normalize_import_miss(const std::string& dll, const std::string& name);
+    std::vector<uint8_t> read_unicode_string(uint64_t addr);
+    void restart_run(void* run);
+
+    // ── Memory hooks (additional) ──────────────────────────────
+    bool _hook_mem_read(void* emu, int access, uint64_t addr, size_t size, uint64_t value);
+    bool _hook_mem_write(void* emu, int access, uint64_t addr, size_t size, uint64_t value);
+    bool _hook_mem_unmapped(void* emu, int access, uint64_t addr, size_t size, uint64_t value);
+    bool _handle_invalid_fetch(void* emu, uint64_t addr, size_t size, uint64_t value);
+    bool _handle_prot_write(void* emu, uint64_t addr, size_t size, uint64_t value);
+
+    // ── Code hooks (additional) ────────────────────────────────
+    bool _hook_code_tracing(void* emu, uint64_t addr, size_t size);
+    bool _hook_code_coverage(void* emu, uint64_t addr, size_t size);
+    bool _hook_code_debug(void* emu, uint64_t addr, size_t size);
+    void set_coverage_hooks();
+    void set_debug_hooks();
+
     // ── SEH ───────────────────────────────────────────────────
+    uint64_t _get_exception_list();
+    bool _dispatch_seh_x86(uint64_t except_code);
+    std::tuple<uint64_t, uint64_t> get_reserved_ranges();
+    void _continue_seh_x86();
     bool dispatch_seh(uint64_t except_code, uint64_t faulting_address = 0);
     void continue_seh();
 
@@ -256,6 +334,19 @@ public:
     std::tuple<int, void*> create_event(const std::string& name = "");
     int dec_ref(void* obj);
     std::tuple<int, void*> create_mutant(const std::string& name = "");
+
+    // ── Process / thread creation ─────────────────────────────
+    void* create_process(const std::string& path = "", const std::string& cmdline = "",
+                         void* image = nullptr, bool child = false);
+    void* create_thread(uint64_t addr, void* ctx, void* proc_obj,
+                        const std::string& thread_type = "thread", bool is_suspended = false);
+    void resume_thread(void* thread);
+    void* get_process_peb(void* process);
+
+    // ── Error / context ────────────────────────────────────────
+    std::string get_error_info(const std::string& msg, uint64_t pc, const std::string& trace = "");
+    std::string _resolve_module_offset(uint64_t addr);
+    std::string _resolve_region_info(uint64_t addr);
 
     // ── Hardware interrupts ───────────────────────────────────
     bool _hook_interrupt(void* emu, int intnum);
