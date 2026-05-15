@@ -191,10 +191,68 @@ void Profiler::log_file_access(std::shared_ptr<Run> run, const std::string& path
 // Due to length constraints, I'm not implementing all methods here
 // but the pattern would be similar to the above methods
 
-std::string Profiler::get_json_report() {
-    // Retrieve the execution profile for the emulator as a json string
-    // TODO: Implementation depends on JSON library
-    return "";
+nlohmann::json Profiler::get_json_report() const {
+    nlohmann::json report;
+    report["report_version"] = __report_version__;
+
+    // Metadata
+    if (!meta.empty()) {
+        report["input"] = meta;
+    }
+
+    // Runs
+    nlohmann::json runs_array = nlohmann::json::array();
+    for (auto& run : runs) {
+        nlohmann::json r;
+        r["start_addr"] = speakeasy::hex_str(run->start_addr);
+        r["instr_cnt"] = run->instr_cnt;
+        r["num_apis"] = run->num_apis;
+
+        if (!run->apis.empty()) {
+            r["apis"] = run->apis;
+        }
+        if (!run->file_access.empty()) {
+            r["file_access"] = run->file_access;
+        }
+        if (!run->network["dns"].empty() || !run->network["traffic"].empty()) {
+            r["network"] = run->network;
+        }
+        if (!run->process_events.empty()) {
+            r["process_events"] = run->process_events;
+        }
+        if (!run->registry_access.empty()) {
+            r["registry_access"] = run->registry_access;
+        }
+        runs_array.push_back(r);
+    }
+    report["runs"] = runs_array;
+
+    // Static strings
+    if (!strings.empty()) {
+        report["static_strings"] = strings;
+    }
+
+    // Decoded strings (runtime)
+    if (!decoded_strings.empty()) {
+        report["decoded_strings"] = decoded_strings;
+    }
+
+    // Errors
+    if (meta.count("errors")) {
+        report["errors"] = meta.at("errors");
+    }
+
+    // Dropped files
+    // dropped_files reporting (TODO: add member to Profiler)
+    // if (!dropped_files.empty()) {
+    //     report["dropped_files"] = dropped_files;
+    // }
+
+    return report;
+}
+
+std::string Profiler::get_json_report_string() const {
+    return get_json_report().dump();
 }
 
 std::map<std::string, std::string> Profiler::get_report() {

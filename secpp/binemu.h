@@ -85,7 +85,7 @@ public:
     // Profiler methods
     std::shared_ptr<Profiler> get_profiler();
     std::map<std::string, std::string> get_report();
-    std::string get_json_report();
+    std::string get_json_report_string();
     
     // Config methods
     void _parse_config(const std::string& config);

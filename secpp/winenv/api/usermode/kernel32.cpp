@@ -148,7 +148,7 @@ K32_STUB(CreateToolhelp32Snapshot) K32_STUB(Process32FirstA) K32_STUB(Process32N
 K32_STUB(Thread32First) K32_STUB(Thread32Next) K32_STUB(Module32FirstA) K32_STUB(Module32NextA)
 
 K32_STUB(AllocConsole) K32_STUB(FreeConsole) K32_STUB(GetConsoleMode)
-K32_STUB(SetConsoleMode) K32_STUB(OutputDebugStringA) K32_STUB(GetACP)
+K32_STUB(SetConsoleMode) K32_STUB(OutputDebugStringA)
 K32_STUB(DecodePointer) K32_STUB(EncodePointer) K32_STUB(IsProcessorFeaturePresent)
 
 // ── Real implementations ────────────────────────────────────
@@ -172,10 +172,6 @@ uint64_t Kernel32::GetSystemInfo(void*, const std::string&, int, const std::vect
 
 uint64_t Kernel32::IsDebuggerPresent(void*, const std::string&, int, const std::vector<uint64_t>&) {
     return 0;  // Speakeasy is NOT a debugger
-}
-
-uint64_t Kernel32::GetACP(void*, const std::string&, int, const std::vector<uint64_t>&) {
-    return 1252;  // ANSI Latin-1
 }
 
 }} // namespaces

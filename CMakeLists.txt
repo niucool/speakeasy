@@ -24,6 +24,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(plog CONFIG REQUIRED)
 find_package(pe-parse CONFIG REQUIRED)
+find_package(cxxopts CONFIG REQUIRED)
 
 # unicorn does not ship a CMake config; use pkg-config or manual lookup
 find_package(PkgConfig QUIET)
@@ -106,9 +107,9 @@ else()
 endif()
 
 # ── CLI Executable ────────────────────────────────────────────
-# Uncomment and create secpp/main.cpp when CLI port is ready
-# add_executable(speakeasy-cli secpp/main.cpp)
-# target_link_libraries(speakeasy-cli PRIVATE speakeasy)
+add_executable(speakeasy-cli secpp/main.cpp secpp/cli.cpp secpp/cli_config.cpp)
+target_link_libraries(speakeasy-cli PRIVATE speakeasy cxxopts::cxxopts)
+target_include_directories(speakeasy-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/secpp)
 
 # ── Tests ─────────────────────────────────────────────────────
 option(BUILD_TESTS "Build test targets" ON)

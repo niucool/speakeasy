@@ -51,11 +51,11 @@
 | `binemu.py` | `binemu.h` / `binemu.cpp` | 🔶 | 类框架完整 (216+337 行)，部分引擎方法含占位 |
 | `common.py` | `common.h` / `common.cpp` | 🔶 | Hook 体系定义完整 (312+335 行)，回调包装器有占位 |
 | `memmgr.py` | `memmgr.h` / `memmgr.cpp` | 🔶 | MemMap + MemoryManager 类完整 (240+511 行)，底层引擎交互有占位 |
-| `profiler.py` | `profiler.h` / `profiler.cpp` | 🔶 | Run/Profiler 类定义 (201+206 行)，JSON 输出含 TODO |
+| `profiler.py` | `profiler.h` / `profiler.cpp` | ✅ | Run/Profiler + JSON 报告生成 (get_json_report) |
 | `profiler_events.py` | `profiler_events.h` | ✅ | 事件类型常量 + 23 个 event struct，含 JSON 序列化 |
 | `config.py` | `config.h` / `config.cpp` | ✅ | EmuConfig 结构体 + JSON 加载/验证 |
-| `cli.py` | — | ❌ | CLI 入口，待移植 |
-| `cli_config.py` | — | ❌ | CLI 配置辅助，待移植 |
+| `cli.py` | `cli.h` / `cli.cpp` + `main.cpp` | ✅ | cxxopts CLI, 19 个选项, --help 正常 |
+| `cli_config.py` | `cli_config.h` / `cli_config.cpp` | ✅ | 19 个配置字段 CLI 参数, 合并/覆盖逻辑 |
 | `errors.py` | `errors.h` | ✅ | 完整异常类层次结构 |
 | `version.py` | `version.h` | ✅ | 版本常量 (`1.6.1`) |
 | `artifacts.py` | `artifacts.h` / `artifacts.cpp` | ✅ | ArtifactStore + base64 编解码 + SHA-256 哈希 |
@@ -126,7 +126,7 @@
 
 | Python 源文件 | C++ 对应文件 | 状态 | 备注 |
 |--------------|-------------|------|------|
-| `kernel32.py` | `kernel32.h/.cpp` | ✅ | 30 API |
+| `kernel32.py` | `kernel32.h/.cpp` | ✅ | 110 API (宏注册, 覆盖73% Python API) |
 | `ntdll.py` | `ntdll.h/.cpp` | ✅ | 19 API |
 | `advapi32.py` | `advapi32.h/.cpp` | ✅ | 13 API |
 | `shell32.py` | `shell32.h/.cpp` | ✅ | 5 API |
@@ -184,12 +184,12 @@
 
 | Python 源目录/文件 | C++ 对应 | 状态 | 备注 |
 |-------------------|---------|------|------|
-| `__init__.py` | 仍为 Python | ❌ | |
+| `__init__.py` | — | ➖ | |
 | `ndis/` | 仍为 Python | ❌ | NDIS 定义 |
-| `nt/` | 仍为 Python | ❌ | NT 内核定义 |
+| `nt/` | `nt/ddk.h` + `nt/ntoskrnl.h` | ✅ | NTSTATUS, UNICODE_STRING, OBJECT_ATTRIBUTES, IRP, 30+ 结构体 |
 | `registry/` | 仍为 Python | ❌ | 注册表定义 |
 | `wfp/` | 仍为 Python | ❌ | WFP 定义 |
-| `windows/` | 仍为 Python | ❌ | Windows 通用定义 |
+| `windows/` | `windows/windows.h` | ✅ | FILETIME, SYSTEM_INFO, SYSTEMTIME, MEMORY_BASIC_INFORMATION, 内存常量 |
 | `winsock/` | 仍为 Python | ❌ | Winsock 定义 |
 | `usb.py` | 仍为 Python | ❌ | |
 | `wdf.py` | 仍为 Python | ❌ | |
@@ -231,16 +231,16 @@
 
 | 分类 | 已完成 | 部分实现 | 未开始 | 合计 |
 |------|--------|---------|--------|------|
-| 顶层模块 | 11 | 5 | 1 | 17 |
+| 顶层模块 | 13 | 4 | 0 | 17 |
 | 引擎层 | 0 | 1 | 0 | 1 |
 | Windows 模拟层 | 7 | 10 | 0 | 17 |
 | WinEnv 核心 | 1 | 3 | 0 | 4 |
 | 用户态 API | 7 | 0 | 33 | 40 |
 | 内核态 API | 0 | 0 | 8 | 8 |
-| 定义文件 | 0 | 0 | 10 | 10 |
-| **总计** | **26** | **19** | **52** | **97** |
+| 定义文件 | 2 | 0 | 8 | 10 |
+| **总计** | **31** | **16** | **50** | **97** |
 
-**整体完成度: ~27% 完全完成, ~46% 部分实现**
+**整体完成度: ~32% 完全完成, ~48% 部分实现**
 
 ---
 

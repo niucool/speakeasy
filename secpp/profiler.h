@@ -19,10 +19,12 @@ const std::string __report_version__ = "1.1.0";
 #include <algorithm>
 #include <functional>
 #include <cstring>
+#include <nlohmann/json.hpp>
 #include <exception>
 
 // TODO: Need to define constants like PROC_CREATE, MEM_ALLOC, etc.
 #include "const.h"
+#include "struct.h"
 
 
 // Custom exception class for profiler errors
@@ -194,7 +196,8 @@ public:
                      const std::string& method = "");
     
     // Retrieve the execution profile for the emulator as a json string
-    std::string get_json_report();
+    nlohmann::json get_json_report() const;
+    std::string get_json_report_string() const;
     
     // Retrieve the execution profile for the emulator
     std::map<std::string, std::string> get_report();

@@ -61,10 +61,10 @@ std::map<std::string, std::string> BinaryEmulator::get_report() {
     return std::map<std::string, std::string>();
 }
 
-std::string BinaryEmulator::get_json_report() {
+std::string BinaryEmulator::get_json_report_string() {
     // Get the emulation report for all runs that were executed formatted as a JSON string
     if (profiler) {
-        return profiler->get_json_report();
+        return profiler->get_json_report_string();
     }
     // Return empty string if no profiler
     return "";
