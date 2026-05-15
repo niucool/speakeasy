@@ -1,0 +1,24 @@
+// user32.h
+#ifndef SPEAKEASY_USER32_H
+#define SPEAKEASY_USER32_H
+#include <string>
+#include <vector>
+#include "api_handler_base.h"
+namespace speakeasy { namespace api {
+class User32 : public ApiHandler {
+public: User32(); std::string get_name() const override {return "user32";}
+const std::vector<ApiEntry>& get_apis() const override {return apis_;}
+private: std::vector<ApiEntry> apis_;
+static uint64_t MessageBoxA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t MessageBoxW(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t GetMessageA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t PeekMessageA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t FindWindowA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t SendMessageA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t GetWindowTextA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t SetWindowTextA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t GetForegroundWindow(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t stub(void*,const std::string&,int,const std::vector<uint64_t>&);
+};
+}}
+#endif

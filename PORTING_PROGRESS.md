@@ -83,7 +83,7 @@
 | Python 源文件 | C++ 对应文件 | 状态 | 备注 |
 |--------------|-------------|------|------|
 | `winemu.py` | `winemu.h` / `winemu.cpp` | ✅ | 完整 API (245+390行), BootstrapPhase, SEH, Code hook, 内存异常处理, 模块加载, 共享数据 |
-| `win32.py` | `win32.h` / `win32.cpp` | 🔶 | Win32 用户态模拟器 |
+| `win32.py` | `win32.h` / `win32.cpp` | ✅ | Win32 用户态模拟器 (728行), 完整 API, 已编译通过 |
 | `com.py` | `com.h` / `com.cpp` | 🔶 | COM 模拟 |
 | `common.py` | `common.h` / `common.cpp` | 🔶 | Windows 通用工具 |
 | `cryptman.py` | `cryptman.h` / `cryptman.cpp` | 🔶 | 加密管理器 |
@@ -122,20 +122,20 @@
 | — | `api_handler_registry.h` | 🔶 | Handler 注册表 (C++ 新增模式) |
 | `__init__.py` | — | ➖ | |
 
-### 4.3 用户态 API 处理器 (`winenv/api/usermode/`) — **40 个文件，全部未移植**
+### 4.3 用户态 API 处理器 (`winenv/api/usermode/`) — **33 个文件未移植** (7 已完成)
 
 | Python 源文件 | C++ 对应文件 | 状态 | 备注 |
 |--------------|-------------|------|------|
-| `kernel32.py` | — | ❌ | 核心 kernel32 API 处理器 |
-| `ntdll.py` | — | ❌ | ntdll API 处理器 |
-| `advapi32.py` | — | ❌ | |
-| `shell32.py` | — | ❌ | |
-| `user32.py` | — | ❌ | |
+| `kernel32.py` | `kernel32.h/.cpp` | ✅ | 30 API |
+| `ntdll.py` | `ntdll.h/.cpp` | ✅ | 19 API |
+| `advapi32.py` | `advapi32.h/.cpp` | ✅ | 13 API |
+| `shell32.py` | `shell32.h/.cpp` | ✅ | 5 API |
+| `user32.py` | `user32.h/.cpp` | ✅ | 9 API |
 | `gdi32.py` | — | ❌ | |
-| `ws2_32.py` | — | ❌ | Winsock |
+| `ws2_32.py` | `ws2_32.h/.cpp` | ✅ | 14 API |
 | `wininet.py` | — | ❌ | |
 | `winhttp.py` | — | ❌ | |
-| `crypt32.py` | — | ❌ | |
+| `crypt32.py` | `crypt32.h/.cpp` | ✅ | 4 API |
 | `bcrypt.py` | — | ❌ | |
 | `ncrypt.py` | — | ❌ | |
 | `bcryptprimitives.py` | — | ❌ | |
@@ -233,14 +233,14 @@
 |------|--------|---------|--------|------|
 | 顶层模块 | 11 | 5 | 1 | 17 |
 | 引擎层 | 0 | 1 | 0 | 1 |
-| Windows 模拟层 | 6 | 11 | 0 | 17 |
+| Windows 模拟层 | 7 | 10 | 0 | 17 |
 | WinEnv 核心 | 1 | 3 | 0 | 4 |
-| 用户态 API | 0 | 0 | 40 | 40 |
+| 用户态 API | 7 | 0 | 33 | 40 |
 | 内核态 API | 0 | 0 | 8 | 8 |
 | 定义文件 | 0 | 0 | 10 | 10 |
-| **总计** | **18** | **20** | **59** | **97** |
+| **总计** | **26** | **19** | **52** | **97** |
 
-**整体完成度: ~19% 完全完成, ~39% 部分实现**
+**整体完成度: ~27% 完全完成, ~46% 部分实现**
 
 ---
 

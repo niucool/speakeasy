@@ -7,7 +7,7 @@
 // Constructor implementation
 Win32Emulator::Win32Emulator(const nlohmann::json& config, const std::vector<std::string>& argv,
                              bool debug, void* logger, void* exit_event)
-    : WindowsEmulator(config, logger, exit_event, debug),
+    : WindowsEmulator(config.dump(), logger, exit_event, debug),
       last_error(0), peb_addr(0), argv(argv), sessman(nullptr), 
       com(nullptr), stack_base(0) {
     
@@ -25,10 +25,9 @@ std::vector<std::string> Win32Emulator::get_argv() {
     std::string argv0 = "";
     
     if (!this->argv.empty()) {
-        for (const auto& m : modules) {
-            // TODO: Access PE object and check if it's an exe
-            // void* pe = std::get<0>(m);
-            std::string emu_path = std::get<2>(m);
+        for (auto* m : modules) {
+            // TODO: Access PE object from module pointer
+            std::string emu_path = "";  // TODO: get emu_path from module
             // TODO: Check if PE is exe
             // if (pe->is_exe()) {
                 argv0 = emu_path;
@@ -518,7 +517,7 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
     // start();
 }
 
-void* Win32Emulator::alloc_peb(void* proc) {
+void Win32Emulator::alloc_peb(void* proc) {
     // TODO: Implement PEB allocation
     // if (proc->is_peb_active) {
     //     return nullptr;
@@ -536,7 +535,6 @@ void* Win32Emulator::alloc_peb(void* proc) {
     // peb->object.OSBuildNumber = osversion["build"];
     // peb->write_back();
     // return peb;
-    return nullptr;
 }
 
 void Win32Emulator::set_unhandled_exception_handler(uint64_t handler_addr) {
@@ -671,7 +669,7 @@ bool Win32Emulator::_hook_mem_unmapped(void* emu, int access, uint64_t address,
     //         mem_map_reserve(pld->address);
     //         auto user_mods = get_user_modules();
     //         init_peb(user_mods);
-    //         return true;
+    //         return;
     //     }
     // }
     // return WindowsEmulator::_hook_mem_unmapped(emu, access, address, size, value, user_data);
@@ -709,7 +707,7 @@ void Win32Emulator::on_emu_complete() {
     stop();
 }
 
-bool Win32Emulator::on_run_complete() {
+void Win32Emulator::on_run_complete() {
     run_complete = true;
     // curr_run->ret_val = get_return_val();
     // if (profiler) {
@@ -717,7 +715,7 @@ bool Win32Emulator::on_run_complete() {
     // }
     // 
     // return _exec_next_run();
-    return false;
+    // on_run_complete done
 }
 
 uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {

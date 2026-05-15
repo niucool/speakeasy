@@ -9,11 +9,10 @@
 #include <cstdint>
 #include <nlohmann/json.hpp>
 
-// TODO: Replace Python imports with C++ equivalents
-// #include "winemu.h"
-// #include "objman.h"
-// #include "sessman.h"
-// #include "com.h"
+#include "winemu.h"
+#include "objman.h"
+#include "sessman.h"
+#include "com.h"
 // #include "winapi.h"
 // #include "common.h"
 // #include "errors.h"
@@ -23,7 +22,6 @@ const int DLL_PROCESS_ATTACH = 1;
 const int MAX_EXPORTS_TO_EMULATE = 10;
 
 // Forward declarations
-class WindowsEmulator;
 class SessionManager;
 class COM;
 class WindowsApi;
@@ -80,7 +78,7 @@ public:
      * Get the session manager for the emulator. This will manage things like desktops,
      * windows, and session isolation
      */
-    SessionManager* get_session_manager() override;
+    SessionManager* get_session_manager();
     
     /**
      * Add a vectored exception handler that will be executed on an exception
@@ -95,7 +93,7 @@ public:
     /**
      * Get processes
      */
-    std::vector<void*> get_processes() override;
+    std::vector<void*> get_processes();
     
     /**
      * Initialize configured processes set in the emulator config
@@ -142,7 +140,7 @@ public:
     /**
      * Allocate memory for the Process Environment Block (PEB)
      */
-    void* alloc_peb(void* proc);
+    void alloc_peb(void* proc) override;
     
     /**
      * Establish a handler for unhandled exceptions that occur during emulation
@@ -167,7 +165,7 @@ public:
     /**
      * Get the user modules (e.g. dlls) that are loaded in the emulator
      */
-    std::vector<void*> get_user_modules() override;
+    std::vector<void*> get_user_modules();
     
     /**
      * An emulated binary is attempted to terminate its current process.
@@ -184,23 +182,23 @@ public:
     /**
      * Set the emulator callbacks
      */
-    void set_hooks() override;
+    void set_hooks();
     
     /**
      * Stop emulation
      */
-    void stop() override;
+    void stop();
     
     /**
      * Called when all runs have completed emulation
      */
-    void on_emu_complete() override;
+    void on_emu_complete();
     
     /**
      * Clean up after a run completes. This function will pop the
      * next run from the run queue and emulate it.
      */
-    bool on_run_complete() override;
+    void on_run_complete() override;
     
     /**
      * Allocate a memory chunk and add it to the "heap"

@@ -73,7 +73,7 @@ file(GLOB_RECURSE SPEAKEASY_SOURCES
 # Filter out test/driver files and incomplete modules
 list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/test/.*")
 list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
-list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/win32\\.cpp$")  # TODO: Phase 4
+# win32.cpp now compiles with completed winemu.h
 
 # ── Library Target ────────────────────────────────────────────
 add_library(speakeasy STATIC ${SPEAKEASY_SOURCES})
