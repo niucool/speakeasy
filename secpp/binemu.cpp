@@ -136,7 +136,7 @@ std::map<std::string, std::string> BinaryEmulator::get_user() {
 }
 
 template<typename T>
-size_t BinaryEmulator::sizeof(T obj) {
+size_t BinaryEmulator::objsize(T obj) {
     // Get the size (in the emulation space) of the supplied object
     // TODO: Implementation depends on object type
     // return obj.sizeof();
@@ -240,7 +240,9 @@ uint64_t BinaryEmulator::reg_read(const std::string& reg) {
 uint64_t BinaryEmulator::reg_read(int reg) {
     // Read a value from an emulated cpu register
     if (emu_eng) {
-        return emu_eng->reg_read(reg);
+        uint64_t val = 0;
+        emu_eng->reg_read(reg, &val);
+        return val;
     }
     return 0;
 }

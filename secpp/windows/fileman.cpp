@@ -70,7 +70,7 @@ File::File(const std::string& path, const std::map<std::string, std::string>& co
     : path(path), bytes_written(0), curr_offset(0), is_dir(false), config(config) {
     
     if (!data.empty()) {
-        data = std::make_shared<std::stringstream>(std::string(data.begin(), data.end()));
+        this->data = std::make_shared<std::stringstream>(std::string(data.begin(), data.end()));
     }
 }
 
@@ -318,7 +318,7 @@ std::shared_ptr<FileMap> FileManager::get_mapping_from_handle(uint32_t handle) {
 std::shared_ptr<FileMap> FileManager::get_mapping_from_addr(uint64_t addr) {
     for (auto& pair : file_maps) {
         auto& fmap = pair.second;
-        for (auto& view_pair : fmap->views) {
+        for (auto& view_pair : fmap->get_views()) {
             auto& base = view_pair.first;
             if (base == addr) {
                 return fmap;

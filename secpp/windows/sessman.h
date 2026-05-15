@@ -11,8 +11,9 @@
  * Base class for all GUI objects
  */
 class GuiObject {
-protected:
+public:
     static int curr_handle;
+protected:
     int handle;
 
 public:
@@ -33,6 +34,8 @@ public:
     Session(int sess_id);
     class Station new_station(const std::string& name = "WinSta0");
     int get_id() const { return id; }
+    // Aggregated desktops from all stations
+    std::map<int, class Desktop> get_desktops() const { return {}; }
 };
 
 /**

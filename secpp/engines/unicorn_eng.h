@@ -9,7 +9,8 @@
 #include <memory>
 #include <string>
 
-#include "../winenv/arch.h" // Include architecture definitions
+#include "../winenv/arch.h"  // architecture definitions
+#include "../common.h"       // PERM_MEM_*, HOOK_*, INVALID_MEM_* constants
 // Include Unicorn Engine C API
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>

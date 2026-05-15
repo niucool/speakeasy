@@ -23,8 +23,35 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # ── Dependencies ──────────────────────────────────────────────
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(plog CONFIG REQUIRED)
-find_package(unicorn CONFIG REQUIRED)
 find_package(pe-parse CONFIG REQUIRED)
+
+# unicorn does not ship a CMake config; use pkg-config or manual lookup
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(PC_UNICORN unicorn IMPORTED_TARGET)
+endif()
+
+if(PC_UNICORN_FOUND)
+    # pkg-config found it; create an alias for uniform target name
+    if(NOT TARGET unicorn::unicorn)
+        add_library(unicorn::unicorn ALIAS PkgConfig::PC_UNICORN)
+    endif()
+else()
+    # Manual fallback
+    find_path(UNICORN_INCLUDE_DIRS unicorn/unicorn.h
+        HINTS ${VCPKG_INSTALLED_DIR}/include
+        PATH_SUFFIXES unicorn)
+    find_library(UNICORN_LIBRARIES unicorn
+        HINTS ${VCPKG_INSTALLED_DIR}/lib)
+    if(UNICORN_INCLUDE_DIRS AND UNICORN_LIBRARIES)
+        add_library(unicorn::unicorn STATIC IMPORTED)
+        set_target_properties(unicorn::unicorn PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${UNICORN_INCLUDE_DIRS}"
+            IMPORTED_LOCATION "${UNICORN_LIBRARIES}")
+    else()
+        message(FATAL_ERROR "unicorn not found. Install via vcpkg: vcpkg install unicorn")
+    endif()
+endif()
 
 # Optional: Capstone for disassembly (used in binemu)
 find_package(capstone QUIET)

@@ -389,8 +389,8 @@ DecoyModule::DecoyModule(const std::string& path, const std::vector<uint8_t>& da
                          bool fast_load, uint64_t base, const std::string& emu_path, 
                          bool is_jitted)
     : PeFile(path, data, IMPORT_HOOK_ADDR, 4, emu_path, fast_load),
-      image_size(0), ep(0), is_jitted(is_jitted), decoy_base(base), 
-      decoy_path(emu_path), base_name(""), is_mapped(false) {
+      is_jitted(is_jitted), decoy_base(base), 
+      decoy_path(emu_path), base_name("") {
     
     if (data.size() > 0) {
         image_size = data.size();

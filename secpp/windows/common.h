@@ -68,7 +68,7 @@ const std::vector<uint8_t> DOS_HEADER = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00......
+    0x00, 0x00, 0x00, 0x00, 0x00
 };
 
 // Blank header used for a 32-bit PE header
@@ -166,7 +166,7 @@ public:
     // Methods
     std::vector<uint64_t> get_tls_callbacks();
     uint32_t get_resource_dir_rva();
-    std::string get_emu_path();
+    virtual std::string get_emu_path();
     void set_emu_path(const std::string& path);
     std::string _hash_pe(const std::string& path = "", const std::vector<uint8_t>& data = {});
     std::map<uint64_t, std::tuple<std::string, std::string>> _get_pe_imports();
@@ -182,10 +182,10 @@ public:
     int find_bytes(const std::vector<uint8_t>& pattern, int offset = 0);
     void set_bytes(int offset, const std::vector<uint8_t>& pattern);
     int get_ptr_size();
-    uint64_t get_base();
-    std::string get_base_name();
+    virtual uint64_t get_base();
+    virtual std::string get_base_name();
     size_t get_image_size();
-    bool is_decoy();
+    virtual bool is_decoy();
     bool is_driver();
     bool is_dotnet();
     bool has_reloc_table();
@@ -209,12 +209,12 @@ public:
     
     // Methods
     std::vector<uint8_t> get_memory_mapped_image(uint64_t max_virtual_address = 0x10000000, 
-                                                 uint64_t base = 0) override;
+                                                 uint64_t base = 0);
     uint64_t get_base() override;
     std::string get_emu_path() override;
-    std::string get_base_name() override;
+    std::string get_base_name();
     uint64_t get_ep();
-    bool is_decoy() override;
+    bool is_decoy();
 };
 
 // Class used to rapidly assemble a decoy PE that will only contain an export table

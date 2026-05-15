@@ -2,10 +2,11 @@
 #ifndef PROFILER_H
 #define PROFILER_H
 
+#include <string>
+
 // Data format versioning
 const std::string __report_version__ = "1.1.0";
 
-#include <string>
 #include <vector>
 #include <deque>
 #include <map>
@@ -21,7 +22,8 @@ const std::string __report_version__ = "1.1.0";
 #include <exception>
 
 // TODO: Need to define constants like PROC_CREATE, MEM_ALLOC, etc.
-// #include "const.h"
+#include "const.h"
+
 
 // Custom exception class for profiler errors
 class ProfileError : public std::exception {

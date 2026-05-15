@@ -350,7 +350,7 @@ NetworkManager::NetworkManager(const std::map<std::string, std::string>& config)
     
     // super(NetworkManager, this).__init__()
     
-    WininetComponent::config = config;
+    WininetComponent::set_config(config);
     // TODO: Implementation depends on config structure
     // this.dns = this.config.get('dns');
 }

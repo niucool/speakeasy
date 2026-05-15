@@ -64,31 +64,30 @@ int main() {
 
     // --- unicorn ---
     {
-        // Verify Unicorn version and basic API
+        // uc_version returns combined version (major<<24 | minor<<16), not uc_err
         unsigned int major = 0, minor = 0;
-        bool ok = (uc_version(&major, &minor) == UC_ERR_OK);
+        unsigned int ver = uc_version(&major, &minor);
+        bool ok = (ver != 0) && (major >= 2);
         if (ok) {
             std::cout << "           Unicorn version: " << major << "." << minor << std::endl;
         }
         check("unicorn       (CPU emulation)", ok);
 
         // Quick open/close cycle to verify the library is functional
-        if (ok) {
-            uc_engine* uc = nullptr;
-            uc_err err = uc_open(UC_ARCH_X86, UC_MODE_32, &uc);
-            if (err == UC_ERR_OK) {
-                uc_close(uc);
-            } else {
-                check("unicorn       (engine open/close)", false);
-            }
+        uc_engine* uc = nullptr;
+        uc_err err = uc_open(UC_ARCH_X86, UC_MODE_32, &uc);
+        if (err == UC_ERR_OK) {
+            uc_close(uc);
+            check("unicorn       (engine open/close)", true);
+        } else {
+            check("unicorn       (engine open/close)", false);
         }
     }
 
     // --- pe-parse ---
     {
-        // pe-parse is a C library; verify header inclusion and basic
-        // structure size.
-        bool ok = (sizeof(pe_header) > 0);  // compile-time check
+        // pe-parse is a C library with C++ namespace; verify structure size.
+        bool ok = (sizeof(peparse::pe_header) > 0);
         check("pe-parse      (PE file parser)", ok);
     }
 

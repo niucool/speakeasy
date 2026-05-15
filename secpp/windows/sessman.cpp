@@ -36,7 +36,9 @@ std::string Station::get_name() const {
 
 // Desktop implementation
 Desktop::Desktop(const std::string& name) : name(name) {
-    desktop_window = &new_window();
+    // TODO: fix dangling pointer - new_window returns by value
+    Window win = new_window();
+    desktop_window = nullptr;  // TODO: store properly
 }
 
 Window Desktop::new_window() {
@@ -78,7 +80,9 @@ SessionManager::SessionManager(const nlohmann::json& config)
     curr_session = &sessions.emplace(0, Session(0)).first->second;
 
     // create WinSta0
-    curr_station = &curr_session->new_station("WinSta0");
+    // TODO: fix dangling pointer
+    Station st = curr_session->new_station("WinSta0");
+    curr_station = nullptr;
 
     // Create a desktop
     curr_station->new_desktop("Winlogon");
@@ -153,7 +157,7 @@ GuiObject* SessionManager::get_gui_object(int handle) {
         
         for (auto& stat_pair : sess.get_desktops()) {
             int hstat = stat_pair.first;
-            Station& stat = const_cast<Station&>(stat_pair.second);
+            auto& stat = stat_pair.second;  // TODO: fix type - Desktop vs Station
             
             if (hstat == handle) {
                 return &stat;

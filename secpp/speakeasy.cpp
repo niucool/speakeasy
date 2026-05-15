@@ -308,7 +308,7 @@ void* Speakeasy::add_mem_invalid_hook(std::function<void()> cb) {
 void* Speakeasy::add_interrupt_hook(std::function<void()> cb, 
                                    const std::map<std::string, std::string>& ctx) {
     if (!emu) {
-        interrupt_hooks.push_back(std::make_tuple(cb));
+        interrupt_hooks.push_back(std::make_tuple(cb, ctx));
         return nullptr;
     }
     // TODO: Return emu->add_interrupt_hook(cb, ctx=ctx, emu=this);

@@ -75,6 +75,8 @@ public:
     // Methods
     uint32_t new_handle();
     uint32_t get_handle();
+    static void set_config(const std::map<std::string, std::string>& cfg) { config = cfg; }
+    static std::map<std::string, std::string> get_config() { return config; }
 };
 
 // WinInet request object
@@ -112,7 +114,7 @@ public:
 };
 
 // WinInet session object
-class WininetSession : public WininetComponent {
+class WininetSession : public WininetComponent, public std::enable_shared_from_this<WininetSession> {
 private:
     std::string server;
     int port;
@@ -147,7 +149,7 @@ public:
 };
 
 // WinInet instance object
-class WininetInstance : public WininetComponent {
+class WininetInstance : public WininetComponent, public std::enable_shared_from_this<WininetInstance> {
 private:
     std::string user_agent;
     int access;

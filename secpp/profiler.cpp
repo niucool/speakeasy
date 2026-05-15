@@ -11,7 +11,6 @@ Run::Run() : instr_cnt(0), ret_val(nullptr), process_context(nullptr),
     exec_cache = std::deque<uint64_t>(4);
     read_cache = std::deque<uint64_t>(4);
     write_cache = std::deque<uint64_t>(4);
-    last_data = {0, 0};
 }
 
 int Run::get_api_count() {

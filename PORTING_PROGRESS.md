@@ -1,8 +1,23 @@
 # Speakeasy Porting Progress — Python → C++
 
-> 自动生成时间: 2026-05-15
+> 最后更新: 2026-05-15
 > 项目根: `/home/jim/projects/speakeasy`
 > Python 源: `speakeasy/` → C++ 目标: `secpp/`
+
+## Phase 0 — 构建基础设施 ✅ 完成
+
+| 交付物 | 文件 | 状态 |
+|--------|------|------|
+| CMake 构建配置 | `CMakeLists.txt` | ✅ C++17, vcpkg 集成, 跨平台标志 |
+| Smoke test | `tests/smoke_test.cpp` | ✅ 4 库全部验证通过 |
+| Porting 计划 | `PORTING_PLAN.md` | ✅ 7 阶段, 14-20 周预估 |
+| 依赖安装 | vcpkg | ✅ nlohmann-json 3.12, plog 1.1.11, unicorn 2.1.4, pe-parse |
+| CMake 配置 | `cmake -B build` | ✅ 通过 |
+| CTest | `ctest` | ✅ 1/1 Passed |
+
+**当前阶段: Phase 1 — 基础设施补全** (include 路径修复 + 实现补全)
+
+---
 
 ## 状态图例
 

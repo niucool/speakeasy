@@ -89,6 +89,15 @@ uint64_t MemMap::get_base() const {
     return this->base;
 }
 
+uint64_t MemMap::get_block_base() const {
+    return this->block_base;
+}
+
+uint64_t MemMap::get_block_size() const {
+    return this->block_size;
+}
+
+
 /**
  * Set the current mapping to be in an allocated state
  */
@@ -221,7 +230,7 @@ void MemoryManager::mem_free(uint64_t base) {
 
         std::vector<std::shared_ptr<MemMap>> ml;
         for (const auto& m : get_mem_maps()) {
-            if (m->block_base == mm->block_base) {
+            if (m->get_block_base() == mm->get_block_base()) {
                 ml.push_back(m);
             }
         }
@@ -237,7 +246,7 @@ void MemoryManager::mem_free(uint64_t base) {
         
         if (all_free) {
             this->block_base = 0;
-            mem_unmap(mm->block_base, mm->block_size);
+            mem_unmap(mm->get_block_base(), mm->get_block_size());
             for (const auto& m : ml) {
                 // Remove from maps vector
                 auto it = std::find(this->maps.begin(), this->maps.end(), m);

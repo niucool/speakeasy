@@ -93,17 +93,18 @@ public:
  */
 class KernelObject {
 protected:
-    static int curr_handle;
-    static int curr_id;
 
     // TODO: Define emu type
     void* emu;
     int address;
     std::string name;
     int object;
+    int arch;
+public:
+    static int curr_handle;
+    static int curr_id;
     int ref_cnt;
     std::vector<int> handles;
-    int arch;
     int id;
 
     // TODO: Define nt_types and win_types
@@ -117,7 +118,7 @@ public:
     int sizeof_obj(void* obj = nullptr);
     // TODO: Define get_bytes return type
     void* get_bytes(void* obj = nullptr);
-    KernelObject read_back();
+    virtual KernelObject read_back();
     void write_back();
     int get_id();
     void set_id(int oid);
@@ -223,6 +224,7 @@ private:
 
 public:
     Thread(void* emu, int stack_base = 0, int stack_commit = 0);
+    Thread() : KernelObject(nullptr) {}
     
     void queue_message(void* msg);
     SEH get_seh();
@@ -246,6 +248,7 @@ public:
 class Token : public KernelObject {
 public:
     Token(void* emu);
+    Token() : KernelObject(nullptr) {}
 };
 
 /**
@@ -279,6 +282,7 @@ private:
     std::string path;
     std::string image;
     std::string title;
+    int base;
 
 public:
     Process(void* emu, void* pe = nullptr, const std::vector<void*>& user_modules = {},

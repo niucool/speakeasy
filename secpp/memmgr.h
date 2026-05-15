@@ -96,6 +96,9 @@ public:
      */
     bool is_free() const;
 
+    uint64_t get_block_base() const;
+    uint64_t get_block_size() const;
+
     // Comparison operators
     bool operator==(const MemMap& other) const;
     bool operator!=(const MemMap& other) const;

@@ -307,7 +307,7 @@ std::string Process::get_desktop_name() {
 }
 
 void* Process::get_token() {
-    return this->token;
+    return reinterpret_cast<void*>(&this->token);
 }
 
 int Process::get_std_handle(int dev) {
@@ -343,7 +343,7 @@ int Process::get_session_id() {
 }
 
 int Process::get_pid() {
-    return this->pid;
+    return this->id;
 }
 
 std::string Process::get_process_path() {

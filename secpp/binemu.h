@@ -19,13 +19,13 @@
 #include "memmgr.h"
 #include "profiler.h"
 #include "common.h"
-#include "arch.h"
-#include "emuengine.h"
+#include "winenv/arch.h"
+#include "engines/unicorn_eng.h"
 #include "version.h"
 #include "errors.h"
 
 // Constants
-const bool WILDCARD_FLAG = bool;
+const bool WILDCARD_FLAG = true;  // sentinel for wildcard API/module matching
 // typedef std::tuple<std::map<std::string, std::vector<ApiHook>>, WILDCARD_FLAG> API_LEVEL;
 // typedef std::tuple<std::map<std::string, API_LEVEL>, WILDCARD_FLAG> MODULE_LEVEL;
 
@@ -96,7 +96,7 @@ public:
     
     // Memory methods
     template<typename T>
-    size_t sizeof(T obj);
+    size_t objsize(T obj);
     template<typename T>
     std::vector<uint8_t> get_bytes(T obj);
     

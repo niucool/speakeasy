@@ -58,6 +58,7 @@ public:
     int get_prot();
     void* get_backed_file();
     void add_view(uint64_t base, uint64_t offset, size_t size, int protect);
+    std::map<uint64_t, std::shared_ptr<MapView>>& get_views() { return views; }
 };
 
 // Base class for an emulated file
@@ -83,7 +84,7 @@ public:
     
     // Methods
     std::shared_ptr<File> duplicate();
-    uint32_t get_handle();
+    virtual uint32_t get_handle();
     std::string get_path();
     std::string get_hash();
     size_t get_size();
