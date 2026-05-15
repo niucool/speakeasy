@@ -69,7 +69,7 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
         this.path = os.path.abspath(path)
     this.emu_path = emu_path
     this.arch = this._get_architecture()
-    if this.arch == _arch.ARCH_X86:
+    if this.arch == _arch.speakeasy::arch::ARCH_X86:
         this.ptr_size = 4
     else:
         this.ptr_size = 8
@@ -230,9 +230,9 @@ int PeFile::_get_architecture() {
     // 0x010b: PE32, 0x020b: PE32+ (64 bit)
     magic = this.OPTIONAL_HEADER.Magic
     if magic & ddk.PE32_BIT:
-        return _arch.ARCH_X86
+        return _arch.speakeasy::arch::ARCH_X86
     elif magic & ddk.PE32_PLUS_BIT:
-        return _arch.ARCH_AMD64
+        return _arch.speakeasy::arch::ARCH_AMD64
     else:
         raise ValueError('Unsupported architecture: 0x%x' % (magic))
     */
@@ -438,7 +438,7 @@ bool DecoyModule::is_decoy() {
 
 // JitPeFile constructor
 JitPeFile::JitPeFile(int arch) : arch(arch) {
-    if (arch == /*_arch.ARCH_X86*/ 0) { // TODO: Replace with actual architecture constant
+    if (arch == /*_arch.speakeasy::arch::ARCH_X86*/ 0) { // TODO: Replace with actual architecture constant
         pattern_size = 9;
         basepe_data = EMPTY_PE_32;
     } else {

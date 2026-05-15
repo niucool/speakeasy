@@ -18,55 +18,55 @@ EmuEngine::EmuEngine() : name("unicorn"), emu(nullptr), mmap(nullptr) {
  */
 void EmuEngine::init_regs() {
     // x86 registers
-    regs[X86_REG_EAX] = UC_X86_REG_EAX;
-    regs[X86_REG_EBX] = UC_X86_REG_EBX;
-    regs[X86_REG_ESP] = UC_X86_REG_ESP;
-    regs[X86_REG_EIP] = UC_X86_REG_EIP;
-    regs[X86_REG_EBP] = UC_X86_REG_EBP;
-    regs[X86_REG_ECX] = UC_X86_REG_ECX;
-    regs[X86_REG_EDX] = UC_X86_REG_EDX;
-    regs[X86_REG_EDI] = UC_X86_REG_EDI;
-    regs[X86_REG_ESI] = UC_X86_REG_ESI;
-    regs[X86_REG_EFLAGS] = UC_X86_REG_EFLAGS;
+    regs[speakeasy::arch::REG_EAX] = UC_X86_REG_EAX;
+    regs[speakeasy::arch::REG_EBX] = speakeasy::arch::REG_EBX;
+    regs[speakeasy::arch::REG_ESP] = speakeasy::arch::REG_ESP;
+    regs[speakeasy::arch::REG_EIP] = speakeasy::arch::REG_EIP;
+    regs[speakeasy::arch::REG_EBP] = UC_X86_REG_EBP;
+    regs[speakeasy::arch::REG_ECX] = speakeasy::arch::REG_ECX;
+    regs[speakeasy::arch::REG_EDX] = speakeasy::arch::REG_EDX;
+    regs[speakeasy::arch::REG_EDI] = speakeasy::arch::REG_EDI;
+    regs[speakeasy::arch::REG_ESI] = UC_X86_REG_ESI;
+    regs[speakeasy::arch::REG_EFLAGS] = UC_X86_REG_EFLAGS;
     
     // AMD64 registers
-    regs[AMD64_REG_RIP] = UC_X86_REG_RIP;
-    regs[AMD64_REG_RAX] = UC_X86_REG_RAX;
-    regs[AMD64_REG_RBX] = UC_X86_REG_RBX;
-    regs[AMD64_REG_RSP] = UC_X86_REG_RSP;
-    regs[AMD64_REG_RCX] = UC_X86_REG_RCX;
-    regs[AMD64_REG_RDX] = UC_X86_REG_RDX;
-    regs[AMD64_REG_RSI] = UC_X86_REG_RSI;
-    regs[AMD64_REG_RDI] = UC_X86_REG_RDI;
-    regs[AMD64_REG_RBP] = UC_X86_REG_RBP;
-    regs[AMD64_REG_R8] = UC_X86_REG_R8;
-    regs[AMD64_REG_R9] = UC_X86_REG_R9;
-    regs[AMD64_REG_R10] = UC_X86_REG_R10;
-    regs[AMD64_REG_R11] = UC_X86_REG_R11;
-    regs[AMD64_REG_R12] = UC_X86_REG_R12;
-    regs[AMD64_REG_R13] = UC_X86_REG_R13;
-    regs[AMD64_REG_R14] = UC_X86_REG_R14;
-    regs[AMD64_REG_R15] = UC_X86_REG_R15;
+    regs[speakeasy::arch::REG_RIP] = UC_X86_REG_RIP;
+    regs[speakeasy::arch::REG_RAX] = UC_X86_REG_RAX;
+    regs[speakeasy::arch::REG_RBX] = UC_X86_REG_RBX;
+    regs[speakeasy::arch::REG_RSP] = UC_X86_REG_RSP;
+    regs[speakeasy::arch::REG_RCX] = UC_X86_REG_RCX;
+    regs[speakeasy::arch::REG_RDX] = UC_X86_REG_RDX;
+    regs[speakeasy::arch::REG_RSI] = UC_X86_REG_RSI;
+    regs[speakeasy::arch::REG_RDI] = UC_X86_REG_RDI;
+    regs[speakeasy::arch::REG_RBP] = UC_X86_REG_RBP;
+    regs[speakeasy::arch::REG_R8] = UC_X86_REG_R8;
+    regs[speakeasy::arch::REG_R9] = UC_X86_REG_R9;
+    regs[speakeasy::arch::REG_R10] = UC_X86_REG_R10;
+    regs[speakeasy::arch::REG_R11] = UC_X86_REG_R11;
+    regs[speakeasy::arch::REG_R12] = UC_X86_REG_R12;
+    regs[speakeasy::arch::REG_R13] = UC_X86_REG_R13;
+    regs[speakeasy::arch::REG_R14] = UC_X86_REG_R14;
+    regs[speakeasy::arch::REG_R15] = UC_X86_REG_R15;
     
     // Descriptor registers
-    regs[X86_REG_IDTR] = UC_X86_REG_IDTR;
-    regs[X86_REG_GDTR] = UC_X86_REG_GDTR;
+    regs[speakeasy::arch::REG_IDTR] = UC_X86_REG_IDTR;
+    regs[speakeasy::arch::REG_GDTR] = UC_X86_REG_GDTR;
     
     // XMM registers
-    regs[X86_REG_XMM0] = UC_X86_REG_XMM0;
-    regs[X86_REG_XMM1] = UC_X86_REG_XMM1;
-    regs[X86_REG_XMM2] = UC_X86_REG_XMM2;
-    regs[X86_REG_XMM3] = UC_X86_REG_XMM3;
+    regs[speakeasy::arch::REG_XMM0] = UC_X86_REG_XMM0;
+    regs[speakeasy::arch::REG_XMM1] = UC_X86_REG_XMM1;
+    regs[speakeasy::arch::REG_XMM2] = UC_X86_REG_XMM2;
+    regs[speakeasy::arch::REG_XMM3] = UC_X86_REG_XMM3;
     
     // Segment registers
-    regs[X86_REG_CS] = UC_X86_REG_CS;
-    regs[X86_REG_ES] = UC_X86_REG_ES;
-    regs[X86_REG_SS] = UC_X86_REG_SS;
-    regs[X86_REG_DS] = UC_X86_REG_DS;
-    regs[X86_REG_FS] = UC_X86_REG_FS;
-    regs[X86_REG_GS] = UC_X86_REG_GS;
+    regs[speakeasy::arch::REG_CS] = UC_X86_REG_CS;
+    regs[speakeasy::arch::REG_ES] = UC_X86_REG_ES;
+    regs[speakeasy::arch::REG_SS] = UC_X86_REG_SS;
+    regs[speakeasy::arch::REG_DS] = UC_X86_REG_DS;
+    regs[speakeasy::arch::REG_FS] = UC_X86_REG_FS;
+    regs[speakeasy::arch::REG_GS] = UC_X86_REG_GS;
     
-    regs[X86_REG_MSR] = UC_X86_REG_MSR;
+    regs[speakeasy::arch::REG_MSR] = UC_X86_REG_MSR;
 }
 
 /**
@@ -121,15 +121,15 @@ void EmuEngine::init_engine(int eng_arch, int mode) {
     uc_arch arch;
     uc_mode m;
     
-    if (eng_arch == ARCH_X86 || eng_arch == ARCH_AMD64) {
+    if (eng_arch == speakeasy::arch::ARCH_X86 || eng_arch == speakeasy::arch::ARCH_AMD64) {
         arch = UC_ARCH_X86;
     } else {
         throw std::runtime_error("Invalid architecture");
     }
     
-    if (mode == BITS_32) {
+    if (mode == speakeasy::arch::BITS_32) {
         m = UC_MODE_32;
-    } else if (mode == BITS_64) {
+    } else if (mode == speakeasy::arch::BITS_64) {
         m = UC_MODE_64;
     } else {
         throw std::runtime_error("Invalid bitness");

@@ -441,7 +441,7 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
 
     all_modules = this.config.get('modules')
 
-    if this.emu.arch == _arch.ARCH_X86:
+    if this.emu.arch == _arch.speakeasy::arch::ARCH_X86:
         decoy_dir = all_modules.get('module_directory_x86', [])
     else:
         decoy_dir = all_modules.get('module_directory_x64', [])

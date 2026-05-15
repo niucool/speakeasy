@@ -13,9 +13,9 @@ ApiHandler::ApiHandler(void* emu) : emu(emu) {
     // TODO: Get architecture from emu
     /*
     arch = this.emu.get_arch();
-    if arch == _arch.ARCH_X86:
+    if arch == _arch.speakeasy::arch::ARCH_X86:
         this.ptr_size = 4
-    elif arch == _arch.ARCH_AMD64:
+    elif arch == _arch.speakeasy::arch::ARCH_AMD64:
         this.ptr_size = 8
     else:
         raise ApiEmuError('Invalid architecture')

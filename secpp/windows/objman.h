@@ -132,14 +132,12 @@ public:
  */
 class Driver : public KernelObject {
 private:
-    // TODO: Define pe type
     void* pe;
-    std::vector<void*> devices;
-    // TODO: Define mj_funcs type
     std::vector<void*> mj_funcs;
-    // TODO: Define on_unload type
     void* on_unload;
     bool unload_called;
+public:
+    std::vector<void*> devices;
     int reg_path_ptr;
     std::string reg_path;
     std::string basename;
@@ -171,6 +169,8 @@ private:
 public:
     Device(void* emu);
     void* get_parent_driver();
+    void init_device(const std::string& name, uint32_t dev_type,
+                     uint32_t chars, void* drv);
 };
 
 /**

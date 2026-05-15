@@ -185,7 +185,7 @@ void WindowsEmulator::setup_user_shared_data() {
     constexpr uint64_t KUSER_SHARED_AMD64 = 0xFFFFF78000000000ULL;
     constexpr uint64_t KUSER_READONLY     = 0x7FFE0000;
 
-    if (arch == ARCH_X86) {
+    if (arch == speakeasy::arch::ARCH_X86) {
         mem_map(page_size, KUSER_SHARED_X86, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
     } else {
         mem_map(page_size, KUSER_SHARED_AMD64, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
@@ -573,7 +573,7 @@ void WindowsEmulator::init_peb(void* user_mods, void* proc) {
 
 void WindowsEmulator::init_teb(void* thread, void* peb) {
     if (!thread) return;
-    if (arch == ARCH_X86) {
+    if (arch == speakeasy::arch::ARCH_X86) {
         // TODO: thread->init_teb(fs_addr, peb->address)
     } else {
         // TODO: thread->init_teb(gs_addr, peb->address)
@@ -624,7 +624,7 @@ std::string WindowsEmulator::get_native_module_path(const std::string& mod_name)
     std::string name = mod_name;
     for (auto& c : name) c = static_cast<char>(std::tolower(c));
 
-    const char* subdir = (arch == ARCH_AMD64) ? "amd64" : "x86";
+    const char* subdir = (arch == speakeasy::arch::ARCH_AMD64) ? "amd64" : "x86";
     fs::path decoy_path = fs::path("secpp") / "winenv" / "decoys" / subdir;
 
     if (fs::exists(decoy_path)) {

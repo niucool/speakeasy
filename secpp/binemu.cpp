@@ -4,6 +4,9 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#ifdef HAS_CAPSTONE
+#include <capstone/capstone.h>
+#endif
 
 // Constructor
 BinaryEmulator::BinaryEmulator(const std::string& config, void* logger) 
@@ -254,8 +257,7 @@ void BinaryEmulator::set_hooks() {
 
 std::tuple<std::string, std::string, std::string> BinaryEmulator::_cs_disasm(const std::vector<uint8_t>& mem, 
                                                                              uint64_t addr, bool fast) {
-    // Disassemble bytes using capstone
-    // TODO: Implementation depends on capstone library
+    // Disassemble bytes using capstone (real implementation below)
     /*
     try:
         if fast:
@@ -267,9 +269,26 @@ std::tuple<std::string, std::string, std::string> BinaryEmulator::_cs_disasm(con
         raise EmuException("Failed to disasm at address: 0x%x" % (addr))
 
     op = '%s %s' % (mnem, oper)
-    return ((mnem, oper, op))
     */
+#ifdef HAS_CAPSTONE
+    csh handle; cs_insn* insn = nullptr;
+    cs_mode mode = (get_arch() == 64) ? CS_MODE_64 : CS_MODE_32;
+    if (cs_open(CS_ARCH_X86, mode, &handle) != CS_ERR_OK)
+        return std::make_tuple("", "", "cs_open failed");
+    cs_option(handle, CS_OPT_DETAIL, CS_OPT_OFF);
+    if (fast) cs_option(handle, CS_OPT_SKIPDATA, CS_OPT_ON);
+    size_t count = cs_disasm(handle, mem.data(), mem.size(), addr, 1, &insn);
+    std::string mnem, ops;
+    if (count > 0 && insn) {
+        mnem = insn[0].mnemonic; ops = insn[0].op_str;
+        cs_free(insn, count);
+    }
+    cs_close(&handle);
+    return std::make_tuple(mnem, ops, mnem + " " + ops);
+#else
+    (void)mem; (void)addr; (void)fast;
     return std::make_tuple("", "", "");
+#endif
 }
 
 std::tuple<std::string, std::string, std::string> BinaryEmulator::disasm(const std::vector<uint8_t>& mem, 

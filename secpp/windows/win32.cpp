@@ -118,9 +118,9 @@ void* Win32Emulator::load_module(const std::string& path, const std::vector<uint
     // void* pe = load_pe(path, data, w32common.IMPORT_HOOK_ADDR);
     // 
     // int disasm_mode;
-    // if (pe->arch == _arch.ARCH_X86) {
+    // if (pe->arch == _arch.speakeasy::arch::ARCH_X86) {
     //     disasm_mode = cs.CS_MODE_32;
-    // } else if (pe->arch == _arch.ARCH_AMD64) {
+    // } else if (pe->arch == _arch.speakeasy::arch::ARCH_AMD64) {
     //     disasm_mode = cs.CS_MODE_64;
     // } else {
     //     throw Win32EmuError("Unsupported architecture: %s", pe->arch);
@@ -133,7 +133,7 @@ void* Win32Emulator::load_module(const std::string& path, const std::vector<uint
     // 
     // // No need to initialize the engine and Capstone again
     // if (first_time_setup) {
-    //     emu_eng.init_engine(_arch.ARCH_X86, pe->arch);
+    //     emu_eng.init_engine(_arch.speakeasy::arch::ARCH_X86, pe->arch);
     //     if (!disasm_eng) {
     //         disasm_eng = cs.Cs(cs.CS_ARCH_X86, disasm_mode);
     //     }
@@ -380,9 +380,9 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
     
     int arch_type;
     if (arch == "x86") {
-        arch_type = 1; // _arch.ARCH_X86
+        arch_type = 1; // _arch.speakeasy::arch::ARCH_X86
     } else if (arch == "x64" || arch == "amd64") {
-        arch_type = 2; // _arch.ARCH_AMD64
+        arch_type = 2; // _arch.speakeasy::arch::ARCH_AMD64
     }
     
     this->arch = arch_type;
@@ -405,15 +405,15 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
     }
     
     // int disasm_mode;
-    // if (this->arch == 1) { // _arch.ARCH_X86
+    // if (this->arch == 1) { // _arch.speakeasy::arch::ARCH_X86
     //     disasm_mode = cs.CS_MODE_32;
-    // } else if (this->arch == 2) { // _arch.ARCH_AMD64
+    // } else if (this->arch == 2) { // _arch.speakeasy::arch::ARCH_AMD64
     //     disasm_mode = cs.CS_MODE_64;
     // } else {
     //     // throw Win32EmuError('Unsupported architecture: %s' % this->arch);
     // }
     // 
-    // emu_eng.init_engine(1 /*_arch.ARCH_X86*/, this->arch);
+    // emu_eng.init_engine(1 /*_arch.speakeasy::arch::ARCH_X86*/, this->arch);
     // 
     // if (!disasm_eng) {
     //     disasm_eng = cs.Cs(cs.CS_ARCH_X86, disasm_mode);
@@ -428,9 +428,9 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
     // pic_buffers.push_back(std::make_tuple(path, sc_addr, sc_data.size()));
     // 
     // std::string sc_arch = "unknown";
-    // if (arch_type == 2) { // _arch.ARCH_AMD64
+    // if (arch_type == 2) { // _arch.speakeasy::arch::ARCH_AMD64
     //     sc_arch = "x64";
-    // } else if (arch_type == 1) { // _arch.ARCH_X86
+    // } else if (arch_type == 1) { // _arch.speakeasy::arch::ARCH_X86
     //     sc_arch = "x86";
     // }
     // 
@@ -552,9 +552,9 @@ void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
     setup_user_shared_data();
     set_ptr_size(this->arch);
     
-    if (arch == 1) { // _arch.ARCH_X86
+    if (arch == 1) { // _arch.speakeasy::arch::ARCH_X86
         peb_addr = fs_addr + 0x30;
-    } else if (arch == 2) { // _arch.ARCH_AMD64
+    } else if (arch == 2) { // _arch.speakeasy::arch::ARCH_AMD64
         peb_addr = gs_addr + 0x60;
     }
     

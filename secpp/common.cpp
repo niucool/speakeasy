@@ -25,12 +25,12 @@ std::string normalize_package_path(const std::string& path) {
 /**
  * Constructor for Hook
  */
-Hook::Hook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+Hook::Hook(void* container, EmuEngine* emu_eng, 
            std::function<bool()> cb, 
            const std::vector<void*>& ctx,
            bool native_hook)
     : cb(cb), handle(0), enabled(false), added(false), 
-      native_hook(native_hook), emu_eng(emu_eng), se_obj(se_obj), ctx(ctx) {
+      native_hook(native_hook), emu_eng(emu_eng), container(container), ctx(ctx) {
 }
 
 /**
@@ -56,16 +56,16 @@ bool Hook:: _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::ve
     try {
         if (enabled) {
             // Would need actual implementation for exit_event check
-            // if (se_obj->exit_event && se_obj->exit_event->is_set()) {
-            //     se_obj->stop();
+            // if (container->exit_event && container->exit_event->is_set()) {
+            //     container->stop();
             //     return false;
             // }
-            // return cb(se_obj, addr, size, this->ctx);
+            // return cb(container, addr, size, this->ctx);
             return true; // Placeholder
         }
         return true;
     } catch (...) { // C++ equivalent of except KeyboardInterrupt
-        // se_obj->stop(); // Would need actual implementation
+        // container->stop(); // Would need actual implementation
         return false;
     }
 }
@@ -75,7 +75,7 @@ bool Hook:: _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::ve
  */
 bool Hook::_wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx) {
     if (enabled) {
-        // return cb(se_obj, num, this->ctx);
+        // return cb(container, num, this->ctx);
         return true; // Placeholder
     }
     return true;
@@ -86,7 +86,7 @@ bool Hook::_wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx) {
  */
 bool Hook::_wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx) {
     if (enabled) {
-        // return cb(se_obj, port, size);
+        // return cb(container, port, size);
         return true; // Placeholder
     }
     return true;
@@ -97,7 +97,7 @@ bool Hook::_wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vecto
  */
 bool Hook::_wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx) {
     if (enabled) {
-        // return cb(se_obj);
+        // return cb(container);
         return true; // Placeholder
     }
     return true;
@@ -111,16 +111,16 @@ bool Hook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr,
     try {
         if (enabled) {
             // Would need actual implementation for exit_event check
-            // if (se_obj->exit_event && se_obj->exit_event->is_set()) {
-            //     se_obj->stop();
+            // if (container->exit_event && container->exit_event->is_set()) {
+            //     container->stop();
             //     return false;
             // }
-            // return cb(se_obj, access, addr, size, value, ctx);
+            // return cb(container, access, addr, size, value, ctx);
             return true; // Placeholder
         }
         return true;
     } catch (...) { // C++ equivalent of except KeyboardInterrupt
-        // se_obj->stop(); // Would need actual implementation
+        // container->stop(); // Would need actual implementation
         return false;
     }
 }
@@ -130,7 +130,7 @@ bool Hook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr,
  */
 bool Hook::_wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx) {
     if (enabled) {
-        // return cb(se_obj, this->ctx);
+        // return cb(container, this->ctx);
         return true; // Placeholder
     }
     return true;
@@ -139,35 +139,35 @@ bool Hook::_wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx) {
 /**
  * Constructor for ApiHook
  */
-ApiHook::ApiHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+ApiHook::ApiHook(void* container, EmuEngine* emu_eng, 
                  std::function<bool()> cb, 
                  const std::string& module,
                  const std::string& api_name,
                  int argc,
                  void* call_conv)
-    : Hook(se_obj, emu_eng, cb), module(module), api_name(api_name), 
+    : Hook(container, emu_eng, cb), module(module), api_name(api_name), 
       argc(argc), call_conv(call_conv) {
 }
 
 /**
  * Constructor for DynCodeHook
  */
-DynCodeHook::DynCodeHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+DynCodeHook::DynCodeHook(void* container, EmuEngine* emu_eng, 
                          std::function<bool()> cb, 
                          const std::vector<void*>& ctx)
-    : Hook(se_obj, emu_eng, cb, ctx) {
+    : Hook(container, emu_eng, cb, ctx) {
 }
 
 /**
  * Constructor for CodeHook
  */
-CodeHook::CodeHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+CodeHook::CodeHook(void* container, EmuEngine* emu_eng, 
                    std::function<bool()> cb, 
                    uint64_t begin, 
                    uint64_t end, 
                    const std::vector<void*>& ctx,
                    bool native_hook)
-    : Hook(se_obj, emu_eng, cb, ctx, native_hook), begin(begin), end(end) {
+    : Hook(container, emu_eng, cb, ctx, native_hook), begin(begin), end(end) {
 }
 
 /**
@@ -185,12 +185,12 @@ void CodeHook::add() {
 /**
  * Constructor for ReadMemHook
  */
-ReadMemHook::ReadMemHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+ReadMemHook::ReadMemHook(void* container, EmuEngine* emu_eng, 
                          std::function<bool()> cb, 
                          uint64_t begin, 
                          uint64_t end, 
                          bool native_hook)
-    : Hook(se_obj, emu_eng, cb, {}, native_hook), begin(begin), end(end) {
+    : Hook(container, emu_eng, cb, {}, native_hook), begin(begin), end(end) {
 }
 
 /**
@@ -208,12 +208,12 @@ void ReadMemHook::add() {
 /**
  * Constructor for WriteMemHook
  */
-WriteMemHook::WriteMemHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+WriteMemHook::WriteMemHook(void* container, EmuEngine* emu_eng, 
                            std::function<bool()> cb, 
                            uint64_t begin, 
                            uint64_t end, 
                            bool native_hook)
-    : Hook(se_obj, emu_eng, cb, {}, native_hook), begin(begin), end(end) {
+    : Hook(container, emu_eng, cb, {}, native_hook), begin(begin), end(end) {
 }
 
 /**
@@ -231,11 +231,11 @@ void WriteMemHook::add() {
 /**
  * Constructor for MapMemHook
  */
-MapMemHook::MapMemHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+MapMemHook::MapMemHook(void* container, EmuEngine* emu_eng, 
                        std::function<bool()> cb, 
                        uint64_t begin, 
                        uint64_t end)
-    : Hook(se_obj, emu_eng, cb), begin(begin), end(end) {
+    : Hook(container, emu_eng, cb), begin(begin), end(end) {
 }
 
 /**
@@ -249,10 +249,10 @@ void MapMemHook::add() {
 /**
  * Constructor for InvalidMemHook
  */
-InvalidMemHook::InvalidMemHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+InvalidMemHook::InvalidMemHook(void* container, EmuEngine* emu_eng, 
                                std::function<bool()> cb, 
                                bool native_hook)
-    : Hook(se_obj, emu_eng, cb, {}, native_hook) {
+    : Hook(container, emu_eng, cb, {}, native_hook) {
 }
 
 /**
@@ -270,11 +270,11 @@ void InvalidMemHook::add() {
 /**
  * Constructor for InterruptHook
  */
-InterruptHook::InterruptHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+InterruptHook::InterruptHook(void* container, EmuEngine* emu_eng, 
                              std::function<bool()> cb, 
                              const std::vector<void*>& ctx,
                              bool native_hook)
-    : Hook(se_obj, emu_eng, cb, ctx, native_hook) {
+    : Hook(container, emu_eng, cb, ctx, native_hook) {
 }
 
 /**
@@ -292,12 +292,12 @@ void InterruptHook::add() {
 /**
  * Constructor for InstructionHook
  */
-InstructionHook::InstructionHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+InstructionHook::InstructionHook(void* container, EmuEngine* emu_eng, 
                                  std::function<bool()> cb, 
                                  const std::vector<void*>& ctx,
                                  bool native_hook,
                                  void* insn)
-    : Hook(se_obj, emu_eng, cb, ctx, native_hook), insn(insn) {
+    : Hook(container, emu_eng, cb, ctx, native_hook), insn(insn) {
 }
 
 /**
@@ -315,11 +315,11 @@ void InstructionHook::add() {
 /**
  * Constructor for InvalidInstructionHook
  */
-InvalidInstructionHook::InvalidInstructionHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+InvalidInstructionHook::InvalidInstructionHook(void* container, EmuEngine* emu_eng, 
                                                std::function<bool()> cb, 
                                                const std::vector<void*>& ctx,
                                                bool native_hook)
-    : Hook(se_obj, emu_eng, cb, ctx, native_hook) {
+    : Hook(container, emu_eng, cb, ctx, native_hook) {
 }
 
 /**

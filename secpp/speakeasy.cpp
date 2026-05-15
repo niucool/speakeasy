@@ -566,7 +566,7 @@ std::vector<uint8_t> Speakeasy::create_memdump_archive() {
     // //     for (auto& process : procs) {
     // //         std::vector<nlohmann::json> memory_blocks;
     // //         int arch = emu->get_arch();
-    // //         if (arch == /*_arch.ARCH_X86*/) {
+    // //         if (arch == /*_arch.speakeasy::arch::ARCH_X86*/) {
     // //             arch_str = "x86";
     // //         } else {
     // //             arch_str = "amd64";

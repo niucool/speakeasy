@@ -174,6 +174,13 @@ void* Device::get_parent_driver() {
     return this->driver;
 }
 
+void Device::init_device(const std::string& name, uint32_t dev_type,
+                          uint32_t chars, void* drv) {
+    (void)dev_type; (void)chars;
+    this->name = name;
+    this->driver = drv;
+}
+
 // FileObject implementation
 FileObject::FileObject(void* emu) : KernelObject(emu) {
     // TODO: Implement FileObject constructor logic

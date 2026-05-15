@@ -39,7 +39,6 @@ const int INVAL_PERM_MEM_EXEC = 2004;
 const int INVAL_PERM_MEM_READ = 2005;
 
 // Forward declarations
-class Speakeasy;
 class EmuEngine;
 
 /**
@@ -48,7 +47,11 @@ class EmuEngine;
 std::string normalize_package_path(const std::string& path);
 
 /**
- * Base class for all emulator hooks
+ * Base class for all emulator hooks.
+ *
+ * @param container  opaque context pointer (BinaryEmulator* or Speakeasy*)
+ * @param emu_eng    emulation engine object
+ * @param cb         callback function (returns true to stop further hooks)
  */
 class Hook {
 protected:
@@ -58,77 +61,36 @@ protected:
     bool added;
     bool native_hook;
     EmuEngine* emu_eng;
-    Speakeasy* se_obj;
+    void* container;  // opaque context for _wrap_*_cb
     std::vector<void*> ctx;
 
 public:
-    /**
-     * Constructor for Hook
-     * @param se_obj: speakeasy emulator object
-     * @param emu_eng: emulation engine object
-     * @param cb: callback function
-     * @param ctx: Arbitrary context that be passed between hook callbacks
-     * @param native_hook: When set to true, a new, raw callback will be registered with
-     *                     with the underlying emulation engine that is called directly by the DLL.
-     *                     Otherwise, this hook will be dispatched via a wrapper hook
-     */
-    Hook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    Hook(void* container, EmuEngine* emu_eng, 
          std::function<bool()> cb, 
          const std::vector<void*>& ctx = {},
          bool native_hook = false);
 
     virtual ~Hook() = default;
 
-    /**
-     * Enable the hook
-     */
     void enable();
-
-    /**
-     * Disable the hook
-     */
     void disable();
 
-    /**
-     * Wrapper for code callback
-     */
     bool _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx = {});
-
-    /**
-     * Wrapper for interrupt callback
-     */
     bool _wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx = {});
-
-    /**
-     * Wrapper for IN instruction callback
-     */
     bool _wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx = {});
-
-    /**
-     * Wrapper for syscall instruction callback
-     */
     bool _wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx = {});
-
-    /**
-     * Wrapper for memory access callback
-     */
-    bool _wrap_memory_access_cb(void* emu, int access, uint64_t addr, 
-                               uint32_t size, uint64_t value, void* ctx);
-
-    /**
-     * Wrapper for invalid instruction callback
-     */
+    bool _wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx);
+    bool _wrap_mem_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
+    bool _wrap_mem_invalid_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
+    bool _wrap_insn_cb(void* emu, const std::vector<void*>& ctx = {});
     bool _wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx = {});
 
-    // Getters
     bool is_enabled() const { return enabled; }
     bool is_added() const { return added; }
     int get_handle() const { return handle; }
 };
 
-/**
- * This hook type is used when using a specific API (e.g. kernel32.CreateFile)
- */
+/** Hook that fires when a specific API is called (e.g. kernel32.CreateFile) */
 class ApiHook : public Hook {
 private:
     std::string module;
@@ -137,7 +99,7 @@ private:
     void* call_conv;
 
 public:
-    ApiHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    ApiHook(void* container, EmuEngine* emu_eng, 
             std::function<bool()> cb, 
             const std::string& module = "",
             const std::string& api_name = "",
@@ -145,167 +107,114 @@ public:
             void* call_conv = nullptr);
 };
 
-/**
- * This hook type is used to get a callback when dynamically created/copied code is executed
- * Currently, this will only fire once per dynamic code mapping. Could be useful for unpacking.
- */
+/** Hook that fires when dynamically created/copied code is executed */
 class DynCodeHook : public Hook {
 public:
-    DynCodeHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    DynCodeHook(void* container, EmuEngine* emu_eng, 
                 std::function<bool()> cb, 
                 const std::vector<void*>& ctx = {});
 };
 
-/**
- * This hook callback will fire for every CPU instruction
- */
+/** Hook that fires for every CPU instruction in a range */
 class CodeHook : public Hook {
 private:
     uint64_t begin;
     uint64_t end;
 
 public:
-    CodeHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    CodeHook(void* container, EmuEngine* emu_eng, 
              std::function<bool()> cb, 
              uint64_t begin = 1, 
              uint64_t end = 0, 
              const std::vector<void*>& ctx = {},
              bool native_hook = true);
-
-    /**
-     * Add the hook
-     */
     void add();
 };
 
-/**
- * This hook will fire each time a valid chunk of memory is read from
- */
+/** Hook that fires each time a valid chunk of memory is read from */
 class ReadMemHook : public Hook {
 private:
     uint64_t begin;
     uint64_t end;
 
 public:
-    ReadMemHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    ReadMemHook(void* container, EmuEngine* emu_eng, 
                 std::function<bool()> cb, 
                 uint64_t begin = 1, 
                 uint64_t end = 0, 
                 bool native_hook = true);
-
-    /**
-     * Add the hook
-     */
     void add();
 };
 
-/**
- * This hook will fire each time a valid chunk of memory is written to
- */
+/** Hook that fires each time a valid chunk of memory is written to */
 class WriteMemHook : public Hook {
 private:
     uint64_t begin;
     uint64_t end;
 
 public:
-    WriteMemHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    WriteMemHook(void* container, EmuEngine* emu_eng, 
                  std::function<bool()> cb, 
                  uint64_t begin = 1, 
                  uint64_t end = 0, 
                  bool native_hook = true);
-
-    /**
-     * Add the hook
-     */
     void add();
 };
 
-/**
- * This hook will fire each time a chunk of memory is mapped
- */
+/** Hook that fires each time a chunk of memory is mapped */
 class MapMemHook : public Hook {
 private:
     uint64_t begin;
     uint64_t end;
 
 public:
-    MapMemHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    MapMemHook(void* container, EmuEngine* emu_eng, 
                std::function<bool()> cb, 
                uint64_t begin = 1, 
                uint64_t end = 0);
-
-    /**
-     * Add the hook
-     */
     void add();
 };
 
-/**
- * This hook will fire each time an invalid chunk of memory is accessed
- */
+/** Hook that fires each time an invalid chunk of memory is accessed */
 class InvalidMemHook : public Hook {
 public:
-    InvalidMemHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    InvalidMemHook(void* container, EmuEngine* emu_eng, 
                    std::function<bool()> cb, 
                    bool native_hook = false);
-
-    /**
-     * Add the hook
-     */
     void add();
 };
 
-/**
- * This hook will fire each time a software interrupt is triggered
- */
+/** Hook that fires each time a software interrupt is triggered */
 class InterruptHook : public Hook {
 public:
-    InterruptHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    InterruptHook(void* container, EmuEngine* emu_eng, 
                   std::function<bool()> cb, 
                   const std::vector<void*>& ctx = {},
                   bool native_hook = true);
-
-    /**
-     * Add the hook
-     */
     void add();
 };
 
-/**
- * This hook will fire each time an instruction hook is triggered,
- * Only the instructions: IN, OUT, SYSCALL, and SYSENTER are supported by unicorn.
- */
+/** Hook for specific CPU instructions (IN, OUT, SYSCALL, SYSENTER) */
 class InstructionHook : public Hook {
 private:
     void* insn;
 
 public:
-    InstructionHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    InstructionHook(void* container, EmuEngine* emu_eng, 
                     std::function<bool()> cb, 
                     const std::vector<void*>& ctx = {},
                     bool native_hook = true,
                     void* insn = nullptr);
-
-    /**
-     * Add the hook
-     */
     void add();
 };
 
-/**
- * This hook will fire every time an invalid instruction is attempted
- * to be executed
- */
+/** Hook that fires every time an invalid instruction is attempted */
 class InvalidInstructionHook : public Hook {
 public:
-    InvalidInstructionHook(Speakeasy* se_obj, EmuEngine* emu_eng, 
+    InvalidInstructionHook(void* container, EmuEngine* emu_eng, 
                            std::function<bool()> cb, 
                            const std::vector<void*>& ctx = {},
                            bool native_hook = true);
-
-    /**
-     * Add the hook
-     */
     void add();
 };
 

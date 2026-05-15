@@ -83,7 +83,7 @@ void ApiHammer::handle_import_func(const std::string& imp_api, int conv, int arg
     
     // TODO: Implementation depends on architecture access
     /*
-    if this.emu.get_arch() == e_arch.ARCH_X86:
+    if this.emu.get_arch() == e_arch.speakeasy::arch::ARCH_X86:
         eip = this.emu.get_ret_address() - 6
         mnem, op, instr = this.emu.get_disasm(eip, DISASM_SIZE)
         this.emu.log_info('api hammering at: %s 0x%x %r %r %r' % (imp_api, this.emu.get_pc(),
@@ -134,7 +134,7 @@ void ApiHammer::handle_import_func(const std::string& imp_api, int conv, int arg
             else:
                 this.emu.log_info('API HAMMERING DETECTED - unable to patch %x' % (eip, ))
 
-    if this.emu.get_arch() == e_arch.ARCH_AMD64:
+    if this.emu.get_arch() == e_arch.speakeasy::arch::ARCH_AMD64:
         // TODO
         pass
     */
