@@ -38,7 +38,7 @@ struct GDT_FLAGS {
 // Memory addresses and constants
 const uint32_t IMPORT_HOOK_ADDR = 0xFEEDFACE;
 const uint32_t DEFAULT_LOAD_ADDR = 0x40000;
-const uint32_t PAGE_SIZE = 0x1000;
+// PAGE_SIZE defined in winenv/arch.h
 
 const uint32_t EMU_RESERVED = 0xfeedf000;
 const uint32_t EMU_RESERVE_SIZE = 0x4000;
