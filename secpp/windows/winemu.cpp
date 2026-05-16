@@ -963,8 +963,17 @@ void* WindowsEmulator::get_proc(const std::string& mod_name, const std::string& 
     return nullptr;
 }
 
-void WindowsEmulator::add_callback(const std::string& mod_name, const std::string& func_name) {
-    callbacks.push_back({0, mod_name, func_name});
+uint64_t WindowsEmulator::add_callback(const std::string& mod_name, const std::string& func_name) {
+    static uint64_t next_callback_addr = 0x102000;  // EMU_CALLBACK_RESERVE
+    // Check if already registered
+    for (const auto& cb : callbacks) {
+        if (std::get<1>(cb) == mod_name && std::get<2>(cb) == func_name) {
+            return std::get<0>(cb);
+        }
+    }
+    uint64_t addr = next_callback_addr++;
+    callbacks.push_back({addr, mod_name, func_name});
+    return addr;
 }
 
 std::string WindowsEmulator::get_symbol_from_address(uint64_t address) {

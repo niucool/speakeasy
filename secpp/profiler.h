@@ -22,9 +22,9 @@ const std::string __report_version__ = "1.1.0";
 #include <nlohmann/json.hpp>
 #include <exception>
 
-// TODO: Need to define constants like PROC_CREATE, MEM_ALLOC, etc.
 #include "const.h"
 #include "struct.h"
+#include "artifacts.h"
 
 
 // Custom exception class for profiler errors
@@ -77,6 +77,7 @@ public:
     void* process_context;
     void* thread;
     std::vector<std::string> unique_apis;
+    std::string api_hash_data;  // Accumulated lowercase API names for SHA-256 hash
     // TODO: Replace with proper hash implementation
     // std::hash<std::string> api_hash;
     std::vector<std::map<std::string, std::string>> handled_exceptions;
@@ -105,11 +106,12 @@ private:
     double start_time;
     std::map<std::string, std::vector<std::string>> strings;
     std::map<std::string, std::vector<std::string>> decoded_strings;
-    std::vector<int> last_data;
-    std::map<std::string, std::string> last_event;
+    std::vector<uint64_t> last_data;
+    std::string last_event_type;
     double runtime;
     std::map<std::string, std::string> meta;
     std::vector<std::shared_ptr<Run>> runs;
+    speakeasy::ArtifactStore artifact_store;
     
 public:
     Profiler();

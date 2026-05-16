@@ -34,6 +34,8 @@ public:
     Session(int sess_id);
     class Station new_station(const std::string& name = "WinSta0");
     int get_id() const { return id; }
+    // Access to stations
+    const std::map<int, class Station>& get_stations() const { return stations; }
     // Aggregated desktops from all stations
     std::map<int, class Desktop> get_desktops() const { return {}; }
 };
@@ -88,7 +90,7 @@ public:
  */
 class WindowClass : public GuiObject {
 private:
-    // TODO: Define class_obj type
+    // Opaque pointer to the underlying class object (type depends on context)
     void* wclass;
     std::string name;
 

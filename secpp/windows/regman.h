@@ -7,18 +7,10 @@
 #include <map>
 #include <memory>
 #include <cstdint>
+#include <nlohmann/json.hpp>
 
-// TODO: Need C++ equivalents for these Python imports
-// #include "winenv/defs/registry/reg.h"
-// #include "errors.h"
-
-// Registry key constants (guarded against Windows SDK macros)
-#ifndef HKEY_CLASSES_ROOT
-const uint32_t HKEY_CLASSES_ROOT = 0x80000000;
-const uint32_t HKEY_CURRENT_USER = 0x80000001;
-const uint32_t HKEY_LOCAL_MACHINE = 0x80000002;
-const uint32_t HKEY_USERS = 0x80000003;
-#endif
+#include "regdefs.h"
+#include "../errors.h"
 
 // Forward declarations
 class RegValue;
@@ -67,12 +59,12 @@ class RegistryManager {
 private:
     std::map<uint32_t, std::shared_ptr<RegKey>> reg_handles;
     std::vector<std::shared_ptr<RegKey>> keys;
-    std::map<std::string, std::string> config;
+    nlohmann::json config;
     std::vector<std::string> reg_tree;
 
 public:
     // Constructor
-    RegistryManager(const std::map<std::string, std::string>& config = {});
+    RegistryManager(const nlohmann::json& config = nullptr);
     
     // Methods
     std::string normalize_reg_path(const std::string& path);

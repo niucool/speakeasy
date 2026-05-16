@@ -1,107 +1,183 @@
 // winapi.cpp
 #include "winapi.h"
-// TODO: Include other necessary headers
+#include "api.h"
+#include "api_handler_registry.h"
+#include "../../winenv/arch.h"
+#include "../../errors.h"
+#include <algorithm>
+#include <cctype>
+#include <tuple>
 
 // Constructor
 WindowsApi::WindowsApi(Emulator* emu) : emu(emu) {
-    // TODO: get_arch() requires complete Emulator type (not yet ported)
+    // Detect pointer size from architecture
+    // Emulator provides get_arch() via its interface
+    // For now, default to 4 (x86) until the full emulator interface is available
     ptr_size = 4;
+    // TODO: When Emulator interface is complete, use:
+    // int arch = emu->get_arch();
+    // if (arch == speakeasy::arch::ARCH_X86) ptr_size = 4;
+    // else if (arch == speakeasy::arch::ARCH_AMD64) ptr_size = 8;
+    // else throw ApiEmuError("Invalid architecture");
 }
 
 ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {
-    // TODO: Implement API handler loading
-    // This would require a registry of available API handlers
-    // For now, we'll return a placeholder
-    
-    // for (auto& [name, hdl] : API_HANDLERS) {
-    //     std::string lower_name = name;
-    //     std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
-    //     std::string lower_mod_name = mod_name;
-    //     std::transform(lower_mod_name.begin(), lower_mod_name.end(), lower_mod_name.begin(), ::tolower);
-    //     
-    //     if (mod_name.empty() || lower_name == lower_mod_name) {
-    //         auto handler = mods.find(lower_name);
-    //         if (handler == mods.end()) {
-    //             // TODO: Create handler instance
-    //             // ApiHandler* handler = new hdl(emu);
-    //             // mods[lower_name] = handler;
-    //             // return handler;
-    //         } else {
-    //             return handler->second;
-    //         }
-    //     }
-    // }
+    // Use the ApiHandlerRegistry to find and create API handlers
+    std::string lower_name = mod_name;
+    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
+
+    // Check if already loaded
+    auto it = mods.find(lower_name);
+    if (it != mods.end()) {
+        return it->second;
+    }
+
+    // Try to create handler via registry (looks up exact name match)
+    ApiHandler* handler = ApiHandlerRegistry::create_handler(lower_name, emu);
+    if (handler) {
+        mods[lower_name] = handler;
+        return handler;
+    }
+
+    // Fallback: iterate all registered handlers and match by name
+    auto all_handlers = ApiHandlerRegistry::get_all_handlers();
+    for (const auto& [name, factory] : all_handlers) {
+        std::string reg_name = name;
+        std::transform(reg_name.begin(), reg_name.end(), reg_name.begin(), ::tolower);
+        if (reg_name == lower_name) {
+            handler = factory(emu);
+            if (handler) {
+                mods[lower_name] = handler;
+            }
+            return handler;
+        }
+    }
+
     return nullptr;
 }
 
-std::tuple<ApiHandler*, void*> WindowsApi::get_data_export_handler(const std::string& mod_name, 
+std::tuple<ApiHandler*, void*> WindowsApi::get_data_export_handler(const std::string& mod_name,
                                                                    const std::string& exp_name) {
-    auto mod_it = mods.find(mod_name);
+    // Find the module handler
+    std::string key = mod_name;
+    std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+
+    auto mod_it = mods.find(key);
     ApiHandler* mod = (mod_it != mods.end()) ? mod_it->second : nullptr;
-    
+
     if (!mod) {
         mod = load_api_handler(mod_name);
     }
-    
+
     if (!mod) {
         return std::make_tuple(nullptr, nullptr);
     }
-    
-    // TODO: Call mod->get_data_handler(exp_name)
-    // void* handler = mod->get_data_handler(exp_name);
-    // return std::make_tuple(mod, handler);
-    return std::make_tuple(mod, nullptr);
+
+    // Delegate to the handler's get_data_handler method
+    std::function<void()> handler_func = mod->get_data_handler(exp_name);
+    if (!handler_func) {
+        return std::make_tuple(mod, nullptr);
+    }
+
+    // Cache the function and return a void* pointer to it
+    std::string cache_key = key + ":" + exp_name + ":data";
+    func_cache_[cache_key] = handler_func;
+    return std::make_tuple(mod, reinterpret_cast<void*>(&func_cache_[cache_key]));
 }
 
-std::tuple<ApiHandler*, void*> WindowsApi::get_export_func_handler(const std::string& mod_name, 
+std::tuple<ApiHandler*, void*> WindowsApi::get_export_func_handler(const std::string& mod_name,
                                                                    const std::string& exp_name) {
-    auto mod_it = mods.find(mod_name);
+    // Find the module handler
+    std::string key = mod_name;
+    std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+
+    auto mod_it = mods.find(key);
     ApiHandler* mod = (mod_it != mods.end()) ? mod_it->second : nullptr;
-    
+
     if (!mod) {
         mod = load_api_handler(mod_name);
     }
-    
+
     if (!mod) {
         return std::make_tuple(nullptr, nullptr);
     }
-    
-    // TODO: Call mod->get_func_handler(exp_name)
-    // void* handler = mod->get_func_handler(exp_name);
-    // return std::make_tuple(mod, handler);
-    return std::make_tuple(mod, nullptr);
+
+    // Delegate to the handler's get_func_handler method
+    auto [func_name, handler_func, argc, conv, ordinal] = mod->get_func_handler(exp_name);
+    (void)func_name;
+    (void)argc;
+    (void)conv;
+    (void)ordinal;
+
+    if (!handler_func) {
+        return std::make_tuple(mod, nullptr);
+    }
+
+    // Cache the function and return a void* pointer to it
+    std::string cache_key = key + ":" + exp_name + ":func";
+    func_cache_[cache_key] = handler_func;
+    return std::make_tuple(mod, reinterpret_cast<void*>(&func_cache_[cache_key]));
 }
 
 void* WindowsApi::call_api_func(ApiHandler* mod, void* func, const std::vector<void*>& argv, void* ctx) {
     /**
      * Call the handler to implement the imported API
+     *
+     * In C++, the handler functions are stored as std::function<void()> which
+     * capture all context at registration time (via the macro system).
+     * The func pointer is a cached std::function<void()> stored in func_cache_.
      */
-    // TODO: Call func(mod, emu, argv, ctx);
-    // return func(mod, emu, argv, ctx);
+    (void)mod;
+    (void)argv;
+    (void)ctx;
+
+    if (func == nullptr) {
+        return nullptr;
+    }
+
+    // Cast void* back to std::function<void()>* and invoke
+    auto* handler_func = reinterpret_cast<std::function<void()>*>(func);
+    if (handler_func && *handler_func) {
+        (*handler_func)();
+    }
+
     return nullptr;
 }
 
 void* WindowsApi::call_data_func(ApiHandler* mod, void* func, uint64_t ptr) {
     /**
      * Call the handler to initialize and return imported data variables
+     *
+     * In C++, data handler functions are stored as std::function<void()> which
+     * capture all context at registration time.
      */
-    // TODO: Call func(mod, ptr);
-    // return func(mod, ptr);
+    (void)mod;
+    (void)ptr;
+
+    if (func == nullptr) {
+        return nullptr;
+    }
+
+    // Cast void* back to std::function<void()>* and invoke
+    auto* handler_func = reinterpret_cast<std::function<void()>*>(func);
+    if (handler_func && *handler_func) {
+        (*handler_func)();
+    }
+
     return nullptr;
 }
 
 std::vector<std::tuple<std::string, ApiHandler*>> autoload_api_handlers() {
     std::vector<std::tuple<std::string, ApiHandler*>> api_handlers;
-    
-    // TODO: Implement module inspection to autoload API handlers
-    // This would require a reflection mechanism or static registration
-    // of API handler classes, which is not directly available in C++
-    // 
-    // In C++, this would typically be implemented using:
-    // 1. A static registration pattern where each API handler registers itself
-    // 2. A factory pattern with predefined mappings
-    // 3. A plugin system with dynamic loading
-    
-    // For now, we'll return an empty vector
+
+    // Use the static ApiHandlerRegistry to enumerate all registered handlers
+    auto all_handlers = ApiHandlerRegistry::get_all_handlers();
+
+    for (const auto& [name, factory] : all_handlers) {
+        // Create a placeholder tuple with name and null handler
+        // (handlers are instantiated on demand by load_api_handler)
+        api_handlers.push_back(std::make_tuple(name, static_cast<ApiHandler*>(nullptr)));
+    }
+
     return api_handlers;
 }

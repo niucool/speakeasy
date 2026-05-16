@@ -55,77 +55,75 @@ void Hook::disable() {
 /**
  * Wrapper for code callback
  */
-bool Hook:: _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx) {
-    try {
-        if (enabled) {
-            // if (container->exit_event && container->exit_event->is_set()) {
-            //     container->stop();
-            //     return false;
-            // }
-            // return cb(container, addr, size, this->ctx);
-            return true;        }
-        return true;
-    } catch (...) { // C++ equivalent of except KeyboardInterrupt
-        return false;
-    }
+bool Hook::_wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx) {
+    // Static wrapper — the 'container' field from the Hook is passed
+    // as the last element in ctx (or as the cb_data from hook_add).
+    // Currently stubbed — see commented-out logic.
+    (void)emu; (void)addr; (void)size; (void)ctx;
+    return true;
 }
 
 /**
  * Wrapper for interrupt callback
  */
 bool Hook::_wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx) {
-    if (enabled) {
-        // return cb(container, num, this->ctx);
-        return true;    }
+    (void)emu; (void)num; (void)ctx;
     return true;
 }
 
 /**
- * Wrapper for IN instruction callback
+ * Wrapper for IN/INSB/OUT/OUTSB instruction callback
  */
 bool Hook::_wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx) {
-    if (enabled) {
-        // return cb(container, port, size);
-        return true;    }
+    (void)emu; (void)port; (void)size; (void)ctx;
     return true;
 }
 
 /**
- * Wrapper for syscall instruction callback
+ * Wrapper for syscall/sysenter instruction callback
  */
 bool Hook::_wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx) {
-    if (enabled) {
-        // return cb(container);
-        return true;    }
+    (void)emu; (void)ctx;
     return true;
 }
 
 /**
- * Wrapper for memory access callback
+ * Wrapper for memory access callback (read/write/invalid)
  */
-bool Hook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr, 
-                                  uint32_t size, uint64_t value, void* ctx) {
-    try {
-        if (enabled) {
-            // if (container->exit_event && container->exit_event->is_set()) {
-            //     container->stop();
-            //     return false;
-            // }
-            // return cb(container, access, addr, size, value, ctx);
-            return true;        }
-        return true;
-    } catch (...) { // C++ equivalent of except KeyboardInterrupt
-        return false;
-    }
+bool Hook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx) {
+    (void)emu; (void)access; (void)addr; (void)size; (void)value; (void)ctx;
+    return true;
+}
+
+/**
+ * Wrapper for memory callback
+ */
+bool Hook::_wrap_mem_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx) {
+    (void)emu; (void)access; (void)addr; (void)size; (void)value; (void)ctx;
+    return true;
+}
+
+/**
+ * Wrapper for invalid memory callback
+ */
+bool Hook::_wrap_mem_invalid_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx) {
+    (void)emu; (void)access; (void)addr; (void)size; (void)value; (void)ctx;
+    return true;
+}
+
+/**
+ * Wrapper for instruction callback
+ */
+bool Hook::_wrap_insn_cb(void* emu, const std::vector<void*>& ctx) {
+    (void)emu; (void)ctx;
+    return true;
 }
 
 /**
  * Wrapper for invalid instruction callback
  */
 bool Hook::_wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx) {
-    if (enabled) {
-        // return cb(container, this->ctx);
-        return true;    }
+    (void)emu; (void)ctx;
     return true;
 }
 

@@ -6,31 +6,16 @@
 #include <vector>
 #include <map>
 #include <set>
-#include <memory>
 #include <cstdint>
+#include <memory>
 
-// TODO: Need C++ equivalents for these Python imports
-// #include "speakeasy/winenv/arch.h"
-
-// When disassembling, a minimum instruction size needs to be supplied
-// This number is arbitrary and just needs to be large enough to cover
-// the size of the current disasm target
-const int DISASM_SIZE = 0x20;
-
-// Forward declarations
-class ApiHammer;
-
-// Default list of APIs to always allow despite triggering API hammering detection
-extern const std::vector<std::string> _default_api_hammer_allowlist;
-
-// Helper function to create a set with lowercase strings
-std::set<std::string> _lowercase_set(const std::vector<std::string>& tt);
+#include "winemu.h"
 
 // Class to detect and attempt to mitigate API hammering as part of anti-sandbox or
 // anti-emulation in malware samples
 class ApiHammer {
 private:
-    void* emu; // TODO: Should be WindowsEmulator* or appropriate emulator type
+    WindowsEmulator* emu;
     std::map<std::string, int> api_stats;
     uint64_t hammer_memregion;
     size_t hammer_offset;
@@ -42,11 +27,19 @@ private:
 
 public:
     // Constructor
-    ApiHammer(void* emu);
+    ApiHammer(WindowsEmulator* emu,
+              const std::map<std::string, std::string>& cfg = {});
     
     // Methods
     bool is_allowed_api(const std::string& apiname);
     void handle_import_func(const std::string& imp_api, int conv, int argc);
+
+private:
+    // Architecture-specific hammering handlers
+    void _handle_hammer_x86(const std::string& imp_api, int conv,
+                            int argc, uint64_t ret_addr);
+    void _handle_hammer_amd64(const std::string& imp_api, int conv,
+                              int argc, uint64_t ret_addr);
 };
 
 #endif // HAMMER_H

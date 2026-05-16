@@ -10,6 +10,7 @@ const std::string MEM_ALLOC = "mem_alloc";
 const std::string MEM_WRITE = "mem_write";
 const std::string MEM_READ = "mem_read";
 const std::string MEM_PROTECT = "mem_protect";
+const std::string MEM_FREE = "mem_free";
 const std::string THREAD_INJECT = "thread_inject";
 const std::string THREAD_CREATE = "thread_create";
 

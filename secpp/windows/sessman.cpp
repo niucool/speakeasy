@@ -36,9 +36,9 @@ std::string Station::get_name() const {
 
 // Desktop implementation
 Desktop::Desktop(const std::string& name) : name(name) {
-    // TODO: fix dangling pointer - new_window returns by value
     Window win = new_window();
-    desktop_window = nullptr;  // TODO: store properly
+    // Point to the window stored in the map (stable reference in std::map)
+    desktop_window = &windows.at(win.get_handle());
 }
 
 Window Desktop::new_window() {
@@ -80,9 +80,9 @@ SessionManager::SessionManager(const nlohmann::json& config)
     curr_session = &sessions.emplace(0, Session(0)).first->second;
 
     // create WinSta0
-    // TODO: fix dangling pointer
     Station st = curr_session->new_station("WinSta0");
-    curr_station = nullptr;
+    // Get a pointer to the station stored in the session's map (stable reference)
+    curr_station = const_cast<Station*>(&curr_session->get_stations().at(st.get_handle()));
 
     // Create a desktop
     curr_station->new_desktop("Winlogon");
@@ -90,8 +90,14 @@ SessionManager::SessionManager(const nlohmann::json& config)
     curr_station->new_desktop("Disconnect");
 
     // For now lets default to the Default desktop
-    // Note: In a real implementation, we would need to properly manage the Desktop object reference
-    // This is a simplified version for demonstration
+    auto& def_stations = curr_session->get_stations();
+    auto& def_desktops = def_stations.at(curr_station->get_handle()).get_desktops();
+    for (auto& [hnd, desk] : def_desktops) {
+        if (desk.get_name() == "Default") {
+            curr_desktop = const_cast<Desktop*>(&desk);
+            break;
+        }
+    }
 }
 
 int SessionManager::create_window_class(void* class_obj, const std::string* class_name) {
@@ -143,10 +149,6 @@ Station* SessionManager::get_current_station() {
 }
 
 GuiObject* SessionManager::get_gui_object(int handle) {
-    // TODO: This implementation needs to be revisited as it has issues with object lifetime
-    // The current approach of returning pointers to temporary objects will cause issues
-    // A proper implementation would need to manage object lifetimes more carefully
-    
     for (auto& sess_pair : sessions) {
         int hsess = sess_pair.first;
         Session& sess = sess_pair.second;
@@ -155,16 +157,22 @@ GuiObject* SessionManager::get_gui_object(int handle) {
             return &sess;
         }
         
-        for (auto& stat_pair : sess.get_desktops()) {
+        for (auto& stat_pair : sess.get_stations()) {
             int hstat = stat_pair.first;
-            auto& stat = stat_pair.second;  // TODO: fix type - Desktop vs Station
+            Station& stat = const_cast<Station&>(stat_pair.second);
             
             if (hstat == handle) {
                 return &stat;
             }
             
-            // TODO: Check desktops within the station
-            // This requires a more complex implementation to properly handle object references
+            for (auto& desk_pair : stat.get_desktops()) {
+                int hdesk = desk_pair.first;
+                Desktop& desk = const_cast<Desktop&>(desk_pair.second);
+                
+                if (hdesk == handle) {
+                    return &desk;
+                }
+            }
         }
     }
     

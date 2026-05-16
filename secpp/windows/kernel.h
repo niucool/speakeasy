@@ -8,11 +8,12 @@
 #include <string>
 #include <vector>
 #include <tuple>
-#include <memory>
 #include <cstdint>
+#include <memory>
 
 #include "ioman.h"
 #include "objman.h"
+#include "winemu.h"
 
 namespace speakeasy {
 
@@ -60,7 +61,7 @@ constexpr int IRP_MJ_PNP                      = 0x1b;
  */
 class WinKernelEmulator : public IoManager {
 public:
-    WinKernelEmulator();
+    WinKernelEmulator(WindowsEmulator* emu);
     virtual ~WinKernelEmulator() = default;
 
     // ── System ────────────────────────────────────────────────
@@ -119,6 +120,7 @@ private:
     std::vector<void*> processes_;
     std::vector<Driver*> drivers_;
     std::vector<std::tuple<uint64_t, int, size_t, std::string>> pool_allocs_;
+    WindowsEmulator* emu_ = nullptr;
 };
 
 } // namespace speakeasy

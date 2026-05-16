@@ -3,9 +3,50 @@
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
+#include <sstream>
+#include <cstring>
 
 // Static member initialization
 uint32_t RegKey::curr_handle = 0x180;
+
+// ── Simple base64 encoder (for REG_BINARY normalization) ──────────
+namespace {
+
+static const char b64_table[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+std::string base64_encode(const std::string& input) {
+    std::string out;
+    out.reserve(((input.size() + 2) / 3) * 4);
+    size_t i = 0;
+    while (i < input.size()) {
+        unsigned char b0 = static_cast<unsigned char>(input[i++]);
+        unsigned char b1 = (i < input.size()) ? static_cast<unsigned char>(input[i++]) : 0;
+        unsigned char b2 = (i < input.size()) ? static_cast<unsigned char>(input[i++]) : 0;
+        out += b64_table[b0 >> 2];
+        out += b64_table[((b0 & 0x03) << 4) | (b1 >> 4)];
+        out += (i > input.size() + 0) ? '=' : b64_table[((b1 & 0x0F) << 2) | (b2 >> 6)];
+        out += (i > input.size() + 1) ? '=' : b64_table[b2 & 0x3F];
+    }
+    return out;
+}
+
+bool string_is_numeric(const std::string& s) {
+    if (s.empty()) return false;
+    size_t start = 0;
+    if (s[0] == '-' || s[0] == '+') {
+        if (s.size() == 1) return false;
+        start = 1;
+    }
+    for (size_t i = start; i < s.size(); ++i) {
+        if (!std::isdigit(static_cast<unsigned char>(s[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+} // anonymous namespace
 
 // RegValue implementation
 RegValue::RegValue(const std::string& name, int val_type, const std::string& data)
@@ -13,26 +54,44 @@ RegValue::RegValue(const std::string& name, int val_type, const std::string& dat
     this->data = normalize_value(val_type, data);
 }
 
-std::string RegValue::normalize_value(int val_type, const std::string& data) {
-    // Convert registry values to python types
-    // TODO: Implementation depends on regdefs constants
-    /*
-    if val_type in (regdefs.REG_EXPAND_SZ, regdefs.REG_MULTI_SZ, regdefs.REG_SZ):
-        if not isinstance(data, str):
-            raise RegistryEmuError('Invalid registry value expected string')
-        return data
-    elif val_type in (regdefs.REG_DWORD, regdefs.REG_QWORD):
-        if isinstance(data, str):
-            return int(data, 0)
-        elif isinstance(data, int):
-            return data
-    elif val_type == regdefs.REG_BINARY:
-        // Binary data is expected to be base64'd
-        return base64.b64encode(data.encode('utf-8'))
-    else:
-        return data
-    */
-    return data;
+std::string RegValue::normalize_value(int vtype, const std::string& vdata) {
+    // Convert registry values to string types (matching speakeasy/winenv/defs/registry/reg.py)
+    if (vtype == REG_SZ || vtype == REG_EXPAND_SZ || vtype == REG_MULTI_SZ) {
+        // String types - data must be a string
+        return vdata;
+    } else if (vtype == REG_DWORD || vtype == REG_QWORD) {
+        // Numeric types - data may be a hex string or decimal string
+        if (vdata.empty()) {
+            return "0";
+        }
+        // If it starts with 0x, it's hex; otherwise try to parse as decimal
+        // Store as decimal string representation
+        if (vdata.size() > 2 && vdata[0] == '0' && (vdata[1] == 'x' || vdata[1] == 'X')) {
+            // Hex string - convert to numeric string
+            try {
+                unsigned long long val = std::stoull(vdata, nullptr, 0);
+                return std::to_string(val);
+            } catch (...) {
+                return vdata;
+            }
+        } else if (string_is_numeric(vdata)) {
+            return vdata;
+        } else {
+            // Try to parse as hex
+            try {
+                unsigned long long val = std::stoull(vdata, nullptr, 0);
+                return std::to_string(val);
+            } catch (...) {
+                return vdata;
+            }
+        }
+    } else if (vtype == REG_BINARY) {
+        // Binary data - base64 encode the raw bytes
+        return base64_encode(vdata);
+    } else {
+        // Unknown type - return as-is
+        return vdata;
+    }
 }
 
 std::string RegValue::get_name() {
@@ -80,10 +139,12 @@ std::shared_ptr<RegValue> RegKey::get_value(const std::string& val_name) {
     
     for (auto& v : values) {
         std::string v_name = v->get_name();
-        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-        std::transform(v_name.begin(), v_name.end(), v_name.begin(), ::tolower);
+        std::string lname = name;
+        std::string lvname = v_name;
+        std::transform(lname.begin(), lname.end(), lname.begin(), ::tolower);
+        std::transform(lvname.begin(), lvname.end(), lvname.begin(), ::tolower);
         
-        if (name == v_name) {
+        if (lname == lvname) {
             return v;
         }
     }
@@ -91,19 +152,18 @@ std::shared_ptr<RegValue> RegKey::get_value(const std::string& val_name) {
 }
 
 // RegistryManager implementation
-RegistryManager::RegistryManager(const std::map<std::string, std::string>& config) : config(config) {
-    // Initialize default registry keys
+RegistryManager::RegistryManager(const nlohmann::json& config) : config(config) {
+    // Initialize default registry keys matching Python's regdefs.get_hkey_type
     std::vector<uint32_t> hkeys = {HKEY_CLASSES_ROOT, HKEY_CURRENT_USER,
                                    HKEY_LOCAL_MACHINE, HKEY_USERS};
     
-    // TODO: Implementation depends on regdefs.get_hkey_type
-    /*
-    for hk in (HKEY_CLASSES_ROOT, HKEY_CURRENT_USER,
-               HKEY_LOCAL_MACHINE, HKEY_USERS):
-        path = regdefs.get_hkey_type(hk)
-        key = this.create_key(path)
-        this.reg_handles.update({hk: key})
-    */
+    for (uint32_t hk : hkeys) {
+        std::string path = get_hkey_type(hk);
+        if (!path.empty()) {
+            auto key = create_key(path);
+            reg_handles[hk] = key;
+        }
+    }
 }
 
 std::string RegistryManager::normalize_reg_path(const std::string& path) {
@@ -115,7 +175,10 @@ std::string RegistryManager::normalize_reg_path(const std::string& path) {
                 std::string lower_path = path;
                 std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::tolower);
                 
-                if (lower_path.substr(0, r.length()) == r) {
+                std::string lower_r = r;
+                std::transform(lower_r.begin(), lower_r.end(), lower_r.begin(), ::tolower);
+                
+                if (lower_path.substr(0, lower_r.length()) == lower_r) {
                     new_path = "HKEY_LOCAL_MACHINE\\" + path.substr(r.length());
                     return new_path;
                 }
@@ -133,6 +196,37 @@ std::shared_ptr<RegKey> RegistryManager::get_key_from_handle(uint32_t handle) {
     return nullptr;
 }
 
+// Simple fnmatch-like matching for registry paths
+// Supports '*' as wildcard matching any sequence of characters
+static bool path_matches(const std::string& pattern, const std::string& str) {
+    // Simple wildcard matching: '*' matches any sequence
+    size_t pi = 0, si = 0;
+    size_t last_star = std::string::npos;
+    size_t last_si = 0;
+    
+    while (si < str.size()) {
+        if (pi < pattern.size() && (pattern[pi] == str[si] || pattern[pi] == '?')) {
+            pi++; si++;
+        } else if (pi < pattern.size() && pattern[pi] == '*') {
+            last_star = pi;
+            last_si = si;
+            pi++;
+        } else if (last_star != std::string::npos) {
+            pi = last_star + 1;
+            last_si++;
+            si = last_si;
+        } else {
+            return false;
+        }
+    }
+    
+    while (pi < pattern.size() && pattern[pi] == '*') {
+        pi++;
+    }
+    
+    return pi == pattern.size();
+}
+
 std::shared_ptr<RegKey> RegistryManager::get_key_from_path(const std::string& path) {
     std::string normalized_path = normalize_reg_path(path);
     std::string lower_normalized_path = normalized_path;
@@ -143,9 +237,8 @@ std::shared_ptr<RegKey> RegistryManager::get_key_from_path(const std::string& pa
         std::string key_path = key->get_path();
         std::transform(key_path.begin(), key_path.end(), key_path.begin(), ::tolower);
         
-        // TODO: Implementation depends on fnmatch functionality
-        // if fnmatch.fnmatch(key.get_path().lower(), path.lower()):
-        if (key_path == lower_normalized_path) {
+        // fnmatch-style matching: check if key path matches the pattern
+        if (path_matches(lower_normalized_path, key_path)) {
             return key;
         }
     }
@@ -168,9 +261,6 @@ bool RegistryManager::is_key_a_parent_key(const std::string& path) {
 }
 
 std::vector<std::string> RegistryManager::get_subkeys(std::shared_ptr<RegKey> key) {
-    // TODO: once we revamp the registry emulation,
-    // make this better
-
     std::string parent_path = key->get_path();
     std::vector<std::string> subkeys;
     
@@ -214,22 +304,52 @@ std::vector<std::string> RegistryManager::get_subkeys(std::shared_ptr<RegKey> ke
 }
 
 std::shared_ptr<RegKey> RegistryManager::get_key_from_config(const std::string& path) {
-    // TODO: Implementation depends on config structure
-    /*
     // See if the emulator config file contains a handler for the requested registry path
-    for key in this.config.get('keys', []):
-        if key['path'].lower() == path.lower():
-            new_key = RegKey(path)
-            for value in key.get('values', []):
-                val_type = value.get('type')
-                vts = regdefs.get_flag_value(val_type)  // noqa
-
-                val_name = value.get('name', '')
-                data = value.get('data')
-                new_key.create_value(val_name, val_type, data)
-            return new_key
-    return None
-    */
+    // Matches Python: for key in self.config.get('keys', []):
+    if (config.is_null() || !config.contains("registry") || 
+        !config["registry"].is_object() || !config["registry"].contains("keys")) {
+        return nullptr;
+    }
+    
+    const auto& keys_arr = config["registry"]["keys"];
+    if (!keys_arr.is_array()) {
+        return nullptr;
+    }
+    
+    std::string lower_path = path;
+    std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::tolower);
+    
+    for (const auto& key_entry : keys_arr) {
+        if (!key_entry.contains("path") || !key_entry["path"].is_string()) {
+            continue;
+        }
+        
+        std::string key_path = key_entry["path"].get<std::string>();
+        std::string lower_key_path = key_path;
+        std::transform(lower_key_path.begin(), lower_key_path.end(), 
+                       lower_key_path.begin(), ::tolower);
+        
+        if (lower_key_path == lower_path) {
+            auto new_key = std::make_shared<RegKey>(path);
+            
+            if (key_entry.contains("values") && key_entry["values"].is_array()) {
+                for (const auto& value_entry : key_entry["values"]) {
+                    std::string val_name = value_entry.contains("name") ? 
+                        value_entry["name"].get<std::string>() : "";
+                    std::string val_type_str = value_entry.contains("type") ? 
+                        value_entry["type"].get<std::string>() : "REG_SZ";
+                    std::string val_data = value_entry.contains("data") ? 
+                        value_entry["data"].get<std::string>() : "";
+                    
+                    int val_type = get_flag_value(val_type_str);
+                    new_key->create_value(val_name, val_type, val_data);
+                }
+            }
+            
+            return new_key;
+        }
+    }
+    
     return nullptr;
 }
 

@@ -1,42 +1,28 @@
 // netman.cpp
 #include "netman.h"
+#include "../common.h"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 
 // Helper functions
 bool is_empty(std::shared_ptr<std::stringstream> bio) {
-    // TODO: Implementation depends on stream buffer handling
-    /*
-    if len(bio.getbuffer()) == bio.tell():
-        return True
-    return False
-    */
-    return true; // Placeholder
+    if (!bio) return true;
+    std::streampos current = bio->tellg();
+    bio->seekg(0, std::ios::end);
+    std::streampos end = bio->tellg();
+    bio->seekg(current);
+    return current == end;
 }
 
 std::string normalize_response_path(const std::string& path) {
-    // TODO: Implementation depends on path handling
-    /*
-    def _get_speakeasy_root():
-        return os.path.join(os.path.dirname(__file__), os.pardir)
-
-    root_var = '$ROOT$'
-
-    if root_var in path:
-        root = _get_speakeasy_root()
-        return path.replace(root_var, root)
-
-    return path
-    */
-    return path;
+    return normalize_package_path(path);
 }
 
 // Static member initialization
 uint32_t WininetComponent::curr_handle = 0x20;
-// TODO: Replace with nlohmann::json or appropriate JSON type
-// nlohmann::json WininetComponent::config;
-std::map<std::string, std::string> WininetComponent::config;
+// Static config — starts as null JSON object
+nlohmann::json WininetComponent::config = nullptr;
 
 // Socket implementation
 Socket::Socket(int fd, int family, int stype, int protocol, uint32_t flags)
@@ -62,32 +48,45 @@ std::tuple<std::string, int> Socket::get_connection_info() {
     return std::make_tuple(connected_host, connected_port);
 }
 
-void Socket::fill_recv_queue(/* TODO: Replace with nlohmann::json parameter */ 
-                            const std::vector<std::map<std::string, std::string>>& responses) {
-    // TODO: Implementation depends on response handling
-    /*
-    for resp in responses:
-        mode = resp.get('mode', '')
-        if mode.lower() == 'default':
-            default_resp_path = resp.get('path')
-            if default_resp_path:
-                default_resp_path = normalize_response_path(default_resp_path)
-                with open(default_resp_path, 'rb') as f:
-                    this.curr_packet = BytesIO(f.read())
-    */
+void Socket::fill_recv_queue(const nlohmann::json& responses) {
+    if (!responses.is_array()) return;
+
+    for (const auto& resp : responses) {
+        std::string mode = resp.value("mode", "");
+        std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+        if (mode == "default") {
+            std::string default_resp_path = resp.value("path", "");
+            if (!default_resp_path.empty()) {
+                default_resp_path = normalize_response_path(default_resp_path);
+                std::ifstream file(default_resp_path, std::ios::binary | std::ios::ate);
+                if (file) {
+                    std::streamsize size = file.tellg();
+                    file.seekg(0, std::ios::beg);
+                    std::vector<uint8_t> buffer(size);
+                    if (file.read(reinterpret_cast<char*>(buffer.data()), size)) {
+                        curr_packet = std::make_shared<std::stringstream>(
+                            std::string(buffer.begin(), buffer.end()));
+                    }
+                }
+            }
+        }
+    }
 }
 
 std::vector<uint8_t> Socket::get_recv_data(size_t size, bool peek) {
-    // TODO: Implementation depends on stream handling
-    /*
-    data = this.curr_packet.read(size)
-    if not peek:
-        return data
-    elif peek:
-        this.curr_packet.seek(-size, os.SEEK_CUR)
-    return data
-    */
-    return std::vector<uint8_t>(); // Placeholder
+    std::vector<uint8_t> data;
+    if (!curr_packet) return data;
+
+    data.resize(size);
+    curr_packet->read(reinterpret_cast<char*>(data.data()), size);
+    std::streamsize bytes_read = curr_packet->gcount();
+    data.resize(bytes_read);
+
+    if (peek && bytes_read > 0) {
+        curr_packet->seekg(-bytes_read, std::ios::cur);
+    }
+
+    return data;
 }
 
 // WSKSocket implementation
@@ -135,8 +134,8 @@ WininetRequest::WininetRequest(std::shared_ptr<WininetSession> session, const st
     if (this->objname.empty()) {
         this->objname = "";
     }
-    // TODO: Implementation depends on URL parsing
-    // this->objname = urlparse(this->objname);
+    // Note: Python's urlparse would split objname into components here;
+    // we store the raw URL string and access it directly.
 }
 
 std::shared_ptr<WininetSession> WininetRequest::get_session() {
@@ -157,13 +156,12 @@ std::shared_ptr<WininetInstance> WininetRequest::get_instance() {
 }
 
 bool WininetRequest::is_secure() {
-    // TODO: Implementation depends on flag checking
-    /*
-    if 'INTERNET_FLAG_SECURE' in this.flags:
-        return True
-    return False
-    */
-    return false; // Placeholder
+    for (const auto& flag : flags) {
+        if (flag == "INTERNET_FLAG_SECURE") {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::string WininetRequest::format_http_request(const std::string& headers) {
@@ -186,17 +184,28 @@ std::string WininetRequest::format_http_request(const std::string& headers) {
         request_string += "User-Agent: " + ua + "\n";
     }
 
-    // TODO: Implementation depends on flag checking
-    /*
-    if 'INTERNET_FLAG_KEEP_CONNECTION' in this.flags:
-        request_string += 'Connection: Keep-Alive\n'
-    else:
-        request_string += 'Connection: Close\n'
+    // Check for keep-alive connection flag
+    bool keep_alive = false;
+    bool dont_cache = false;
+    for (const auto& flag : flags) {
+        if (flag == "INTERNET_FLAG_KEEP_CONNECTION") {
+            keep_alive = true;
+        }
+        if (flag == "INTERNET_FLAG_DONT_CACHE") {
+            dont_cache = true;
+        }
+    }
 
-    if 'INTERNET_FLAG_DONT_CACHE' in this.flags:
-        request_string += 'Cache-Control: no-cache\n'
-    */
-    
+    if (keep_alive) {
+        request_string += "Connection: Keep-Alive\n";
+    } else {
+        request_string += "Connection: Close\n";
+    }
+
+    if (dont_cache) {
+        request_string += "Cache-Control: no-cache\n";
+    }
+
     return request_string;
 }
 
@@ -206,14 +215,12 @@ size_t WininetRequest::get_response_size() {
         return 0;
     }
     
-    // TODO: Implementation depends on stream positioning
-    /*
-    off = resp.tell()
-    size = len(resp.read())
-    resp.seek(off, io.SEEK_SET)
-    return size
-    */
-    return 0; // Placeholder
+    // Save current position, read all, get size, restore position
+    std::streampos off = resp->tellg();
+    resp->seekg(0, std::ios::end);
+    std::streampos size = resp->tellg();
+    resp->seekg(off);
+    return static_cast<size_t>(size);
 }
 
 std::shared_ptr<std::stringstream> WininetRequest::get_response() {
@@ -222,52 +229,102 @@ std::shared_ptr<std::stringstream> WininetRequest::get_response() {
     handler for the current WinInet request
     */
     
-    // TODO: Implementation depends on config structure
-    /*
-    cfg = WininetComponent.config
+    if (response) {
+        return response;
+    }
 
-    if this.response:
-        return this.response
+    nlohmann::json cfg = WininetComponent::get_config();
+    if (cfg.is_null()) {
+        throw NetworkEmuError("No HTTP configuration supplied");
+    }
 
-    http = cfg.get('http')
-    if not http:
-        raise NetworkEmuError('No HTTP configuration supplied')
-    resps = http.get('responses')
-    if not resps:
-        raise NetworkEmuError('No HTTP responses supplied')
+    nlohmann::json http = cfg.value("http", nlohmann::json());
+    if (http.is_null() || http.empty()) {
+        throw NetworkEmuError("No HTTP configuration supplied");
+    }
 
-    this.response = None
-    for res in resps:
-        verb = res.get('verb', '')
-        if verb.lower() == this.verb:
+    nlohmann::json resps = http.value("responses", nlohmann::json::array());
+    if (resps.empty()) {
+        throw NetworkEmuError("No HTTP responses supplied");
+    }
 
-            resp_files = res.get('files', [])
-            if resp_files:
-                for file in resp_files:
-                    mode = file.get('mode', '')
-                    if mode.lower() == 'by_ext':
-                        ext = file.get('ext', '')
-                        fn, obj_ext = os.path.splitext(this.objname.path)
+    response = nullptr;
+    std::string default_resp_path;
 
-                        if (ext.lower().strip('.') ==
-                           obj_ext.lower().strip('.')):
-                            path = file.get('path')
-                            path = normalize_response_path(path)
+    for (const auto& res : resps) {
+        std::string verb = res.value("verb", "");
+        std::string verb_lower = verb;
+        std::transform(verb_lower.begin(), verb_lower.end(), verb_lower.begin(), ::tolower);
 
-                            with open(path, 'rb') as f:
-                                this.response = BytesIO(f.read())
-                    elif mode.lower() == 'default':
+        if (verb_lower == this->verb) {
+            nlohmann::json resp_files = res.value("files", nlohmann::json::array());
+            if (!resp_files.empty()) {
+                for (const auto& file : resp_files) {
+                    std::string mode = file.value("mode", "");
+                    std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
 
-                        default_resp_path = file.get('path')
-                        default_resp_path = normalize_response_path(default_resp_path)
+                    if (mode == "by_ext") {
+                        std::string ext = file.value("ext", "");
+                        // Extract extension from objname
+                        size_t dot_pos = objname.find_last_of('.');
+                        std::string obj_ext;
+                        if (dot_pos != std::string::npos) {
+                            obj_ext = objname.substr(dot_pos + 1);
+                        }
 
-                if not this.response and default_resp_path:
-                    default_resp_path = normalize_response_path(default_resp_path)
-                    with open(default_resp_path, 'rb') as f:
-                        this.response = BytesIO(f.read())
+                        std::string ext_clean = ext;
+                        std::string obj_ext_clean = obj_ext;
+                        // Strip leading dots and lowercase for comparison
+                        if (!ext_clean.empty() && ext_clean[0] == '.') {
+                            ext_clean = ext_clean.substr(1);
+                        }
+                        if (!obj_ext_clean.empty() && obj_ext_clean[0] == '.') {
+                            obj_ext_clean = obj_ext_clean.substr(1);
+                        }
+                        std::transform(ext_clean.begin(), ext_clean.end(), ext_clean.begin(), ::tolower);
+                        std::transform(obj_ext_clean.begin(), obj_ext_clean.end(), obj_ext_clean.begin(), ::tolower);
 
-    return this.response
-    */
+                        if (ext_clean == obj_ext_clean) {
+                            std::string path = file.value("path", "");
+                            if (!path.empty()) {
+                                path = normalize_response_path(path);
+                                std::ifstream f(path, std::ios::binary | std::ios::ate);
+                                if (f) {
+                                    std::streamsize size = f.tellg();
+                                    f.seekg(0, std::ios::beg);
+                                    std::vector<char> buf(size);
+                                    if (f.read(buf.data(), size)) {
+                                        response = std::make_shared<std::stringstream>(
+                                            std::string(buf.data(), size));
+                                    }
+                                }
+                            }
+                        }
+                    } else if (mode == "default") {
+                        default_resp_path = file.value("path", "");
+                        if (!default_resp_path.empty()) {
+                            default_resp_path = normalize_response_path(default_resp_path);
+                        }
+                    }
+                }
+
+                // If no match found by extension, use default
+                if (!response && !default_resp_path.empty()) {
+                    std::ifstream f(default_resp_path, std::ios::binary | std::ios::ate);
+                    if (f) {
+                        std::streamsize size = f.tellg();
+                        f.seekg(0, std::ios::beg);
+                        std::vector<char> buf(size);
+                        if (f.read(buf.data(), size)) {
+                            response = std::make_shared<std::stringstream>(
+                                std::string(buf.data(), size));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     return response;
 }
 
@@ -343,16 +400,18 @@ std::string WininetInstance::get_user_agent() {
 }
 
 // NetworkManager implementation
-// TODO: Replace with nlohmann::json parameter
-// NetworkManager::NetworkManager(const nlohmann::json& config) 
-NetworkManager::NetworkManager(const std::map<std::string, std::string>& config)
+NetworkManager::NetworkManager(const nlohmann::json& config)
     : curr_fd(4), curr_handle(0x20), config(config) {
     
-    // super(NetworkManager, this).__init__()
-    
     WininetComponent::set_config(config);
-    // TODO: Implementation depends on config structure
-    // this.dns = this.config.get('dns');
+    
+    // Extract DNS config from network section
+    if (!config.is_null()) {
+        nlohmann::json network = config.value("network", nlohmann::json());
+        if (!network.is_null()) {
+            dns = network.value("dns", nlohmann::json());
+        }
+    }
 }
 
 std::shared_ptr<Socket> NetworkManager::new_socket(int family, int stype, int protocol, uint32_t flags) {
@@ -360,74 +419,112 @@ std::shared_ptr<Socket> NetworkManager::new_socket(int family, int stype, int pr
     std::shared_ptr<Socket> sock = std::make_shared<Socket>(fd, family, stype, protocol, flags);
     curr_fd += 4;
 
-    // TODO: Implementation depends on config structure
-    /*
-    if this.config:
-        winsock = this.config.get('winsock')
-        if winsock:
-            responses = winsock.get('responses')
-            if responses:
-                sock.fill_recv_queue(responses)
-    */
+    // Fill receive queue from winsock config if available
+    if (!config.is_null()) {
+        nlohmann::json network = config.value("network", nlohmann::json());
+        if (!network.is_null()) {
+            nlohmann::json winsock = network.value("winsock", nlohmann::json());
+            if (!winsock.is_null()) {
+                nlohmann::json responses = winsock.value("responses", nlohmann::json::array());
+                if (!responses.empty()) {
+                    sock->fill_recv_queue(responses);
+                }
+            }
+        }
+    }
 
     sockets[fd] = sock;
     return sock;
 }
 
 std::string NetworkManager::name_lookup(const std::string& domain) {
-    // TODO: Implementation depends on DNS structure
-    /*
-    if not this.dns:
-        return None
+    if (dns.is_null()) {
+        return "";
+    }
 
-    names = this.dns.get('names')
+    nlohmann::json names = dns.value("names", nlohmann::json());
+    if (names.is_null()) {
+        return "";
+    }
+
+    // Convert domain to lowercase for lookup
+    std::string domain_lower = domain;
+    std::transform(domain_lower.begin(), domain_lower.end(), domain_lower.begin(), ::tolower);
 
     // Do we have an IP for this name?
-    if domain.lower() not in names.keys():
-        // use the default IP (if any)
-        return names.get('default')
-
-    return names.get(domain)
-    */
-    return ""; // Placeholder
+    if (names.contains(domain_lower)) {
+        return names[domain_lower].get<std::string>();
+    }
+    
+    // Use the default IP (if any)
+    return names.value("default", "");
 }
 
 std::vector<uint8_t> NetworkManager::get_dns_txt(const std::string& domain) {
     /*
     Return a configured DNS TXT record (if any)
     */
-    // TODO: Implementation depends on DNS structure and file handling
-    /*
-    def _read_txt_data(txt):
-        path = txt.get('path')
-        if path:
-            path = normalize_response_path(path)
-            with open(path, 'rb') as f:
-                return f.read()
+    
+    if (dns.is_null()) {
+        return std::vector<uint8_t>();
+    }
 
-    if not this.dns:
-        return None
+    nlohmann::json txts = dns.value("txt", nlohmann::json::array());
+    if (txts.empty()) {
+        return std::vector<uint8_t>();
+    }
 
-    txts = this.dns.get('txt', [])
-    txt = [t for t in txts if t.get('name', '') == domain]
-    if txt:
-        return _read_txt_data(txt[0])
-    txt = [t for t in txts if t.get('name', '') == 'default']
-    if txt:
-        return _read_txt_data(txt[0])
-    */
-    return std::vector<uint8_t>(); // Placeholder
+    // Helper lambda to read TXT data from a path
+    auto read_txt_data = [](const nlohmann::json& txt) -> std::vector<uint8_t> {
+        std::string path = txt.value("path", "");
+        if (!path.empty()) {
+            path = normalize_response_path(path);
+            std::ifstream f(path, std::ios::binary | std::ios::ate);
+            if (f) {
+                std::streamsize size = f.tellg();
+                f.seekg(0, std::ios::beg);
+                std::vector<uint8_t> buf(size);
+                if (f.read(reinterpret_cast<char*>(buf.data()), size)) {
+                    return buf;
+                }
+            }
+        }
+        return std::vector<uint8_t>();
+    };
+
+    // Look for domain-specific TXT record
+    for (const auto& txt : txts) {
+        if (txt.value("name", "") == domain) {
+            return read_txt_data(txt);
+        }
+    }
+
+    // Look for default TXT record
+    for (const auto& txt : txts) {
+        if (txt.value("name", "") == "default") {
+            return read_txt_data(txt);
+        }
+    }
+
+    return std::vector<uint8_t>();
 }
 
 std::string NetworkManager::ip_lookup(const std::string& ip) {
-    // TODO: Implementation depends on DNS structure
-    /*
-    for item in this.dns:
-        if item['response'] == ip:
-            return item['query']
-    return None
-    */
-    return ""; // Placeholder
+    if (dns.is_null()) {
+        return "";
+    }
+
+    // Look through DNS names for matching IP
+    nlohmann::json names = dns.value("names", nlohmann::json());
+    if (!names.is_null()) {
+        for (auto it = names.begin(); it != names.end(); ++it) {
+            if (it.value().get<std::string>() == ip) {
+                return it.key();
+            }
+        }
+    }
+
+    return "";
 }
 
 std::shared_ptr<WininetInstance> NetworkManager::new_wininet_inst(const std::string& user_agent, 
@@ -440,25 +537,55 @@ std::shared_ptr<WininetInstance> NetworkManager::new_wininet_inst(const std::str
 }
 
 void* NetworkManager::get_wininet_object(uint32_t handle) {
-    // TODO: Implementation depends on object hierarchy traversal
-    /*
-    for hinst, inst in this.wininets.items():
-        if hinst == handle:
-            return inst
-        for hsess, sess in inst.sessions.items():
-            if hsess == handle:
-                return sess
-            for hreq, req in sess.requests.items():
-                if hreq == handle:
-                    return req
-    */
-    return nullptr; // Placeholder
+    // Search through instances, sessions, and requests
+    for (auto& [hinst, inst] : wininets) {
+        if (hinst == handle) {
+            return static_cast<void*>(inst.get());
+        }
+        if (inst) {
+            for (auto& [hsess, sess] : inst->sessions) {
+                if (hsess == handle) {
+                    return static_cast<void*>(sess.get());
+                }
+                if (sess) {
+                    for (auto& [hreq, req] : sess->requests) {
+                        if (hreq == handle) {
+                            return static_cast<void*>(req.get());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return nullptr;
 }
 
 void NetworkManager::close_wininet_object(uint32_t handle) {
+    // Check instances
     auto it = wininets.find(handle);
     if (it != wininets.end()) {
         wininets.erase(it);
+        return;
+    }
+    // Check sessions within all instances
+    for (auto& [hinst, inst] : wininets) {
+        if (inst) {
+            auto sit = inst->sessions.find(handle);
+            if (sit != inst->sessions.end()) {
+                inst->sessions.erase(sit);
+                return;
+            }
+            // Check requests within sessions
+            for (auto& [hsess, sess] : inst->sessions) {
+                if (sess) {
+                    auto rit = sess->requests.find(handle);
+                    if (rit != sess->requests.end()) {
+                        sess->requests.erase(rit);
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
 

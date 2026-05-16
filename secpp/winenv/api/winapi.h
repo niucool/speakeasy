@@ -7,13 +7,7 @@
 #include <map>
 #include <memory>
 #include <cstdint>
-
-// TODO: Replace Python imports with C++ equivalents
-// #include "arch.h"
-// #include "errors.h"
-// #include "api.h"
-// #include "kernelmode.h"
-// #include "usermode.h"
+#include <functional>
 
 // Forward declarations
 class ApiHandler;
@@ -29,6 +23,9 @@ private:
     std::map<std::string, void*> data;
     Emulator* emu;
     int ptr_size;
+
+    // Cache for handler functions returned by get_data_export_handler/get_export_func_handler
+    std::map<std::string, std::function<void()>> func_cache_;
 
 public:
     /**

@@ -76,15 +76,15 @@ public:
     void enable();
     void disable();
 
-    bool _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx = {});
-    bool _wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx = {});
-    bool _wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx = {});
-    bool _wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx = {});
-    bool _wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx);
-    bool _wrap_mem_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
-    bool _wrap_mem_invalid_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
-    bool _wrap_insn_cb(void* emu, const std::vector<void*>& ctx = {});
-    bool _wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx = {});
+    static bool _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx = {});
+    static bool _wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx = {});
+    static bool _wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx = {});
+    static bool _wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx = {});
+    static bool _wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx);
+    static bool _wrap_mem_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
+    static bool _wrap_mem_invalid_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
+    static bool _wrap_insn_cb(void* emu, const std::vector<void*>& ctx = {});
+    static bool _wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx = {});
 
     bool is_enabled() const { return enabled; }
     bool is_added() const { return added; }

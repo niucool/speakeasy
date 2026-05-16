@@ -9,9 +9,8 @@
 #include <cstdint>
 #include <sstream>
 
-// TODO: Need C++ equivalents for these Python imports
-// #include <nlohmann/json.hpp>
-// #include <speakeasy/errors.h>
+#include <nlohmann/json.hpp>
+#include "errors.h"
 
 // Forward declarations
 class Socket;
@@ -48,7 +47,7 @@ public:
     int get_type();
     void set_connection_info(const std::string& host, int port);
     std::tuple<std::string, int> get_connection_info();
-    void fill_recv_queue(/* TODO: Replace with nlohmann::json parameter */ const std::vector<std::map<std::string, std::string>>& responses);
+    void fill_recv_queue(const nlohmann::json& responses);
     std::vector<uint8_t> get_recv_data(size_t size, bool peek = false);
 };
 
@@ -63,9 +62,8 @@ public:
 class WininetComponent {
 protected:
     static uint32_t curr_handle;
-    // TODO: Replace with nlohmann::json or appropriate JSON type
-    // static nlohmann::json config;
-    static std::map<std::string, std::string> config;
+    // Static config stored as JSON
+    static nlohmann::json config;
     uint32_t handle;
 
 public:
@@ -75,16 +73,15 @@ public:
     // Methods
     uint32_t new_handle();
     uint32_t get_handle();
-    static void set_config(const std::map<std::string, std::string>& cfg) { config = cfg; }
-    static std::map<std::string, std::string> get_config() { return config; }
+    static void set_config(const nlohmann::json& cfg) { config = cfg; }
+    static nlohmann::json get_config() { return config; }
 };
 
 // WinInet request object
 class WininetRequest : public WininetComponent {
 private:
     std::string verb;
-    // TODO: Replace with appropriate URL parsing class
-    // urlparse objname;
+    // objname stores the raw URL string (would be parsed via urlparse in Python)
     std::string objname;
     std::string ver;
     std::string referrer;
@@ -127,6 +124,7 @@ private:
     std::shared_ptr<WininetInstance> instance;
 
 public:
+    friend class NetworkManager;
     // Constructor
     WininetSession(std::shared_ptr<WininetInstance> instance, const std::string& server, 
                    int port, const std::string& user, const std::string& password, 
@@ -159,6 +157,7 @@ private:
     std::map<uint32_t, std::shared_ptr<WininetSession>> sessions;
 
 public:
+    friend class NetworkManager;
     // Constructor
     WininetInstance(const std::string& user_agent, int access, const std::string& proxy, 
                     const std::string& bypass, uint32_t flags);
@@ -182,18 +181,14 @@ private:
     std::map<uint32_t, std::shared_ptr<WininetInstance>> wininets;
     int curr_fd;
     uint32_t curr_handle;
-    // TODO: Replace with nlohmann::json or appropriate JSON type
-    // nlohmann::json config;
-    std::map<std::string, std::string> config;
-    // TODO: Replace with appropriate DNS configuration structure
-    // nlohmann::json dns;
-    std::map<std::string, std::string> dns;
+    // JSON config object
+    nlohmann::json config;
+    // DNS configuration from JSON config
+    nlohmann::json dns;
 
 public:
     // Constructor
-    // TODO: Replace with nlohmann::json parameter
-    // NetworkManager(const nlohmann::json& config);
-    NetworkManager(const std::map<std::string, std::string>& config);
+    NetworkManager(const nlohmann::json& config);
     
     // Methods
     std::shared_ptr<Socket> new_socket(int family, int stype, int protocol, uint32_t flags);

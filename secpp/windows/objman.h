@@ -6,12 +6,14 @@
 #include <vector>
 #include <map>
 #include <memory>
-// TODO: Replace Python imports with C++ equivalents
-// #include <ntoskrnl.h>  // TODO: Need C++ equivalent
-// #include <arch.h>      // TODO: Need C++ equivalent
-// #include <ddk.h>       // TODO: Need C++ equivalent
-// #include <windows.h>   // TODO: Need C++ equivalent
+#include <cstdint>
 #include <nlohmann/json.hpp>
+
+#include "../winenv/arch.h"
+
+// Forward declarations
+class WindowsEmulator;
+class BinaryEmulator;
 
 /**
  * Represents a console window object
@@ -39,7 +41,6 @@ public:
      */
     class ScopeRecord {
     public:
-        // TODO: Define record type
         void* record;
         bool filter_called;
         bool handler_called;
@@ -52,9 +53,7 @@ public:
      */
     class Frame {
     public:
-        // TODO: Define entry type
         void* entry;
-        // TODO: Define scope_table type
         void* scope_table;
         std::vector<ScopeRecord> scope_records;
         bool searched;
@@ -63,17 +62,13 @@ public:
     };
 
 private:
-    // TODO: Define context type
     void* context;
     int context_address;
-    // TODO: Define record type
     void* record;
     std::vector<Frame> frames;
-    // TODO: Define func type
     void* last_func;
     int last_exception_code;
     int exception_ptrs;
-    // TODO: Define handler_ret_val type
     void* handler_ret_val;
 
 public:
@@ -93,13 +88,12 @@ public:
  */
 class KernelObject {
 protected:
-
-    // TODO: Define emu type
     void* emu;
     int address;
     std::string name;
-    int object;
+    void* object;
     int arch;
+
 public:
     static int curr_handle;
     static int curr_id;
@@ -107,16 +101,16 @@ public:
     std::vector<int> handles;
     int id;
 
-    // TODO: Define nt_types and win_types
-    // void* nt_types;
-    // void* win_types;
-
 public:
     KernelObject(void* emu);
+    KernelObject() : emu(nullptr), address(0), object(nullptr),
+                     ref_cnt(0), arch(0), id(0) {
+        id = KernelObject::curr_id;
+        KernelObject::curr_id += 4;
+    }
     virtual ~KernelObject() = default;
-    
+
     int sizeof_obj(void* obj = nullptr);
-    // TODO: Define get_bytes return type
     void* get_bytes(void* obj = nullptr);
     virtual KernelObject read_back();
     void write_back();
@@ -141,13 +135,12 @@ public:
     int reg_path_ptr;
     std::string reg_path;
     std::string basename;
-    
-    // TODO: Define ldr_entries type
+
     static std::vector<void*> ldr_entries;
 
 public:
     Driver(void* emu);
-    
+
     void create_reg_path(const std::string& name);
     std::string get_basename();
     std::string get_reg_path();
@@ -161,9 +154,7 @@ public:
  */
 class Device : public KernelObject {
 private:
-    // TODO: Define file_object type
     void* file_object;
-    // TODO: Define driver type
     void* driver;
 
 public:
@@ -206,17 +197,14 @@ public:
  */
 class Thread : public KernelObject {
 private:
-    // TODO: Define ctx type
     void* ctx;
     bool modified_pc;
-    // TODO: Define teb type
     void* teb;
     SEH seh;
     std::vector<void*> tls;
     std::vector<void*> message_queue;
     std::vector<void*> fls;
     int suspend_count;
-    // TODO: Define token type
     void* token;
     int last_error;
     int stack_base;
@@ -225,7 +213,7 @@ private:
 public:
     Thread(void* emu, int stack_base = 0, int stack_commit = 0);
     Thread() : KernelObject(nullptr) {}
-    
+
     void queue_message(void* msg);
     SEH get_seh();
     void* get_context();
@@ -256,27 +244,21 @@ public:
  */
 class Process : public KernelObject {
 public:
-    // TODO: Define ldr_entries type
     static std::vector<void*> ldr_entries;
-    
-    // TODO: Define modules type
+
     std::vector<void*> modules;
     std::vector<Thread> threads;
     Console console;
     Thread curr_thread;
     std::string cmdline;
     int session;
-    // TODO: Define token type
     Token token;
-    // TODO: Define pe type
     void* pe;
     void* pe_data;
     int stdin_handle;
     int stdout_handle;
     int stderr_handle;
-    // TODO: Define peb type
     void* peb;
-    // TODO: Define peb_ldr_data type
     void* peb_ldr_data;
     bool is_peb_active;
     std::string path;
@@ -288,7 +270,7 @@ public:
     Process(void* emu, void* pe = nullptr, const std::vector<void*>& user_modules = {},
             const std::string& name = "", const std::string& path = "",
             const std::string& cmdline = "", int base = 0, int session = 0);
-    
+
     void* get_peb();
     void set_peb_ldr_address(int addr);
     void set_process_parameters(void* emu);
@@ -299,7 +281,6 @@ public:
     int get_std_handle(int dev);
     std::string get_title_name();
     void* get_module();
-    // TODO: Define get_ep return type
     void* get_ep();
     Console get_console();
     int get_session_id();
@@ -312,22 +293,18 @@ public:
     void init_peb(const std::vector<void*>& modules);
 };
 
-// TODO: Define other classes (RTL_USER_PROCESS_PARAMETERS, PEB, TEB, 
-// PebLdrData, LdrDataTableEntry, IDT, Event, Mutant)
-
 /**
  * Class that manages kernel objects during emulation
  */
 class ObjectManager {
 private:
-    // TODO: Define emu type
     void* emu;
     std::map<int, KernelObject> objects;
     std::vector<std::pair<std::string, std::string>> symlinks;
 
 public:
     ObjectManager(void* emu);
-    
+
     void add_symlink(const std::string& link, const std::string& dev);
     template<typename T>
     T new_object();

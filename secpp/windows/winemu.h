@@ -305,7 +305,7 @@ public:
     void log_api(uint64_t pc, const std::string& api, uint64_t rv, const std::vector<uint64_t>& argv);
     void handle_import_data(const std::string& mod, const std::string& sym, uint64_t data_ptr = 0);
     void* get_proc(const std::string& mod_name, const std::string& func_name);
-    void add_callback(const std::string& mod_name, const std::string& func_name);
+    uint64_t add_callback(const std::string& mod_name, const std::string& func_name);
     std::string get_symbol_from_address(uint64_t address);
     std::tuple<std::string, std::string> normalize_import_miss(const std::string& dll, const std::string& name);
     std::vector<uint8_t> read_unicode_string(uint64_t addr);
