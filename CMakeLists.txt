@@ -119,21 +119,8 @@ if(BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
     include(GoogleTest)
 
-    # Smoke test – verifies library linkage
-    add_executable(smoke_test tests/smoke_test.cpp)
-    target_link_libraries(smoke_test PRIVATE
-        nlohmann_json::nlohmann_json
-        plog::plog
-        unicorn::unicorn
-        pe-parse::pe-parse
-    )
-    if(capstone_FOUND)
-        target_link_libraries(smoke_test PRIVATE capstone::capstone)
-    endif()
-    add_test(NAME SmokeTest COMMAND smoke_test)
-
-    # Unit tests (Google Test)
-    file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/test_*.cpp")
+    # Unit tests (Google Test) — includes smoke_test + all test_*.cpp
+    file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/test_*.cpp" "tests/smoke_test.cpp")
     if(UNIT_TEST_SOURCES)
         add_executable(speakeasy_tests ${UNIT_TEST_SOURCES})
         target_link_libraries(speakeasy_tests PRIVATE
