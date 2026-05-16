@@ -10,12 +10,6 @@
 #include <exception>
 #include <tuple>
 
-// TODO: Need C++ equivalents for these Python imports
-// #include <pefile.h> // Need a C++ PE file library
-// #include "arch.h"
-// #include "winenv/defs/nt/ddk.h"
-// #include "struct.h"
-
 // GDT Constants needed to set our emulator into protected mode
 // Access bits
 struct GDT_ACCESS_BITS {
@@ -223,28 +217,28 @@ private:
     int pattern_size;
     std::vector<uint8_t> basepe_data;
     int arch;
+    std::vector<PeSection> sections;
 
 public:
     // Constructor
     JitPeFile(int arch);
     
     // Methods
-    // TODO: Implement PE section handling methods
-    /*
-    void* get_section_by_name(void* pe, const std::string& name);
+    PeSection* get_section_by_name(const std::string& name);
+    int get_section_count();
+    std::vector<PeSection> get_sections();
     std::vector<uint8_t> get_raw_pe();
     void update();
     void* cast_section(int offset = -1);
     void update_image_size();
-    void* add_section(const std::string& name, uint32_t chars = 0x40000040);
+    void add_section(const std::string& name, const std::vector<uint8_t>& data);
     int get_current_offset();
     void append_data(const std::vector<uint8_t>& data);
     int get_exports_size(const std::string& name, const std::vector<std::string>& exports);
-    std::vector<uint8_t> get_decoy_pe_image(const std::string& mod_name, 
+    std::vector<uint8_t> get_decoy_pe_image(const std::string& mod_name,
                                             const std::vector<std::string>& exports);
     void init_export_section(const std::string& name, const std::vector<std::string>& exports);
     void init_text_section(const std::vector<std::string>& names);
-    */
 };
 
 #endif // WINDOWS_COMMON_H

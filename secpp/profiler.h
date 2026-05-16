@@ -77,9 +77,8 @@ public:
     void* process_context;
     void* thread;
     std::vector<std::string> unique_apis;
+    std::set<std::string> api_hash_set;  // Track unique lowercase API names (equivalent to Python's hashlib.sha256 update)
     std::string api_hash_data;  // Accumulated lowercase API names for SHA-256 hash
-    // TODO: Replace with proper hash implementation
-    // std::hash<std::string> api_hash;
     std::vector<std::map<std::string, std::string>> handled_exceptions;
     void* stack;
     std::vector<std::function<void()>> api_callbacks;

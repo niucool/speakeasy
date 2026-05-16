@@ -96,6 +96,8 @@ public:
      */
     bool is_free() const;
 
+    bool is_shared() const { return shared; }
+
     uint64_t get_block_base() const;
     uint64_t get_block_size() const;
 

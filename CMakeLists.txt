@@ -25,6 +25,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(plog CONFIG REQUIRED)
 find_package(pe-parse CONFIG REQUIRED)
 find_package(cxxopts CONFIG REQUIRED)
+find_package(miniz CONFIG REQUIRED)
 
 # unicorn does not ship a CMake config; use pkg-config or manual lookup
 find_package(PkgConfig QUIET)
@@ -83,11 +84,14 @@ target_include_directories(speakeasy PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/secpp
 )
 
+# (compression stub — miniz not bundled; artifacts.cpp uses "none")
+
 target_link_libraries(speakeasy PUBLIC
     nlohmann_json::nlohmann_json
     plog::plog
     unicorn::unicorn
     pe-parse::pe-parse
+    miniz::miniz
 )
 
 if(capstone_FOUND)
@@ -97,7 +101,7 @@ endif()
 
 # ── Compiler Flags ────────────────────────────────────────────
 if(MSVC)
-    target_compile_options(speakeasy PRIVATE /W4 /utf-8)
+    target_compile_options(speakeasy PRIVATE /W4 /utf-8 /FS)
     target_compile_definitions(speakeasy PRIVATE _CRT_SECURE_NO_WARNINGS)
 else()
     target_compile_options(speakeasy PRIVATE

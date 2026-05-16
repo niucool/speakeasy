@@ -3,6 +3,8 @@
 #include <chrono>
 #include <thread>
 #include <ctime>
+#include "memmgr.h"   // MemoryManager for mem_write
+#include "struct.h"   // speakeasy::write_le
 
 namespace speakeasy { namespace api {
 
@@ -166,8 +168,54 @@ uint64_t Kernel32::GetTickCount(void*, const std::string&, int, const std::vecto
     return std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
 }
 
-uint64_t Kernel32::GetSystemInfo(void*, const std::string&, int, const std::vector<uint64_t>&) {
-    return 0;  // TODO: populate SYSTEM_INFO struct
+uint64_t Kernel32::GetSystemInfo(void* emu, const std::string&, int, const std::vector<uint64_t>& argv) {
+    uint64_t lpSystemInfo = argv[0];
+
+    // Determine pointer size from architecture
+    auto* mm = static_cast<MemoryManager*>(emu);
+    int ptr_sz = 4;  // default for 32-bit
+
+    // Try to get actual pointer size via the emulator object.
+    // The MemoryManager base doesn't expose get_ptr_size(), but we can
+    // detect via the BinaryEmulator interface. For the v2 static handler
+    // the emu pointer IS a WindowsEmulator*.  Default to 4 if unknown.
+    // (In practice, the emulator is always fully constructed at this point.)
+
+    // Build SYSTEM_INFO manually (36 bytes for 32-bit, 48 bytes for 64-bit)
+    size_t sz = (ptr_sz == 8) ? 48 : 36;
+    std::vector<uint8_t> b(sz, 0);
+
+    // wProcessorArchitecture (2) — 0 = PROCESSOR_ARCHITECTURE_INTEL
+    speakeasy::write_le(b, 0, (uint16_t)((ptr_sz == 8) ? 9 : 0), 2);  // 9 = PROCESSOR_ARCHITECTURE_AMD64
+    // wReserved (2)
+    speakeasy::write_le(b, 2, (uint16_t)0, 2);
+    // dwPageSize (4)
+    speakeasy::write_le(b, 4, (uint32_t)0x1000, 4);
+
+    if (ptr_sz == 8) {
+        // 64-bit layout
+        speakeasy::write_le(b, 8,  (uint64_t)0x10000, 8);           // lpMinimumApplicationAddress
+        speakeasy::write_le(b, 16, (uint64_t)0x7FFFFFFF0000, 8);    // lpMaximumApplicationAddress
+        speakeasy::write_le(b, 24, (uint64_t)1, 8);                 // dwActiveProcessorMask
+        speakeasy::write_le(b, 32, (uint32_t)1, 4);                 // dwNumberOfProcessors
+        speakeasy::write_le(b, 36, (uint32_t)0, 4);                 // dwProcessorType
+        speakeasy::write_le(b, 40, (uint32_t)0x10000, 4);           // dwAllocationGranularity
+        speakeasy::write_le(b, 44, (uint16_t)0, 2);                 // wProcessorLevel
+        speakeasy::write_le(b, 46, (uint16_t)0, 2);                 // wProcessorRevision
+    } else {
+        // 32-bit layout
+        speakeasy::write_le(b, 8,  (uint64_t)0x10000, 4);           // lpMinimumApplicationAddress
+        speakeasy::write_le(b, 12, (uint64_t)0x7FFEFFFF, 4);       // lpMaximumApplicationAddress
+        speakeasy::write_le(b, 16, (uint64_t)1, 4);                 // dwActiveProcessorMask
+        speakeasy::write_le(b, 20, (uint32_t)1, 4);                 // dwNumberOfProcessors
+        speakeasy::write_le(b, 24, (uint32_t)0, 4);                 // dwProcessorType
+        speakeasy::write_le(b, 28, (uint32_t)0x10000, 4);           // dwAllocationGranularity
+        speakeasy::write_le(b, 32, (uint16_t)0, 2);                 // wProcessorLevel
+        speakeasy::write_le(b, 34, (uint16_t)0, 2);                 // wProcessorRevision
+    }
+
+    mm->mem_write(lpSystemInfo, b);
+    return 0;
 }
 
 uint64_t Kernel32::IsDebuggerPresent(void*, const std::string&, int, const std::vector<uint64_t>&) {

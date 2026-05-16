@@ -4,6 +4,7 @@
 #include "api_handler_registry.h"
 #include "../../winenv/arch.h"
 #include "../../errors.h"
+#include "../../windows/winemu.h"  // BinaryEmulator::get_arch
 #include <algorithm>
 #include <cctype>
 #include <tuple>
@@ -11,14 +12,18 @@
 // Constructor
 WindowsApi::WindowsApi(Emulator* emu) : emu(emu) {
     // Detect pointer size from architecture
-    // Emulator provides get_arch() via its interface
-    // For now, default to 4 (x86) until the full emulator interface is available
-    ptr_size = 4;
-    // TODO: When Emulator interface is complete, use:
-    // int arch = emu->get_arch();
-    // if (arch == speakeasy::arch::ARCH_X86) ptr_size = 4;
-    // else if (arch == speakeasy::arch::ARCH_AMD64) ptr_size = 8;
-    // else throw ApiEmuError("Invalid architecture");
+    auto* bemu = reinterpret_cast<BinaryEmulator*>(emu);
+    if (bemu) {
+        int arch = bemu->get_arch();
+        if (arch == speakeasy::arch::ARCH_X86)
+            ptr_size = 4;
+        else if (arch == speakeasy::arch::ARCH_AMD64)
+            ptr_size = 8;
+        else
+            throw ApiEmuError("Invalid architecture");
+    } else {
+        ptr_size = 4;  // fallback
+    }
 }
 
 ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {

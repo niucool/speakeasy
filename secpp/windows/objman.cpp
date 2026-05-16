@@ -25,6 +25,7 @@
 #include "../binemu.h"      // BinaryEmulator (get_arch, mem_read, mem_write, …)
 #include "../windows/winemu.h" // WindowsEmulator (get_thread_context)
 #include "../struct.h"      // EmuStruct
+#include "../windows/loaders.h"  // speakeasy::LoadedImage
 #include "../profiler.h"    // Run (indirectly)
 
 using namespace speakeasy;
@@ -276,26 +277,64 @@ std::string Driver::get_basename() {
 
 void* Driver::init_driver_section() {
     // Python: create LdrDataTableEntry, link it into ldr_entries list.
-    // This requires the full LdrDataTableEntry type which isn't ported yet.
-    // For now, allocate a placeholder and track it.
-    //
-    // TODO: When LdrDataTableEntry is ported, implement full linked-list logic:
-    //   ldte = LdrDataTableEntry(emu, mod_name, tag=...)
-    //   ldte.object.DllBase = pe.base
-    //   ldte.object.EntryPoint = pe.base + ep
-    //   ldte.object.SizeOfImage = pe.image_size
-    //   ... (set Flink/Blink links)
-    //   self.ldr_entries.append(ldte)
-    //   ldte.write_back()
-    //   return ldte
+    // Simulate LDR_DATA_TABLE_ENTRY by allocating memory and writing basic fields.
+    int ptr_sz = (arch == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
 
-    // Stub: allocate a small block to represent the driver section
-    size_t stub_size = 128;
-    uint64_t addr = BE(emu)->mem_map(stub_size, 0, 4,
-                                      "emu.object." + name + ".DriverSection");
-    auto* stub = new EmuStruct();
-    (void)stub;
-    // We don't return a proper LdrDataTableEntry yet
+    // LDR_DATA_TABLE_ENTRY field offsets (EmuStruct sequential layout, no padding):
+    //   InLoadOrderLinks (LIST_ENTRY = 2*ptr_sz) ........ offset 0
+    //   InMemoryOrderLinks (LIST_ENTRY = 2*ptr_sz) ..... offset 2*ptr_sz
+    //   InInitializationOrderLinks (LIST_ENTRY = 2*ptr_sz)  offset 4*ptr_sz
+    //   DllBase (ptr_sz) ............................... offset 6*ptr_sz
+    //   EntryPoint (ptr_sz) ........................... offset 7*ptr_sz
+    //   SizeOfImage (uint32, 4) ....................... offset 8*ptr_sz
+    //   FullDllName (UNICODE_STRING = 2+2+ptr_sz) ..... offset 8*ptr_sz + 4
+    //   BaseDllName (UNICODE_STRING = 2+2+ptr_sz) ..... after FullDllName
+    //   Flags (uint32, 4) + LoadCount (uint16, 2) ..... after BaseDllName
+    size_t ldte_struct_size = 8 * ptr_sz + 4;   // up to SizeOfImage
+    ldte_struct_size += (2 + 2 + ptr_sz);        // FullDllName
+    ldte_struct_size += (2 + 2 + ptr_sz);        // BaseDllName
+    ldte_struct_size += 4 + 2;                   // Flags + LoadCount
+
+    // Build tag
+    std::string mem_tag = "emu.object." + name + ".DriverSection";
+    uint64_t addr = BE(emu)->mem_map(ldte_struct_size, 0, 4, mem_tag);
+
+    // Get PE info if available
+    uint64_t dll_base = 0;
+    uint64_t entry_point = 0;
+    uint32_t image_size = 0;
+
+    if (pe) {
+        auto* img = static_cast<speakeasy::LoadedImage*>(pe);
+        dll_base = img->base;
+        entry_point = img->base + img->ep;
+        image_size = static_cast<uint32_t>(img->image_size);
+    }
+
+    // Build byte buffer for LDR_DATA_TABLE_ENTRY
+    std::vector<uint8_t> buf(ldte_struct_size, 0);
+
+    // Write DllBase at offset 6*ptr_sz
+    size_t dllbase_off = 6 * ptr_sz;
+    for (int i = 0; i < ptr_sz; ++i)
+        buf[dllbase_off + i] = static_cast<uint8_t>((dll_base >> (i * 8)) & 0xFF);
+
+    // Write EntryPoint at offset 7*ptr_sz
+    size_t ep_off = 7 * ptr_sz;
+    for (int i = 0; i < ptr_sz; ++i)
+        buf[ep_off + i] = static_cast<uint8_t>((entry_point >> (i * 8)) & 0xFF);
+
+    // Write SizeOfImage at offset 8*ptr_sz
+    size_t si_off = 8 * ptr_sz;
+    for (int i = 0; i < 4; ++i)
+        buf[si_off + i] = static_cast<uint8_t>((image_size >> (i * 8)) & 0xFF);
+
+    // Write the buffer to emulated memory
+    BE(emu)->mem_write(addr, buf);
+
+    // Track in static ldr_entries list
+    ldr_entries.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(addr)));
+
     return reinterpret_cast<void*>(static_cast<uintptr_t>(addr));
 }
 
@@ -329,9 +368,44 @@ void Driver::init_driver_object(const std::string& name, void* pe, bool is_decoy
 KernelObject Driver::read_back() {
     KernelObject::read_back();
 
-    // Python: extract MajorFunction entries and DriverUnload from the DRIVER_OBJECT
-    // Since the DRIVER_OBJECT struct isn't ported, this is a stub.
-    // TODO: iterate mj_funcs = [self.object.MajorFunction[i] for i in range(...)]
+    // Python: read MajorFunction entries from DRIVER_OBJECT
+    // DRIVER_OBJECT layout (EmuStruct sequential):
+    //   Type(2) + Size(2) + DeviceObject(Ptr) + Flags(4) + DriverStart(Ptr) +
+    //   DriverSize(4) + DriverSection(Ptr) + DriverExtension(Ptr) +
+    //   DriverName(2+2+Ptr) + HardwareDatabase(Ptr) + FastIoDispatch(Ptr) +
+    //   DriverInit(Ptr) + DriverStartIo(Ptr) + DriverUnload(Ptr)
+    // MajorFunction offset = 16 + 10*ptr_sz
+    int ptr_sz = (arch == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
+    uint64_t mf_offset = 16 + 10 * static_cast<uint64_t>(ptr_sz);
+
+    if (emu && address) {
+        size_t mf_count = static_cast<size_t>(IRP_MJ_MAXIMUM_FUNCTION) + 1;
+        size_t mf_size = mf_count * static_cast<size_t>(ptr_sz);
+        auto data = BE(emu)->mem_read(static_cast<uint64_t>(address) + mf_offset, mf_size);
+
+        mj_funcs.resize(mf_count, nullptr);
+        for (size_t i = 0; i < mf_count && i < mj_funcs.size(); ++i) {
+            uint64_t func_addr = 0;
+            for (int j = 0; j < ptr_sz; ++j) {
+                size_t idx = i * static_cast<size_t>(ptr_sz) + static_cast<size_t>(j);
+                if (idx < data.size()) {
+                    func_addr |= static_cast<uint64_t>(data[idx]) << (j * 8);
+                }
+            }
+            mj_funcs[i] = reinterpret_cast<void*>(static_cast<uintptr_t>(func_addr));
+        }
+
+        // Read DriverUnload (right before MajorFunction)
+        uint64_t unload_offset = 16 + 9 * static_cast<uint64_t>(ptr_sz);
+        auto unload_data = BE(emu)->mem_read(
+            static_cast<uint64_t>(address) + unload_offset,
+            static_cast<size_t>(ptr_sz));
+        uint64_t unload_addr = 0;
+        for (int j = 0; j < ptr_sz && static_cast<size_t>(j) < unload_data.size(); ++j) {
+            unload_addr |= static_cast<uint64_t>(unload_data[j]) << (j * 8);
+        }
+        on_unload = reinterpret_cast<void*>(static_cast<uintptr_t>(unload_addr));
+    }
 
     return *this;
 }
@@ -654,8 +728,10 @@ void* Process::get_module() {
 
 void* Process::get_ep() {
     // Python: return pe.base + pe.ep  (entry point of the PE)
-    // Without a typed PE object, return null.
-    // TODO: When PE type is available, return base + entry_point
+    if (pe) {
+        auto* img = static_cast<speakeasy::LoadedImage*>(pe);
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(img->base + img->ep));
+    }
     return nullptr;
 }
 
@@ -780,11 +856,30 @@ KernelObject ObjectManager::get_object_from_id(int id) {
 
 KernelObject ObjectManager::get_object_from_name(const std::string& name, bool check_symlinks) {
     // Python: iterate objects, return one with matching name
-    (void)check_symlinks;
     for (auto& [id, obj] : objects) {
         (void)id;
-        // TODO: add a getName() virtual to KernelObject for proper lookup
-        // For now return empty since name isn't accessible on the base type.
+        std::string obj_name = obj.get_obj_name();
+        if (!obj_name.empty()) {
+            // Case-insensitive comparison
+            std::string lname = name;
+            std::string lobj_name = obj_name;
+            std::transform(lname.begin(), lname.end(), lname.begin(), ::tolower);
+            std::transform(lobj_name.begin(), lobj_name.end(), lobj_name.begin(), ::tolower);
+            if (lobj_name == lname) {
+                return obj;
+            }
+        }
+    }
+    if (check_symlinks) {
+        for (auto& sl : symlinks) {
+            std::string lsl = sl.first;
+            std::string lname = name;
+            std::transform(lsl.begin(), lsl.end(), lsl.begin(), ::tolower);
+            std::transform(lname.begin(), lname.end(), lname.begin(), ::tolower);
+            if (lsl == lname) {
+                return get_object_from_name(sl.second, false);
+            }
+        }
     }
     return KernelObject(nullptr);
 }

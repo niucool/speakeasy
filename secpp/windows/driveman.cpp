@@ -2,6 +2,14 @@
 #include "driveman.h"
 #include <algorithm>
 
+// Drive type constants (from win32 kernel32 definitions)
+constexpr int DRIVE_NO_ROOT_DIR = 1;
+constexpr int DRIVE_REMOVABLE = 2;
+constexpr int DRIVE_FIXED = 3;
+constexpr int DRIVE_REMOTE = 4;
+constexpr int DRIVE_CDROM = 5;
+constexpr int DRIVE_RAMDISK = 6;
+
 // DriveManager implementation
 DriveManager::DriveManager(const std::vector<std::map<std::string, std::string>>& config) 
     : drives(config) {
@@ -50,14 +58,17 @@ int DriveManager::get_drive_type(const std::string& root_path) {
             config_root_path_it->second == root_path) {
             auto config_drive_type_it = drive->find("drive_type");
             if (config_drive_type_it != drive->end()) {
-                // TODO: Implementation depends on k32defs.get_define_value
-                // return k32defs.get_define_value(config_drive_type);
-                // For now, return a default value
-                return 0; // Should be replaced with k32defs.DRIVE_NO_ROOT_DIR
+                // Look up the drive type value by name (equivalent to Python k32defs.get_define_value)
+                const std::string& dt = config_drive_type_it->second;
+                if (dt == "DRIVE_REMOVABLE") return DRIVE_REMOVABLE;
+                else if (dt == "DRIVE_FIXED") return DRIVE_FIXED;
+                else if (dt == "DRIVE_REMOTE") return DRIVE_REMOTE;
+                else if (dt == "DRIVE_CDROM") return DRIVE_CDROM;
+                else if (dt == "DRIVE_RAMDISK") return DRIVE_RAMDISK;
+                else return DRIVE_NO_ROOT_DIR;
             }
         }
     }
     
-    // TODO: Should return k32defs.DRIVE_NO_ROOT_DIR
-    return 0;
+    return DRIVE_NO_ROOT_DIR;
 }

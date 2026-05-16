@@ -266,8 +266,10 @@ public:
     
     /**
      * Returns all memory contents along with context information
+     * Python equivalent: generator yielding (tag, base, size, is_initialized, ...)
+     * Returns a vector of tuples to avoid generator limitations in C++.
+     * To implement a lazy equivalent, use a get_memory_dumps_iter() returning an iterator.
      */
-    // TODO: Implement generator equivalent
     std::vector<std::tuple<std::string, uint64_t, size_t, bool, void*, std::vector<uint8_t>>> get_memory_dumps();
     
     /**

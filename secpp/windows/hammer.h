@@ -19,7 +19,8 @@ private:
     std::map<std::string, int> api_stats;
     uint64_t hammer_memregion;
     size_t hammer_offset;
-    
+    std::map<std::string, uint64_t> hammer_patch_cache; // patch content key -> location in hammer_memregion
+
     std::map<std::string, std::string> config;
     int api_threshold;
     bool enabled;

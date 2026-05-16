@@ -4,6 +4,8 @@
 #include <sstream>
 #include <algorithm>
 #include <cstring>
+#include "winenv/defs/windows/windef.h"  // IMAGE_FILE_SYSTEM, IMAGE_FILE_DLL
+#include "struct.h"                      // speakeasy::read_le
 
 Speakeasy::Speakeasy(const nlohmann::json& config, void* logger, 
                      const std::vector<std::string>& argv, bool debug, void* exit_event)
@@ -34,9 +36,57 @@ void Speakeasy::_init_config(const nlohmann::json& config) {
 }
 
 void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_t>& data, bool is_raw_code) {
-    (void)path; (void)data; (void)is_raw_code;
-    // TODO: detect PE type (exe/dll/driver) and choose Win32Emulator or WinKernelEmulator
-    // For now, default to Win32Emulator
+    if (!is_raw_code) {
+        // Determine PE data source
+        std::vector<uint8_t> pe_data = data;
+        if (pe_data.empty() && !path.empty()) {
+            std::ifstream f(path, std::ios::binary | std::ios::ate);
+            if (f.is_open()) {
+                size_t sz = static_cast<size_t>(f.tellg());
+                f.seekg(0);
+                pe_data.resize(sz);
+                f.read(reinterpret_cast<char*>(pe_data.data()), sz);
+            }
+        }
+
+        if (pe_data.size() >= 64) {
+            // Read e_lfanew from DOS header (offset 0x3C)
+            uint32_t e_lfanew = static_cast<uint32_t>(
+                speakeasy::read_le(pe_data, 0x3C, 4));
+            size_t pe_offset = e_lfanew;
+
+            // Verify PE signature
+            if (pe_offset + 4 + 20 <= pe_data.size() &&
+                pe_data[pe_offset] == 'P' && pe_data[pe_offset + 1] == 'E') {
+                // Read Characteristics from IMAGE_FILE_HEADER
+                // IMAGE_FILE_HEADER is at pe_offset + 4, size 20 bytes
+                // Characteristics is at offset 18 within IMAGE_FILE_HEADER
+                size_t chars_offset = pe_offset + 4 + 18;
+                if (chars_offset + 2 <= pe_data.size()) {
+                    uint16_t characteristics = static_cast<uint16_t>(
+                        speakeasy::read_le(pe_data, chars_offset, 2));
+
+                    bool is_dll = (characteristics & IMAGE_FILE_DLL) != 0;
+                    bool is_driver = (characteristics & IMAGE_FILE_SYSTEM) != 0;
+
+                    if (is_driver) {
+                        // For now, WinKernelEmulator requires WindowsEmulator* parent.
+                        // Future: instantiate properly when interface aligns.
+                        // emu = new WinKernelEmulator(...);
+                        // Fall through to default Win32Emulator below.
+                        (void)is_dll;
+                    }
+                }
+            }
+        }
+
+        // Check for .NET via PeFile (deferred — requires full PE import parsing)
+        // PeFile pe(path, pe_data);
+        // if (pe.is_dotnet())
+        //     throw SpeakeasyError(".NET assemblies are not currently supported");
+    }
+
+    // Default: Win32Emulator for EXE/DLL/raw code
     emu = new Win32Emulator(config, argv, debug, logger, exit_event);
 }
 

@@ -119,6 +119,7 @@ public:
     std::string get_class_name();
     std::string get_mem_tag();
     int get_handle();
+    virtual std::string get_obj_name() const { return name; }
 };
 
 /**
@@ -135,6 +136,10 @@ public:
     int reg_path_ptr;
     std::string reg_path;
     std::string basename;
+
+    // Driver entry point (DriverInit) and unload routine addresses
+    uint64_t driver_init_addr = 0;
+    uint64_t driver_unload_addr = 0;
 
     static std::vector<void*> ldr_entries;
 

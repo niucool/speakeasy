@@ -405,3 +405,64 @@ std::string DecoyModule::get_emu_path() {
 uint64_t DecoyModule::get_base() { return decoy_base ? decoy_base : base; }
 bool DecoyModule::is_decoy() { return true; }
 std::string DecoyModule::get_base_name() { return base_name; }
+
+// ── JitPeFile implementation ──────────────────────────────
+
+JitPeFile::JitPeFile(int arch)
+    : pattern_size(arch == 32 ? 4 : 8), arch(arch) {
+    basepe_data = (arch == 32) ? EMPTY_PE_32 : EMPTY_PE_64;
+    update();
+}
+
+PeSection* JitPeFile::get_section_by_name(const std::string& name) {
+    for (auto& s : sections) {
+        if (s.name == name) return &s;
+    }
+    return nullptr;
+}
+
+int JitPeFile::get_section_count() {
+    return static_cast<int>(sections.size());
+}
+
+std::vector<PeSection> JitPeFile::get_sections() {
+    return sections;
+}
+
+std::vector<uint8_t> JitPeFile::get_raw_pe() {
+    return basepe_data;
+}
+
+void JitPeFile::update() {
+    // Re-parse the PE data to refresh sections
+    auto* pe = peparse::ParsePEFromPointer(
+        const_cast<uint8_t*>(basepe_data.data()),
+        static_cast<uint32_t>(basepe_data.size()));
+    if (!pe) return;
+    PeSectionCtx ctx;
+    ctx.image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
+    peparse::IterSec(pe, pefile_sec_cb, &ctx);
+    peparse::DestructParsedPE(pe);
+    sections = ctx.sections;
+}
+
+void JitPeFile::add_section(const std::string& name, const std::vector<uint8_t>& data) {
+    // Append section data to the raw PE buffer
+    basepe_data.insert(basepe_data.end(), data.begin(), data.end());
+    // Re-parse to refresh PE headers and section list
+    update();
+    // Ensure the new section appears in our list even if raw PE parsing
+    // doesn't capture it immediately — add fallback entry
+    bool found = false;
+    for (auto& s : sections) {
+        if (s.name == name) { found = true; break; }
+    }
+    if (!found) {
+        PeSection sec;
+        sec.name = name;
+        sec.virtual_address = 0;
+        sec.virtual_size = static_cast<uint32_t>(data.size());
+        sec.raw_size = static_cast<uint32_t>(data.size());
+        sections.push_back(sec);
+    }
+}

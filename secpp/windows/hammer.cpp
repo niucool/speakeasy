@@ -31,6 +31,16 @@ std::set<std::string> _lowercase_set(const std::vector<std::string>& tt) {
     return result;
 }
 
+// Helper: check if an instruction mnemonic is a call or jmp
+static bool is_call_or_jmp(const std::string& mnem) {
+    return mnem == "call" || mnem == "jmp";
+}
+
+// Helper: check if an instruction is a direct call/jmp via pointer (e.g., "call dword ptr [addr]")
+static bool is_direct_ptr_instr(const std::string& mnem, const std::string& instr) {
+    return is_call_or_jmp(mnem) && instr.find("ptr") != std::string::npos;
+}
+
 // ApiHammer implementation
 ApiHammer::ApiHammer(WindowsEmulator* emu,
                      const std::map<std::string, std::string>& cfg)
@@ -113,10 +123,6 @@ void ApiHammer::handle_import_func(const std::string& imp_api, int conv, int arg
         return;
     }
 
-    // TODO: better parameterize the checking & dispatch of the types of calls/jmps to imports
-    // so we can more easily loop through them & clean up the logic below
-    // TODO: track patches in the hammer_memregion & reuse when possible
-
     // Architecture-dependent patching
     int arch = emu->get_arch();
 
@@ -146,8 +152,8 @@ void ApiHammer::_handle_hammer_x86(const std::string& imp_api, int conv,
                       std::to_string(emu->get_pc()) + " " + mnem + " " +
                       op + " " + instr);
 
-        if (mnem == "call" && instr.find("dword ptr") != std::string::npos) {
-            // Scenario A: direct call, we have 6 bytes of space
+        if (is_direct_ptr_instr(mnem, instr)) {
+            // Scenario A: direct call/jmp via pointer, we have 6 bytes of space
             if (conv == speakeasy::arch::CALL_CONV_CDECL) {
                 // cdecl: caller cleans stack — just xor eax,eax & nops
                 std::vector<uint8_t> patch = {0x31, 0xc0, 0x90, 0x90, 0x90, 0x90, 0x90};
@@ -163,13 +169,13 @@ void ApiHammer::_handle_hammer_x86(const std::string& imp_api, int conv,
                               std::to_string(eip));
             }
         } else {
-            // Scenario B: indirect call via register (2 bytes)
+            // Scenario B: indirect call/jmp via register (2 bytes)
             eip = ret_addr - 2;
             auto [mnem2, op2, instr2] = emu->get_disasm(eip, DISASM_SIZE);
             emu->log_info("api hammering at: 0x" + std::to_string(emu->get_pc()) +
                           " " + mnem2 + " " + op2 + " " + instr2);
 
-            if (mnem2 == "call") {
+            if (is_call_or_jmp(mnem2)) {
                 auto reg_it = speakeasy::arch::REG_LOOKUP.find(op2);
                 if (reg_it != speakeasy::arch::REG_LOOKUP.end()) {
                     // Allocate hammer patch region if not yet created
@@ -191,16 +197,27 @@ void ApiHammer::_handle_hammer_x86(const std::string& imp_api, int conv,
                                                        static_cast<uint8_t>(stack_pop & 0xFF),
                                                        static_cast<uint8_t>((stack_pop >> 8) & 0xFF),
                                                        0x90};
-                        uint64_t loc = hammer_memregion + hammer_offset;
-                        if ((hammer_offset + patch.size()) < 0x1024 * 4) {
+                        // Build cache key from calling convention and argument count
+                        std::string cache_key = "x86_stdcall_" + std::to_string(argc);
+                        auto cache_it = hammer_patch_cache.find(cache_key);
+                        uint64_t loc;
+                        if (cache_it != hammer_patch_cache.end()) {
+                            // Reuse existing patch location
+                            loc = cache_it->second;
+                        } else if ((hammer_offset + patch.size()) < 0x1024 * 4) {
+                            // Write new patch to hammer_memregion and cache it
+                            loc = hammer_memregion + hammer_offset;
                             emu->mem_write(loc, patch);
                             hammer_offset += patch.size();
-                            // Redirect the register to our hammer patch
-                            int reg = reg_it->second;
-                            emu->reg_write(reg, loc);
-                            emu->log_info("API HAMMERING DETECTED - patching 2 stdcall at " +
-                                          std::to_string(eip));
+                            hammer_patch_cache[cache_key] = loc;
+                        } else {
+                            return;
                         }
+                        // Redirect the register to our hammer patch
+                        int reg = reg_it->second;
+                        emu->reg_write(reg, loc);
+                        emu->log_info("API HAMMERING DETECTED - patching 2 stdcall at " +
+                                      std::to_string(eip));
                     }
                 }
             } else {
@@ -219,9 +236,81 @@ void ApiHammer::_handle_hammer_amd64(const std::string& imp_api, int conv,
     /*
     Handle API hammering detection and patching for x64 (AMD64) architecture.
 
-    TODO: AMD64 patching — the x64 calling convention uses registers (rcx, rdx,
-    r8, r9) for the first 4 arguments and stack for the rest. Patching requires
-    a different approach than x86.
+    The x64 calling convention uses registers rcx, rdx, r8, r9 for the first
+    4 arguments and the stack for the rest. The caller is responsible for
+    cleaning the stack (like cdecl), so patches always use xor eax,eax; ret.
+
+    Two main scenarios:
+      A) Direct call/jmp: 'call qword ptr [addr]' or 'jmp qword ptr [addr]' —
+         6 bytes before return address. Patch inline with xor eax,eax; ret + nops.
+      B) Indirect call/jmp via register: 'call reg' or 'jmp reg' — 2 bytes.
+         Redirect the register to our hammer patch region (xor eax,eax; ret).
     */
-    (void)imp_api; (void)conv; (void)argc; (void)ret_addr;
+    try {
+        // Scenario A: try direct call/jmp via qword ptr (6 bytes)
+        uint64_t eip = ret_addr - 6;
+        auto [mnem, op, instr] = emu->get_disasm(eip, DISASM_SIZE);
+        emu->log_info("api hammering at: " + imp_api + " 0x" +
+                      std::to_string(emu->get_pc()) + " " + mnem + " " +
+                      op + " " + instr);
+
+        if (is_direct_ptr_instr(mnem, instr)) {
+            // Scenario A: direct call/jmp via pointer — 6 bytes of space
+            // x64 always uses caller-cleanup (like cdecl)
+            // Patch: xor eax, eax (31 c0); ret (c3); nop padding
+            std::vector<uint8_t> patch = {0x31, 0xc0, 0xc3, 0x90, 0x90, 0x90};
+            emu->mem_write(eip, patch);
+            emu->log_info("API HAMMERING DETECTED - patching amd64 direct at " +
+                          std::to_string(eip));
+        } else {
+            // Scenario B: try indirect call/jmp via register (2 bytes)
+            eip = ret_addr - 2;
+            auto [mnem2, op2, instr2] = emu->get_disasm(eip, DISASM_SIZE);
+            emu->log_info("api hammering at: 0x" + std::to_string(emu->get_pc()) +
+                          " " + mnem2 + " " + op2 + " " + instr2);
+
+            if (is_call_or_jmp(mnem2)) {
+                auto reg_it = speakeasy::arch::REG_LOOKUP.find(op2);
+                if (reg_it != speakeasy::arch::REG_LOOKUP.end()) {
+                    // Allocate hammer patch region if not yet created
+                    if (hammer_memregion == 0) {
+                        hammer_memregion = emu->mem_map(0x1024 * 4, 0, PERM_MEM_RWX,
+                                                        "speakeasy.hammerpatch");
+                    }
+
+                    // x64: patch is always xor eax, eax; ret (31 c0 c3)
+                    std::vector<uint8_t> patch = {0x31, 0xc0, 0xc3};
+
+                    // Check cache for existing patch
+                    std::string cache_key = "amd64_default";
+                    auto cache_it = hammer_patch_cache.find(cache_key);
+                    uint64_t loc;
+                    if (cache_it != hammer_patch_cache.end()) {
+                        // Reuse existing patch location
+                        loc = cache_it->second;
+                    } else if ((hammer_offset + patch.size()) < 0x1024 * 4) {
+                        // Write new patch and cache it
+                        loc = hammer_memregion + hammer_offset;
+                        emu->mem_write(loc, patch);
+                        hammer_offset += patch.size();
+                        hammer_patch_cache[cache_key] = loc;
+                    } else {
+                        return;
+                    }
+
+                    // Redirect the register to our hammer patch
+                    int reg = reg_it->second;
+                    emu->reg_write(reg, loc);
+                    emu->log_info("API HAMMERING DETECTED - patching amd64 reg at " +
+                                  std::to_string(eip));
+                }
+            } else {
+                emu->log_info("API HAMMERING DETECTED - unable to patch " +
+                              std::to_string(eip));
+            }
+        }
+    } catch (const std::exception& e) {
+        emu->log_info("api hammering disassembly failed at return address 0x" +
+                      std::to_string(ret_addr) + ": " + e.what());
+    }
 }

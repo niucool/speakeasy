@@ -18,7 +18,9 @@ namespace speakeasy { namespace defs { namespace windows {
 
 // ── Constants ──────────────────────────────────────────────────
 
+#ifndef ANYSIZE_ARRAY
 constexpr uint32_t ANYSIZE_ARRAY = 1;
+#endif
 
 // ── POINT ──────────────────────────────────────────────────────
 
@@ -505,28 +507,54 @@ struct IMAGE_SECTION_HEADER : speakeasy::EmuStruct {
 // ── PE Constants ───────────────────────────────────────────────
 
 // Machine types
+#ifndef IMAGE_FILE_MACHINE_I386
 constexpr uint16_t IMAGE_FILE_MACHINE_I386   = 0x014C;
 constexpr uint16_t IMAGE_FILE_MACHINE_AMD64  = 0x8664;
 constexpr uint16_t IMAGE_FILE_MACHINE_IA64   = 0x0200;
 constexpr uint16_t IMAGE_FILE_MACHINE_THUMB  = 0x01C2;
 constexpr uint16_t IMAGE_FILE_MACHINE_ARM64  = 0xAA64;
+#endif
 
 // Section characteristics
+#ifndef IMAGE_SCN_CNT_CODE
 constexpr uint32_t IMAGE_SCN_CNT_CODE               = 0x00000020;
 constexpr uint32_t IMAGE_SCN_CNT_INITIALIZED_DATA    = 0x00000040;
 constexpr uint32_t IMAGE_SCN_CNT_UNINITIALIZED_DATA  = 0x00000080;
 constexpr uint32_t IMAGE_SCN_MEM_EXECUTE             = 0x20000000;
 constexpr uint32_t IMAGE_SCN_MEM_READ                = 0x40000000;
 constexpr uint32_t IMAGE_SCN_MEM_WRITE               = 0x80000000;
+#endif
 
 // Subsystem
+#ifndef IMAGE_SUBSYSTEM_NATIVE
 constexpr uint16_t IMAGE_SUBSYSTEM_NATIVE          = 1;
 constexpr uint16_t IMAGE_SUBSYSTEM_WINDOWS_GUI     = 2;
 constexpr uint16_t IMAGE_SUBSYSTEM_WINDOWS_CUI     = 3;
+#endif
+
+// File header characteristics
+#ifndef IMAGE_FILE_RELOCS_STRIPPED
+constexpr uint16_t IMAGE_FILE_RELOCS_STRIPPED       = 0x0001;
+constexpr uint16_t IMAGE_FILE_EXECUTABLE_IMAGE      = 0x0002;
+constexpr uint16_t IMAGE_FILE_LINE_NUMS_STRIPPED    = 0x0004;
+constexpr uint16_t IMAGE_FILE_LOCAL_SYMS_STRIPPED   = 0x0008;
+constexpr uint16_t IMAGE_FILE_AGGRESSIVE_WS_TRIM    = 0x0010;
+constexpr uint16_t IMAGE_FILE_LARGE_ADDRESS_AWARE   = 0x0020;
+constexpr uint16_t IMAGE_FILE_BYTES_REVERSED_LO     = 0x0080;
+constexpr uint16_t IMAGE_FILE_32BIT_MACHINE         = 0x0100;
+constexpr uint16_t IMAGE_FILE_DEBUG_STRIPPED        = 0x0200;
+constexpr uint16_t IMAGE_FILE_REMOVABLE_RUN_FROM_SWAP = 0x0400;
+constexpr uint16_t IMAGE_FILE_NET_RUN_FROM_SWAP     = 0x0800;
+constexpr uint16_t IMAGE_FILE_SYSTEM                = 0x1000;
+constexpr uint16_t IMAGE_FILE_DLL                   = 0x2000;
+constexpr uint16_t IMAGE_FILE_UP_SYSTEM_ONLY        = 0x4000;
+#endif
 
 // DllCharacteristics
+#ifndef IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE
 constexpr uint16_t IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE = 0x0040;
 constexpr uint16_t IMAGE_DLLCHARACTERISTICS_NX_COMPAT    = 0x0100;
+#endif
 
 }}} // namespaces
 

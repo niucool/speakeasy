@@ -8,8 +8,7 @@
 #include <memory>
 #include <cstdint>
 
-// TODO: Need C++ equivalents for these Python imports
-// #include "speakeasy/winenv/defs/windows/kernel32.h"
+#include "../winenv/arch.h"
 
 // Forward declarations
 class DriveManager;

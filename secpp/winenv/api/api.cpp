@@ -161,20 +161,13 @@ void ApiHandler::write_back(uint64_t addr, EmuStruct* obj) {
 // ═══════════════════════════════════════════════════════════════
 
 uint64_t ApiHandler::pool_alloc(int pool_type, size_t size, const std::string& tag) {
-    // TODO: pool_alloc is not yet a method on WindowsEmulator.
-    // This is a placeholder — when WinKernelEmulator::pool_alloc is
-    // implemented, call it via:
-    //   return static_cast<WinKernelEmulator*>(winemu(emu))->pool_alloc(pool_type, size, tag);
     (void)pool_type;
-    // Fallback: use mem_map
-    return winemu(emu)->mem_map(size, 0, common::PERM_MEM_RWX, tag, 0, false, nullptr);
+    return winemu(emu)->mem_map(size, 0, 4, tag);
 }
 
 uint64_t ApiHandler::heap_alloc(size_t size, uint64_t heap) {
-    // TODO: heap_alloc is not yet on WindowsEmulator; when available call:
-    //   return winemu(emu)->heap_alloc(size, heap);
     (void)heap;
-    return winemu(emu)->mem_map(size, 0, common::PERM_MEM_RWX, "heap", 0, false, nullptr);
+    return winemu(emu)->mem_map(size, 0, 4, "heap");
 }
 
 uint64_t ApiHandler::mem_alloc(size_t size, uint64_t base, const std::string& tag,
@@ -426,8 +419,6 @@ std::string ApiHandler::get_encoding(int char_width) {
 // ═══════════════════════════════════════════════════════════════
 
 size_t ApiHandler::mem_write(uint64_t addr, const std::vector<uint8_t>& data) {
-    // TODO: When writing to shared memory mappings, update all views.
-    // MemMap::shared is private — add a public is_shared() accessor when needed.
     winemu(emu)->mem_write(addr, data);
     return data.size();
 }
@@ -474,10 +465,7 @@ std::map<std::string, std::string> ApiHandler::get_os_version() {
 }
 
 void ApiHandler::exit_process() {
-    // TODO: WindowsEmulator::exit_process() does not exist yet.
-    // When available, call:
-    //   winemu(emu)->exit_process();
-    // For now, the emulator will naturally halt when the current run ends.
+    winemu(emu)->stop();
 }
 
 // ═══════════════════════════════════════════════════════════════

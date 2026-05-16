@@ -89,7 +89,7 @@ void* WinKernelEmulator::load_module(const std::string& path,
                                       const std::vector<uint8_t>& data,
                                       const std::string& filename) {
     // Load a kernel module (.sys) into the emulator address space.
-    // Uses the PeLoader when data/path is provided.
+    // Uses PeLoader to parse the PE and load_image to map it.
     if (!emu_) return nullptr;
 
     std::vector<uint8_t> buf = data;
@@ -106,12 +106,39 @@ void* WinKernelEmulator::load_module(const std::string& path,
 
     if (buf.empty()) return nullptr;
 
-    // Delegate to the underlying WindowsEmulator's module loader
-    // which handles PE parsing, image mapping, and import resolution
-    void* rtmod = emu_->load_image(nullptr); // TODO: construct PeLoader and call load_image
+    // Derive module name and file name (matching Python load_module logic)
+    std::string file_name, mod_name;
+    if (!filename.empty()) {
+        file_name = filename;
+        auto pos = file_name.rfind('/');
+        if (pos == std::string::npos) pos = file_name.rfind('\\');
+        if (pos != std::string::npos) file_name = file_name.substr(pos + 1);
+        auto dot = file_name.rfind('.');
+        mod_name = (dot != std::string::npos) ? file_name.substr(0, dot) : file_name;
+    } else if (!path.empty()) {
+        file_name = path;
+        auto pos = path.rfind('/');
+        if (pos == std::string::npos) pos = path.rfind('\\');
+        if (pos != std::string::npos) file_name = path.substr(pos + 1);
+        auto dot = file_name.rfind('.');
+        mod_name = (dot != std::string::npos) ? file_name.substr(0, dot) : file_name;
+    } else {
+        mod_name = "loaded_module";
+        file_name = "loaded_module.sys";
+    }
 
-    // For now, use load_pe as a fallback
-    rtmod = emu_->load_pe(path, buf, 0);
+    // Construct PeLoader and call load_image (matching Python:
+    //   loader = PeLoader(path=path, data=data)
+    //   image = loader.make_image()
+    //   image.name = mod_name
+    //   image.emu_path = emu_path
+    //   rtmod = self.load_image(image))
+    speakeasy::PeLoader loader(path, buf);
+    auto img = loader.make_image();
+    img.name = mod_name;
+    img.emu_path = "\\??\\" + path;
+
+    void* rtmod = emu_->load_image(&img);
     return rtmod;
 }
 
@@ -120,24 +147,44 @@ void* WinKernelEmulator::load_driver(const std::string& path,
                                       const std::string& filename,
                                       bool builtin) {
     // Full driver loading: parse PE, create driver object, map image,
-    // and dispatch EP_DRIVER_ENTRY.
+    // and set up DriverInit (entry point) and DriverUnload.
     (void)builtin;
 
     if (!emu_) return nullptr;
 
-    // Load the module first
+    // Ensure we have data for PE parsing in case data was empty
+    std::vector<uint8_t> parsedata = data;
+    if (parsedata.empty() && !path.empty()) {
+        std::ifstream file(path, std::ios::binary | std::ios::ate);
+        if (file) {
+            size_t fsize = static_cast<size_t>(file.tellg());
+            file.seekg(0);
+            parsedata.resize(fsize);
+            file.read(reinterpret_cast<char*>(parsedata.data()), fsize);
+        }
+    }
+
+    // Load the module first (may re-read the file if data is empty)
     void* mod = load_module(path, data, filename);
     if (!mod) return nullptr;
 
     // Create a driver object for this module
     std::string drv_name = filename.empty() ? path : filename;
     Driver* drv = create_driver_object(drv_name, mod);
-    (void)drv; // placeholder until EP_DRIVER_ENTRY dispatch is implemented
 
-    // TODO: set up driver entry point and unload routine
-    // Parse the loaded module's PE header to find DriverEntry
-    // and call it with (drv->address, drv->reg_path_ptr)
-    // This will be fully implemented when PeLoader is ported to C++
+    // Set up driver entry point and unload routine
+    // Parse the loaded module's PE header to find DriverInit
+    // and DriverUnload (initially NULL).
+    // Reference Python:
+    //   drvobj.DriverInit = pe.base + pe.ep
+    //   drvobj.DriverUnload = pe.base + pe.unload  (initially 0)
+    speakeasy::PeLoader loader(path, parsedata);
+    auto img = loader.make_image();
+
+    uint64_t base = reinterpret_cast<uint64_t>(mod);
+    drv->driver_init_addr = base + img.ep;
+    drv->driver_unload_addr = 0;  // DriverUnload is NULL initially;
+                                  // set by driver during execution via DRIVER_OBJECT write-back
 
     return mod;
 }

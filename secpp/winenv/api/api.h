@@ -38,7 +38,7 @@ protected:
     std::map<std::string, ApiHookInfo> funcs;
     std::map<std::string, DataHookInfo> data;
     std::string mod_name;
-    void* emu; // TODO: Should be BinaryEmulator* or appropriate emulator type
+    void* emu; // Kept as void* to avoid circular dependency with WindowsEmulator/BinaryEmulator includes
     int ptr_size;
 
 public:

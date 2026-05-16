@@ -114,13 +114,13 @@ std::map<std::string, std::string> BinaryEmulator::get_user() {
 template<typename T>
 size_t BinaryEmulator::objsize(T obj) {
     (void)obj;
-    return 0;  // TODO: requires EmuStruct::sizeof() for specific types
+    return sizeof(T);  // Default: return sizeof(T) for plain types; override for EmuStruct types
 }
 
 template<typename T>
 std::vector<uint8_t> BinaryEmulator::get_bytes(T obj) {
     (void)obj;
-    return std::vector<uint8_t>();  // TODO: requires EmuStruct::get_bytes()
+    return std::vector<uint8_t>((uint8_t*)&obj, (uint8_t*)&obj + sizeof(T));  // Default: raw byte copy; override for EmuStruct types
 }
 
 void BinaryEmulator::stop() {
