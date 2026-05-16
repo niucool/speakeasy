@@ -6,12 +6,8 @@
 #include <iomanip>
 #include <cstring>
 
-// Use OpenSSL for SHA-256 if available; otherwise fall back to a
-// compile-time SHA-256 implementation or runtime error.
-#ifdef HAS_OPENSSL
-#include <openssl/sha.h>
-#define SPEAKEASY_HAS_SHA256 1
-#endif
+// PicoSHA2: header-only SHA-256 (via vcpkg)
+#include <picosha2.h>
 
 namespace speakeasy {
 
@@ -80,30 +76,18 @@ std::vector<uint8_t> artifact_decompress(const std::vector<uint8_t>& data) {
     return data;
 }
 
-// ── SHA-256 (OpenSSL or fallback) ──────────────────────────
+// ── SHA-256 (PicoSHA2) ──────────────────────────────────
 
 std::string sha256_hex(const std::vector<uint8_t>& data) {
-#ifdef SPEAKEASY_HAS_SHA256
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256(data.data(), data.size(), hash);
-
-    std::ostringstream oss;
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i) {
-        oss << std::hex << std::setw(2) << std::setfill('0')
-            << static_cast<int>(hash[i]);
-    }
-    return oss.str();
-#else
-    // Fallback: simple hash for smoke testing.  Not cryptographically secure.
-    uint64_t h = 0x9ae16a3b2f90404fULL;
-    for (uint8_t b : data) {
-        h ^= static_cast<uint64_t>(b) << ((h & 0x7) * 8);
-        h *= 0xd6e8feb86659fd93ULL;
-    }
-    std::ostringstream oss;
-    oss << std::hex << std::setw(16) << std::setfill('0') << h;
-    return oss.str();
-#endif
+    picosha2::hash256_one_by_one h;
+    h.process(data.data(), data.data() + data.size());
+    h.finish();
+    picosha2::byte_t hash[32];
+    h.get_hash_bytes(hash, hash + 32);
+    static const char hex[] = "0123456789abcdef";
+    std::string out(64, '0');
+    for (int i = 0; i < 32; ++i) { out[i*2] = hex[(hash[i]>>4)&0xf]; out[i*2+1] = hex[hash[i]&0xf]; }
+    return out;
 }
 
 } // anonymous namespace
