@@ -5,7 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <openssl/sha.h> // TODO: For SHA256 hashing
+#include <picosha2.h>
 
 // Helper function to normalize response path
 std::string normalize_response_path(const std::string& path) {

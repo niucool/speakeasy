@@ -1,7 +1,7 @@
 // profiler.cpp
 #include "profiler.h"
 #include <nlohmann/json.hpp> // TODO: Need to include JSON library for C++
-#include <openssl/sha.h>     // TODO: For SHA256 hashing
+#include <picosha2.h>
 
 Run::Run() : instr_cnt(0), ret_val(nullptr), process_context(nullptr), 
              thread(nullptr), start_addr(0), num_apis(0) {
