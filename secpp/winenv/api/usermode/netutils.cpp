@@ -11,8 +11,8 @@ NetUtils::NetUtils() {
 
 // ── Bulk stubs ──────────────────────────────────────────────
 
-#define STUB(n) STUB(NetUtils, n)
+#define NETU_STUB(n) STUB(NetUtils, n)
 
-STUB(NetApiBufferFree)
+NETU_STUB(NetApiBufferFree)
 
 }} // namespaces

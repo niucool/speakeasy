@@ -11,8 +11,8 @@ Lz32::Lz32() {
 
 // ── Bulk stubs ──────────────────────────────────────────────
 
-#define STUB(n) STUB(Lz32, n)
+#define LZ_STUB(n) STUB(Lz32, n)
 
-STUB(LZSeek)
+LZ_STUB(LZSeek)
 
 }} // namespaces

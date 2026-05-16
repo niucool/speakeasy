@@ -11,8 +11,8 @@ Wkscli::Wkscli() {
 
 // ── Bulk stubs ──────────────────────────────────────────────
 
-#define STUB(n) STUB(Wkscli, n)
+#define WKS_STUB(n) STUB(Wkscli, n)
 
-STUB(NetGetJoinInformation)
+WKS_STUB(NetGetJoinInformation)
 
 }} // namespaces

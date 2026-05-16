@@ -87,10 +87,16 @@ private: \
 #define END_API_TABLE \
     };
 
-/// Generate a stub implementation for an API.
+/// Generate a stub implementation for an API (returns 1, for usermode).
 #define STUB(klass, name) \
     uint64_t klass::name(void* e, const std::string&, int, const std::vector<uint64_t>& a) { \
         (void)e; (void)a; return 1; \
+    }
+
+/// Generate a stub implementation for a kernel-mode API (returns 0 = STATUS_SUCCESS).
+#define KERNEL_STUB(klass, name) \
+    uint64_t klass::name(void* e, const std::string&, int, const std::vector<uint64_t>& a) { \
+        (void)e; (void)a; return 0; \
     }
 
 #endif // SPEAKEASY_API_HANDLER_BASE_H

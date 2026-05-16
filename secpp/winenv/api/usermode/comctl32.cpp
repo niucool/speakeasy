@@ -12,9 +12,9 @@ Comctl32::Comctl32() {
 
 // ── Bulk stubs ──────────────────────────────────────────────
 
-#define STUB(n) STUB(Comctl32, n)
+#define COMCTL_STUB(n) STUB(Comctl32, n)
 
-STUB(InitCommonControlsEx)
-STUB(InitCommonControls)
+COMCTL_STUB(InitCommonControlsEx)
+COMCTL_STUB(InitCommonControls)
 
 }} // namespaces

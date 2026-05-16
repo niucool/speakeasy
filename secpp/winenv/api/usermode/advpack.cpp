@@ -11,8 +11,8 @@ Advpack::Advpack() {
 
 // ── Bulk stubs ──────────────────────────────────────────────
 
-#define STUB(n) STUB(Advpack, n)
+#define ADVP_STUB(n) STUB(Advpack, n)
 
-STUB(IsNTAdmin)
+ADVP_STUB(IsNTAdmin)
 
 }} // namespaces

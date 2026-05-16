@@ -14,11 +14,11 @@ Mpr::Mpr() {
 
 // ── Bulk stubs ──────────────────────────────────────────────
 
-#define STUB(n) STUB(Mpr, n)
+#define MPR_STUB(n) STUB(Mpr, n)
 
-STUB(WNetOpenEnum)
-STUB(WNetEnumResource)
-STUB(WNetAddConnection2)
-STUB(WNetGetConnection)
+MPR_STUB(WNetOpenEnum)
+MPR_STUB(WNetEnumResource)
+MPR_STUB(WNetAddConnection2)
+MPR_STUB(WNetGetConnection)
 
 }} // namespaces
