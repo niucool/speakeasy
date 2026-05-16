@@ -9,19 +9,13 @@
 #include <functional>
 #include <tuple>
 #include <cstdint>
+#include "../../struct.h"
+#include "../../profiler.h"
+#include "../../winenv/arch.h"
 
-// TODO: Need C++ equivalents for these Python imports
-// #include "arch.h"
-// #include "profiler.h"
-// #include "struct.h"
-// #include "errors.h"
-// #include "windows/common.h"
-// #include "winenv/defs/nt/ntoskrnl.h"
-
-namespace speakeasy { class EmuStruct; }
-using EmuStruct = speakeasy::EmuStruct;
-class Run;
-class ApiEmuError;
+// Forward declarations
+class WindowsEmulator;
+class BinaryEmulator;
 
 // Structure to hold function hook information
 struct ApiHookInfo {
@@ -70,10 +64,10 @@ public:
     int get_ptr_size();
     
     // Memory management methods
-    size_t sizeof_obj(EmuStruct* obj);
-    std::vector<uint8_t> get_bytes(EmuStruct* obj);
-    EmuStruct* cast(EmuStruct* obj, const std::vector<uint8_t>& bytez);
-    void write_back(uint64_t addr, EmuStruct* obj);
+    size_t sizeof_obj(speakeasy::EmuStruct* obj);
+    std::vector<uint8_t> get_bytes(speakeasy::EmuStruct* obj);
+    speakeasy::EmuStruct* cast(speakeasy::EmuStruct* obj, const std::vector<uint8_t>& bytez);
+    void write_back(uint64_t addr, speakeasy::EmuStruct* obj);
     
     // Memory allocation methods
     uint64_t pool_alloc(int pool_type, size_t size, const std::string& tag);
@@ -84,7 +78,7 @@ public:
     uint64_t mem_reserve(size_t size, uint64_t base = 0, const std::string& tag = "");
     
     // Memory casting and copying methods
-    EmuStruct* mem_cast(EmuStruct* obj, uint64_t addr);
+    speakeasy::EmuStruct* mem_cast(speakeasy::EmuStruct* obj, uint64_t addr);
     size_t mem_copy(uint64_t dst, uint64_t src, size_t n);
     
     // String handling methods
