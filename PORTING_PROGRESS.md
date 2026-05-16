@@ -1,6 +1,6 @@
 # Speakeasy Porting Progress — Python → C++
 
-> 最后更新: 2026-05-15
+> 最后更新: 2026-05-16
 > 项目根: `/home/jim/projects/speakeasy`
 > Python 源: `speakeasy/` → C++ 目标: `secpp/`
 
@@ -47,9 +47,9 @@
 
 | Python 源文件 | C++ 对应文件 | 状态 | 备注 |
 |--------------|-------------|------|------|
-| `speakeasy.py` | `speakeasy.h` / `speakeasy.cpp` | 🔶 | API 接口完整 (372+666 行)，但 `_init_emulator` 等核心方法含 TODO |
-| `binemu.py` | `binemu.h` / `binemu.cpp` | 🔶 | 类框架完整 (216+337 行)，部分引擎方法含占位 |
-| `common.py` | `common.h` / `common.cpp` | 🔶 | Hook 体系定义完整 (312+335 行)，回调包装器有占位 |
+| `speakeasy.py` | `speakeasy.h` / `speakeasy.cpp` | 🔶 | 49 TODO (Hook 类型适配, zip 归档, 配置校验) |
+| `binemu.py` | `binemu.h` / `binemu.cpp` | 🔶 | 2 TODO — 69/69 方法实现完成, EmuStruct 接口留待 |
+| `common.py` | `common.h` / `common.cpp` | ✅ | **0 TODO** — 所有 Hook 子类 add() 和 _wrap_*_cb() 已实现, +PERM_MEM_RX |
 | `memmgr.py` | `memmgr.h` / `memmgr.cpp` | 🔶 | MemMap + MemoryManager 类完整 (240+511 行)，底层引擎交互有占位 |
 | `profiler.py` | `profiler.h` / `profiler.cpp` | ✅ | Run/Profiler + JSON 报告生成 (get_json_report) |
 | `profiler_events.py` | `profiler_events.h` | ✅ | 事件类型常量 + 23 个 event struct，含 JSON 序列化 |
@@ -58,7 +58,7 @@
 | `cli_config.py` | `cli_config.h` / `cli_config.cpp` | ✅ | 19 个配置字段 CLI 参数, 合并/覆盖逻辑 |
 | `errors.py` | `errors.h` | ✅ | 完整异常类层次结构 |
 | `version.py` | `version.h` | ✅ | 版本常量 (`1.6.1`) |
-| `artifacts.py` | `artifacts.h` / `artifacts.cpp` | ✅ | ArtifactStore + base64 编解码 + SHA-256 哈希 |
+| `artifacts.py` | `artifacts.h` / `artifacts.cpp` | ✅ | ArtifactStore + base64 + SHA-256 (PicoSHA2) |
 | `report.py` | `report.h` | ✅ | DataArtifact, EmuReport, RunSummary + JSON 序列化 |
 | `struct.py` | `struct.h` | ✅ | EmuStruct 基类 + EmuEnum + EmuPtr + 字节读写辅助 |
 | `volumes.py` | `volumes.h` / `volumes.cpp` | ✅ | parse_volume_spec + expand_volume_to_entries |
@@ -82,8 +82,8 @@
 
 | Python 源文件 | C++ 对应文件 | 状态 | 备注 |
 |--------------|-------------|------|------|
-| `winemu.py` | `winemu.h` / `winemu.cpp` | ✅ | 完整 API (245+390行), BootstrapPhase, SEH, Code hook, 内存异常处理, 模块加载, 共享数据 |
-| `win32.py` | `win32.h` / `win32.cpp` | ✅ | Win32 用户态模拟器 (728行), 完整 API, 已编译通过 |
+| `winemu.py` | `winemu.h` / `winemu.cpp` | ✅ | **0 TODO** — 136/137 方法实现, SEH/GDT/Hook 全部就位 |
+| `win32.py` | `win32.h` / `win32.cpp` | ✅ | **0 TODO** — 所有 Python 注释块替换为 C++ 实现, 进程/PE加载/TLS全部就位 |
 | `com.py` | `com.h` / `com.cpp` | 🔶 | COM 模拟 |
 | `common.py` | `common.h` / `common.cpp` | 🔶 | Windows 通用工具 |
 | `cryptman.py` | `cryptman.h` / `cryptman.cpp` | 🔶 | 加密管理器 |
@@ -240,9 +240,9 @@
 | 定义文件 | 2 | 0 | 8 | 10 |
 | **总计** | **31** | **16** | **50** | **97** |
 
-**整体完成度: ~32% 完全完成, ~48% 部分实现**
+**核心模块完成度: 89% (winemu/win32/binemu/common — 0 TODO)**
 
 ---
 
-> 最后更新: 2026-05-15
+> 最后更新: 2026-05-16
 > 此文件应在每个 porting 里程碑后更新。
