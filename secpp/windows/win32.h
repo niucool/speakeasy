@@ -272,7 +272,7 @@ public:
     /**
      * Memory map
      */
-    uint64_t mem_map(size_t size, uint64_t base = 0, const std::string& tag = "");
+    uint64_t mem_map(size_t size, uint64_t base, uint32_t perms, const std::string& tag = "");
     
     /**
      * Memory write

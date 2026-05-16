@@ -314,7 +314,7 @@ public:
     // ── Unicorn hook bridge ──────────────────────────────────
     void _register_code_hook(void* callback, uint64_t begin, uint64_t end);
     void _register_mem_hook(int hook_type, void* callback);
-    std::vector<void*> uc_hooks_;
+    std::vector<uc_hook> uc_hooks_;
 
     // ── Memory hooks (additional) ──────────────────────────────
     bool _hook_mem_read(void* emu, int access, uint64_t addr, size_t size, uint64_t value);

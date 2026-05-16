@@ -196,7 +196,7 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
     this->arch = (arch == "x64" || arch == "amd64") ? 64 : 32;
     std::vector<uint8_t> sc = data;
     std::string sc_hash = "unknown_hash";
-    uint64_t sc_addr = mem_map(sc.size(), 0ULL, "emu.shellcode." + sc_hash);
+    uint64_t sc_addr = mem_map(sc.size(), 0ULL, PERM_MEM_RW, "emu.shellcode." + sc_hash);
     if (!sc.empty()) mem_write(sc_addr, sc);
     return sc_addr;
 }
@@ -395,12 +395,12 @@ void Win32Emulator::on_run_complete() {
 }
 
 uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {
-    uint64_t addr = mem_map(size, 0ULL, "api.heap." + heap);
+    uint64_t addr = mem_map(size, 0ULL, PERM_MEM_RW, "api.heap." + heap);
     heap_allocs.push_back({addr, size, heap});
     return addr;
 }
 void* Win32Emulator::get_address_map(uint64_t) { return nullptr; }
 std::tuple<uint64_t, size_t> Win32Emulator::get_valid_ranges(size_t, uint64_t) { return {0,0}; }
-uint64_t Win32Emulator::mem_map(size_t n, unsigned long base, const std::string& tag) {
-    return BinaryEmulator::mem_map(static_cast<uint64_t>(n), base, PERM_MEM_RW, tag);
+uint64_t Win32Emulator::mem_map(size_t n, unsigned long base, uint32_t perms, const std::string& tag) {
+    return MemoryManager::mem_map(static_cast<uint64_t>(n), base, PERM_MEM_RW, tag);
 }

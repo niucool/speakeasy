@@ -259,9 +259,10 @@ uint64_t EmuEngine::hook_add(void* addr, void* cb, uint32_t htype,
     
     // Store the hook in our callback map
     auto toggle_hook = std::make_shared<ToggleableHook>([](){}); // Placeholder
-    callbacks[reinterpret_cast<uint64_t>(hook)] = toggle_hook;
+    uint64_t hid = (uint64_t)(uintptr_t)(hook);
+    callbacks[hid] = toggle_hook;
     
-    return reinterpret_cast<uint64_t>(hook);
+    return hid;
 }
 
 /**
@@ -288,6 +289,6 @@ void EmuEngine::hook_disable(uint64_t hook_handle) {
  * Remove a hook
  */
 uc_err EmuEngine::hook_remove(uint64_t hid) {
-    uc_hook hook = reinterpret_cast<uc_hook>(hid);
+    uc_hook hook = (uc_hook)(uintptr_t)(hid);
     return uc_hook_del(emu, hook);
 }

@@ -142,9 +142,8 @@ void WindowsEmulator::enable_code_hook() {
 
 void WindowsEmulator::disable_code_hook() {
     if (tmp_code_hook && emu_eng) {
-        for (auto* h : uc_hooks_) {
-            uc_hook_del(emu_eng->get_engine(),
-                        static_cast<uc_hook>(reinterpret_cast<uintptr_t>(h)));
+        for (auto h : uc_hooks_) {
+            uc_hook_del(emu_eng->get_engine(), h);
         }
         uc_hooks_.clear();
         tmp_code_hook = nullptr;
@@ -1210,7 +1209,7 @@ void WindowsEmulator::_register_code_hook(void* callback, uint64_t begin, uint64
     uc_err err = uc_hook_add(emu_eng->get_engine(), &hh, UC_HOOK_CODE,
                               callback, static_cast<void*>(this), begin, end);
     if (err == UC_ERR_OK) {
-        uc_hooks_.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(hh)));
+        uc_hooks_.push_back(hh);
     }
 }
 
@@ -1221,7 +1220,7 @@ void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
                               callback, static_cast<void*>(this), 1, 0);
     (void)hook_type;
     if (err == UC_ERR_OK) {
-        uc_hooks_.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(hh)));
+        uc_hooks_.push_back(hh);
     }
 }
 
