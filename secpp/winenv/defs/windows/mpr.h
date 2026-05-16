@@ -14,6 +14,33 @@
 #include "../../../struct.h"
 
 namespace speakeasy { namespace defs { namespace windows {
+// Suppress Windows SDK macro pollution
+#ifdef _WIN32
+#pragma push_macro("RESOURCE_CONNECTED")
+#pragma push_macro("RESOURCE_GLOBALNET")
+#pragma push_macro("RESOURCE_REMEMBERED")
+#pragma push_macro("RESOURCE_CONTEXT")
+#pragma push_macro("RESOURCETYPE_ANY")
+#pragma push_macro("RESOURCETYPE_DISK")
+#pragma push_macro("RESOURCETYPE_PRINT")
+#pragma push_macro("RESOURCEUSAGE_CONNECTABLE")
+#pragma push_macro("RESOURCEUSAGE_CONTAINER")
+#pragma push_macro("RESOURCEUSAGE_ATTACHED")
+#pragma push_macro("RESOURCEUSAGE_ALL")
+#pragma push_macro("ERROR_NO_NETWORK")
+#undef RESOURCE_CONNECTED
+#undef RESOURCE_GLOBALNET
+#undef RESOURCE_REMEMBERED
+#undef RESOURCE_CONTEXT
+#undef RESOURCETYPE_ANY
+#undef RESOURCETYPE_DISK
+#undef RESOURCETYPE_PRINT
+#undef RESOURCEUSAGE_CONNECTABLE
+#undef RESOURCEUSAGE_CONTAINER
+#undef RESOURCEUSAGE_ATTACHED
+#undef RESOURCEUSAGE_ALL
+#undef ERROR_NO_NETWORK
+#endif
 
 // ── Resource scope ─────────────────────────────────────────────
 

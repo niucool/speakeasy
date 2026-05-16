@@ -16,6 +16,25 @@
 namespace speakeasy { namespace defs { namespace windows {
 
 // ── HRESULT constants ─────────────────────────────────────────
+// Protect against Windows SDK macro pollution
+#ifdef _WIN32
+#pragma push_macro("S_OK")
+#pragma push_macro("S_FALSE")
+#pragma push_macro("E_NOTIMPL")
+#pragma push_macro("E_NOINTERFACE")
+#pragma push_macro("E_POINTER")
+#pragma push_macro("E_FAIL")
+#pragma push_macro("E_OUTOFMEMORY")
+#pragma push_macro("E_INVALIDARG")
+#undef S_OK
+#undef S_FALSE
+#undef E_NOTIMPL
+#undef E_NOINTERFACE
+#undef E_POINTER
+#undef E_FAIL
+#undef E_OUTOFMEMORY
+#undef E_INVALIDARG
+#endif
 
 constexpr int32_t S_OK                      = 0;
 constexpr int32_t S_FALSE                   = 1;
@@ -25,6 +44,17 @@ constexpr int32_t E_POINTER                 = 0x80004003;
 constexpr int32_t E_FAIL                    = 0x80004005;
 constexpr int32_t E_OUTOFMEMORY             = 0x8007000E;
 constexpr int32_t E_INVALIDARG              = 0x80070057;
+
+#ifdef _WIN32
+#pragma pop_macro("E_INVALIDARG")
+#pragma pop_macro("E_OUTOFMEMORY")
+#pragma pop_macro("E_FAIL")
+#pragma pop_macro("E_POINTER")
+#pragma pop_macro("E_NOINTERFACE")
+#pragma pop_macro("E_NOTIMPL")
+#pragma pop_macro("S_FALSE")
+#pragma pop_macro("S_OK")
+#endif
 
 // ── RPC authentication level constants ────────────────────────
 
@@ -47,25 +77,41 @@ constexpr uint32_t RPC_C_IMP_LEVEL_DELEGATE    = 4;
 // ── CLSID / IID constants ─────────────────────────────────────
 
 // CLSID_WbemLocator = "{4590F811-1D3A-11D0-891F-00AA004B2E24}"
+#ifdef _WIN32
+const GUID CLSID_WbemLocator = {
+#else
 constexpr GUID CLSID_WbemLocator = {
+#endif
     0x4590F811, 0x1D3A, 0x11D0,
     {0x89, 0x1F, 0x00, 0xAA, 0x00, 0x4B, 0x2E, 0x24}
 };
 
 // CLSID_IWbemContext = "{674B6698-EE92-11D0-AD71-00C04FD8FDFF}"
+#ifdef _WIN32
+const GUID CLSID_IWbemContext = {
+#else
 constexpr GUID CLSID_IWbemContext = {
+#endif
     0x674B6698, 0xEE92, 0x11D0,
     {0xAD, 0x71, 0x00, 0xC0, 0x4F, 0xD8, 0xFD, 0xFF}
 };
 
 // IID_IWbemLocator = "{DC12A687-737F-11CF-884D-00AA004B2E24}"
+#ifdef _WIN32
+const GUID IID_IWbemLocator = {
+#else
 constexpr GUID IID_IWbemLocator = {
+#endif
     0xDC12A687, 0x737F, 0x11CF,
     {0x88, 0x4D, 0x00, 0xAA, 0x00, 0x4B, 0x2E, 0x24}
 };
 
 // IID_IWbemContext = "{44ACA674-E8FC-11D0-A07C-00C04FB68820}"
+#ifdef _WIN32
+const GUID IID_IWbemContext = {
+#else
 constexpr GUID IID_IWbemContext = {
+#endif
     0x44ACA674, 0xE8FC, 0x11D0,
     {0xA0, 0x7C, 0x00, 0xC0, 0x4F, 0xB6, 0x88, 0x20}
 };

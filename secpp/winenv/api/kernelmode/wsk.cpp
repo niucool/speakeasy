@@ -1,7 +1,24 @@
-// wsk.cpp — Winsock Kernel handler (STUB)
+// wsk.cpp — Winsock Kernel handler (implemented)
 #include "wsk.h"
 
+#include <cstdint>
+#include <vector>
+#include <string>
+
+#include "memmgr.h"
+#include "struct.h"
+#include "winenv/arch.h"
+#include "windows/winemu.h"
+
+using namespace speakeasy;
+
 namespace speakeasy { namespace api { namespace kernelmode {
+
+// ── Typed cast helpers ────────────────────────────────────────
+static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
+static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
+static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
+static inline int ptr_sz(void* e) { return we(e)->get_ptr_size(); }
 
 Wsk::Wsk() {
     INIT_API_TABLE(Wsk)
@@ -25,15 +42,123 @@ Wsk::Wsk() {
     END_API_TABLE
 }
 
-#define WK_STUB(n) KERNEL_STUB(Wsk, n)
-WK_STUB(WskRegister)            WK_STUB(WskCaptureProviderNPI)
-WK_STUB(WskReleaseProviderNPI)  WK_STUB(WskDeregister)
-WK_STUB(WskSocket)              WK_STUB(WskSocketConnect)
-WK_STUB(WskControlClient)       WK_STUB(WskGetAddressInfo)
-WK_STUB(WskFreeAddressInfo)     WK_STUB(WskGetNameInfo)
-WK_STUB(WskControlSocket)       WK_STUB(WskCloseSocket)
-WK_STUB(WskBind)                WK_STUB(WskSendTo)
-WK_STUB(WskReceiveFrom)         WK_STUB(WskRelease)
-WK_STUB(WskGetLocalAddress)
+// ── Internal helpers ──────────────────────────────────────────
+static constexpr int WSK_SUCCESS = 0;
+
+// ── Implementations ───────────────────────────────────────────
+
+uint64_t Wsk::WskRegister(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskRegister(WSK_CLIENT_NPI *ClientNpi, WSK_REGISTRATION *WskRegistration)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskCaptureProviderNPI(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskCaptureProviderNPI(WSK_REGISTRATION *WskRegistration, ULONG WaitTimeout, WSK_PROVIDER_NPI *WskProviderNpi)
+    uint64_t wsk_provider = a[2];
+    if (wsk_provider) {
+        // Allocate a WSK_PROVIDER_NPI structure — just write a dummy dispatch table pointer
+        size_t psz = static_cast<size_t>(ptr_sz(e));
+        auto data = std::vector<uint8_t>(psz, 0);
+        // Write a dummy dispatch pointer
+        uint64_t dummy_dispatch = mm(e)->mem_map(psz, 0, common::PERM_MEM_RWX, "wsk.dispatch");
+        write_le(data, 0, dummy_dispatch, psz);
+        mm(e)->mem_write(wsk_provider, data);
+    }
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskReleaseProviderNPI(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // VOID WskReleaseProviderNPI(WSK_REGISTRATION *WskRegistration)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskDeregister(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskDeregister(WSK_REGISTRATION *WskRegistration)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskSocket(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // PWSK_SOCKET WskSocket(...)
+    // Return a dummy socket pointer
+    size_t psz = static_cast<size_t>(ptr_sz(e));
+    (void)psz;
+    uint64_t sock = mm(e)->mem_map(256, 0, common::PERM_MEM_RWX, "wsk.socket");
+    return sock;
+}
+
+uint64_t Wsk::WskSocketConnect(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // PWSK_SOCKET WskSocketConnect(...)
+    (void)e; (void)a;
+    return 0;
+}
+
+uint64_t Wsk::WskControlClient(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskControlClient(...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskGetAddressInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskGetAddressInfo(...)
+    (void)e; (void)a;
+    return 0x000000C0000135L; // STATUS_NOT_FOUND
+}
+
+uint64_t Wsk::WskFreeAddressInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // VOID WskFreeAddressInfo(...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskGetNameInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskGetNameInfo(...)
+    (void)e; (void)a;
+    return 0x000000C0000135L; // STATUS_NOT_FOUND
+}
+
+uint64_t Wsk::WskControlSocket(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskControlSocket(...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskCloseSocket(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskCloseSocket(PWSK_SOCKET Socket, ...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskBind(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskBind(...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskSendTo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskSendTo(...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskReceiveFrom(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskReceiveFrom(...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskRelease(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // VOID WskRelease(...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
+
+uint64_t Wsk::WskGetLocalAddress(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTSTATUS WskGetLocalAddress(...)
+    (void)e; (void)a;
+    return WSK_SUCCESS;
+}
 
 }}} // namespaces

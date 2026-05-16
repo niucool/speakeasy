@@ -127,7 +127,7 @@ struct MONITORINFO : speakeasy::EmuStruct {
 };
 
 // ── GUID ───────────────────────────────────────────────────────
-
+#ifndef _WIN32
 struct GUID : speakeasy::EmuStruct {
     uint32_t Data1    = 0;
     uint16_t Data2    = 0;
@@ -155,6 +155,7 @@ struct GUID : speakeasy::EmuStruct {
     }
     bool operator!=(const GUID& o) const { return !(*this == o); }
 };
+#endif
 
 // ── LUID ───────────────────────────────────────────────────────
 

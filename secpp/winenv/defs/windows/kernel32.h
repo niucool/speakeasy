@@ -14,6 +14,89 @@
 #include "../../../struct.h"
 #include "windows.h"
 
+// On Windows, the SDK defines many types as macros — undefine the ones
+// that conflict with our constexpr struct member names and constants.
+#ifdef _WIN32
+#pragma push_macro("MAX_PATH")
+#pragma push_macro("FILE_ATTRIBUTE_DIRECTORY")
+#pragma push_macro("FILE_ATTRIBUTE_NORMAL")
+#pragma push_macro("DRIVE_UNKNOWN")
+#pragma push_macro("DRIVE_NO_ROOT_DIR")
+#pragma push_macro("DRIVE_REMOVABLE")
+#pragma push_macro("DRIVE_FIXED")
+#pragma push_macro("DRIVE_REMOTE")
+#pragma push_macro("DRIVE_CDROM")
+#pragma push_macro("DRIVE_RAMDISK")
+#pragma push_macro("LOCALE_INVARIANT")
+#pragma push_macro("LOCALE_USER_DEFAULT")
+#pragma push_macro("LOCALE_SYSTEM_DEFAULT")
+#pragma push_macro("LOCALE_CUSTOM_DEFAULT")
+#pragma push_macro("LOCALE_CUSTOM_UNSPECIFIED")
+#pragma push_macro("LOCALE_CUSTOM_UI_DEFAULT")
+#pragma push_macro("LOCALE_SENGLISHLANGUAGENAME")
+#pragma push_macro("LOCALE_SENGLISHCOUNTRYNAME")
+#pragma push_macro("GetFileExInfoStandard")
+#pragma push_macro("EXCEPTION_CONTINUE_SEARCH")
+#pragma push_macro("EXCEPTION_EXECUTE_HANDLER")
+#pragma push_macro("THREAD_PRIORITY_NORMAL")
+#pragma push_macro("TH32CS_INHERIT")
+#pragma push_macro("TH32CS_SNAPHEAPLIST")
+#pragma push_macro("TH32CS_SNAPMODULE")
+#pragma push_macro("TH32CS_SNAPMODULE32")
+#pragma push_macro("TH32CS_SNAPPROCESS")
+#pragma push_macro("TH32CS_SNAPTHREAD")
+#pragma push_macro("PROCESSOR_ARCHITECTURE_AMD64")
+#pragma push_macro("PROCESSOR_ARCHITECTURE_INTEL")
+#pragma push_macro("ComputerNameNetBIOS")
+#pragma push_macro("ComputerNameDnsHostname")
+#pragma push_macro("ComputerNameDnsDomain")
+#pragma push_macro("ComputerNameDnsFullyQualified")
+#pragma push_macro("ComputerNamePhysicalNetBIOS")
+#pragma push_macro("ComputerNamePhysicalDnsHostname")
+#pragma push_macro("ComputerNamePhysicalDnsDomain")
+#pragma push_macro("ComputerNamePhysicalDnsFullyQualified")
+#pragma push_macro("ComputerNameMax")
+#undef MAX_PATH
+#undef FILE_ATTRIBUTE_DIRECTORY
+#undef FILE_ATTRIBUTE_NORMAL
+#undef DRIVE_UNKNOWN
+#undef DRIVE_NO_ROOT_DIR
+#undef DRIVE_REMOVABLE
+#undef DRIVE_FIXED
+#undef DRIVE_REMOTE
+#undef DRIVE_CDROM
+#undef DRIVE_RAMDISK
+#undef LOCALE_INVARIANT
+#undef LOCALE_USER_DEFAULT
+#undef LOCALE_SYSTEM_DEFAULT
+#undef LOCALE_CUSTOM_DEFAULT
+#undef LOCALE_CUSTOM_UNSPECIFIED
+#undef LOCALE_CUSTOM_UI_DEFAULT
+#undef LOCALE_SENGLISHLANGUAGENAME
+#undef LOCALE_SENGLISHCOUNTRYNAME
+#undef GetFileExInfoStandard
+#undef EXCEPTION_CONTINUE_SEARCH
+#undef EXCEPTION_EXECUTE_HANDLER
+#undef THREAD_PRIORITY_NORMAL
+#undef TH32CS_INHERIT
+#undef TH32CS_SNAPHEAPLIST
+#undef TH32CS_SNAPMODULE
+#undef TH32CS_SNAPMODULE32
+#undef TH32CS_SNAPPROCESS
+#undef TH32CS_SNAPTHREAD
+#undef PROCESSOR_ARCHITECTURE_AMD64
+#undef PROCESSOR_ARCHITECTURE_INTEL
+#undef ComputerNameNetBIOS
+#undef ComputerNameDnsHostname
+#undef ComputerNameDnsDomain
+#undef ComputerNameDnsFullyQualified
+#undef ComputerNamePhysicalNetBIOS
+#undef ComputerNamePhysicalDnsHostname
+#undef ComputerNamePhysicalDnsDomain
+#undef ComputerNamePhysicalDnsFullyQualified
+#undef ComputerNameMax
+#endif
+
 namespace speakeasy { namespace defs { namespace windows {
 
 // ── Constants ─────────────────────────────────────────────────
@@ -312,9 +395,16 @@ struct MODULEENTRY32 : speakeasy::EmuStruct {
 
 struct WIN32_FIND_DATA : speakeasy::EmuStruct {
     uint32_t dwFileAttributes    = 0;
+    // On _WIN32, use the underlying types from the SDK
+#ifndef _WIN32
     FILETIME ftCreationTime;
     FILETIME ftLastAccessTime;
     FILETIME ftLastWriteTime;
+#else
+    uint64_t ftCreationTime_raw = 0;
+    uint64_t ftLastAccessTime_raw = 0;
+    uint64_t ftLastWriteTime_raw = 0;
+#endif
     uint32_t nFileSizeHigh       = 0;
     uint32_t nFileSizeLow        = 0;
     uint32_t dwReserved0         = 0;
@@ -326,17 +416,19 @@ struct WIN32_FIND_DATA : speakeasy::EmuStruct {
     std::vector<uint8_t> get_bytes() const override {
         constexpr size_t SZ = 592;
         std::vector<uint8_t> b(SZ, 0);
-        size_t off = 0;
         speakeasy::write_le(b, 0,  dwFileAttributes, 4);
-        // ftCreationTime at 4 (FILETIME = 8 bytes)
+#ifndef _WIN32
         auto ft1 = ftCreationTime.get_bytes();
         std::copy(ft1.begin(), ft1.end(), b.begin() + 4);
-        // ftLastAccessTime at 12 (FILETIME = 8 bytes)
         auto ft2 = ftLastAccessTime.get_bytes();
         std::copy(ft2.begin(), ft2.end(), b.begin() + 12);
-        // ftLastWriteTime at 20 (FILETIME = 8 bytes)
         auto ft3 = ftLastWriteTime.get_bytes();
         std::copy(ft3.begin(), ft3.end(), b.begin() + 20);
+#else
+        speakeasy::write_le(b, 4,  ftCreationTime_raw, 8);
+        speakeasy::write_le(b, 12, ftLastAccessTime_raw, 8);
+        speakeasy::write_le(b, 20, ftLastWriteTime_raw, 8);
+#endif
         speakeasy::write_le(b, 28, nFileSizeHigh, 4);
         speakeasy::write_le(b, 32, nFileSizeLow, 4);
         speakeasy::write_le(b, 36, dwReserved0, 4);
@@ -355,9 +447,15 @@ struct WIN32_FIND_DATA : speakeasy::EmuStruct {
 
 struct WIN32_FILE_ATTRIBUTE_DATA : speakeasy::EmuStruct {
     uint32_t dwFileAttributes    = 0;
+#ifndef _WIN32
     FILETIME ftCreationTime;
     FILETIME ftLastAccessTime;
     FILETIME ftLastWriteTime;
+#else
+    uint64_t ftCreationTime_raw = 0;
+    uint64_t ftLastAccessTime_raw = 0;
+    uint64_t ftLastWriteTime_raw = 0;
+#endif
     uint32_t nFileSizeHigh       = 0;
     uint32_t nFileSizeLow        = 0;
 
@@ -365,12 +463,18 @@ struct WIN32_FILE_ATTRIBUTE_DATA : speakeasy::EmuStruct {
     std::vector<uint8_t> get_bytes() const override {
         std::vector<uint8_t> b(36, 0);
         speakeasy::write_le(b, 0, dwFileAttributes, 4);
+#ifndef _WIN32
         auto ft1 = ftCreationTime.get_bytes();
         std::copy(ft1.begin(), ft1.end(), b.begin() + 4);
         auto ft2 = ftLastAccessTime.get_bytes();
         std::copy(ft2.begin(), ft2.end(), b.begin() + 12);
         auto ft3 = ftLastWriteTime.get_bytes();
         std::copy(ft3.begin(), ft3.end(), b.begin() + 20);
+#else
+        speakeasy::write_le(b, 4,  ftCreationTime_raw, 8);
+        speakeasy::write_le(b, 12, ftLastAccessTime_raw, 8);
+        speakeasy::write_le(b, 20, ftLastWriteTime_raw, 8);
+#endif
         speakeasy::write_le(b, 28, nFileSizeHigh, 4);
         speakeasy::write_le(b, 32, nFileSizeLow, 4);
         return b;
@@ -486,7 +590,6 @@ struct OVERLAPPED : speakeasy::EmuStruct {
         } else {
             speakeasy::write_le(b, 0, Internal, 4);
             speakeasy::write_le(b, 4, InternalHigh, 4);
-            // Offset and OffsetHigh packed at 8, the union Pointer overlays
             speakeasy::write_le(b, 8, Offset, 4);
             speakeasy::write_le(b, 12, OffsetHigh, 4);
             speakeasy::write_le(b, 16, hEvent, 4);

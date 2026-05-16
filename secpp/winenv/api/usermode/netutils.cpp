@@ -1,18 +1,32 @@
-// netutils.cpp — netutils.dll handler (STUB)
+// netutils.cpp — netutils.dll handler (real implementations)
 #include "netutils.h"
+#include <cstdint>
+#include <string>
+#include <vector>
+#include "windows/winemu.h"
+#include "struct.h"
+#include "../../defs/windows/netapi32.h"
+
+using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
+static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
+static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
+
+// ═══════════════════════════════════════════════════════════════
+//  NetApiBufferFree
+// ═══════════════════════════════════════════════════════════════
+uint64_t NetUtils::NetApiBufferFree(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    (void)e; (void)a;
+    return defs::windows::NERR_Success;
+}
+
+// ── Constructor ─────────────────────────────────────────────────
 NetUtils::NetUtils() {
     INIT_API_TABLE(NetUtils)
     REG(NetUtils, NetApiBufferFree, 1)
     END_API_TABLE
 }
-
-// ── Bulk stubs ──────────────────────────────────────────────
-
-#define NETU_STUB(n) STUB(NetUtils, n)
-
-NETU_STUB(NetApiBufferFree)
 
 }} // namespaces

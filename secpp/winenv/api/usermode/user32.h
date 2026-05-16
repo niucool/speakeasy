@@ -18,7 +18,26 @@ static uint64_t SendMessageA(void*,const std::string&,int,const std::vector<uint
 static uint64_t GetWindowTextA(void*,const std::string&,int,const std::vector<uint64_t>&);
 static uint64_t SetWindowTextA(void*,const std::string&,int,const std::vector<uint64_t>&);
 static uint64_t GetForegroundWindow(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t GetDesktopWindow(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t CreateWindowEx_hook(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t RegisterClassExA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t ShowWindow(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t UpdateWindow(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t GetDC(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t GetSystemMetrics(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t LoadCursorA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t SetWindowsHookExA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t CallNextHookEx(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t GetAsyncKeyState(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t GetKeyboardType(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t wsprintfA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t LoadStringA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t TranslateMessage(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t DispatchMessageA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t PostQuitMessage(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t DefWindowProcA(void*,const std::string&,int,const std::vector<uint64_t>&);
+static uint64_t DestroyWindow(void*,const std::string&,int,const std::vector<uint64_t>&);
 static uint64_t stub(void*,const std::string&,int,const std::vector<uint64_t>&);
 };
-}}
+}} 
 #endif

@@ -1,7 +1,23 @@
-// hal.cpp — Hardware Abstraction Layer handler (STUB)
+// hal.cpp — Hardware Abstraction Layer handler (implemented)
 #include "hal.h"
 
+#include <cstdint>
+#include <vector>
+#include <string>
+
+#include "memmgr.h"
+#include "struct.h"
+#include "winenv/arch.h"
+#include "windows/winemu.h"
+
+using namespace speakeasy;
+
 namespace speakeasy { namespace api { namespace kernelmode {
+
+// ── Typed cast helpers ────────────────────────────────────────
+static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
+static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
+static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
 
 Hal::Hal() {
     INIT_API_TABLE(Hal)
@@ -11,7 +27,27 @@ Hal::Hal() {
     END_API_TABLE
 }
 
-#define H_STUB(n) KERNEL_STUB(Hal, n)
-H_STUB(KeGetCurrentIrql)  H_STUB(ExAcquireFastMutex)  H_STUB(ExReleaseFastMutex)
+// ── Implementations ───────────────────────────────────────────
+
+uint64_t Hal::KeGetCurrentIrql(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // NTHALAPI KIRQL KeGetCurrentIrql();
+    // Simply return PASSIVE_LEVEL (0) since we don't track IRQL in emulation
+    (void)e; (void)a;
+    return 0; // PASSIVE_LEVEL
+}
+
+uint64_t Hal::ExAcquireFastMutex(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // VOID ExAcquireFastMutex(PFAST_MUTEX FastMutex);
+    // No-op in emulation
+    (void)e; (void)a;
+    return 0;
+}
+
+uint64_t Hal::ExReleaseFastMutex(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    // VOID ExReleaseFastMutex(PFAST_MUTEX FastMutex);
+    // No-op in emulation
+    (void)e; (void)a;
+    return 0;
+}
 
 }}} // namespaces

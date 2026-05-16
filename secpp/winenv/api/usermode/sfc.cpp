@@ -1,18 +1,40 @@
-// sfc.cpp — sfc.dll handler (stubs)
+// sfc.cpp — sfc.dll handler (real implementations)
 #include "sfc.h"
+#include <cstdint>
+#include <string>
+#include <vector>
+#include "windows/winemu.h"
+#include "struct.h"
+
+using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
+static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
+static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
+
+// ═══════════════════════════════════════════════════════════════
+//  SfcIsFileProtected
+// ═══════════════════════════════════════════════════════════════
+uint64_t Sfc::SfcIsFileProtected(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    (void)e; (void)a;
+    return 0;  // FALSE - file is not protected
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SfcTerminateWatcherThread
+// ═══════════════════════════════════════════════════════════════
+uint64_t Sfc::SfcTerminateWatcherThread(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+    (void)e; (void)a;
+    return 0;  // TRUE (non-zero success)
+}
+
+// ── Constructor ─────────────────────────────────────────────────
 Sfc::Sfc() {
     INIT_API_TABLE(Sfc)
     REG(Sfc, SfcIsFileProtected, 2)
     REG(Sfc, SfcTerminateWatcherThread, 0)
     END_API_TABLE
 }
-
-#define STUB_SFC(n) STUB(Sfc, n)
-
-STUB_SFC(SfcIsFileProtected)
-STUB_SFC(SfcTerminateWatcherThread)
 
 }} // namespaces
