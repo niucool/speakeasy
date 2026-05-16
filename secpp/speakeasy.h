@@ -31,7 +31,7 @@ class Speakeasy {
 private:
     void* logger;
     nlohmann::json config;
-    WindowsEmulator* emu;
+    Win32Emulator* emu;
     std::vector<std::tuple<std::function<void()>, std::string, std::string, int, std::string>> api_hooks;
     std::vector<std::tuple<std::function<void()>, uint64_t, uint64_t, std::map<std::string, std::string>>> code_hooks;
     std::vector<std::tuple<std::function<void()>, std::map<std::string, std::string>>> dyn_code_hooks;

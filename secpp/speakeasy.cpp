@@ -156,15 +156,11 @@ void Speakeasy::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t offs
 }
 
 nlohmann::json Speakeasy::get_report() {
-    // TODO: Return emu->get_report();
-    // return emu->get_report();
-    return nlohmann::json();
+        return emu->get_report();
 }
 
 std::string Speakeasy::get_json_report() {
-    // TODO: Return emu->get_json_report();
-    // return emu->get_json_report();
-    return "";
+        return emu->get_json_report_string();
 }
 
 void* Speakeasy::add_api_hook(std::function<void()> cb, const std::string& module, 
@@ -188,8 +184,7 @@ void Speakeasy::resume(uint64_t addr, int count) {
 }
 
 void Speakeasy::stop() {
-    // TODO: Return emu->stop();
-    // return emu->stop();
+        emu->stop();
 }
 
 void Speakeasy::shutdown() {
@@ -307,15 +302,11 @@ void* Speakeasy::get_address_map(uint64_t addr) {
 }
 
 std::vector<void*> Speakeasy::get_user_modules() {
-    // TODO: Return emu->get_user_modules();
-    // return emu->get_user_modules();
-    return std::vector<void*>();
+        return emu->get_user_modules();
 }
 
 std::vector<void*> Speakeasy::get_sys_modules() {
-    // TODO: Return emu->get_sys_modules();
-    // return emu->get_sys_modules();
-    return std::vector<void*>();
+        return {};  // sys modules deferred
 }
 
 uint64_t Speakeasy::mem_alloc(size_t size, uint64_t base, const std::string& tag) {
@@ -325,8 +316,7 @@ uint64_t Speakeasy::mem_alloc(size_t size, uint64_t base, const std::string& tag
 }
 
 void Speakeasy::mem_free(uint64_t base) {
-    // TODO: Return emu->mem_free(base);
-    // return emu->mem_free(base);
+        emu->mem_free(base);
 }
 
 std::vector<uint8_t> Speakeasy::mem_read(uint64_t addr, size_t size) {
@@ -358,9 +348,7 @@ void* Speakeasy::mem_cast(void* obj, uint64_t addr) {
 }
 
 uint64_t Speakeasy::reg_read(const std::string& reg) {
-    // TODO: Return emu->reg_read(reg);
-    // return emu->reg_read(reg);
-    return 0;
+        return 0;  // string-to-int reg mapping needed
 }
 
 std::vector<std::tuple<uint64_t, std::string, std::string>> Speakeasy::get_dyn_imports() {
@@ -370,8 +358,7 @@ std::vector<std::tuple<uint64_t, std::string, std::string>> Speakeasy::get_dyn_i
 }
 
 void Speakeasy::reg_write(const std::string& reg, uint64_t val) {
-    // TODO: Return emu->reg_write(reg, val);
-    // return emu->reg_write(reg, val);
+        // emu->reg_write(reg, val);  // reg name string→int needed
 }
 
 std::vector<void*> Speakeasy::get_dropped_files() {
@@ -409,9 +396,7 @@ std::vector<uint8_t> Speakeasy::create_file_archive() {
 }
 
 std::vector<void*> Speakeasy::get_mem_maps() {
-    // TODO: Return emu->get_mem_maps();
-    // return emu->get_mem_maps();
-    return std::vector<void*>();
+        return emu->get_mem_maps();
 }
 
 std::vector<std::tuple<std::string, uint64_t, size_t, bool, void*, std::vector<uint8_t>>> 
@@ -436,59 +421,43 @@ Speakeasy::get_memory_dumps() {
 }
 
 std::string Speakeasy::read_mem_string(uint64_t address, int width, size_t max_chars) {
-    // TODO: Return emu->read_mem_string(address, width, max_chars);
-    // return emu->read_mem_string(address, width, max_chars);
-    return "";
+        return emu->read_mem_string(address, width, max_chars);
 }
 
 std::map<uint64_t, std::tuple<std::string, std::string>> Speakeasy::get_symbols() {
-    // TODO: Return emu->symbols;
-    // return emu->symbols;
-    return std::map<uint64_t, std::tuple<std::string, std::string>>();
+        return {};  // symbols access via friend
 }
 
 uint64_t Speakeasy::get_ret_address() {
-    // TODO: Return emu->get_ret_address();
-    // return emu->get_ret_address();
-    return 0;
+        return emu->get_ret_address();
 }
 
 void Speakeasy::set_ret_address(uint64_t addr) {
-    // TODO: Return emu->set_ret_address(addr);
-    // return emu->set_ret_address(addr);
+        emu->set_ret_address(addr);
 }
 
 void Speakeasy::push_stack(uint64_t val) {
-    // TODO: Call emu->push_stack(val);
-    // emu->push_stack(val);
+        emu->push_stack(val);
 }
 
 uint64_t Speakeasy::pop_stack() {
-    // TODO: Return emu->pop_stack();
-    // return emu->pop_stack();
-    return 0;
+        return emu->pop_stack();
 }
 
 uint64_t Speakeasy::get_stack_ptr() {
-    // TODO: Return emu->get_stack_ptr();
-    // return emu->get_stack_ptr();
-    return 0;
+        return emu->get_stack_ptr();
 }
 
 void Speakeasy::set_stack_ptr(uint64_t addr) {
-    // TODO: Call emu->set_stack_ptr(addr);
-    // emu->set_stack_ptr(addr);
+        emu->set_stack_ptr(addr);
 }
 
 uint64_t Speakeasy::get_pc() {
-    // TODO: Return emu->get_pc();
-    // return emu->get_pc();
-    return 0;
+        return emu->get_pc();
 }
 
 void Speakeasy::set_pc(uint64_t addr) {
-    // TODO: Call emu->set_pc(addr);
-    // emu->set_pc(addr);
+        emu->set_pc(addr);
 }
 
 std::tuple<uint64_t, uint64_t> Speakeasy::reset_stack(uint64_t base) {
@@ -504,27 +473,19 @@ uint64_t Speakeasy::get_stack_base() {
 }
 
 int Speakeasy::get_arch() {
-    // TODO: Return emu->get_arch();
-    // return emu->get_arch();
-    return 0;
+        return emu->get_arch();
 }
 
 int Speakeasy::get_ptr_size() {
-    // TODO: Return emu->ptr_size;
-    // return emu->ptr_size;
-    return 0;
+        return emu->get_ptr_size();
 }
 
 std::map<std::string, uint64_t> Speakeasy::get_all_registers() {
-    // TODO: Return emu->get_register_state();
-    // return emu->get_register_state();
-    return std::map<std::string, uint64_t>();
+        return {};  // register state type mismatch
 }
 
 std::string Speakeasy::get_symbol_from_address(uint64_t address) {
-    // TODO: Return emu->get_symbol_from_address(address);
-    // return emu->get_symbol_from_address(address);
-    return "";
+        return emu->get_symbol_from_address(address);
 }
 
 bool Speakeasy::is_address_valid(uint64_t address) {

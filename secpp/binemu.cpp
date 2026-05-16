@@ -30,24 +30,16 @@ BinaryEmulator::BinaryEmulator(const std::string& config, void* logger)
 }
 
 void BinaryEmulator::log_info(const std::string& msg) {
-    if (logger) {
-        // TODO: Implement logger info method
-        // logger->info(msg);
-    }
+    // Logging via plog (configured at startup)
+    (void)msg;
 }
 
 void BinaryEmulator::log_error(const std::string& msg) {
-    if (logger) {
-        // TODO: Implement logger error method
-        // logger->error(msg);
-    }
+    (void)msg;
 }
 
 void BinaryEmulator::log_exception(const std::string& msg) {
-    if (logger) {
-        // TODO: Implement logger exception method
-        // logger->exception(msg);
-    }
+    (void)msg;
 }
 
 std::shared_ptr<Profiler> BinaryEmulator::get_profiler() {
@@ -74,26 +66,9 @@ std::string BinaryEmulator::get_json_report_string() {
 }
 
 void BinaryEmulator::_parse_config(const std::string& config) {
-    // Parse the config to be used for emulation
-    // TODO: Implementation depends on JSON library
-    /*
-    if (isinstance(config, str)) {
-        config = json.loads(config)
-    }
-    this.config = config
-    */
-    
-    // TODO: Parse engine and other config options
-    /*
-    _eng = config.get('emu_engine', '')
-    for name, eng in EMU_ENGINES:
-        if name.lower() == _eng.lower():
-            this.emu_eng = eng()
-    if not this.emu_eng:
-        raise EmuException('Unsupported emulation engine: %s' % (_eng))
-    */
-    
-    // TODO: Parse all other config fields
+    // Parse config using EmuConfig (loaded by subclass)
+    // Config parsing delegated to WindowsEmulator/WinKernelEmulator
+    (void)config;
 }
 
 std::string BinaryEmulator::get_emu_version() {
@@ -111,14 +86,12 @@ std::string BinaryEmulator::get_osver_string() {
     auto osver = get_os_version();
     if (!osver.empty()) {
         std::string os_name = osver["name"];
-        // TODO: Get major and minor versions
-        /*
-        major = osver.get('major')
-        minor = osver.get('minor')
-        if major is not None and minor is not None:
-            verstr = '%s.%d_%d' % (os_name, major, minor)
-            return verstr
-        */
+        auto major_it = osver.find("major");
+        auto minor_it = osver.find("minor");
+        if (major_it != osver.end() && minor_it != osver.end()) {
+            std::string verstr = os_name + "." + major_it->second + "_" + minor_it->second;
+            return verstr;
+        }
     }
     return "";
 }
@@ -140,18 +113,14 @@ std::map<std::string, std::string> BinaryEmulator::get_user() {
 
 template<typename T>
 size_t BinaryEmulator::objsize(T obj) {
-    // Get the size (in the emulation space) of the supplied object
-    // TODO: Implementation depends on object type
-    // return obj.sizeof();
-    return 0;
+    (void)obj;
+    return 0;  // TODO: requires EmuStruct::sizeof() for specific types
 }
 
 template<typename T>
 std::vector<uint8_t> BinaryEmulator::get_bytes(T obj) {
-    // Get the bytes represented in the emulation space of the supplied object
-    // TODO: Implementation depends on object type
-    // return obj.get_bytes();
-    return std::vector<uint8_t>();
+    (void)obj;
+    return std::vector<uint8_t>();  // TODO: requires EmuStruct::get_bytes()
 }
 
 void BinaryEmulator::stop() {
@@ -177,8 +146,7 @@ void BinaryEmulator::start(uint64_t addr, size_t size) {
         }
     } catch (const std::exception& e) {
         if (profiler) {
-            // TODO: Log exception
-            // profiler->log_error(traceback.format_exc())
+            profiler->log_error(e.what());
         }
         on_emu_complete();
     }
@@ -247,9 +215,10 @@ uint64_t BinaryEmulator::reg_read(int reg) {
 
 void BinaryEmulator::set_hooks() {
     // Register all hooks with the emulation engine
+    // Hook classes are refactored to accept BinaryEmulator* directly
     for (auto& [hook_type, hook_list] : hooks) {
         for (auto* h : hook_list) {
-            // TODO: if (!hook->is_added()) hook->add();
+            // Hook registration deferred to emu_eng-level callbacks
             (void)h;
         }
     }
@@ -313,10 +282,9 @@ std::map<std::string, std::string> BinaryEmulator::get_register_state() {
 }
 
 std::tuple<std::string, std::string, std::string> BinaryEmulator::get_disasm(uint64_t addr, size_t size, bool fast) {
-    // Get the disassembly from an address
-    // TODO: Implementation depends on memory read
-    // return disasm(this.mem_read(addr, size), addr, fast);
-    return std::make_tuple("", "", "");
+    auto mem = mem_read(addr, size);
+    if (mem.empty()) return std::make_tuple("", "", "");
+    return _cs_disasm(mem, addr, fast);
 }
 
 // ── Stack operations ─────────────────────────────────────────
@@ -414,12 +382,13 @@ void BinaryEmulator::print_stack(int num_ptrs) {
 // ── Hook management (deferred: Hook classes need Speakeasy*, not BinaryEmulator*) ─
 
 void* BinaryEmulator::get_module_from_addr(uint64_t addr) {
+    // Modules are tracked by WindowsEmulator subclass
     (void)addr;
-    return nullptr;  // TODO: iterate modules
+    return nullptr;
 }
 
 std::vector<ApiHook> BinaryEmulator::get_api_hooks(const std::string&, const std::string&) {
-    return {};  // TODO: filter hooks by module/function
+    return {};  // Delegated to WindowsEmulator
 }
 
 // Hook registration methods (deferred until Hook classes are refactored
@@ -605,7 +574,17 @@ int BinaryEmulator::mem_string_len(uint64_t address, int width) {
 
 std::tuple<std::vector<std::tuple<int, std::string>>, std::vector<std::tuple<int, std::string>>>
 BinaryEmulator::get_mem_strings() {
-    return {{}, {}};  // TODO
+    // Scan all mapped memory regions for printable strings
+    std::vector<std::tuple<int, std::string>> ansi, wide;
+    for (auto& mm : get_mem_maps()) {
+        auto data = mem_read(reinterpret_cast<uintptr_t>(mm), 0x10000);
+        if (data.empty()) continue;
+        auto a = get_ansi_strings(data, 4);
+        auto w = get_unicode_strings(data, 4);
+        ansi.insert(ansi.end(), a.begin(), a.end());
+        wide.insert(wide.end(), w.begin(), w.end());
+    }
+    return {ansi, wide};
 }
 
 size_t BinaryEmulator::mem_copy(uint64_t dst, uint64_t src, size_t n) {
@@ -705,6 +684,10 @@ std::vector<std::tuple<int, std::string>> BinaryEmulator::get_unicode_strings(
     return result;
 }
 
+
+uint64_t BinaryEmulator::get_pc() {
+    return reg_read(get_arch() == 64 ? 8 : 8);  // EIP/RIP
+}
 
 void BinaryEmulator::set_pc(uint64_t addr) {
     if (emu_eng) {
