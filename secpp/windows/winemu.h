@@ -27,6 +27,7 @@
 #include "objman.h"
 #include "fileman.h"
 #include "regman.h"
+#include "loaders.h"
 #include "errors.h"
 #include "../struct.h"
 using speakeasy::EmuStruct;
@@ -309,6 +310,11 @@ public:
     std::tuple<std::string, std::string> normalize_import_miss(const std::string& dll, const std::string& name);
     std::vector<uint8_t> read_unicode_string(uint64_t addr);
     void restart_run(void* run);
+
+    // ── Unicorn hook bridge ──────────────────────────────────
+    void _register_code_hook(void* callback, uint64_t begin, uint64_t end);
+    void _register_mem_hook(int hook_type, void* callback);
+    std::vector<void*> uc_hooks_;
 
     // ── Memory hooks (additional) ──────────────────────────────
     bool _hook_mem_read(void* emu, int access, uint64_t addr, size_t size, uint64_t value);

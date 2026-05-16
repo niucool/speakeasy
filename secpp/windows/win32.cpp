@@ -723,3 +723,8 @@ uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {
     heap_allocs.push_back({addr, size, heap});
     return addr;
 }
+void* Win32Emulator::get_address_map(uint64_t) { return nullptr; }
+std::tuple<uint64_t, size_t> Win32Emulator::get_valid_ranges(size_t, uint64_t) { return {0,0}; }
+uint64_t Win32Emulator::mem_map(size_t n, unsigned long base, const std::string& tag) {
+    return BinaryEmulator::mem_map(static_cast<uint64_t>(n), base, PERM_MEM_RW, tag);
+}

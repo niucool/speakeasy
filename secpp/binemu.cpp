@@ -705,3 +705,9 @@ std::vector<std::tuple<int, std::string>> BinaryEmulator::get_unicode_strings(
     return result;
 }
 
+
+void BinaryEmulator::set_pc(uint64_t addr) {
+    if (emu_eng) {
+        emu_eng->reg_write(get_arch() == 64 ? 8 : 8, addr);  // EIP/RIP
+    }
+}

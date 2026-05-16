@@ -255,7 +255,7 @@ public:
  * An EPROCESS object used by the Windows kernel to represent a process
  */
 class Process : public KernelObject {
-private:
+public:
     // TODO: Define ldr_entries type
     static std::vector<void*> ldr_entries;
     
