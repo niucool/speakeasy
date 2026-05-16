@@ -18,8 +18,8 @@
 // #include "windows/common.h"
 // #include "winenv/defs/nt/ntoskrnl.h"
 
-// Forward declarations
-class EmuStruct;
+namespace speakeasy { class EmuStruct; }
+using EmuStruct = speakeasy::EmuStruct;
 class Run;
 class ApiEmuError;
 

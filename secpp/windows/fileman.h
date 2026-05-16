@@ -9,12 +9,6 @@
 #include <cstdint>
 #include <sstream>
 
-// TODO: Need C++ equivalents for these Python imports
-// #include <nlohmann/json.hpp>
-// #include <speakeasy/winenv/defs/windows/windows.h>
-// #include <speakeasy/winenv/arch.h>
-// #include <speakeasy/errors.h>
-
 // Forward declarations
 class MapView;
 class FileMap;
@@ -32,7 +26,7 @@ public:
     uint64_t offset;
     size_t size;
     int protect;
-    void* process; // TODO: Should be Process* or appropriate process type
+    void* process;
 
     // Constructor
     MapView(uint64_t base, uint64_t offset, size_t size, int protect, void* process = nullptr);
@@ -43,7 +37,7 @@ class FileMap {
 private:
     static uint32_t curr_handle;
     std::string name;
-    void* backed_file; // TODO: Should be File* or appropriate file type
+    void* backed_file;
     std::map<uint64_t, std::shared_ptr<MapView>> views;
     size_t size;
     int prot;
@@ -70,15 +64,10 @@ protected:
     size_t bytes_written;
     uint64_t curr_offset;
     bool is_dir;
-    // TODO: Replace with nlohmann::json or appropriate JSON type
-    // nlohmann::json config;
     std::map<std::string, std::string> config;
 
 public:
     // Constructor
-    // TODO: Replace with nlohmann::json parameter
-    // File(const std::string& path, const nlohmann::json& config = nlohmann::json(), 
-    //      const std::vector<uint8_t>& data = {});
     File(const std::string& path, const std::map<std::string, std::string>& config = {}, 
          const std::vector<uint8_t>& data = {});
     
@@ -109,9 +98,6 @@ private:
 
 public:
     // Constructor
-    // TODO: Replace with nlohmann::json parameter
-    // Pipe(const std::string& name, const std::string& mode, int num_instances, 
-    //      size_t out_size, size_t in_size, const nlohmann::json& config = nlohmann::json());
     Pipe(const std::string& name, const std::string& mode, int num_instances, 
          size_t out_size, size_t in_size, const std::map<std::string, std::string>& config = {});
     
@@ -126,26 +112,19 @@ private:
     std::map<uint32_t, std::shared_ptr<Pipe>> pipe_handles;
     std::map<uint32_t, std::shared_ptr<FileMap>> file_maps;
 
-    // TODO: Replace with nlohmann::json or appropriate JSON type
-    // nlohmann::json config;
-    // nlohmann::json file_config;
     std::map<std::string, std::string> config;
     std::map<std::string, std::string> file_config;
-    void* emu; // TODO: Should be WindowsEmulator* or appropriate emulator type
+    void* emu;
     std::string emulated_binname;
     std::vector<std::shared_ptr<File>> files;
 
 public:
     // Constructor
-    // TODO: Replace with nlohmann::json parameter
-    // FileManager(const nlohmann::json& config, void* emu);
     FileManager(const std::map<std::string, std::string>& config, void* emu);
     
     // Methods
     uint32_t file_create_mapping(uint32_t hfile, const std::string& name, size_t size, int prot);
     
-    // TODO: Replace with appropriate iterator for JSON
-    // nlohmann::json::iterator walk_files();
     std::vector<std::map<std::string, std::string>>::iterator walk_files();
     
     std::vector<std::shared_ptr<File>> get_dropped_files();
@@ -156,16 +135,12 @@ public:
     std::shared_ptr<File> get_file_from_path(const std::string& path);
     std::vector<std::shared_ptr<File>> get_all_files();
     
-    // TODO: Replace with nlohmann::json parameter
-    // std::vector<uint8_t> handle_file_data(const nlohmann::json& fconf);
     std::vector<uint8_t> handle_file_data(const std::map<std::string, std::string>& fconf);
     
     std::shared_ptr<File> add_existing_file(const std::string& path, const std::vector<uint8_t>& data);
     std::shared_ptr<File> create_file(const std::string& path);
     bool delete_file(const std::string& path);
     
-    // TODO: Replace with nlohmann::json return type
-    // nlohmann::json* get_emu_file(const std::string& path);
     std::map<std::string, std::string>* get_emu_file(const std::string& path);
     
     uint32_t pipe_open(const std::string& path, const std::string& mode, int num_instances, 
