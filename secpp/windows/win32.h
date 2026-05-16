@@ -20,8 +20,12 @@
 // #include "common.h"
 // #include "errors.h"
 
+#ifndef DLL_PROCESS_DETACH
 const int DLL_PROCESS_DETACH = 0;
+#endif
+#ifndef DLL_PROCESS_ATTACH
 const int DLL_PROCESS_ATTACH = 1;
+#endif
 const int MAX_EXPORTS_TO_EMULATE = 10;
 
 // Forward declarations
@@ -272,7 +276,7 @@ public:
     /**
      * Memory map
      */
-    uint64_t mem_map(size_t size, uint64_t base, uint32_t perms, const std::string& tag = "");
+    uint64_t mem_map(uint64_t size, uint64_t base = 0, uint32_t perms = PERM_MEM_RW, const std::string& tag = "");
     
     /**
      * Memory write

@@ -141,9 +141,15 @@ private:
  */
 inline uint32_t perms_from_section_chars(uint32_t chars) {
     // ImageSectionCharacteristics constants (common Windows values)
+    #ifndef IMAGE_SCN_MEM_READ
     const uint32_t IMAGE_SCN_MEM_READ    = 0x40000000;
+    #endif
+    #ifndef IMAGE_SCN_MEM_WRITE
     const uint32_t IMAGE_SCN_MEM_WRITE   = 0x80000000;
+    #endif
+    #ifndef IMAGE_SCN_MEM_EXECUTE
     const uint32_t IMAGE_SCN_MEM_EXECUTE = 0x20000000;
+    #endif
 
     uint32_t perms = 0;  // PERM_MEM_NONE
     if (chars & IMAGE_SCN_MEM_READ)    perms |= 0x02;  // PERM_MEM_READ

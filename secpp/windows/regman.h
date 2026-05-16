@@ -12,11 +12,13 @@
 // #include "winenv/defs/registry/reg.h"
 // #include "errors.h"
 
-// Registry key constants
+// Registry key constants (guarded against Windows SDK macros)
+#ifndef HKEY_CLASSES_ROOT
 const uint32_t HKEY_CLASSES_ROOT = 0x80000000;
 const uint32_t HKEY_CURRENT_USER = 0x80000001;
 const uint32_t HKEY_LOCAL_MACHINE = 0x80000002;
 const uint32_t HKEY_USERS = 0x80000003;
+#endif
 
 // Forward declarations
 class RegValue;
