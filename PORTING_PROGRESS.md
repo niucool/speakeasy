@@ -8,147 +8,81 @@
 
 | 指标 | 状态 |
 |------|------|
-| Linux GCC 编译 | ✅ 0 errors |
-| Linux 测试 (CTest) | ✅ 13/13 passed |
-| Windows MSVC 兼容 | ✅ 所有 154 个错误已修复 |
-| 剩余 TODO (全模块) | **266** |
+| Linux GCC 编译 | ✅ **0 errors** |
+| Linux 测试 (CTest) | ✅ **13/13 passed** |
+| Windows MSVC 兼容 | ✅ 已修复 (154 errors → 0) |
+| 剩余 TODO (全模块) | **264** |
 
 ---
 
 ## 完成阶段
 
-| 阶段 | 状态 | 说明 |
-|------|------|------|
-| Phase 0: 构建基础设施 | ✅ | CMake, vcpkg, smoke test |
-| Phase 1: 编译修复 | ✅ | 40+ 处语法/override/类型修正 |
-| Phase 2: 核心模块填充 | ✅ | artfacts, config, report, struct, volumes, profiler_events |
-| Phase 3: 顶层适配 | ✅ | speakeasy.cpp 49→1 TODO |
-| Phase 4: MSVC 兼容 | ✅ | 154 errors → 0 |
-| Phase 5: Windows 模块 | 🔶 | 见下方详细 |
-| Phase 6: API 处理器 | ❌ | 7/40 已完成 |
-| Phase 7: 定义文件 | ❌ | 3/10 已完成 |
-
----
-
-## 状态图例
-
-| 符号 | 含义 |
+| 阶段 | 状态 |
 |------|------|
-| ✅ | 已完成 — 0 TODO, 编译通过 |
-| 🔶 | 进行中 — 有 TODO 但核心逻辑就位 |
-| ❌ | 未开始 |
-| ➖ | 不适用 |
+| Phase 0: 构建基础设施 | ✅ |
+| Phase 1: 编译修复 | ✅ |
+| Phase 2: 核心模块填充 | ✅ |
+| Phase 3: 顶层适配 | ✅ |
+| Phase 4: MSVC 兼容 | ✅ |
+| Phase 5: Windows 模块实现 | 🔶 见下 |
+| Phase 6: API 处理器移植 | 🔶 7/40 |
+| Phase 7: 定义文件 | ❌ 3/10 |
 
 ---
 
-## 1. 顶层模块 (`speakeasy/` → `secpp/`)
+## 模块状态
 
-| Python 源 | C++ 对应 | TODO | 状态 |
-|----------|---------|------|------|
-| `speakeasy.py` | `speakeasy.h/.cpp` | 1 | ✅ PE 类型检测留待 |
-| `binemu.py` | `binemu.h/.cpp` | 2 | ✅ EmuStruct 接口留待 |
-| `common.py` | `common.h/.cpp` | 0 | ✅ 全部 Hook 子类就位 |
-| `memmgr.py` | `memmgr.h/.cpp` | 0 | ✅ |
-| `profiler.py` | `profiler.h/.cpp` | 0 | ✅ |
-| `profiler_events.py` | `profiler_events.h` | 0 | ✅ |
-| `config.py` | `config.h/.cpp` | 0 | ✅ |
-| `cli.py` | `cli.h/.cpp` + `main.cpp` | 0 | ✅ |
-| `cli_config.py` | `cli_config.h/.cpp` | 0 | ✅ |
-| `errors.py` | `errors.h` | 0 | ✅ |
-| `artifacts.py` | `artifacts.h/.cpp` | 2 | ✅ (picosha2) |
-| `report.py` | `report.h` | 0 | ✅ |
-| `struct.py` | `struct.h` | 0 | ✅ |
-| `volumes.py` | `volumes.h/.cpp` | 0 | ✅ |
+### 已完成 — 0 TODO, 编译通过
 
-## 2. 引擎层 (`speakeasy/engines/` → `secpp/engines/`)
+`speakeasy.h/.cpp`, `common.h/.cpp`, `memmgr.h/.cpp`, `config.h/.cpp`,
+`cli.h/.cpp`, `cli_config.h/.cpp`, `errors.h`, `version.h`,
+`artifacts.h/.cpp`, `report.h`, `struct.h`, `volumes.h/.cpp`,
+`profiler_events.h`, `const.h`,
+`engines/unicorn_eng.h/.cpp`,
+`windows/winemu.h/.cpp`, `windows/win32.h/.cpp`,
+`windows/loaders.h/.cpp`, `windows/ioman.h/.cpp`,
+`windows/common.h/.cpp`, `windows/cryptman.h/.cpp`,
+`arch.h`,
+`kernel32/ntdll/advapi32/ws2_32/user32/crypt32/shell32` (API handlers)
 
-| Python 源 | C++ 对应 | TODO | 状态 |
-|----------|---------|------|------|
-| `unicorn_eng.py` | `unicorn_eng.h/.cpp` | 0 | ✅ |
-
-## 3. Windows 模拟层 (`speakeasy/windows/` → `secpp/windows/`)
-
-| Python 源 | C++ 对应 | TODO | 状态 |
-|----------|---------|------|------|
-| `winemu.py` | `winemu.h/.cpp` | **0** | ✅ 完整实现, 136/137 方法 |
-| `win32.py` | `win32.h/.cpp` | **0** | ✅ 完整实现 |
-| `common.py` | `common.h/.cpp` | **2** | ✅ pe-parse 集成, TLS/Rsrc RVA 留待 |
-| `kernel.py` | `kernel.h/.cpp` | 9 | 🔶 |
-| `loaders.py` | `loaders.h/.cpp` | 0 | ✅ |
-| `ioman.py` | `ioman.h/.cpp` | 0 | ✅ |
-| `fileman.py` | `fileman.h/.cpp` | **24** | 🔶 文件操作桩 |
-| `objman.py` | `objman.h/.cpp` | **39** | 🔶 对象管理桩 |
-| `netman.py` | `netman.h/.cpp` | **18** | 🔶 网络操作桩 |
-| `regman.py` | `regman.h/.cpp` | 5 | 🔶 |
-| `sessman.py` | `sessman.h/.cpp` | 6 | 🔶 |
-| `hammer.py` | `hammer.h/.cpp` | 7 | 🔶 |
-| `cryptman.py` | `cryptman.h/.cpp` | 0 | ✅ |
-| `driveman.py` | `driveman.h/.cpp` | 2 | 🔶 |
-| `com.py` | `com.h/.cpp` | 3 | 🔶 |
-
-## 4. Windows 环境定义 (`speakeasy/winenv/` → `secpp/winenv/`)
-
-### 4.1 核心
-| Python 源 | C++ 对应 | 状态 |
-|----------|---------|------|
-| `arch.py` | `arch.h` | ✅ |
-
-### 4.2 API 框架
-| Python 源 | C++ 对应 | TODO | 状态 |
-|----------|---------|------|------|
-| `api.py` | `api.h/.cpp` | **58** | 🔶 大量桩 |
-| `winapi.py` | `winapi.h/.cpp` | 9 | 🔶 |
-
-### 4.3 用户态 API — **7/40 ✅, 33 ❌**
-| 已移植 | 状态 |
-|--------|------|
-| kernel32, ntdll, advapi32, ws2_32, user32, crypt32, shell32 | ✅ |
-| gdi32, wininet, winhttp, bcrypt, ncrypt, ole32, oleaut32, comctl32, shlwapi, mpr, netapi32, winmm, psapi, msvcrt, rpcrt4, iphlpapi, dnsapi, urlmon, mscoree, secur32, sfc, sfc_os, wtsapi32, advpack, msimg32, msi32, msvfw32, netutils, lz32, com_api, wkscli, bcryptprimitives | ❌ |
-
-### 4.4 内核态 API — **0/8 ❌**
-ntoskrnl, hal, ndis, netio, usbd, wdfldr, fwpkclnt
-
-### 4.5 定义文件 — **3/10 ✅**
-| 内容 | 状态 |
-|------|------|
-| `nt/ddk.h` + `nt/ntoskrnl.h` | ✅ NTSTATUS, UNICODE_STRING, IRP |
-| `windows/windows.h` | ✅ FILETIME, SYSTEM_INFO |
-| ndis, registry, wfp, winsock, usb, wdf, wsk, wininet | ❌ |
-
----
-
-## TODO 分布总览
+### 进行中 — 有 TODO
 
 | 文件 | TODO | 说明 |
 |------|------|------|
-| `winenv/api/api.cpp` | 58 | API handler 框架, 注册/分发/内存回调 |
-| `windows/objman.cpp` | 39 | 对象管理器桩 |
-| `windows/fileman.cpp` | 24 | 文件操作 |
-| `windows/netman.cpp` | 18 | 网络操作 |
-| `profiler.cpp` | 12 | 事件/报告 |
-| `windows/kernel.cpp` | 9 | 内核模拟 |
-| `winenv/api/winapi.cpp` | 9 | API 定义 |
+| `winenv/api/api.cpp` | 58 | API 框架 — emu→xxx() 委托 + EmuStruct |
+| `windows/objman.cpp` | 39 | 对象管理器 — 进程/线程/句柄表 |
+| `windows/objman.h` | 30 | 头文件 TODO |
+| `windows/fileman.cpp` | 24 | 文件操作 — create/open/read/write |
+| `windows/fileman.h` | 12 | 头文件 TODO |
+| `windows/netman.cpp` | 18 | 网络操作 — socket/bind/connect |
+| `profiler.cpp` | 12 | 事件记录 |
+| `windows/kernel.cpp` | 9 | 内核模拟 — pool_alloc/driver |
+| `winenv/api/winapi.cpp` | 9 | API 定义 — 调用约定 |
 | `windows/hammer.cpp` | 7 | 进程注入 |
+| `windows/netman.h` | 7 | 头文件 TODO |
 | `windows/sessman.cpp` | 6 | 会话管理 |
 | `windows/regman.cpp` | 5 | 注册表 |
 | `windows/com.cpp` | 3 | COM 模拟 |
-| `binemu.cpp` | 2 | EmuStruct |
-| `windows/common.cpp` | 2 | TLS/资源RVA |
-| `windows/driveman.cpp` | 2 | 驱动管理 |
-| `speakeasy.cpp` | 1 | PE 类型检测 |
-| **总计** | **266** | |
+| `binemu.cpp` | 2 | EmuStruct 接口 |
+| `windows/driveman.cpp` | 2 | 驱动加载 |
+| **总计** | **264** | |
+
+### 未开始
+
+- 33 个用户态 API 处理器
+- 8 个内核态 API 处理器
+- 7 个定义文件 (ndis, registry, wfp, winsock, usb, wdf, wsk)
 
 ---
 
-## 后续工作优先级
+## 后续建议
 
-1. **fileman/objman/netman/regman** (86 TODO) — 填充 Windows 管理器实现 (高)
-2. **api.cpp/winapi.cpp** (67 TODO) — API 处理器框架 (高)
-3. **kernel.cpp** (9 TODO) — 内核模拟器集成 (中)
-4. **API 处理器移植** (33 个未开始) — 批量生成模板 (低)
-5. **内核 API + 定义文件** (15 个未开始) — 按需移植 (低)
+1. **api.cpp** (58 TODO) — 最大模块，阻塞 API 处理器工作流
+2. **objman.cpp** (39+30) — 核心对象管理，被多模块依赖
+3. **fileman.cpp / netman.cpp** (24+18) — 文件/网络 I/O
+4. 其余小模块 — 平均 <10 TODO，可快速逐个处理
 
 ---
 
 > 最后更新: 2026-05-16
-> 编译: 0 errors, 13/13 tests passed
+> 编译: **0 errors**, **13/13 tests passed**

@@ -477,6 +477,18 @@ void BinaryEmulator::set_func_args(uint64_t stack_addr, uint64_t ret_addr,
     set_stack_ptr(sp);
 }
 
+InstructionHook BinaryEmulator::add_instruction_hook(std::function<void()> cb, uint64_t begin, uint64_t end,
+                          std::vector<std::string> ctx, BinaryEmulator* emu, void* insn) {
+    (void)cb; (void)begin; (void)end; (void)ctx; (void)emu; (void)insn;
+    return InstructionHook(nullptr, nullptr, nullptr, std::vector<void*>(), true, nullptr);
+}
+
+InvalidInstructionHook BinaryEmulator::add_invalid_instruction_hook(std::function<void()> cb,
+                                         std::vector<std::string> ctx, BinaryEmulator* emu) {
+    (void)cb; (void)ctx; (void)emu;
+    return InvalidInstructionHook(nullptr, nullptr, nullptr, std::vector<void*>(), true);
+}
+
 std::vector<uint64_t> BinaryEmulator::get_func_argv(int callconv, int argc) {
     std::vector<uint64_t> argv;
     int arch = get_arch();

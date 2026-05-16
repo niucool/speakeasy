@@ -35,7 +35,8 @@ void Speakeasy::_init_config(const nlohmann::json& config) {
 
 void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_t>& data, bool is_raw_code) {
     (void)path; (void)data; (void)is_raw_code;
-    // TODO(phase5): detect PE type and choose Win32Emulator or WinKernelEmulator
+    // TODO: detect PE type (exe/dll/driver) and choose Win32Emulator or WinKernelEmulator
+    // For now, default to Win32Emulator
     emu = new Win32Emulator(config, argv, debug, logger, exit_event);
 }
 

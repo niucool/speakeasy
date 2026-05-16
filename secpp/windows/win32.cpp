@@ -371,6 +371,10 @@ void Win32Emulator::start() {
     WindowsEmulator::start();
 }
 
+std::vector<uint8_t> Win32Emulator::mem_read(uint64_t addr, size_t size) {
+    return WindowsEmulator::mem_read(addr, size);
+}
+
 void Win32Emulator::mem_write(uint64_t addr, const std::vector<uint8_t>& data) {
     WindowsEmulator::mem_write(addr, data);
 }
