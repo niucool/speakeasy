@@ -14,7 +14,7 @@ using namespace speakeasy;
 // ── Config tests ─────────────────────────────────────────────
 
 TEST(ConfigTest, DefaultConfig) {
-    EmuConfig cfg = default_config();
+    SpeakeasyConfig cfg = default_config();
     EXPECT_EQ(cfg.emu_engine, "unicorn");
     EXPECT_EQ(cfg.system, "windows");
     EXPECT_EQ(cfg.timeout, 60);
@@ -26,12 +26,12 @@ TEST(ConfigTest, DefaultConfig) {
 }
 
 TEST(ConfigTest, ValidateConfig) {
-    EmuConfig cfg = default_config();
+    SpeakeasyConfig cfg = default_config();
     EXPECT_NO_THROW(validate_config(cfg));
 }
 
 TEST(ConfigTest, InvalidEngine) {
-    EmuConfig cfg = default_config();
+    SpeakeasyConfig cfg = default_config();
     cfg.emu_engine = "qemu";
     EXPECT_THROW(validate_config(cfg), ConfigError);
 }

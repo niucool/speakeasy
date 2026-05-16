@@ -54,14 +54,22 @@ uint64_t Urlmon::URLDownloadToFile(void* e, const std::string&, int, const std::
 
     if (szURL) {
         std::string url = be(e)->read_mem_string(szURL, 1);
-        (void)url;
-        // DNS event logging would go here via profiler if needed
+        auto prof = be(e)->get_profiler();
+        if (prof) {
+            auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
+            prof->log_dns(run, url, 0);
+            prof->log_network(run, url, 80, "http", "tcp");
+        }
     }
 
     if (szFileName) {
         std::string name = be(e)->read_mem_string(szFileName, 1);
-        (void)name;
-        // File access event logging would go here
+        auto prof = be(e)->get_profiler();
+        if (prof) {
+            auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
+            prof->log_file_access(run, name, "CREATE");
+            prof->log_file_access(run, name, "WRITE");
+        }
     }
 
     return URLMON_ERROR_SUCCESS;
@@ -94,6 +102,12 @@ uint64_t Urlmon::URLDownloadToCacheFile(void* e, const std::string&, int, const 
 
     if (szURL) {
         std::string url = be(e)->read_mem_string(szURL, 1);
+        auto prof = be(e)->get_profiler();
+        if (prof) {
+            auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
+            prof->log_dns(run, url, 0);
+            prof->log_network(run, url, 80, "http", "tcp");
+        }
         // Try to extract filename from URL
         size_t last_slash = url.rfind('/');
         if (last_slash != std::string::npos) {

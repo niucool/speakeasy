@@ -39,7 +39,7 @@ void from_json(const nlohmann::json& j, OsVersion& v) {
 
 // ── EmuConfig serialization ──────────────────────────────────
 
-void to_json(nlohmann::json& j, const EmuConfig& cfg) {
+void to_json(nlohmann::json& j, const SpeakeasyConfig& cfg) {
     j = nlohmann::json{
         {"config_version", cfg.config_version},
         {"description", cfg.description},
@@ -77,7 +77,7 @@ void to_json(nlohmann::json& j, const EmuConfig& cfg) {
     // serialized as-needed by the report generator.
 }
 
-void from_json(const nlohmann::json& j, EmuConfig& cfg) {
+void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg) {
     JSON_GET_OPTIONAL_INT(j, "config_version", cfg.config_version);
     JSON_GET_OPTIONAL_STRING(j, "description", cfg.description);
     JSON_GET_OPTIONAL_STRING(j, "emu_engine", cfg.emu_engine);
@@ -124,7 +124,7 @@ void from_json(const nlohmann::json& j, EmuConfig& cfg) {
 
 // ── Validation ───────────────────────────────────────────────
 
-void validate_config(const EmuConfig& cfg) {
+void validate_config(const SpeakeasyConfig& cfg) {
     if (cfg.emu_engine != "unicorn") {
         throw ConfigError("Unsupported emulation engine: " + cfg.emu_engine);
     }
@@ -150,21 +150,21 @@ void validate_config(const EmuConfig& cfg) {
 
 // ── Config loading ───────────────────────────────────────────
 
-EmuConfig load_config(const std::string& path) {
+SpeakeasyConfig load_config(const std::string& path) {
     std::ifstream ifs(path);
     if (!ifs.is_open()) {
         throw ConfigError("Cannot open config file: " + path);
     }
     nlohmann::json j;
     ifs >> j;
-    EmuConfig cfg;
+    SpeakeasyConfig cfg;
     from_json(j, cfg);
     validate_config(cfg);
     return cfg;
 }
 
-EmuConfig default_config() {
-    EmuConfig cfg;
+SpeakeasyConfig default_config() {
+    SpeakeasyConfig cfg;
     // cfg is already populated with defaults matching the Python DEFAULT_CONFIG_DATA
     return cfg;
 }

@@ -21,7 +21,6 @@
 // Forward declarations
 class PeFile;
 class Win32Emulator;
-class WinKernelEmulator;
 class Emulator;
 
 /**

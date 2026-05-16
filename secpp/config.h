@@ -178,7 +178,7 @@ struct ModulesConfig {
 
 // ── Top-level config ────────────────────────────────────────
 
-struct EmuConfig {
+struct SpeakeasyConfig {
     double config_version = 0.2;
     std::string description;
     std::string emu_engine = "unicorn";
@@ -213,26 +213,26 @@ struct EmuConfig {
 void to_json(nlohmann::json& j, const OsVersion& v);
 void from_json(const nlohmann::json& j, OsVersion& v);
 
-void to_json(nlohmann::json& j, const EmuConfig& cfg);
-void from_json(const nlohmann::json& j, EmuConfig& cfg);
+void to_json(nlohmann::json& j, const SpeakeasyConfig& cfg);
+void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg);
 
 // ── Validation ───────────────────────────────────────────────
 
 /**
  * Validate an emulation configuration and throw on invalid values.
  */
-void validate_config(const EmuConfig& cfg);
+void validate_config(const SpeakeasyConfig& cfg);
 
 /**
  * Load and validate configuration from a JSON file path.
  * Throws std::runtime_error on invalid or missing config.
  */
-EmuConfig load_config(const std::string& path);
+SpeakeasyConfig load_config(const std::string& path);
 
 /**
  * Build the default configuration (equivalent to configs/default.json).
  */
-EmuConfig default_config();
+SpeakeasyConfig default_config();
 
 } // namespace speakeasy
 

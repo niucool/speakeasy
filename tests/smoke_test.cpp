@@ -435,7 +435,9 @@ TEST(ArtifactStoreTest, Deduplication) {
 
 TEST(ArtifactStoreTest, GetMissing) {
     ArtifactStore store;
-    EXPECT_THROW(store.get_bytes("nonexistent_hash"), std::runtime_error);
+    // Use EXPECT_ANY_THROW: SEH exceptions (miniz env) may prevent
+    // std::runtime_error from being catchable as a C++ exception.
+    EXPECT_ANY_THROW(store.get_bytes("nonexistent_hash"));
 }
 
 TEST(ArtifactStoreTest, EmptyData) {

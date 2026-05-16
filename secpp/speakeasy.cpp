@@ -1,11 +1,20 @@
 // speakeasy.cpp
 #include "speakeasy.h"
+#include "windows/kernel.h"
 #include <fstream>
 #include <sstream>
 #include <algorithm>
 #include <cstring>
-#include "winenv/defs/windows/windef.h"  // IMAGE_FILE_SYSTEM, IMAGE_FILE_DLL
-#include "struct.h"                      // speakeasy::read_le
+// MSVC + pe-parse: pe-parse provides its own constexpr constants for PE
+// structures, but Windows SDK defines most of them as macros, causing
+// compilation errors. Use _PEPARSE_WINDOWS_CONFLICTS to skip pe-parse's
+// own definitions (relying on Windows SDK macros instead on MSVC).
+// We use raw integer values in this file to avoid depending on either.
+#ifndef _PEPARSE_WINDOWS_CONFLICTS
+#define _PEPARSE_WINDOWS_CONFLICTS
+#endif
+#include <pe-parse/parse.h>
+#include "struct.h"
 
 Speakeasy::Speakeasy(const nlohmann::json& config, void* logger, 
                      const std::vector<std::string>& argv, bool debug, void* exit_event)
@@ -37,57 +46,82 @@ void Speakeasy::_init_config(const nlohmann::json& config) {
 
 void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_t>& data, bool is_raw_code) {
     if (!is_raw_code) {
-        // Determine PE data source
-        std::vector<uint8_t> pe_data = data;
-        if (pe_data.empty() && !path.empty()) {
-            std::ifstream f(path, std::ios::binary | std::ios::ate);
-            if (f.is_open()) {
-                size_t sz = static_cast<size_t>(f.tellg());
-                f.seekg(0);
-                pe_data.resize(sz);
-                f.read(reinterpret_cast<char*>(pe_data.data()), sz);
-            }
+        // ── Use pe-parse for PE analysis (Python: _PeParser) ──
+        peparse::parsed_pe* pe = nullptr;
+        if (!path.empty()) {
+            pe = peparse::ParsePEFromFile(path.c_str());
+        } else if (!data.empty()) {
+            // ParsePEFromPointer requires mutable buffer with uint32_t length
+            auto* buf = const_cast<uint8_t*>(data.data());
+            auto sz = static_cast<uint32_t>(data.size());
+            pe = peparse::ParsePEFromPointer(buf, sz);
         }
 
-        if (pe_data.size() >= 64) {
-            // Read e_lfanew from DOS header (offset 0x3C)
-            uint32_t e_lfanew = static_cast<uint32_t>(
-                speakeasy::read_le(pe_data, 0x3C, 4));
-            size_t pe_offset = e_lfanew;
+        bool is_driver = false;
+        bool is_dotnet = false;
+        std::string pe_arch;
 
-            // Verify PE signature
-            if (pe_offset + 4 + 20 <= pe_data.size() &&
-                pe_data[pe_offset] == 'P' && pe_data[pe_offset + 1] == 'E') {
-                // Read Characteristics from IMAGE_FILE_HEADER
-                // IMAGE_FILE_HEADER is at pe_offset + 4, size 20 bytes
-                // Characteristics is at offset 18 within IMAGE_FILE_HEADER
-                size_t chars_offset = pe_offset + 4 + 18;
-                if (chars_offset + 2 <= pe_data.size()) {
-                    uint16_t characteristics = static_cast<uint16_t>(
-                        speakeasy::read_le(pe_data, chars_offset, 2));
+        if (pe) {
+            try {
+                auto& nt = pe->peHeader.nt;
+                auto& fh = nt.FileHeader;
+                auto& oh = nt.OptionalHeader;
 
-                    bool is_dll = (characteristics & IMAGE_FILE_DLL) != 0;
-                    bool is_driver = (characteristics & IMAGE_FILE_SYSTEM) != 0;
+                // ── Architecture check (Python: MACHINE_TYPE) ──
+                if (fh.Machine == 0x8664) {  // IMAGE_FILE_MACHINE_AMD64
+                    pe_arch = "amd64";
+                } else if (fh.Machine == 0x14c) {  // IMAGE_FILE_MACHINE_I386
+                    pe_arch = "i386";
+                } else {
+                    std::string arch_str = "0x" + std::to_string(fh.Machine);
+                    throw SpeakeasyError("Unsupported architecture: " + arch_str);
+                }
 
-                    if (is_driver) {
-                        // For now, WinKernelEmulator requires WindowsEmulator* parent.
-                        // Future: instantiate properly when interface aligns.
-                        // emu = new WinKernelEmulator(...);
-                        // Fall through to default Win32Emulator below.
-                        (void)is_dll;
+                // ── .NET detection (Python: pe.is_dotnet()) ──
+                // DIR_COM_DESCRIPTOR (index 14) has non-zero VA for .NET
+                if (nt.OptionalMagic == 0x20B ||  // NT_OPTIONAL_64_MAGIC
+                    nt.OptionalMagic == 0x10B) {  // NT_OPTIONAL_32_MAGIC
+                    auto& dirs = oh.DataDirectory;
+                    if (dirs[14].VirtualAddress != 0) {  // DIR_COM_DESCRIPTOR
+                        is_dotnet = true;
                     }
                 }
+
+                // ── Driver detection (Python: pe.is_driver()) ──
+                // 1. Characteristics check
+                if (fh.Characteristics & 0x1000) {  // IMAGE_FILE_SYSTEM
+                    is_driver = true;
+                }
+                // 2. Subsystem check: IMAGE_SUBSYSTEM_NATIVE often indicates driver
+                if (nt.OptionalMagic == 0x10B) {  // NT_OPTIONAL_32_MAGIC
+                    if (oh.Subsystem == 1)  // IMAGE_SUBSYSTEM_NATIVE
+                        is_driver = true;
+                }
+
+            } catch (...) {
+                peparse::DestructParsedPE(pe);
+                throw;
             }
+            peparse::DestructParsedPE(pe);
         }
 
-        // Check for .NET via PeFile (deferred — requires full PE import parsing)
-        // PeFile pe(path, pe_data);
-        // if (pe.is_dotnet())
-        //     throw SpeakeasyError(".NET assemblies are not currently supported");
-    }
+        if (is_dotnet) {
+            throw NotSupportedError(".NET assemblies are not currently supported");
+        }
 
-    // Default: Win32Emulator for EXE/DLL/raw code
-    emu = new Win32Emulator(config, argv, debug, logger, exit_event);
+        if (is_driver) {
+            // ── Kernel-mode emulator (Python: WinKernelEmulator) ──
+            // WinKernelEmulator now inherits from WindowsEmulator + IoManager,
+            // matching Python's class WinKernelEmulator(WindowsEmulator, IoManager).
+            emu = new speakeasy::WinKernelEmulator(config, argv, debug, logger, exit_event);
+        } else {
+            // ── User-mode emulator (Python: Win32Emulator) ──
+            emu = new Win32Emulator(config, argv, debug, logger, exit_event);
+        }
+    } else {
+        // ── Raw/Shellcode mode (Python: Win32Emulator) ──
+        emu = new Win32Emulator(config, argv, debug, logger, exit_event);
+    }
 }
 
 void Speakeasy::_init_hooks() {
