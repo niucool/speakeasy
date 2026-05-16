@@ -28,6 +28,7 @@ const int PERM_MEM_EXEC = 0x10;
 const int PERM_MEM_READ = 0x02;
 const int PERM_MEM_WRITE = 0x04;
 const int PERM_MEM_RW = PERM_MEM_READ | PERM_MEM_WRITE;
+const int PERM_MEM_RX = PERM_MEM_READ | PERM_MEM_EXEC;
 const int PERM_MEM_RWX = PERM_MEM_READ | PERM_MEM_WRITE | PERM_MEM_EXEC;
 
 // Emulation memory access types
@@ -88,6 +89,7 @@ public:
     bool is_enabled() const { return enabled; }
     bool is_added() const { return added; }
     int get_handle() const { return handle; }
+    virtual void add();
 };
 
 /** Hook that fires when a specific API is called (e.g. kernel32.CreateFile) */

@@ -1,18 +1,16 @@
 // common.cpp
 #include "common.h"
+#include "engines/unicorn_eng.h"
 #include <algorithm>
 #include <filesystem>
 
 /**
  * Get the supplied path in relation to the package root
  */
-std::string normalize_package_path(const std::string& path) {
-    // Placeholder implementation - would need actual implementation based on requirements
-    const std::string root_var = "$ROOT$";
+std::string normalize_package_path(const std::string& path) {    const std::string root_var = "$ROOT$";
     if (path.find(root_var) != std::string::npos) {
         // In a real implementation, this would get the actual root path
-        std::string root = "/path/to/speakeasy"; // Placeholder
-        std::string result = path;
+        std::string root = "/path/to/speakeasy";        std::string result = path;
         size_t pos = result.find(root_var);
         if (pos != std::string::npos) {
             result.replace(pos, root_var.length(), root);
@@ -31,6 +29,11 @@ Hook::Hook(void* container, EmuEngine* emu_eng,
            bool native_hook)
     : cb(cb), handle(0), enabled(false), added(false), 
       native_hook(native_hook), emu_eng(emu_eng), container(container), ctx(ctx) {
+}
+
+void Hook::add() {
+    added = true;
+    enabled = true;
 }
 
 /**
@@ -55,17 +58,14 @@ void Hook::disable() {
 bool Hook:: _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx) {
     try {
         if (enabled) {
-            // Would need actual implementation for exit_event check
             // if (container->exit_event && container->exit_event->is_set()) {
             //     container->stop();
             //     return false;
             // }
             // return cb(container, addr, size, this->ctx);
-            return true; // Placeholder
-        }
+            return true;        }
         return true;
     } catch (...) { // C++ equivalent of except KeyboardInterrupt
-        // container->stop(); // Would need actual implementation
         return false;
     }
 }
@@ -76,8 +76,7 @@ bool Hook:: _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::ve
 bool Hook::_wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx) {
     if (enabled) {
         // return cb(container, num, this->ctx);
-        return true; // Placeholder
-    }
+        return true;    }
     return true;
 }
 
@@ -87,8 +86,7 @@ bool Hook::_wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx) {
 bool Hook::_wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx) {
     if (enabled) {
         // return cb(container, port, size);
-        return true; // Placeholder
-    }
+        return true;    }
     return true;
 }
 
@@ -98,8 +96,7 @@ bool Hook::_wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vecto
 bool Hook::_wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx) {
     if (enabled) {
         // return cb(container);
-        return true; // Placeholder
-    }
+        return true;    }
     return true;
 }
 
@@ -110,17 +107,14 @@ bool Hook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr,
                                   uint32_t size, uint64_t value, void* ctx) {
     try {
         if (enabled) {
-            // Would need actual implementation for exit_event check
             // if (container->exit_event && container->exit_event->is_set()) {
             //     container->stop();
             //     return false;
             // }
             // return cb(container, access, addr, size, value, ctx);
-            return true; // Placeholder
-        }
+            return true;        }
         return true;
     } catch (...) { // C++ equivalent of except KeyboardInterrupt
-        // container->stop(); // Would need actual implementation
         return false;
     }
 }
@@ -131,8 +125,7 @@ bool Hook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr,
 bool Hook::_wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx) {
     if (enabled) {
         // return cb(container, this->ctx);
-        return true; // Placeholder
-    }
+        return true;    }
     return true;
 }
 
@@ -175,8 +168,7 @@ CodeHook::CodeHook(void* container, EmuEngine* emu_eng,
  */
 void CodeHook::add() {
     if (!added && native_hook) {
-        // handle = emu_eng->hook_add(HOOK_CODE, _wrap_code_cb, begin, end);
-        // Would need actual implementation
+        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&Hook::_wrap_code_cb), HOOK_CODE, container, begin, end));
     }
     added = true;
     enabled = true;
@@ -198,8 +190,7 @@ ReadMemHook::ReadMemHook(void* container, EmuEngine* emu_eng,
  */
 void ReadMemHook::add() {
     if (!added && native_hook) {
-        // handle = emu_eng->hook_add(HOOK_MEM_READ, _wrap_memory_access_cb, begin, end);
-        // Would need actual implementation
+        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&Hook::_wrap_memory_access_cb), HOOK_MEM_READ, container, begin, end));
     }
     added = true;
     enabled = true;
@@ -221,8 +212,7 @@ WriteMemHook::WriteMemHook(void* container, EmuEngine* emu_eng,
  */
 void WriteMemHook::add() {
     if (!added && native_hook) {
-        // handle = emu_eng->hook_add(HOOK_MEM_WRITE, _wrap_memory_access_cb, begin, end);
-        // Would need actual implementation
+        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&Hook::_wrap_memory_access_cb), HOOK_MEM_WRITE, container, begin, end));
     }
     added = true;
     enabled = true;
@@ -260,8 +250,7 @@ InvalidMemHook::InvalidMemHook(void* container, EmuEngine* emu_eng,
  */
 void InvalidMemHook::add() {
     if (!added && native_hook) {
-        // handle = emu_eng->hook_add(HOOK_MEM_INVALID, _wrap_memory_access_cb);
-        // Would need actual implementation
+        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&Hook::_wrap_memory_access_cb), HOOK_MEM_INVALID, container));
     }
     added = true;
     enabled = true;
@@ -282,8 +271,7 @@ InterruptHook::InterruptHook(void* container, EmuEngine* emu_eng,
  */
 void InterruptHook::add() {
     if (!added && native_hook) {
-        // handle = emu_eng->hook_add(HOOK_INTERRUPT, _wrap_intr_cb);
-        // Would need actual implementation
+        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&Hook::_wrap_intr_cb), HOOK_INTERRUPT, container));
     }
     added = true;
     enabled = true;
@@ -305,8 +293,7 @@ InstructionHook::InstructionHook(void* container, EmuEngine* emu_eng,
  */
 void InstructionHook::add() {
     if (!added && native_hook) {
-        // handle = emu_eng->hook_add(HOOK_INSN, _wrap_syscall_insn_cb, insn);
-        // Would need actual implementation
+        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&Hook::_wrap_syscall_insn_cb), HOOK_INSN, container, 1, 0, reinterpret_cast<uintptr_t>(insn)));
     }
     added = true;
     enabled = true;
@@ -327,8 +314,7 @@ InvalidInstructionHook::InvalidInstructionHook(void* container, EmuEngine* emu_e
  */
 void InvalidInstructionHook::add() {
     if (!added && native_hook) {
-        // handle = emu_eng->hook_add(HOOK_INSN_INVALID, _wrap_invalid_insn_cb);
-        // Would need actual implementation
+        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&Hook::_wrap_invalid_insn_cb), HOOK_INSN_INVALID, container));
     }
     added = true;
     enabled = true;
