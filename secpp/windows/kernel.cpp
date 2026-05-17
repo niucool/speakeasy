@@ -12,12 +12,11 @@
 
 namespace speakeasy {
 
-WinKernelEmulator::WinKernelEmulator(const nlohmann::json& config,
+WinKernelEmulator::WinKernelEmulator(const speakeasy::SpeakeasyConfig& cfg,
                                      const std::vector<std::string>& argv,
                                      bool debug, void* logger, void* exit_event)
-    : Win32Emulator(config, argv, debug, logger, exit_event),
+    : Win32Emulator(cfg, argv, debug, logger, exit_event),
       IoManager() {
-    (void)argv;
     kernel_mode_ = true;
 }
 

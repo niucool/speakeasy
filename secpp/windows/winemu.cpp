@@ -5,6 +5,7 @@
 #include "winemu.h"
 #include "binemu.h"
 #include "profiler.h"
+#include "../config.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -14,17 +15,15 @@ namespace fs = std::filesystem;
 
 // ── Constructor ──────────────────────────────────────────────
 
-WindowsEmulator::WindowsEmulator(const std::string& config, void* logger,
+WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* logger,
                                   void* evt, bool dbg)
-    : BinaryEmulator(config, logger), debug(dbg), arch(0),
+    : BinaryEmulator(cfg, logger), debug(dbg), arch(0),
       page_size(4096), ptr_size(0),
       max_runs(100), kernel_mode(false), virtual_mem_base(0x50000),
       mem_tracing_enabled(false), tmp_code_hook(nullptr),
       run_complete(false), emu_complete(false),
       curr_exception_code(0), prev_pc(0), unhandled_exception_filter(0),
       fs_addr(0), gs_addr(0) {
-
-    _parse_config(config);
 }
 
 // ── Bootstrap ────────────────────────────────────────────────
@@ -64,10 +63,6 @@ void WindowsEmulator::validate_object_services(const std::string& reason) {
 }
 
 // ── Config ───────────────────────────────────────────────────
-
-void WindowsEmulator::_parse_config(const std::string& config) {
-    BinaryEmulator::_parse_config(config);
-}
 
 std::map<std::string, std::string> WindowsEmulator::get_registry_config() {
     return registry_config;

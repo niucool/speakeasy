@@ -62,7 +62,7 @@ public:
     /**
      * Constructor
      */
-    Win32Emulator(const nlohmann::json& config, const std::vector<std::string>& argv = {},
+    Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::vector<std::string>& argv = {},
                   bool debug = false, void* logger = nullptr, void* exit_event = nullptr);
     
     /**

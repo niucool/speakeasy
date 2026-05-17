@@ -3,21 +3,39 @@
 #include <algorithm>
 #include <cstring>
 #include <sstream>
+#include "../config.h"
 
 // Constructor implementation
-Win32Emulator::Win32Emulator(const nlohmann::json& config, const std::vector<std::string>& argv,
+Win32Emulator::Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::vector<std::string>& argv,
                              bool debug, void* logger, void* exit_event)
-    : WindowsEmulator(config.dump(), logger, exit_event, debug),
+    : WindowsEmulator(cfg, logger, exit_event, debug),
       last_error(0), peb_addr(0), argv(argv), sessman(nullptr), 
       com(nullptr), stack_base(0) {
-    
-    command_line = config.value("command_line", "");
-    if (config.contains("processes"))
-        config_processes = config["processes"].get<std::vector<nlohmann::json>>();
-    if (config.contains("system_modules"))
-        config_system_modules = config["system_modules"].get<std::vector<nlohmann::json>>();
-    if (config.contains("user_modules"))
-        config_user_modules = config["user_modules"].get<std::vector<nlohmann::json>>();
+    // Populate from typed config
+    for (const auto& proc : cfg.processes) {
+        nlohmann::json j;
+        j["name"] = proc.name;
+        j["base_addr"] = proc.base_addr;
+        j["path"] = proc.path;
+        j["pid"] = proc.pid;
+        j["command_line"] = proc.command_line;
+        j["is_main_exe"] = proc.is_main_exe;
+        config_processes.push_back(j);
+    }
+    for (const auto& mod : cfg.modules.system_modules) {
+        nlohmann::json j;
+        j["name"] = mod.name;
+        j["base_addr"] = mod.base_addr;
+        j["path"] = mod.path;
+        config_system_modules.push_back(j);
+    }
+    for (const auto& mod : cfg.modules.user_modules) {
+        nlohmann::json j;
+        j["name"] = mod.name;
+        j["base_addr"] = mod.base_addr;
+        j["path"] = mod.path;
+        config_user_modules.push_back(j);
+    }
 }
 
 std::vector<std::string> Win32Emulator::get_argv() {

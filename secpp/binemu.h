@@ -15,6 +15,7 @@
 #include "memmgr.h"
 #include "profiler.h"
 #include "common.h"
+#include "config.h"
 #include "winenv/arch.h"
 #include "engines/unicorn_eng.h"
 #include "version.h"
@@ -72,7 +73,7 @@ private:
 
 public:
     // Constructor
-    BinaryEmulator(const std::string& config, void* logger = nullptr);
+    BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg, void* logger = nullptr);
     
     // Logging methods
     void log_info(const std::string& msg);
@@ -85,7 +86,7 @@ public:
     std::string get_json_report_string();
     
     // Config methods
-    void _parse_config(const std::string& config);
+    void _parse_config(const speakeasy::SpeakeasyConfig& cfg);
     std::string get_emu_version();
     std::map<std::string, std::string> get_os_version();
     std::string get_osver_string();

@@ -113,14 +113,17 @@ void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_
             // ── Kernel-mode emulator (Python: WinKernelEmulator) ──
             // WinKernelEmulator now inherits from WindowsEmulator + IoManager,
             // matching Python's class WinKernelEmulator(WindowsEmulator, IoManager).
-            emu = new speakeasy::WinKernelEmulator(config, argv, debug, logger, exit_event);
+            speakeasy::SpeakeasyConfig scfg = config;
+            emu = new speakeasy::WinKernelEmulator(scfg, argv, debug, logger, exit_event);
         } else {
             // ── User-mode emulator (Python: Win32Emulator) ──
-            emu = new Win32Emulator(config, argv, debug, logger, exit_event);
+            speakeasy::SpeakeasyConfig scfg = config;
+            emu = new Win32Emulator(scfg, argv, debug, logger, exit_event);
         }
     } else {
         // ── Raw/Shellcode mode (Python: Win32Emulator) ──
-        emu = new Win32Emulator(config, argv, debug, logger, exit_event);
+        speakeasy::SpeakeasyConfig scfg = config;
+        emu = new Win32Emulator(scfg, argv, debug, logger, exit_event);
     }
 }
 

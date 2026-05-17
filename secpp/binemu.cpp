@@ -9,7 +9,7 @@
 #endif
 
 // Constructor
-BinaryEmulator::BinaryEmulator(const std::string& config, void* logger) 
+BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg, void* logger)
     : stack_base(0), page_size(0), inst_count(0), curr_instr_size(0),
       disasm_eng(nullptr), builtin_hooks_set(false), emu_eng(nullptr),
       logger(logger), runtime(0) {
@@ -20,13 +20,10 @@ BinaryEmulator::BinaryEmulator(const std::string& config, void* logger)
     max_api_count = 5000;
     keep_memory_on_free = false;
     
-    // Call parent constructor
-    // MemoryManager();
-    
     profiler = std::make_shared<Profiler>();
     emu_version = get_emu_version();
     
-    _parse_config(config);
+    _parse_config(cfg);
 }
 
 void BinaryEmulator::log_info(const std::string& msg) {
@@ -65,10 +62,33 @@ std::string BinaryEmulator::get_json_report_string() {
     return "";
 }
 
-void BinaryEmulator::_parse_config(const std::string& config) {
-    // Parse config using EmuConfig (loaded by subclass)
-    // Config parsing delegated to WindowsEmulator/WinKernelEmulator
-    (void)config;
+void BinaryEmulator::_parse_config(const speakeasy::SpeakeasyConfig& cfg) {
+    timeout = cfg.timeout;
+    max_api_count = cfg.max_api_count;
+    keep_memory_on_free = cfg.keep_memory_on_free;
+    command_line = cfg.command_line;
+
+    // Populate osversion map
+    osversion["name"]   = cfg.os_ver.name;
+    osversion["major"]  = std::to_string(cfg.os_ver.major);
+    osversion["minor"]  = std::to_string(cfg.os_ver.minor);
+    osversion["build"]  = std::to_string(cfg.os_ver.build);
+
+    // Populate user_config map
+    user_config["name"]     = cfg.user.name;
+    user_config["is_admin"] = cfg.user.is_admin ? "1" : "0";
+
+    // Populate network_config map
+    network_config["hostname"] = cfg.hostname;
+    network_config["domain"]   = cfg.domain;
+    for (const auto& [name, ip] : cfg.network.dns.names) {
+        network_config[name] = ip;
+    }
+
+    // Drive config
+    for (const auto& drv : cfg.drives) {
+        drive_config.push_back(drv.root_path);
+    }
 }
 
 std::string BinaryEmulator::get_emu_version() {

@@ -29,6 +29,7 @@
 #include "regman.h"
 #include "loaders.h"
 #include "errors.h"
+#include "../config.h"
 #include "../struct.h"
 using speakeasy::EmuStruct;
 using speakeasy::write_le;
@@ -153,7 +154,7 @@ protected:
     static std::string normalize_mod_name(const std::string& name);
 
 public:
-    WindowsEmulator(const std::string& config, void* logger = nullptr,
+    WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* logger = nullptr,
                     void* exit_event = nullptr, bool debug = false);
     virtual ~WindowsEmulator() = default;
 
@@ -171,7 +172,7 @@ public:
     void validate_object_services(const std::string& reason);
 
     // ── Config ────────────────────────────────────────────────
-    void _parse_config(const std::string& config);
+    // Config parsing now handled by BinaryEmulator (typed SpeakeasyConfig)
     std::map<std::string, std::string> get_registry_config();
 
     // ── Hooks ─────────────────────────────────────────────────
