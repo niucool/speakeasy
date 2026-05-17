@@ -18,6 +18,8 @@ BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg, void* logg
     max_instructions = -1;
     timeout = 0;
     max_api_count = 5000;
+    arch_ = speakeasy::arch::ARCH_X86;
+    ptr_size_ = 4;
     keep_memory_on_free = false;
     
     profiler = std::make_shared<Profiler>();
@@ -288,15 +290,54 @@ std::tuple<std::string, std::string, std::string> BinaryEmulator::disasm(const s
 
 std::map<std::string, std::string> BinaryEmulator::get_register_state() {
     std::map<std::string, std::string> regs;
-    static const char* names_x86[] = {"esp","ebp","eip","esi","edi","eax","ebx","ecx","edx"};
-    static const char* names_x64[] = {"rsp","rbp","rip","rsi","rdi","rax","rbx","rcx","rdx","r8","r9","r10","r11","r12","r13","r14","r15"};
-    auto names = (get_arch() == 64) ? std::vector<const char*>(names_x64, names_x64 + 17)
-                                     : std::vector<const char*>(names_x86, names_x86 + 9);
-    for (size_t i = 0; i < names.size(); ++i) {
-        uint64_t val = reg_read(static_cast<int>(i));
-        char buf[32];
-        snprintf(buf, sizeof(buf), "0x%llx", static_cast<unsigned long long>(val));
-        regs[names[i]] = buf;
+    int arch = get_arch();
+    int ps = get_ptr_size();
+    char buf[32];
+
+    if (arch == speakeasy::arch::ARCH_X86) {
+        struct { const char* name; int reg; } rmap[] = {
+            {"esp", static_cast<int>(speakeasy::arch::REG_ESP)},
+            {"ebp", static_cast<int>(speakeasy::arch::REG_EBP)},
+            {"eip", static_cast<int>(speakeasy::arch::REG_EIP)},
+            {"esi", static_cast<int>(speakeasy::arch::REG_ESI)},
+            {"edi", static_cast<int>(speakeasy::arch::REG_EDI)},
+            {"eax", static_cast<int>(speakeasy::arch::REG_EAX)},
+            {"ebx", static_cast<int>(speakeasy::arch::REG_EBX)},
+            {"ecx", static_cast<int>(speakeasy::arch::REG_ECX)},
+            {"edx", static_cast<int>(speakeasy::arch::REG_EDX)},
+        };
+        for (auto& r : rmap) {
+            uint64_t val = reg_read(r.reg);
+            snprintf(buf, sizeof(buf), "0x%0*llx", 2 + ps * 2,
+                     static_cast<unsigned long long>(val));
+            regs[r.name] = buf;
+        }
+    } else if (arch == speakeasy::arch::ARCH_AMD64) {
+        struct { const char* name; int reg; } rmap[] = {
+            {"rsp", static_cast<int>(speakeasy::arch::REG_RSP)},
+            {"rbp", static_cast<int>(speakeasy::arch::REG_RBP)},
+            {"rip", static_cast<int>(speakeasy::arch::REG_RIP)},
+            {"rsi", static_cast<int>(speakeasy::arch::REG_RSI)},
+            {"rdi", static_cast<int>(speakeasy::arch::REG_RDI)},
+            {"rax", static_cast<int>(speakeasy::arch::REG_RAX)},
+            {"rbx", static_cast<int>(speakeasy::arch::REG_RBX)},
+            {"rcx", static_cast<int>(speakeasy::arch::REG_RCX)},
+            {"rdx", static_cast<int>(speakeasy::arch::REG_RDX)},
+            {"r8",  static_cast<int>(speakeasy::arch::REG_R8)},
+            {"r9",  static_cast<int>(speakeasy::arch::REG_R9)},
+            {"r10", static_cast<int>(speakeasy::arch::REG_R10)},
+            {"r11", static_cast<int>(speakeasy::arch::REG_R11)},
+            {"r12", static_cast<int>(speakeasy::arch::REG_R12)},
+            {"r13", static_cast<int>(speakeasy::arch::REG_R13)},
+            {"r14", static_cast<int>(speakeasy::arch::REG_R14)},
+            {"r15", static_cast<int>(speakeasy::arch::REG_R15)},
+        };
+        for (auto& r : rmap) {
+            uint64_t val = reg_read(r.reg);
+            snprintf(buf, sizeof(buf), "0x%0*llx", 2 + ps * 2,
+                     static_cast<unsigned long long>(val));
+            regs[r.name] = buf;
+        }
     }
     return regs;
 }
@@ -331,11 +372,19 @@ uint64_t BinaryEmulator::pop_stack() {
 }
 
 uint64_t BinaryEmulator::get_stack_ptr() {
-    return reg_read(get_arch() == 64 ? 7 : 7);  // ESP/RSP = reg 7
+    int arch = get_arch();
+    if (arch == speakeasy::arch::ARCH_AMD64)
+        return reg_read(static_cast<int>(speakeasy::arch::REG_RSP));
+    else
+        return reg_read(static_cast<int>(speakeasy::arch::REG_ESP));
 }
 
 void BinaryEmulator::set_stack_ptr(uint64_t addr) {
-    reg_write(get_arch() == 64 ? 7 : 7, addr);
+    int arch = get_arch();
+    if (arch == speakeasy::arch::ARCH_AMD64)
+        reg_write(static_cast<int>(speakeasy::arch::REG_RSP), addr);
+    else
+        reg_write(static_cast<int>(speakeasy::arch::REG_ESP), addr);
 }
 
 uint64_t BinaryEmulator::get_ret_address() {
@@ -363,16 +412,25 @@ std::vector<std::string> BinaryEmulator::get_stack_trace(int num_ptrs) {
     std::vector<std::string> trace;
     uint64_t sp = get_stack_ptr();
     int ps = get_ptr_size() > 0 ? get_ptr_size() : 4;
+    char buf[128];
     for (int i = 0; i < num_ptrs; ++i) {
-        auto data = mem_read(sp + i * ps, ps);
+        uint64_t addr = sp + i * ps;
+        auto data = mem_read(addr, ps);
         uint64_t val = 0;
         for (size_t j = 0; j < data.size(); ++j)
             val |= static_cast<uint64_t>(data[j]) << (j * 8);
-        char buf[32];
-        snprintf(buf, sizeof(buf), "0x%llx: 0x%llx",
-                 static_cast<unsigned long long>(sp + i * ps),
-                 static_cast<unsigned long long>(val));
+        std::string tag = get_address_tag(val);
+        if (tag.empty()) {
+            snprintf(buf, sizeof(buf), "sp+0x%x: 0x%0*llx",
+                     i * ps, 2 + ps * 2,
+                     static_cast<unsigned long long>(val));
+        } else {
+            snprintf(buf, sizeof(buf), "sp+0x%x: 0x%0*llx -> %s",
+                     i * ps, 2 + ps * 2,
+                     static_cast<unsigned long long>(val), tag.c_str());
+        }
         trace.push_back(buf);
+        sp += ps;
     }
     return trace;
 }
@@ -389,7 +447,8 @@ std::vector<std::tuple<uint64_t, uint64_t, std::string>> BinaryEmulator::format_
         uint64_t val = 0;
         for (size_t j = 0; j < data.size(); ++j)
             val |= static_cast<uint64_t>(data[j]) << (j * 8);
-        result.push_back({addr, val, ""});
+        std::string tag = get_address_tag(val);
+        result.push_back({addr, val, tag});
     }
     return result;
 }
@@ -402,13 +461,22 @@ void BinaryEmulator::print_stack(int num_ptrs) {
 // ── Hook management (deferred: Hook classes need Speakeasy*, not BinaryEmulator*) ─
 
 void* BinaryEmulator::get_module_from_addr(uint64_t addr) {
-    // Modules are tracked by WindowsEmulator subclass
-    (void)addr;
+    for (auto& mod : modules) {
+        if (addr >= mod->base && addr <= mod->base + mod->image_size) {
+            return mod.get();
+        }
+    }
     return nullptr;
 }
 
-std::vector<ApiHook> BinaryEmulator::get_api_hooks(const std::string&, const std::string&) {
-    return {};  // Delegated to WindowsEmulator
+std::vector<ApiHook> BinaryEmulator::get_api_hooks(const std::string& mod_name, const std::string& func_name) {
+    // Check if api hooks exist
+    auto it = hooks.find(HOOK_API);
+    if (it == hooks.end()) return {};
+
+    // hooks[HOOK_API] is stored as void* pointer to pair<map<string,ApiLevel>, bool>
+    // For now, return empty until we have proper type storage
+    return {};
 }
 
 // Hook registration methods (deferred until Hook classes are refactored
@@ -558,7 +626,7 @@ void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_va
 // ── Architecture ────────────────────────────────────────────
 
 int BinaryEmulator::get_arch() {
-    return 32;  // default x86; set by subclass via set_ptr_size
+    return arch_;  // set by subclass constructor
 }
 
 std::string BinaryEmulator::get_arch_name() {
@@ -566,13 +634,12 @@ std::string BinaryEmulator::get_arch_name() {
 }
 
 void BinaryEmulator::set_ptr_size(int arch) {
-    if (arch == 64) {
-        // ptr_size will be set by subclass
-    }
+    int ps = (arch == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
+    ptr_size_ = ps;
 }
 
 int BinaryEmulator::get_ptr_size() {
-    return 4;  // default 32-bit; overridden in subclass
+    return ptr_size_;  // set by subclass constructor
 }
 
 // ── String utilities ────────────────────────────────────────
@@ -655,9 +722,17 @@ void BinaryEmulator::write_ptr(uint64_t address, uint64_t val) {
 // ── Stack management ────────────────────────────────────────
 
 std::tuple<uint64_t, uint64_t> BinaryEmulator::reset_stack(uint64_t base) {
-    uint64_t old_sp = get_stack_ptr();
-    set_stack_ptr(base);
-    return {base, old_sp};
+    uint64_t ptr = base;
+    int arch = get_arch();
+    if (arch == speakeasy::arch::ARCH_X86) {
+        reg_write(static_cast<int>(speakeasy::arch::REG_ESP), base);
+        reg_write(static_cast<int>(speakeasy::arch::REG_EBP), base);
+    } else if (arch == speakeasy::arch::ARCH_AMD64) {
+        ptr -= get_ptr_size() * 5;  // home space
+        reg_write(static_cast<int>(speakeasy::arch::REG_RSP), ptr);
+        reg_write(static_cast<int>(speakeasy::arch::REG_RBP), ptr);
+    }
+    return {base, ptr};
 }
 
 std::tuple<uint64_t, uint64_t> BinaryEmulator::alloc_stack(size_t size) {
@@ -665,6 +740,14 @@ std::tuple<uint64_t, uint64_t> BinaryEmulator::alloc_stack(size_t size) {
     sp -= size;
     set_stack_ptr(sp);
     return {sp, sp + size};
+}
+
+uint64_t BinaryEmulator::get_return_val() {
+    int arch = get_arch();
+    if (arch == speakeasy::arch::ARCH_AMD64)
+        return reg_read(static_cast<int>(speakeasy::arch::REG_RAX));
+    else
+        return reg_read(static_cast<int>(speakeasy::arch::REG_EAX));
 }
 
 void BinaryEmulator::clean_stack_args(int argc) {
@@ -718,11 +801,19 @@ std::vector<std::tuple<int, std::string>> BinaryEmulator::get_unicode_strings(
 
 
 uint64_t BinaryEmulator::get_pc() {
-    return reg_read(get_arch() == 64 ? 8 : 8);  // EIP/RIP
+    int arch = get_arch();
+    if (arch == speakeasy::arch::ARCH_AMD64)
+        return reg_read(static_cast<int>(speakeasy::arch::REG_RIP));
+    else
+        return reg_read(static_cast<int>(speakeasy::arch::REG_EIP));
 }
 
 void BinaryEmulator::set_pc(uint64_t addr) {
+    int arch = get_arch();
+    int reg = (arch == speakeasy::arch::ARCH_AMD64) ?
+              static_cast<int>(speakeasy::arch::REG_RIP) :
+              static_cast<int>(speakeasy::arch::REG_EIP);
     if (emu_eng) {
-        emu_eng->reg_write(get_arch() == 64 ? 8 : 8, addr);  // EIP/RIP
+        emu_eng->reg_write(reg, addr);
     }
 }

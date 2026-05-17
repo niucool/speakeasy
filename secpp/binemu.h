@@ -63,6 +63,8 @@ private:
     int max_instructions;
     int timeout;
     int max_api_count;
+    int arch_;
+    int ptr_size_;
     std::map<std::string, std::string> exceptions;
     std::vector<std::string> drive_config;
     std::map<std::string, std::string> filesystem_config;
