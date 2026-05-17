@@ -697,65 +697,320 @@ speakeasy::LoadedImage* WindowsEmulator::load_pe(const std::string& path,
 }
 
 speakeasy::LoadedImage* WindowsEmulator::load_image(speakeasy::LoadedImage* img) {
+    // Python reference: winemu.py lines 993-1137
     if (!img) return nullptr;
 
     if (img->mapped_image.empty() && img->regions.empty())
         return nullptr;
 
-    // Determine architecture and initialize engine if needed
-    if (!emu_eng || img->arch != static_cast<int>(ptr_size * 8)) {
-        int eng_arch = (img->arch == 64) ? speakeasy::arch::ARCH_AMD64
-                                          : speakeasy::arch::ARCH_X86;
+    bool valid_arch = (img->arch == 32 || img->arch == 64);
+    // ── Determine architecture ──
+    if (!ptr_size) {
+        int eng_arch = valid_arch ? (img->arch == 64 ? speakeasy::arch::ARCH_AMD64 : speakeasy::arch::ARCH_X86)
+                                  : speakeasy::arch::ARCH_X86;
         int mode = (img->arch == 64) ? speakeasy::arch::BITS_64 : speakeasy::arch::BITS_32;
         if (!emu_eng) {
             emu_eng = new EmuEngine();
             emu_eng->init_engine(eng_arch, mode);
         }
-        ptr_size = img->arch / 8;
+        set_ptr_size(eng_arch);
         page_size = speakeasy::arch::PAGE_SIZE;
     }
 
-    // Map regions and write data
+    // ── Initialize API handler ──
+    if (!api) {
+        // api = new WindowsApi(this);  // TODO: wire up when WindowsApi is fully ported
+    }
+
+    advance_bootstrap_phase(BootstrapPhase::ENGINE_API_READY);
+    bootstrap_object_services();
+
+    // ── Map image regions ──
+    // single_region_pe: only one region but image_size larger than data → map full image_size
+    bool single_region_pe = (img->regions.size() == 1
+                             && img->regions[0].base == img->base
+                             && img->image_size > img->regions[0].data.size());
+
     for (auto& region : img->regions) {
-        size_t map_size = (region.data.size() + page_size - 1) & ~(page_size - 1ULL);
-        if (map_size == 0) map_size = page_size;
         uint64_t base = region.base;
-        mem_map(static_cast<uint64_t>(map_size), base, region.perms, region.name);
+        size_t size;
+        if (single_region_pe) {
+            size = static_cast<size_t>(img->image_size);
+        } else {
+            size = region.data.size();
+        }
+        if (size == 0) continue;
+
+        // Align to page size
+        size = (size + page_size - 1) & ~(static_cast<size_t>(page_size) - 1);
+        if (size == 0) size = page_size;
+
+        std::string tag = "emu.module." + (img->name.empty() ? "unnamed" : img->name);
+        if (base == 0) {
+            base = mem_map(static_cast<uint64_t>(size), 0, PERM_MEM_RWX, tag);
+            img->base = base;
+        } else {
+            mem_map(static_cast<uint64_t>(size), base, PERM_MEM_RWX, tag);
+        }
         if (!region.data.empty()) {
             mem_write(base, region.data);
         }
     }
 
-    // Map the full PE image if regions are empty
+    // Map raw buffer if no regions (shellcode, etc.)
     if (img->regions.empty() && !img->mapped_image.empty()) {
-        size_t map_size = (img->mapped_image.size() + page_size - 1) & ~(page_size - 1ULL);
-        mem_map(static_cast<uint64_t>(map_size), img->base, PERM_MEM_RWX, img->name);
+        size_t map_size = (img->mapped_image.size() + page_size - 1) & ~(static_cast<size_t>(page_size) - 1);
+        if (img->base == 0) {
+            img->base = mem_map(static_cast<uint64_t>(map_size), 0, PERM_MEM_RWX,
+                                "emu.module." + img->name);
+        } else {
+            mem_map(static_cast<uint64_t>(map_size), img->base, PERM_MEM_RWX,
+                    "emu.module." + img->name);
+        }
         mem_write(img->base, img->mapped_image);
     }
 
-    // Patch IAT with sentinel values for import hooking
+    // ── Patch IAT with sentinel values for import hooking ──
+    int psz = get_ptr_size();
+    if (psz == 0) psz = 4;
+
+    for (auto& imp : img->imports) {
+        uint64_t sentinel = _alloc_sentinel();
+        import_table[sentinel] = {normalize_mod_name(imp.dll_name), imp.func_name};
+        uint64_t iat_addr = imp.iat_address;
+        std::vector<uint8_t> sent_bytes(psz);
+        for (int i = 0; i < psz; ++i)
+            sent_bytes[i] = static_cast<uint8_t>((sentinel >> (i * 8)) & 0xFF);
+        try {
+            mem_write(iat_addr, sent_bytes);
+        } catch (...) {}
+    }
+
+    // Also patch from PE header (catches injected PEs that bypass the loader's import table)
     ensure_pe_import_hooks(img->base);
 
-    // Register as a loaded module
+    // ── Apply PE section memory protection ──
+    if (!img->sections.empty()) {
+        uint64_t base = img->base;
+        // Protect headers (before first section) as READ only
+        uint32_t first_section_rva = img->sections[0].virtual_address;
+        if (first_section_rva > 0) {
+            uint64_t aligned_headers = (base + first_section_rva + page_size - 1) & ~(static_cast<uint64_t>(page_size) - 1);
+            try {
+                mem_protect(base, aligned_headers, PERM_MEM_READ);
+            } catch (...) {}
+        }
+
+        // Merge per-page permissions (multiple sections can share a page)
+        std::map<uint64_t, int> page_perms;
+        for (auto& sect : img->sections) {
+            uint64_t section_addr = base + sect.virtual_address;
+            uint64_t aligned_addr = section_addr & ~(static_cast<uint64_t>(page_size) - 1);
+            uint64_t end_addr = section_addr + sect.virtual_size;
+            uint64_t aligned_end = (end_addr + page_size - 1) & ~(static_cast<uint64_t>(page_size) - 1);
+
+            for (uint64_t page_base = aligned_addr; page_base < aligned_end; page_base += page_size) {
+                int existing = 0;
+                auto it = page_perms.find(page_base);
+                if (it != page_perms.end()) existing = it->second;
+                page_perms[page_base] = existing | static_cast<int>(sect.perms);
+            }
+        }
+
+        for (auto& [page_base, perms] : page_perms) {
+            try {
+                mem_protect(page_base, static_cast<uint64_t>(page_size), perms);
+            } catch (...) {}
+        }
+    }
+
+    // ── Process exports: build symbol table ──
+    bool is_pe = (!img->sections.empty());  // PE files have sections
+    bool is_shellcode = (!img->mapped_image.empty() && img->regions.size() <= 1);
+    bool is_primary = is_pe || is_shellcode;
+
+    if (api) {
+        for (auto& exp : img->exports) {
+            if (exp.name.empty()) continue;
+            if (is_primary) {
+                symbols[exp.address] = {img->name, exp.name};
+            }
+            // TODO: register export func/data handlers when WindowsApi is wired
+        }
+    }
+
+    // ── Process data imports (data exports like function pointers) ──
+    // TODO: handle_import_data when WindowsApi::handle_import_data is ported
+    // for (auto& imp : img->imports) {
+    //     auto [handler, data_handler] = api->get_data_export_handler(imp.dll_name, imp.func_name);
+    //     if (data_handler) {
+    //         uint64_t data_ptr = api->handle_import_data(imp.dll_name, imp.func_name);
+    //         ...
+    //     }
+    // }
+
+    // ── Register module ──
     if (img->base != 0) {
         modules.push_back(reinterpret_cast<void*>(img->base));
         symbols[img->base] = {img->name, ""};
+    }
+
+    // ── Allocate stack for primary image ──
+    if (is_primary && stack_base == 0 && img->image_size > 0) {
+        size_t stack_size = img->image_size;  // reasonable default
+        auto [sb, sp] = alloc_stack(stack_size);
+        stack_base = sb;
+    }
+
+    // ── Run one-time setup ──
+    if (!_setup_done) {
+        _setup_done = true;
+        advance_bootstrap_phase(BootstrapPhase::FULL_SETUP_READY);
     }
 
     return img;
 }
 
 void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
-    // Read PE header from emulated memory to find import directory
-    auto hdr = mem_read(base_addr, 0x1000);
-    if (hdr.size() < 0x200) return;
-    uint32_t pe_off = 0;
-    for (int i = 0; i < 4; ++i) pe_off |= static_cast<uint32_t>(hdr[0x3C + i]) << (i * 8);
-    if (pe_off + 4 > hdr.size() || hdr[pe_off] != 'P' || hdr[pe_off+1] != 'E') return;
-    // Locate import directory and patch IAT entries with sentinel values
-    // The IAT is typically in the .idata section; sentinel values trigger API hooks
-    // For now, PE imports are resolved lazily via _module_access_hook
-    (void)base_addr;
+    // Python reference: winemu.py lines 865-977
+    int psz = get_ptr_size();
+    if (psz == 0) psz = 4;
+    bool is64 = (get_arch() == speakeasy::arch::ARCH_AMD64);
+
+    // ── Read DOS header → verify MZ ──
+    auto dos_hdr = mem_read(base_addr, 0x40);
+    if (dos_hdr.size() < 0x40 || dos_hdr[0] != 'M' || dos_hdr[1] != 'Z')
+        return;
+
+    // ── Read PE offset (e_lfanew) ──
+    uint32_t e_lfanew = 0;
+    for (int i = 0; i < 4; ++i)
+        e_lfanew |= static_cast<uint32_t>(dos_hdr[0x3C + i]) << (i * 8);
+    uint64_t pe_sig_off = base_addr + e_lfanew;
+
+    // ── Read PE header → verify signature ──
+    auto pe_hdr = mem_read(pe_sig_off, 0x18);
+    if (pe_hdr.size() < 4 || pe_hdr[0] != 'P' || pe_hdr[1] != 'E')
+        return;
+
+    // ── Read Optional Header → get import directory ──
+    // Optional Header starts at pe_sig_off + 0x18 (after Signature + FileHeader)
+    uint64_t opt_off = pe_sig_off + 0x18;
+    uint32_t import_dir_rva = 0, import_dir_size = 0;
+
+    if (is64) {
+        // PE32+: IMAGE_OPTIONAL_HEADER64 — import dir at offset 0x70 in opt hdr
+        auto opt = mem_read(opt_off, 0x70 + 16 * 8);
+        if (opt.size() < 0x80) return;
+        import_dir_rva = opt[0x70] | (static_cast<uint32_t>(opt[0x71]) << 8) |
+                        (static_cast<uint32_t>(opt[0x72]) << 16) | (static_cast<uint32_t>(opt[0x73]) << 24);
+        import_dir_size = opt[0x74] | (static_cast<uint32_t>(opt[0x75]) << 8) |
+                         (static_cast<uint32_t>(opt[0x76]) << 16) | (static_cast<uint32_t>(opt[0x77]) << 24);
+    } else {
+        // PE32: IMAGE_OPTIONAL_HEADER32 — import dir at offset 0x68 in opt hdr
+        auto opt = mem_read(opt_off, 0x60 + 16 * 8);
+        if (opt.size() < 0x70) return;
+        import_dir_rva = opt[0x68] | (static_cast<uint32_t>(opt[0x69]) << 8) |
+                        (static_cast<uint32_t>(opt[0x6A]) << 16) | (static_cast<uint32_t>(opt[0x6B]) << 24);
+        import_dir_size = opt[0x6C] | (static_cast<uint32_t>(opt[0x6D]) << 8) |
+                         (static_cast<uint32_t>(opt[0x6E]) << 16) | (static_cast<uint32_t>(opt[0x6F]) << 24);
+    }
+
+    if (!import_dir_rva || !import_dir_size) return;
+
+    // ── Walk IMAGE_IMPORT_DESCRIPTOR array ──
+    uint64_t import_dir_va = base_addr + import_dir_rva;
+    const size_t desc_size = 20;  // sizeof(IMAGE_IMPORT_DESCRIPTOR)
+    int n_descriptors = 0, n_fixups = 0;
+
+    for (;;) {
+        uint64_t desc_off = import_dir_va + n_descriptors * desc_size;
+        auto desc = mem_read(desc_off, desc_size);
+        if (desc.size() < desc_size) break;
+
+        // struct IMAGE_IMPORT_DESCRIPTOR:
+        //   +0: ILT RVA (OriginalFirstThunk)
+        //   +8: TimeDateStamp
+        //  +12: ForwarderChain
+        //  +16: Name RVA
+        //  +20: IAT RVA (FirstThunk)
+        uint32_t ilt_rva  = desc[0] | (static_cast<uint32_t>(desc[1]) << 8) |
+                           (static_cast<uint32_t>(desc[2]) << 16) | (static_cast<uint32_t>(desc[3]) << 24);
+        uint32_t name_rva = desc[12] | (static_cast<uint32_t>(desc[13]) << 8) |
+                           (static_cast<uint32_t>(desc[14]) << 16) | (static_cast<uint32_t>(desc[15]) << 24);
+        uint32_t iat_rva  = desc[16] | (static_cast<uint32_t>(desc[17]) << 8) |
+                           (static_cast<uint32_t>(desc[18]) << 16) | (static_cast<uint32_t>(desc[19]) << 24);
+
+        if (!name_rva && !iat_rva) break;
+        n_descriptors++;
+
+        // ── Read DLL name ──
+        auto dll_bytes = mem_read(base_addr + name_rva, 256);
+        std::string dll_name;
+        {
+            size_t null_pos = 0;
+            for (; null_pos < dll_bytes.size() && dll_bytes[null_pos] != 0; ++null_pos);
+            if (null_pos > 0)
+                dll_name.assign(reinterpret_cast<const char*>(dll_bytes.data()), null_pos);
+        }
+        if (dll_name.empty()) continue;
+
+        // ── Walk thunk entries ──
+        uint32_t thunk_rva = ilt_rva ? ilt_rva : iat_rva;
+        int idx = 0;
+
+        for (;;) {
+            uint64_t thunk_va = base_addr + thunk_rva + idx * psz;
+            uint64_t iat_va   = base_addr + iat_rva   + idx * psz;
+            idx++;
+
+            auto thunk_data = mem_read(thunk_va, static_cast<size_t>(psz));
+            if (thunk_data.size() < static_cast<size_t>(psz)) break;
+
+            uint64_t thunk_val = 0;
+            for (int i = 0; i < psz; ++i)
+                thunk_val |= static_cast<uint64_t>(thunk_data[i]) << (i * 8);
+            if (thunk_val == 0) break;
+
+            // ── Check if already patched ──
+            auto iat_data = mem_read(iat_va, static_cast<size_t>(psz));
+            uint64_t iat_val = 0;
+            for (int i = 0; i < psz; ++i)
+                iat_val |= static_cast<uint64_t>(iat_data[i]) << (i * 8);
+
+            if (import_table.count(iat_val)) continue;
+
+            // ── Resolve function name ──
+            bool is_ordinal = (is64 ? ((thunk_val >> 63) & 1) : ((thunk_val >> 31) & 1));
+            std::string func_name;
+
+            if (is_ordinal) {
+                uint16_t ordinal = static_cast<uint16_t>(thunk_val & 0xFFFF);
+                func_name = "ordinal_" + std::to_string(ordinal);
+            } else {
+                uint64_t hint_name_rva = thunk_val & 0x7FFFFFFFULL;
+                auto hint_data = mem_read(base_addr + hint_name_rva, 256);
+                if (hint_data.size() > 2) {
+                    // hint_data[0..1] = hint (2 bytes), rest = NUL-terminated string
+                    size_t null_pos = 2;
+                    for (; null_pos < hint_data.size() && hint_data[null_pos] != 0; ++null_pos);
+                    if (null_pos > 2)
+                        func_name.assign(reinterpret_cast<const char*>(hint_data.data() + 2), null_pos - 2);
+                }
+            }
+            if (func_name.empty()) continue;
+
+            // ── Allocate sentinel & patch IAT ──
+            uint64_t sentinel = _alloc_sentinel();
+            import_table[sentinel] = {normalize_mod_name(dll_name), func_name};
+
+            std::vector<uint8_t> sent_bytes(psz);
+            for (int i = 0; i < psz; ++i)
+                sent_bytes[i] = static_cast<uint8_t>((sentinel >> (i * 8)) & 0xFF);
+            mem_write(iat_va, sent_bytes);
+            n_fixups++;
+        }
+    }
 }
 
 void* WindowsEmulator::get_current_thread() { return curr_thread; }

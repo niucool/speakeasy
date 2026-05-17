@@ -132,6 +132,10 @@ protected:
     std::vector<std::tuple<uint64_t, std::string, std::string>> dyn_imps;
     std::vector<std::tuple<uint64_t, std::string, std::string>> callbacks;
     std::map<uint64_t, std::tuple<std::string, uint64_t>> global_data;
+    // import_table: sentinel_addr → (dll_name, func_name)
+    // Used by ensure_pe_import_hooks and load_image to patch IAT entries
+    // so that API calls are intercepted via sentinel values.
+    std::map<uint64_t, std::tuple<std::string, std::string>> import_table;
     std::vector<void*> pic_buffers;
 
     // ── Config fields ─────────────────────────────────────────
