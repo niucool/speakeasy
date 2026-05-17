@@ -91,7 +91,7 @@ std::vector<void*> Win32Emulator::get_processes() {
     if (processes.size() <= 1) {
         init_processes(config_processes);
     }
-    return processes;
+    return std::vector<void*>(processes.begin(), processes.end());
 }
 
 void Win32Emulator::init_processes(const std::vector<nlohmann::json>& processes) {
@@ -120,8 +120,10 @@ speakeasy::LoadedImage* Win32Emulator::load_module(const std::string& path, cons
     uint64_t import_id = 0x41410000;
     speakeasy::LoadedImage* pe = load_pe(path, data, import_id);
     if (!pe) return nullptr;
-    auto* img = static_cast<speakeasy::LoadedImage*>(pe);
-    if (!arch) { arch = img->arch; set_ptr_size(arch); }
+    if (!arch) { 
+        arch = pe->arch; 
+        set_ptr_size(arch); 
+    }
     return pe;
 }
 
@@ -161,17 +163,17 @@ void Win32Emulator::prepare_module_for_emulation(speakeasy::LoadedImage* module,
 
 void Win32Emulator::run_module(speakeasy::LoadedImage* module, bool all_entrypoints, bool emulate_children) {
     prepare_module_for_emulation(module, all_entrypoints);
-    auto* img = static_cast<speakeasy::LoadedImage*>(module);
     if (processes.empty()) {
-        auto* p = new Process(this);
-        p->path = img->emu_path;
-        p->base = img->base;
+        auto* p = new Process(this, module);
+        p->path = module->emu_path;
+        p->base = module->base;
         curr_process = p;
         processes.push_back(p);
     }
-    auto* t = new Thread();
+    auto* t = new Thread(this);
     
-    if (curr_process) static_cast<Process*>(curr_process)->threads.push_back(*t);
+    if (curr_process) 
+        curr_process->threads.push_back(*t);
     curr_thread = t;
     alloc_peb(curr_process);
     init_teb(t, curr_process);

@@ -92,8 +92,8 @@ protected:
     bool emu_complete = false;
 
     // ── Processes ─────────────────────────────────────────────
-    std::vector<void*> processes;
-    std::vector<void*> child_processes;
+    std::vector<Process*> processes;
+    std::vector<Process*> child_processes;
     Process* curr_process = nullptr;
     Thread* curr_thread = nullptr;
 
@@ -214,16 +214,16 @@ public:
     void* file_get(int handle);
     bool file_delete(const std::string& path);
     void* pipe_get(int handle);
-    void* get_file_manager();
+    FileManager* get_file_manager();
 
     // ── Network ───────────────────────────────────────────────
-    void* get_network_manager();
+    NetworkManager* get_network_manager();
 
     // ── Crypto ────────────────────────────────────────────────
-    void* get_crypt_manager();
+    CryptoManager* get_crypt_manager();
 
     // ── Drives ────────────────────────────────────────────────
-    void* get_drive_manager();
+    DriveManager* get_drive_manager();
 
     // ── Registry ──────────────────────────────────────────────
     void* reg_open_key(const std::string& path, bool create = false);

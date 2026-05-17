@@ -266,23 +266,23 @@ void PeLoader::parse_pe() {
 
 }
 
-LoadedImage PeLoader::make_image() {
-    LoadedImage img;
+LoadedImage* PeLoader::make_image() {
+    auto* img = new LoadedImage();
 
     auto* pe = parser_pe;
 
     if (!pe) {
         // Return what we have from parse_pe
-        img.name = path_.empty() ? "unknown" :
+        img->name = path_.empty() ? "unknown" :
             path_.substr(path_.find_last_of("/\\") + 1);
-        img.name = img.name.substr(0, img.name.find_last_of('.'));
-        img.mapped_image = data_;
-        img.arch = (metadata_.machine == 0x8664) ? 64 : 32;
-        img.metadata = metadata_;
-        img.imports = imports_;
-        img.exports = exports_;
-        img.sections = sections_;
-        img.tls_callbacks = tls_callbacks_;
+        img->name = img->name.substr(0, img->name.find_last_of('.'));
+        img->mapped_image = data_;
+        img->arch = (metadata_.machine == 0x8664) ? 64 : 32;
+        img->metadata = metadata_;
+        img->imports = imports_;
+        img->exports = exports_;
+        img->sections = sections_;
+        img->tls_callbacks = tls_callbacks_;
         return img;
     }
 
@@ -293,12 +293,12 @@ LoadedImage PeLoader::make_image() {
 
     // Copy PE headers
     uint32_t header_size = pe->peHeader.nt.OptionalHeader.SizeOfHeaders;
-    img.mapped_image.assign(data_.begin(),
+    img->mapped_image.assign(data_.begin(),
                             data_.begin() + std::min(header_size, static_cast<uint32_t>(data_.size())));
 
     // Pad to section alignment after header
-    while (img.mapped_image.size() % section_align != 0) {
-        img.mapped_image.push_back(0);
+    while (img->mapped_image.size() % section_align != 0) {
+        img->mapped_image.push_back(0);
     }
 
     // Collect section info from iteration
@@ -329,22 +329,22 @@ LoadedImage PeLoader::make_image() {
     // Add section data at their virtual addresses
     for (auto& sec : sec_raws) {
         // Pad to virtual address
-        while (img.mapped_image.size() < sec.va) {
-            img.mapped_image.push_back(0);
+        while (img->mapped_image.size() < sec.va) {
+            img->mapped_image.push_back(0);
         }
 
         // Copy raw section data
         if (sec.raw_ptr > 0 && sec.raw_ptr < data_.size() && sec.raw_size > 0) {
             size_t copy_size = std::min(static_cast<size_t>(sec.raw_size),
                                         data_.size() - sec.raw_ptr);
-            img.mapped_image.insert(img.mapped_image.end(),
+            img->mapped_image.insert(img->mapped_image.end(),
                                     data_.begin() + sec.raw_ptr,
                                     data_.begin() + sec.raw_ptr + copy_size);
         }
 
         // Pad to virtual size
-        while (img.mapped_image.size() < sec.va + sec.vsize) {
-            img.mapped_image.push_back(0);
+        while (img->mapped_image.size() < sec.va + sec.vsize) {
+            img->mapped_image.push_back(0);
         }
 
         // Build memory region
@@ -360,32 +360,32 @@ LoadedImage PeLoader::make_image() {
                                    std::min(static_cast<size_t>(sec.raw_size),
                                             data_.size() - sec.raw_ptr));
         }
-        img.regions.push_back(region);
+        img->regions.push_back(region);
     }
 
     // Ensure full image size
-    while (img.mapped_image.size() < image_size) {
-        img.mapped_image.push_back(0);
+    while (img->mapped_image.size() < image_size) {
+        img->mapped_image.push_back(0);
     }
 
 
     // Fill metadata
-    img.name = path_.empty() ? "unknown" :
+    img->name = path_.empty() ? "unknown" :
         path_.substr(path_.find_last_of("/\\") + 1);
-    auto dot = img.name.rfind('.');
-    if (dot != std::string::npos) img.name.erase(dot);
+    auto dot = img->name.rfind('.');
+    if (dot != std::string::npos) img->name.erase(dot);
 
-    img.emu_path = path_;
-    img.image_size = image_size;
-    img.base = image_base;
-    img.ep = (sections_.empty()) ? 0 : 0;
-    img.arch = (metadata_.machine == 0x8664) ? 64 : 32;
-    img.is_driver = (metadata_.subsystem == 1);
-    img.metadata = metadata_;
-    img.imports = imports_;
-    img.exports = exports_;
-    img.sections = sections_;
-    img.tls_callbacks = tls_callbacks_;
+    img->emu_path = path_;
+    img->image_size = image_size;
+    img->base = image_base;
+    img->ep = (sections_.empty()) ? 0 : 0;
+    img->arch = (metadata_.machine == 0x8664) ? 64 : 32;
+    img->is_driver = (metadata_.subsystem == 1);
+    img->metadata = metadata_;
+    img->imports = imports_;
+    img->exports = exports_;
+    img->sections = sections_;
+    img->tls_callbacks = tls_callbacks_;
 
     return img;
 }

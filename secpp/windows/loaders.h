@@ -109,7 +109,7 @@ public:
     /**
      * Parse the PE and produce a memory image suitable for loading.
      */
-    LoadedImage make_image();
+    LoadedImage* make_image();
 
     /**
      * Get the parsed PE metadata.

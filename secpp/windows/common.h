@@ -10,6 +10,11 @@
 #include <exception>
 #include <tuple>
 
+#ifdef PLATFORM_WINDOWS
+#define _PEPARSE_WINDOWS_CONFLICTS
+#endif
+#include <pe-parse/parse.h>
+
 // GDT Constants needed to set our emulator into protected mode
 // Access bits
 struct GDT_ACCESS_BITS {
@@ -150,12 +155,16 @@ protected:
     std::string emu_path;
     int arch;
     int ptr_size;
+    peparse::parsed_pe* parsed_pe;
 
 public:
     // Constructor
     PeFile(const std::string& path = "", const std::vector<uint8_t>& data = {}, 
            uint64_t imp_id = IMPORT_HOOK_ADDR, uint64_t imp_step = 4, 
            const std::string& emu_path = "", bool fast_load = false);
+    
+    // Destructor
+    virtual ~PeFile();
     
     // Methods
     std::vector<uint64_t> get_tls_callbacks();

@@ -104,11 +104,11 @@ void* WinKernelEmulator::load_module(const std::string& path,
     }
 
     PeLoader loader(path, buf);
-    auto img = loader.make_image();
-    img.name = mod_name;
-    img.emu_path = "\\??\\" + path;
+    auto* img = loader.make_image();
+    img->name = mod_name;
+    img->emu_path = "\\\\??\\\\" + path;
 
-    void* rtmod = load_image(&img);
+    void* rtmod = load_image(img);
     return rtmod;
 }
 
@@ -136,10 +136,10 @@ void* WinKernelEmulator::load_driver(const std::string& path,
     Driver* drv = create_driver_object(drv_name, mod);
 
     PeLoader loader(path, parsedata);
-    auto img = loader.make_image();
+    auto* img = loader.make_image();
 
     uint64_t base = reinterpret_cast<uint64_t>(mod);
-    drv->driver_init_addr = base + img.ep;
+    drv->driver_init_addr = base + img->ep;
     drv->driver_unload_addr = 0;
     return mod;
 }

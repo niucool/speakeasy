@@ -502,7 +502,7 @@ std::vector<void*> WindowsEmulator::get_dropped_files() { return {}; }
 
 // ── Process / thread ─────────────────────────────────────────
 
-std::vector<void*> WindowsEmulator::get_processes() { return processes; }
+std::vector<void*> WindowsEmulator::get_processes() { return std::vector<void*>(processes.begin(), processes.end()); }
 void WindowsEmulator::kill_process(void* proc) {
     if (proc) {
         auto* process = static_cast<Process*>(proc);
@@ -690,9 +690,10 @@ speakeasy::LoadedImage* WindowsEmulator::load_pe(const std::string& path,
                                 uint64_t imp_id) {
     // Use PeLoader to parse the PE file
     speakeasy::PeLoader loader(path, data);
-    speakeasy::LoadedImage img = loader.make_image();
-    img.base = imp_id;  // Override base for sentinel tracking
-    return load_image(&img);
+    auto* img = loader.make_image();
+    img->base = imp_id;  // Override base for sentinel tracking
+    auto* result = load_image(img);
+    return result;
 }
 
 speakeasy::LoadedImage* WindowsEmulator::load_image(speakeasy::LoadedImage* img) {
@@ -807,16 +808,18 @@ void* WindowsEmulator::load_module_by_name(const std::string& name,
     if (!native_path.empty()) {
         try {
             speakeasy::PeLoader loader(native_path, std::vector<uint8_t>{});
-            auto* img = new speakeasy::LoadedImage(loader.make_image());
-            return load_image(img);
+            auto* img = loader.make_image();
+            auto* result = load_image(img);
+            return result;
         } catch (...) {}
     }
     // Fallback: try using the emu_path as data source
     if (!ep.empty()) {
         try {
             speakeasy::PeLoader loader(ep, std::vector<uint8_t>{});
-            auto* img = new speakeasy::LoadedImage(loader.make_image());
-            return load_image(img);
+            auto* img = loader.make_image();
+            auto* result = load_image(img);
+            return result;
         } catch (...) {}
     }
     return nullptr;
@@ -855,7 +858,7 @@ std::vector<void*> WindowsEmulator::_init_module_group(
         const char* path = static_cast<const char*>(mc);
         try {
             speakeasy::PeLoader loader(std::string(path), std::vector<uint8_t>{});
-            auto* img = new speakeasy::LoadedImage(loader.make_image());
+            auto* img = loader.make_image();
             auto* rtmod = load_image(img);
             if (rtmod) rtmods.push_back(rtmod);
         } catch (...) {}
@@ -1187,10 +1190,10 @@ void* WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
 
 // ── Manager accessors ─────────────────────────────────────────
 
-void* WindowsEmulator::get_file_manager()    { return fileman; }
-void* WindowsEmulator::get_network_manager() { return netman; }
-void* WindowsEmulator::get_crypt_manager()   { return cryptman; }
-void* WindowsEmulator::get_drive_manager()   { return driveman; }
+FileManager* WindowsEmulator::get_file_manager()    { return fileman; }
+NetworkManager* WindowsEmulator::get_network_manager() { return netman; }
+CryptoManager* WindowsEmulator::get_crypt_manager()   { return cryptman; }
+DriveManager* WindowsEmulator::get_drive_manager()   { return driveman; }
 
 // ── Registry wrappers ─────────────────────────────────────────
 

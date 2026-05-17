@@ -99,7 +99,7 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
                const std::string& emu_path, bool fast_load)
     : imp_id(imp_id), imp_step(imp_step), file_size(0), base(0),
       image_size(0), is_mapped(true), ep(0), stack_commit(0),
-      path(path), emu_path(emu_path) {
+      path(path), emu_path(emu_path), parsed_pe(nullptr) {
     (void)fast_load;
     // Load PE data
     std::vector<uint8_t> pe_data;
@@ -115,44 +115,55 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
         f.read((char*)pe_data.data(), file_size);
     }
     
-    // Parse with pe-parse
-    auto* pe = peparse::ParsePEFromPointer(
-        const_cast<uint8_t*>(pe_data.data()),
-        static_cast<uint32_t>(pe_data.size()));
-    if (!pe) throw PeParseException("Failed to parse PE");
-    
-    // Compute hash
-    hash = _hash_pe(path, pe_data);
-    
-    // Header fields
-    base = pe->peHeader.nt.OptionalHeader.ImageBase;
-    if (base == 0) { base = DEFAULT_LOAD_ADDR; }
-    ep = pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
-    image_size = pe->peHeader.nt.OptionalHeader.SizeOfImage;
-    stack_commit = pe->peHeader.nt.OptionalHeader.SizeOfStackCommit;
-    
-    // Architecture
-    arch = _get_architecture();
-    ptr_size = (arch == 32) ? 4 : 8;
-    
-    // Sections
-    pe_sections = _get_pe_sections();
-    
-    // Imports
-    imports = _get_pe_imports();
-    
-    // Exports
-    exports = _get_pe_exports();
-    
-    // Mapped image
-    // GetRealImage not in pe-parse; skip mapped image
-    is_mapped = true;
-    
-    // Patch imports
-    _patch_imports();
-    
-    // Dealloc
-    peparse::DestructParsedPE(pe);
+    try {
+        // Parse with pe-parse
+        parsed_pe = peparse::ParsePEFromPointer(
+            const_cast<uint8_t*>(pe_data.data()),
+            static_cast<uint32_t>(pe_data.size()));
+        if (!parsed_pe) throw PeParseException("Failed to parse PE");
+        
+        // Compute hash
+        hash = _hash_pe(path, pe_data);
+        
+        // Header fields
+        base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+        if (base == 0) { base = DEFAULT_LOAD_ADDR; }
+        ep = parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
+        image_size = parsed_pe->peHeader.nt.OptionalHeader.SizeOfImage;
+        stack_commit = parsed_pe->peHeader.nt.OptionalHeader.SizeOfStackCommit;
+        
+        // Architecture
+        arch = _get_architecture();
+        ptr_size = (arch == 32) ? 4 : 8;
+        
+        // Sections
+        pe_sections = _get_pe_sections();
+        
+        // Imports
+        imports = _get_pe_imports();
+        
+        // Exports
+        exports = _get_pe_exports();
+        
+        // Mapped image
+        // GetRealImage not in pe-parse; skip mapped image
+        is_mapped = true;
+        
+        // Patch imports
+        _patch_imports();
+    } catch (...) {
+        if (parsed_pe) {
+            peparse::DestructParsedPE(parsed_pe);
+            parsed_pe = nullptr;
+        }
+        throw;
+    }
+}
+
+PeFile::~PeFile() {
+    if (parsed_pe) {
+        peparse::DestructParsedPE(parsed_pe);
+    }
 }
 
 std::vector<uint64_t> PeFile::get_tls_callbacks() {
@@ -160,34 +171,24 @@ std::vector<uint64_t> PeFile::get_tls_callbacks() {
 }
 
 uint32_t PeFile::get_resource_dir_rva() {
-    std::vector<uint8_t> pe_data;
-    if (!mapped_image.empty()) pe_data = mapped_image;
-    else {
-        std::ifstream f(this->path, std::ios::binary | std::ios::ate);
-        size_t sz = f.tellg(); f.seekg(0);
-        pe_data.resize(sz); f.read((char*)pe_data.data(), sz);
-    }
-    if (pe_data.empty()) return 0;
-    auto* pe = peparse::ParsePEFromPointer(const_cast<uint8_t*>(pe_data.data()), static_cast<uint32_t>(pe_data.size()));
-    if (!pe) return 0;
+    if (!parsed_pe) return 0;
     uint32_t rva = 0;
-    // Access data directory directly via pe->peHeader
+    // Access data directory directly via parsed_pe->peHeader
     // IMAGE_DIRECTORY_ENTRY_RESOURCE = 2
     // Access via the NT headers
-    if (pe->peHeader.nt.OptionalMagic == 0x010b) {
-        auto& oh = pe->peHeader.nt.OptionalHeader;
+    if (parsed_pe->peHeader.nt.OptionalMagic == 0x010b) {
+        auto& oh = parsed_pe->peHeader.nt.OptionalHeader;
         const auto* dirs = reinterpret_cast<const peparse::data_directory*>(
             reinterpret_cast<const char*>(&oh) + sizeof(peparse::optional_header_32) - 
             sizeof(peparse::data_directory) * 16);
         rva = dirs[2].VirtualAddress;
     } else {
-        auto& oh = pe->peHeader.nt.OptionalHeader;
+        auto& oh = parsed_pe->peHeader.nt.OptionalHeader;
         const auto* dirs = reinterpret_cast<const peparse::data_directory*>(
             reinterpret_cast<const char*>(&oh) + sizeof(peparse::optional_header_64) - 
             sizeof(peparse::data_directory) * 16);
         rva = dirs[2].VirtualAddress;
     }
-    peparse::DestructParsedPE(pe);
     return rva;
 }
 
@@ -200,22 +201,9 @@ std::string PeFile::_hash_pe(const std::string& path, const std::vector<uint8_t>
 }
 
 std::map<uint64_t, std::tuple<std::string, std::string>> PeFile::_get_pe_imports() {
+    if (!parsed_pe) return {};
     PeImportCtx ctx;
-    std::vector<uint8_t> pe_data;
-    if (!mapped_image.empty()) {
-        pe_data = mapped_image;
-    } else {
-        std::ifstream f(this->path, std::ios::binary | std::ios::ate);
-        size_t sz = f.tellg(); f.seekg(0);
-        pe_data.resize(sz); f.read((char*)pe_data.data(), sz);
-    }
-    if (pe_data.empty()) return {};
-    auto* pe = peparse::ParsePEFromPointer(
-        const_cast<uint8_t*>(pe_data.data()),
-        static_cast<uint32_t>(pe_data.size()));
-    if (!pe) return {};
-    peparse::IterImpVAString(pe, pefile_imp_cb, &ctx);
-    peparse::DestructParsedPE(pe);
+    peparse::IterImpVAString(parsed_pe, pefile_imp_cb, &ctx);
     return ctx.imports;
 }
 
@@ -225,41 +213,17 @@ std::vector<ExportEntry> PeFile::get_exports() {
 }
 
 std::vector<ExportEntry> PeFile::_get_pe_exports() {
+    if (!parsed_pe) return {};
     PeExportCtx ctx;
-    std::vector<uint8_t> pe_data;
-    if (!mapped_image.empty()) pe_data = mapped_image;
-    else {
-        std::ifstream f(this->path, std::ios::binary | std::ios::ate);
-        size_t sz = f.tellg(); f.seekg(0);
-        pe_data.resize(sz); f.read((char*)pe_data.data(), sz);
-    }
-    if (pe_data.empty()) return {};
-    auto* pe = peparse::ParsePEFromPointer(
-        const_cast<uint8_t*>(pe_data.data()),
-        static_cast<uint32_t>(pe_data.size()));
-    if (!pe) return {};
-    peparse::IterExpVA(pe, pefile_exp_cb, &ctx);
-    peparse::DestructParsedPE(pe);
+    peparse::IterExpVA(parsed_pe, pefile_exp_cb, &ctx);
     return ctx.exports;
 }
 
 std::vector<PeSection> PeFile::_get_pe_sections() {
+    if (!parsed_pe) return {};
     PeSectionCtx ctx;
     ctx.image_base = base;
-    std::vector<uint8_t> pe_data;
-    if (!mapped_image.empty()) pe_data = mapped_image;
-    else {
-        std::ifstream f(this->path, std::ios::binary | std::ios::ate);
-        size_t sz = f.tellg(); f.seekg(0);
-        pe_data.resize(sz); f.read((char*)pe_data.data(), sz);
-    }
-    if (pe_data.empty()) return {};
-    auto* pe = peparse::ParsePEFromPointer(
-        const_cast<uint8_t*>(pe_data.data()),
-        static_cast<uint32_t>(pe_data.size()));
-    if (!pe) return {};
-    peparse::IterSec(pe, pefile_sec_cb, &ctx);
-    peparse::DestructParsedPE(pe);
+    peparse::IterSec(parsed_pe, pefile_sec_cb, &ctx);
     return ctx.sections;
 }
 
@@ -277,21 +241,8 @@ PeSection* PeFile::get_section_by_name(const std::string& name) {
 }
 
 int PeFile::_get_architecture() {
-    // Try parsing PE to get magic
-    std::vector<uint8_t> pe_data;
-    if (!mapped_image.empty()) pe_data = mapped_image;
-    else {
-        std::ifstream f(this->path, std::ios::binary | std::ios::ate);
-        size_t sz = f.tellg(); f.seekg(0);
-        pe_data.resize(sz); f.read((char*)pe_data.data(), sz);
-    }
-    if (pe_data.empty()) return 64;
-    auto* pe = peparse::ParsePEFromPointer(
-        const_cast<uint8_t*>(pe_data.data()),
-        static_cast<uint32_t>(pe_data.size()));
-    if (!pe) return 64;
-    uint16_t magic = pe->peHeader.nt.OptionalMagic;
-    peparse::DestructParsedPE(pe);
+    if (!parsed_pe) return 64;
+    uint16_t magic = parsed_pe->peHeader.nt.OptionalMagic;
     return (magic == 0x020b) ? 64 : 32;
 }
 

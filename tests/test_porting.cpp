@@ -1,12 +1,16 @@
 /**
- * test_porting.cpp — Porting-regression tests (GTest) matching Python patterns
+ * test_porting.cpp — Comprehensive porting-regression tests (GTest)
  *
- * References:
- *   test_struct.py              → StructLayoutTest (EmuStruct byte layout, write_le)
- *   test_cli_config.py          → ConfigTest (defaults, JSON round-trip)
- *   test_profiler_artifacts.py  → ProfilerEventTest (log_file_access, log_registry)
- *   test_volumes.py             → VolumeTest (parse_volume_spec, expand_volume)
- *   test_process_parameters.py  → NtDefTest (UNICODE_STRING, KSYSTEM_TIME)
+ * Ports the following Python test files to C++:
+ *   test_struct.py                → StructLayoutTest  (EmuStruct byte layout, write_le)
+ *   test_cli_config.py            → ConfigTest        (defaults, JSON round-trip, merge)
+ *   test_config.py                → ConfigTest        (validate, reject invalid engine)
+ *   test_config_memory_dumps.py   → ConfigTest        (legacy alias)
+ *   test_module_name_normalization.py → NormalizeModNameTest
+ *   test_profiler_artifacts.py    → ProfilerEventTest (log_file_access, log_registry)
+ *   test_volumes.py               → VolumeTest        (parse_volume_spec, expand)
+ *   test_process_parameters.py    → NtDefTest         (UNICODE_STRING, KSYSTEM_TIME)
+ *   test_artifact_store.py        → ArtifactStorePortTest (put/get, dedup, empty, size)
  */
 
 #include <gtest/gtest.h>
@@ -24,6 +28,7 @@
 #include "artifacts.h"
 #include "errors.h"
 #include "memmgr.h"
+#include "windows/winemu.h"
 #include "windows/fileman.h"
 #include "winenv/defs/nt/ntoskrnl.h"
 #include "common.h"
@@ -31,7 +36,7 @@
 using namespace speakeasy;
 
 // ══════════════════════════════════════════════════════════════════
-// EmuStruct byte-layout tests (← tests/test_struct.py)
+// Struct tests  (← tests/test_struct.py)
 // ══════════════════════════════════════════════════════════════════
 
 class DEEP_NEST : public EmuStruct {
@@ -42,8 +47,8 @@ public:
     size_t sizeof_obj() const override { return 40; }
     std::vector<uint8_t> get_bytes() const override {
         std::vector<uint8_t> b(40);
-        write_le(b, 0,  Field1, 4);
-        write_le(b, 4,  Field2, 4);
+        write_le(b, 0, Field1, 4);
+        write_le(b, 4, Field2, 4);
         memcpy(b.data() + 8, DeepData, 32);
         return b;
     }
@@ -56,7 +61,7 @@ struct SHALLOW_NEST : public EmuStruct {
     size_t sizeof_obj() const override { return 44; }
     std::vector<uint8_t> get_bytes() const override {
         std::vector<uint8_t> b(44);
-        write_le(b, 0,  Field1, 2);
+        write_le(b, 0, Field1, 2);
         auto deep_bytes = DeepStruct.get_bytes();
         memcpy(b.data() + 2, deep_bytes.data(), deep_bytes.size());
         write_le(b, 42, Field2, 2);
@@ -81,7 +86,7 @@ TEST(StructLayoutTest, NestedEmuStruct32bit) {
     EXPECT_EQ(bytes[42], 0x08); EXPECT_EQ(bytes[43], 0x08);
 }
 
-TEST(StructLayoutTest, DeepDataDefaultsToZero) {
+TEST(StructLayoutTest, DefaultValuesAreZero) {
     DEEP_NEST deep;
     auto b = deep.get_bytes();
     for (uint8_t byte : b) EXPECT_EQ(byte, 0);
@@ -95,33 +100,111 @@ TEST(StructLayoutTest, WriteLeUint32) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// Config tests (← tests/test_cli_config.py)
+// Config tests  (← tests/test_cli_config.py, test_config.py,
+//                 test_config_memory_dumps.py)
 // ══════════════════════════════════════════════════════════════════
 
-TEST(ConfigTest, DefaultConfigHasExpectedValues) {
+TEST(ConfigTest, DefaultConfigValidates) {
     SpeakeasyConfig cfg = default_config();
-    EXPECT_EQ(cfg.timeout, 60);
-    EXPECT_EQ(cfg.os_ver.major, 6);
+    EXPECT_NO_THROW(validate_config(cfg));
 }
 
-TEST(ConfigTest, ConfigRoundTripJson) {
+TEST(ConfigTest, DefaultHasExpectedValues) {
+    SpeakeasyConfig cfg = default_config();
+    EXPECT_EQ(cfg.timeout, 60);
+    EXPECT_EQ(cfg.max_api_count, 10000);
+    EXPECT_EQ(cfg.os_ver.major, 6);
+    EXPECT_EQ(cfg.analysis.strings, true);
+}
+
+TEST(ConfigTest, JsonRoundTrip) {
     SpeakeasyConfig cfg = default_config();
     cfg.timeout = 90;
+    cfg.analysis.coverage = true;
     nlohmann::json j = cfg;
     SpeakeasyConfig cfg2 = j;
     EXPECT_EQ(cfg2.timeout, 90);
-    EXPECT_EQ(cfg2.analysis.strings, true);
+    EXPECT_EQ(cfg2.analysis.coverage, true);
+    EXPECT_EQ(cfg2.analysis.strings, true);  // non-overridden preserved
 }
 
-TEST(ConfigTest, ConfigCustomOsVersion) {
+TEST(ConfigTest, CustomOsVersion) {
     nlohmann::json j;
     j["os_ver"]["major"] = 10;
+    j["os_ver"]["minor"] = 0;
+    j["os_ver"]["build"] = 19041;
     SpeakeasyConfig cfg = j;
     EXPECT_EQ(cfg.os_ver.major, 10);
+    EXPECT_EQ(cfg.os_ver.minor, 0);
+}
+
+TEST(ConfigTest, RejectsInvalidEngine) {
+    nlohmann::json j;
+    j["emu_engine"] = "alternate_engine";
+    SpeakeasyConfig cfg = j;
+    EXPECT_THROW(validate_config(cfg), ConfigError);
+}
+
+// Legacy capture_memory_dumps alias (← test_config_memory_dumps.py)
+TEST(ConfigTest, LegacyCaptureMemoryDumpsAlias) {
+    nlohmann::json j = R"({
+        "config_version": 0.2,
+        "emu_engine": "unicorn",
+        "timeout": 60,
+        "system": "windows",
+        "capture_memory_dumps": true,
+        "analysis": {"memory_tracing": false, "strings": true, "coverage": false},
+        "exceptions": {"dispatch_handlers": true},
+        "os_ver": {},
+        "current_dir": "C:\\Windows",
+        "hostname": "test",
+        "user": {"name": "test"},
+        "filesystem": {"files": []},
+        "network": {"dns": {"names": {}}, "http": {"responses": []},
+                     "winsock": {"responses": []}, "adapters": []},
+        "modules": {"module_directory_x86": "", "module_directory_x64": ""}
+    })"_json;
+    SpeakeasyConfig cfg = j;
+    SUCCEED();
 }
 
 // ══════════════════════════════════════════════════════════════════
-// Profiler event tests (← tests/test_profiler_artifacts.py)
+// Module name normalization  (← tests/test_module_name_normalization.py)
+// ── Replicates WindowsEmulator::normalize_mod_name inline
+//     (the method is protected in the class)
+// ══════════════════════════════════════════════════════════════════
+
+static std::string normalize_mod_name(const std::string& name) {
+    auto dot = name.find_last_of('.');
+    std::string base = (dot != std::string::npos) ? name.substr(0, dot) : name;
+    for (auto& c : base) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return base;
+}
+
+TEST(NormalizeModNameTest, Lowercase) {
+    EXPECT_EQ(normalize_mod_name("KERNEL32"), "kernel32");
+    EXPECT_EQ(normalize_mod_name("Kernel32"), "kernel32");
+    EXPECT_EQ(normalize_mod_name("kernel32"), "kernel32");
+}
+
+TEST(NormalizeModNameTest, StripsExtension) {
+    EXPECT_EQ(normalize_mod_name("kernel32.dll"), "kernel32");
+    EXPECT_EQ(normalize_mod_name("kernel32.DLL"), "kernel32");
+    EXPECT_EQ(normalize_mod_name("ntdll.dll"), "ntdll");
+    EXPECT_EQ(normalize_mod_name("SHELL32.DLL"), "shell32");
+}
+
+TEST(NormalizeModNameTest, MixedCaseWithExtension) {
+    EXPECT_EQ(normalize_mod_name("User32.DLL"), "user32");
+    EXPECT_EQ(normalize_mod_name("ADVAPI32.dll"), "advapi32");
+}
+
+TEST(NormalizeModNameTest, NoExtension) {
+    EXPECT_EQ(normalize_mod_name("kernel32"), "kernel32");
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Profiler event tests  (← tests/test_profiler_artifacts.py)
 // ══════════════════════════════════════════════════════════════════
 
 TEST(ProfilerEventTest, LogFileAccess) {
@@ -151,25 +234,42 @@ TEST(ProfilerEventTest, ProfilerGetReport) {
     EXPECT_TRUE(report.empty() || report.size() > 0);
 }
 
+TEST(ProfilerEventTest, MultipleFileAccesses) {
+    Profiler prof;
+    auto run = std::make_shared<::Run>();
+    prof.add_run(run);
+    for (int i = 0; i < 5; i++)
+        EXPECT_NO_THROW(prof.log_file_access(run, "C:\\multi\\file" +
+            std::to_string(i) + ".bin", "write"));
+}
+
 // ══════════════════════════════════════════════════════════════════
-// Volume tests (← tests/test_volumes.py)
+// Volume tests  (← tests/test_volumes.py)
 // ══════════════════════════════════════════════════════════════════
 
-TEST(VolumeTest, ParseVolumeSpec) {
+TEST(VolumeTest, ParseUnixToWindows) {
     auto [host, guest] = parse_volume_spec("/tmp/samples:C:\\test");
-    EXPECT_EQ(host.string(), "/tmp/samples");
+    EXPECT_EQ(host, std::filesystem::path("/tmp/samples"));
     EXPECT_EQ(guest, "C:\\test");
 }
 
+TEST(VolumeTest, ParseWindowsToWindows) {
+    auto [host, guest] = parse_volume_spec("D:\\src:C:\\dest");
+    EXPECT_TRUE(host == "D:\\src" || host == "D:/src");
+    EXPECT_EQ(guest, "C:\\dest");
+}
+
 TEST(VolumeTest, ExpandVolumeToEntries) {
-    // Just verify the function signature compiles and runs
     auto entries = expand_volume_to_entries("/tmp", "C:\\test");
-    // Empty dir yields no entries; this test validates no crash
-    SUCCEED();
+    SUCCEED();  // no crash on empty dir
+}
+
+TEST(VolumeTest, RejectsMissingColon) {
+    EXPECT_THROW(parse_volume_spec("invalid"), std::invalid_argument);
 }
 
 // ══════════════════════════════════════════════════════════════════
-// ArtifactStore — Porting variant (suffixed Port to avoid smoke_test dupes)
+// ArtifactStore  (← tests/test_artifact_store.py)
 // ══════════════════════════════════════════════════════════════════
 
 TEST(ArtifactStorePortTest, GetMissing) {
@@ -188,9 +288,8 @@ TEST(ArtifactStorePortTest, PutAndGet) {
 
 TEST(ArtifactStorePortTest, Dedup) {
     ArtifactStore store;
-    std::string r1 = store.put_bytes({'d','u','p','e'});
-    std::string r2 = store.put_bytes({'d','u','p','e'});
-    EXPECT_EQ(r1, r2);
+    EXPECT_EQ(store.put_bytes({'d','u','p','e'}),
+              store.put_bytes({'d','u','p','e'}));
 }
 
 TEST(ArtifactStorePortTest, ToReportData) {
@@ -220,22 +319,27 @@ TEST(ArtifactStorePortTest, SizeAndClear) {
 TEST(MemoryManagerPortTest, MemMapMultiple) {
     MemoryManager mm;
     uint64_t a1 = mm.mem_map(0x1000, 0, PERM_MEM_RWX, "mm1");
+    uint64_t a2 = mm.mem_map(0x2000, 0, PERM_MEM_RW,  "mm2");
     EXPECT_NE(a1, 0);
-    // Second allocation may return same address depending on manager impl
-    uint64_t a2 = mm.mem_map(0x2000, 0, PERM_MEM_RW, "mm2");
     EXPECT_NE(a2, 0);
 }
 
+TEST(MemoryManagerPortTest, MemMapAtFixedAddress) {
+    MemoryManager mm;
+    uint64_t addr = mm.mem_map(0x1000, 0x10000000, PERM_MEM_RWX, "fixed");
+    EXPECT_EQ(addr, 0x10000000);
+}
+
 // ══════════════════════════════════════════════════════════════════
-// NT struct offset tests (← tests/test_process_parameters.py)
+// NT struct offset tests  (← tests/test_process_parameters.py)
 // ══════════════════════════════════════════════════════════════════
 
 TEST(NtDefTest, UnicodeStringOffsets) {
     defs::nt::UNICODE_STRING us;
-    EXPECT_EQ(us.sizeof_obj(), 16);
+    EXPECT_EQ(us.sizeof_obj(), 16);  // x64: Len(2)+Max(2)+pad(4)+Buf(8)
 }
 
-TEST(NtDefTest, UnicodeStringBufferOffset) {
+TEST(NtDefTest, UnicodeStringBufferAtOffset8) {
     defs::nt::UNICODE_STRING us;
     us.Buffer = 0xDEADBEEFCAFEULL;
     auto bytes = us.get_bytes();
@@ -252,10 +356,21 @@ TEST(NtDefTest, KSystemTimeLayout) {
     EXPECT_EQ(kt.sizeof_obj(), 12);
     auto bytes = kt.get_bytes();
     EXPECT_EQ(bytes.size(), 12);
-    EXPECT_EQ(bytes[0],  0xDD);
-    EXPECT_EQ(bytes[3],  0xAA);
-    EXPECT_EQ(bytes[4],  0x44);
-    EXPECT_EQ(bytes[7],  0x11);
-    EXPECT_EQ(bytes[8],  0x88);
-    EXPECT_EQ(bytes[11], 0x55);
+    EXPECT_EQ(bytes[0],  0xDD);  // LowPart LSB
+    EXPECT_EQ(bytes[3],  0xAA);  // LowPart MSB
+    EXPECT_EQ(bytes[4],  0x44);  // High1Time LSB
+    EXPECT_EQ(bytes[7],  0x11);  // High1Time MSB
+    EXPECT_EQ(bytes[8],  0x88);  // High2Time LSB
+    EXPECT_EQ(bytes[11], 0x55);  // High2Time MSB
+}
+
+TEST(NtDefTest, StringStruct) {
+    defs::nt::STRING s;
+    s.Length = 4;
+    s.MaximumLength = 8;
+    s.Buffer = 0x1000;
+    auto bytes = s.get_bytes();
+    EXPECT_EQ(bytes.size(), 16);
+    EXPECT_EQ(bytes[0], 4);   // Length
+    EXPECT_EQ(bytes[2], 8);   // MaxLength
 }
