@@ -6,6 +6,8 @@
 #include "binemu.h"
 #include "profiler.h"
 #include "../config.h"
+#include "../winenv/api/winapi.h"
+#include "../winenv/api/api.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -1191,10 +1193,156 @@ void WindowsEmulator::continue_seh() {
     _seh_repeat_count = 0;
 }
 
+// ── API dispatch ──────────────────────────────────────────────
+
+void* WindowsEmulator::get_proc(const std::string& mod_name, const std::string& func_name) {
+    // Python reference: winemu.py lines 1358-1370
+    std::string mod_lower = normalize_mod_name(mod_name);
+    for (const auto& pair : import_table) {
+        if (std::get<0>(pair.second) == mod_lower && std::get<1>(pair.second) == func_name) {
+            return reinterpret_cast<void*>(static_cast<uintptr_t>(pair.first));
+        }
+    }
+    uint64_t sentinel = _alloc_sentinel();
+    import_table[sentinel] = {mod_lower, func_name};
+    return reinterpret_cast<void*>(static_cast<uintptr_t>(sentinel));
+}
+
+std::tuple<std::string, std::string> WindowsEmulator::normalize_import_miss(
+    const std::string& dll, const std::string& name) {
+    // Python reference: winemu.py lines 1561-1602
+    std::string ndll = dll;
+    std::string nname = name;
+
+    if (ndll.size() > 4) {
+        auto ext = ndll.substr(ndll.size() - 4);
+        for (auto& c : ext) c = static_cast<char>(std::tolower(c));
+        if (ext == ".dll") ndll = ndll.substr(0, ndll.size() - 4);
+    }
+    for (auto& c : ndll) c = static_cast<char>(std::tolower(c));
+
+    std::string alt_name;
+    if (!nname.empty() && (nname.back() == 'A' || nname.back() == 'W')) {
+        alt_name = nname.substr(0, nname.size() - 1);
+    }
+
+    bool is_ntos = (ndll.find("ntoskrnl") != std::string::npos);
+    if (is_ntos) {
+        if (nname.find("Zw") == 0 && nname.size() > 2)
+            alt_name = "Nt" + nname.substr(2);
+        else if (nname.find("Nt") == 0 && nname.size() > 2)
+            alt_name = "Zw" + nname.substr(2);
+    }
+
+    bool is_ntdll = (ndll.find("ntdll") != std::string::npos);
+    if (is_ntdll)
+        ndll = "ntoskrnl";
+
+    if (!alt_name.empty())
+        nname = alt_name;
+
+    return {ndll, nname};
+}
+
 void WindowsEmulator::handle_import_func(const std::string& dll, const std::string& name) {
-    // Dispatch to registered API handler
-    symbols[0] = {dll, name};  // Register for later symbol resolution
-    (void)dll; (void)name;
+    // Python reference: winemu.py lines 1639-1751
+    std::string imp_api = dll + "." + name;
+
+    uint64_t oret = get_ret_address();
+    uint64_t opc  = get_pc();
+    uint64_t call_pc = (prev_pc != 0) ? prev_pc : oret;
+
+    // Normalize module name
+    std::string dll_norm = dll;
+    for (auto& c : dll_norm) c = static_cast<char>(std::tolower(c));
+    if (dll_norm.size() > 4 && dll_norm.substr(dll_norm.size() - 4) == ".dll")
+        dll_norm = dll_norm.substr(0, dll_norm.size() - 4);
+
+    // ── Primary handler lookup ──
+    ApiHandler* handler_mod = nullptr;
+    void* func_ptr = nullptr;
+
+    if (api) {
+        auto* wapi = static_cast<WindowsApi*>(api);
+        std::tie(handler_mod, func_ptr) = wapi->get_export_func_handler(dll_norm, name);
+    }
+
+    // ── Normalization fallback ──
+    if (!func_ptr) {
+        auto [alt_dll, alt_name] = normalize_import_miss(dll, name);
+        if (alt_dll != dll_norm || alt_name != name) {
+            if (api) {
+                auto* wapi = static_cast<WindowsApi*>(api);
+                std::tie(handler_mod, func_ptr) = wapi->get_export_func_handler(alt_dll, alt_name);
+                if (func_ptr) imp_api = alt_dll + "." + alt_name;
+            }
+        }
+    }
+
+    // ── Execute handler ──
+    if (func_ptr && handler_mod) {
+        int conv = speakeasy::arch::CALL_CONV_STDCALL;
+        int argc = 4;
+
+        // Re-query handler metadata for argc/conv
+        auto [fn_name, hfunc, hargc, hconv, hord] = handler_mod->get_func_handler(name);
+        (void)hord;
+        if (hfunc) { argc = hargc; conv = hconv; }
+        if (!name.empty() && name.find("ordinal_") == 0 && !fn_name.empty())
+            imp_api = dll + "." + fn_name;
+
+        auto argv = get_func_argv(conv, argc);
+
+        if (api) {
+            try {
+                auto* wapi = static_cast<WindowsApi*>(api);
+                std::vector<void*> vptr_argv;
+                for (auto a : argv)
+                    vptr_argv.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(a)));
+                wapi->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
+
+                uint64_t rv = 0;  // handlers set ret via registers
+                uint64_t ret = get_ret_address();
+                uint64_t pc = get_pc();
+
+                log_api(call_pc, imp_api, rv, argv);
+
+                if (!run_complete && ret == oret && pc == opc) {
+                    do_call_return(argc, ret, rv, conv);
+                }
+            } catch (const std::exception& e) {
+                (void)e;
+                on_run_complete();
+                return;
+            }
+        }
+        return;
+    }
+
+    // ── No handler: unsupported API ──
+    // (API hooks not yet ported — ApiHook struct is TBD)
+    on_run_complete();
+}
+
+void WindowsEmulator::handle_import_data(const std::string& mod, const std::string& sym,
+                                          uint64_t data_ptr) {
+    // Python reference: winemu.py lines 1372-1387
+    if (!api) return;
+
+    auto* wapi = static_cast<WindowsApi*>(api);
+    // Try data export handler first
+    auto [data_mod, data_func] = wapi->get_data_export_handler(mod, sym);
+    if (data_func) {
+        wapi->call_data_func(data_mod, data_func, data_ptr);
+        return;
+    }
+    // Fallback: try func export handler (returns a procedure address)
+    auto [func_mod, func_ptr] = wapi->get_export_func_handler(mod, sym);
+    if (func_ptr) {
+        // Get procedure address (sentinel) for this module+function
+        get_proc(mod, sym);
+        return;
+    }
 }
 
 void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
@@ -1206,19 +1354,8 @@ void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
     }
 }
 
-void WindowsEmulator::handle_import_data(const std::string& mod, const std::string& sym,
-                                          uint64_t data_ptr) {
-    (void)mod; (void)sym; (void)data_ptr;
-}
-
-void* WindowsEmulator::get_proc(const std::string& mod_name, const std::string& func_name) {
-    (void)mod_name; (void)func_name;
-    return nullptr;
-}
-
 uint64_t WindowsEmulator::add_callback(const std::string& mod_name, const std::string& func_name) {
     static uint64_t next_callback_addr = 0x102000;  // EMU_CALLBACK_RESERVE
-    // Check if already registered
     for (const auto& cb : callbacks) {
         if (std::get<1>(cb) == mod_name && std::get<2>(cb) == func_name) {
             return std::get<0>(cb);
@@ -1235,23 +1372,6 @@ std::string WindowsEmulator::get_symbol_from_address(uint64_t address) {
         return std::get<0>(it->second) + "." + std::get<1>(it->second);
     }
     return "";
-}
-
-std::tuple<std::string, std::string> WindowsEmulator::normalize_import_miss(
-    const std::string& dll, const std::string& name) {
-    // Normalize common import name variations
-    std::string ndll = dll;
-    std::string nname = name;
-    // Strip ".dll" suffix
-    if (ndll.size() > 4) {
-        auto ext = ndll.substr(ndll.size() - 4);
-        for (auto& c : ext) c = static_cast<char>(std::tolower(c));
-        if (ext == ".dll") ndll = ndll.substr(0, ndll.size() - 4);
-    }
-    // Lowercase for matching
-    for (auto& c : ndll) c = static_cast<char>(std::tolower(c));
-    for (auto& c : nname) c = static_cast<char>(std::tolower(c));
-    return {ndll, nname};
 }
 
 std::vector<uint8_t> WindowsEmulator::read_unicode_string(uint64_t addr) {
