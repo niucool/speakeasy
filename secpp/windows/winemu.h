@@ -28,6 +28,10 @@
 #include "fileman.h"
 #include "regman.h"
 #include "loaders.h"
+#include "netman.h"
+#include "driveman.h"
+#include "cryptman.h"
+class ApiHammer;  // forward decl — hammer.h includes winemu.h (circular)
 #include "errors.h"
 #include "../config.h"
 #include "../struct.h"
@@ -90,8 +94,8 @@ protected:
     // ── Processes ─────────────────────────────────────────────
     std::vector<void*> processes;
     std::vector<void*> child_processes;
-    void* curr_process = nullptr;
-    void* curr_thread = nullptr;
+    Process* curr_process = nullptr;
+    Thread* curr_thread = nullptr;
 
     // ── Memory / hooks ────────────────────────────────────────
     uint64_t page_size = 4096;
@@ -140,14 +144,14 @@ protected:
     bool functions_always_exist = false;
 
     // ── Managers ──────────────────────────────────────────────
-    void* regman = nullptr;
-    void* fileman = nullptr;
-    void* netman = nullptr;
-    void* driveman = nullptr;
-    void* cryptman = nullptr;
-    void* hammer = nullptr;
+    RegistryManager* regman = nullptr;
+    FileManager* fileman = nullptr;
+    NetworkManager* netman = nullptr;
+    DriveManager* driveman = nullptr;
+    CryptoManager* cryptman = nullptr;
+    ApiHammer* hammer = nullptr;
     void* api = nullptr;
-    void* om = nullptr;         // ObjectManager
+    ObjectManager* om = nullptr;     // ObjectManager
     void* wintypes = nullptr;
 
     // ── Helper ────────────────────────────────────────────────
@@ -245,9 +249,9 @@ public:
     std::vector<void*> get_processes();
     void kill_process(void* proc);
     void* get_current_thread();
-    void* get_current_process();
-    void set_current_process(void* process);
-    void set_current_thread(void* thread);
+    Process* get_current_process();
+    void set_current_process(Process* process);
+    void set_current_thread(Thread* thread);
 
     // ── Environment ────────────────────────────────────────────
     std::string get_system_root();

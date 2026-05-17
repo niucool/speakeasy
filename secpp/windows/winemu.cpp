@@ -453,7 +453,7 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
     if (run->process_context &&
         run->process_context != get_current_process()) {
         alloc_peb(run->process_context);
-        set_current_process(run->process_context);
+        set_current_process(static_cast<Process*>(run->process_context));
     }
 
     // Reset SEH state
@@ -758,9 +758,9 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
 }
 
 void* WindowsEmulator::get_current_thread() { return curr_thread; }
-void* WindowsEmulator::get_current_process() { return curr_process; }
-void WindowsEmulator::set_current_process(void* process) { curr_process = process; }
-void WindowsEmulator::set_current_thread(void* thread) { curr_thread = thread; }
+Process* WindowsEmulator::get_current_process() { return curr_process; }
+void WindowsEmulator::set_current_process(Process* process) { curr_process = process; }
+void WindowsEmulator::set_current_thread(Thread* thread) { curr_thread = thread; }
 
 // ── Module loading ───────────────────────────────────────────
 

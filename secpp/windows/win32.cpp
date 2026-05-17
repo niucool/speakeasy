@@ -180,7 +180,7 @@ void Win32Emulator::run_module(speakeasy::LoadedImage* module, bool all_entrypoi
         auto child = child_processes.front();
         child_processes.erase(child_processes.begin());
         prepare_module_for_emulation((speakeasy::LoadedImage *)child, all_entrypoints);
-        curr_process = child;
+        curr_process = static_cast<Process*>(child);
         curr_thread = nullptr;  // child process thread deferred
         start();
     }
