@@ -142,8 +142,10 @@ std::string emulate_binary(const std::string& target_path,
                            bool verbose, size_t entry_point) {
     try {
         // ── 1. Build config (Python: get_default_config_dict + merge + apply volumes) ──
+        speakeasy::SpeakeasyConfig validated;
         nlohmann::json cfg;
         {
+            // Start with default config
             // Start with default config
             cfg = nlohmann::json::object();
             cfg["timeout"] = 60;
@@ -172,12 +174,12 @@ std::string emulate_binary(const std::string& target_path,
             }
 
             // Validate (Python: SpeakeasyConfig.model_validate)
-            SpeakeasyConfig validated = cfg;
+            validated = cfg;
             validate_config(validated);
         }
 
         // ── 3. Initialise Speakeasy ──
-        Speakeasy se(cfg, nullptr, extra_argv, false, nullptr);
+        Speakeasy se(validated, nullptr, extra_argv, false, nullptr);
         std::string report;
 
         if (is_raw) {

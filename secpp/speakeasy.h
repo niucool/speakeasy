@@ -9,6 +9,7 @@
 #include <functional>
 #include <cstdint>
 #include <nlohmann/json.hpp>
+#include "config.h"
 
 #include "windows/win32.h"
 #include "windows/winemu.h"
@@ -29,7 +30,7 @@ class Emulator;
 class Speakeasy {
 private:
     void* logger;
-    nlohmann::json config;
+    speakeasy::SpeakeasyConfig config;
     Win32Emulator* emu;
     std::vector<std::tuple<std::function<void()>, std::string, std::string, int, std::string>> api_hooks;
     std::vector<std::tuple<std::function<void()>, uint64_t, uint64_t, std::map<std::string, std::string>>> code_hooks;
@@ -48,7 +49,7 @@ private:
     /**
      * Init the emulator config
      */
-    void _init_config(const nlohmann::json& config = nlohmann::json());
+    void _init_config(const speakeasy::SpeakeasyConfig& cfg = speakeasy::SpeakeasyConfig());
     
     /**
      * Based on the PE metadata, use the appropriate emulator
@@ -64,7 +65,7 @@ public:
     /**
      * Constructor
      */
-    Speakeasy(const nlohmann::json& config = nlohmann::json(), void* logger = nullptr, 
+    Speakeasy(const speakeasy::SpeakeasyConfig& config = speakeasy::SpeakeasyConfig(), void* logger = nullptr, 
               const std::vector<std::string>& argv = {}, bool debug = false, void* exit_event = nullptr);
     
     /**

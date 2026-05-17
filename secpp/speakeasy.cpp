@@ -16,33 +16,18 @@
 #include <pe-parse/parse.h>
 #include "struct.h"
 
-Speakeasy::Speakeasy(const nlohmann::json& config, void* logger, 
+Speakeasy::Speakeasy(const speakeasy::SpeakeasyConfig& cfg, void* logger, 
                      const std::vector<std::string>& argv, bool debug, void* exit_event)
-    : logger(logger), emu(nullptr), argv(argv), exit_event(exit_event), 
+    : logger(logger), config(cfg), emu(nullptr), argv(argv), exit_event(exit_event), 
       debug(debug) {
-    _init_config(config);
-}
-
-Speakeasy::~Speakeasy() { shutdown(); }
-
-void Speakeasy::_init_config(const nlohmann::json& config) {
-    if (config.empty()) {
-        try {
-            std::ifstream f("configs/default.json");
-            if (f.is_open()) f >> this->config;
-            else this->config = nlohmann::json::object();
-        } catch (...) {
-            this->config = nlohmann::json::object();
-        }
-    } else {
-        this->config = config;
-    }
     try {
         validate_config(this->config);
     } catch (const std::exception& err) {
         throw ConfigError("Invalid config: " + std::string(err.what()));
     }
 }
+
+Speakeasy::~Speakeasy() { shutdown(); }
 
 void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_t>& data, bool is_raw_code) {
     if (!is_raw_code) {
@@ -111,19 +96,14 @@ void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_
 
         if (is_driver) {
             // ── Kernel-mode emulator (Python: WinKernelEmulator) ──
-            // WinKernelEmulator now inherits from WindowsEmulator + IoManager,
-            // matching Python's class WinKernelEmulator(WindowsEmulator, IoManager).
-            speakeasy::SpeakeasyConfig scfg = config;
-            emu = new speakeasy::WinKernelEmulator(scfg, argv, debug, logger, exit_event);
+            emu = new speakeasy::WinKernelEmulator(config, argv, debug, logger, exit_event);
         } else {
             // ── User-mode emulator (Python: Win32Emulator) ──
-            speakeasy::SpeakeasyConfig scfg = config;
-            emu = new Win32Emulator(scfg, argv, debug, logger, exit_event);
+            emu = new Win32Emulator(config, argv, debug, logger, exit_event);
         }
     } else {
         // ── Raw/Shellcode mode (Python: Win32Emulator) ──
-        speakeasy::SpeakeasyConfig scfg = config;
-        emu = new Win32Emulator(scfg, argv, debug, logger, exit_event);
+        emu = new Win32Emulator(config, argv, debug, logger, exit_event);
     }
 }
 
@@ -155,9 +135,16 @@ PeFile* Speakeasy::load_module(const std::string& path, const std::vector<uint8_
         throw SpeakeasyError("Target file not found: " + path);
     loaded_bins.push_back(path);
     std::vector<uint8_t> test;
-    if (!data.empty()) test = data;
-    else { std::ifstream f(path, std::ios::binary); test.resize(4); f.read(reinterpret_cast<char*>(test.data()), 4); }
-    if (!is_pe(test)) throw SpeakeasyError("Target file is not a PE");
+    if (!data.empty()) {
+        test = data;
+    }
+    else {
+        std::ifstream f(path, std::ios::binary); 
+        test.resize(4); 
+        f.read(reinterpret_cast<char*>(test.data()), 4); 
+    }
+    if (!is_pe(test)) 
+        throw SpeakeasyError("Target file is not a PE");
     _init_emulator(path, data);
     return (PeFile*)(uintptr_t)emu->load_module(path, data);
 }
