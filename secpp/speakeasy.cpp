@@ -10,7 +10,7 @@
 // compilation errors. Use _PEPARSE_WINDOWS_CONFLICTS to skip pe-parse's
 // own definitions (relying on Windows SDK macros instead on MSVC).
 // We use raw integer values in this file to avoid depending on either.
-#ifndef _PEPARSE_WINDOWS_CONFLICTS
+#ifdef PLATFORM_WINDOWS
 #define _PEPARSE_WINDOWS_CONFLICTS
 #endif
 #include <pe-parse/parse.h>
@@ -128,7 +128,7 @@ bool Speakeasy::is_pe(const std::vector<uint8_t>& data) {
     return (data.size() >= 2 && data[0] == 'M' && data[1] == 'Z');
 }
 
-PeFile* Speakeasy::load_module(const std::string& path, const std::vector<uint8_t>& data) {
+speakeasy::LoadedImage* Speakeasy::load_module(const std::string& path, const std::vector<uint8_t>& data) {
     if (path.empty() && data.empty())
         throw SpeakeasyError("No emulation target supplied");
     if (!path.empty() && !std::ifstream(path).good())
@@ -146,10 +146,10 @@ PeFile* Speakeasy::load_module(const std::string& path, const std::vector<uint8_
     if (!is_pe(test)) 
         throw SpeakeasyError("Target file is not a PE");
     _init_emulator(path, data);
-    return (PeFile*)(uintptr_t)emu->load_module(path, data);
+    return emu->load_module(path, data);
 }
 
-void Speakeasy::run_module(PeFile* module, bool all_entrypoints, bool emulate_children) {
+void Speakeasy::run_module(speakeasy::LoadedImage* module, bool all_entrypoints, bool emulate_children) {
     _init_hooks();
     emu->run_module(module, all_entrypoints, emulate_children);
 }

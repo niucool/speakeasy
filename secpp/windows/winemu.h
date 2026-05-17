@@ -278,9 +278,9 @@ public:
     void init_peb(void* user_mods, void* proc = nullptr);
     void init_teb(void* thread, void* peb);
     void init_tls(void* thread);
-    void* load_pe(const std::string& path = "", const std::vector<uint8_t>& data = {},
+    speakeasy::LoadedImage* load_pe(const std::string& path = "", const std::vector<uint8_t>& data = {},
                   uint64_t imp_id = 0);
-    void* load_image(void* image);
+    speakeasy::LoadedImage* load_image(speakeasy::LoadedImage* image);
     void ensure_pe_import_hooks(uint64_t base_addr);
 
     // ── Module loading ────────────────────────────────────────

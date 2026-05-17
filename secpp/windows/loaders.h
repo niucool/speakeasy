@@ -15,6 +15,11 @@
 #include <memory>
 #include <cstdint>
 
+#ifdef PLATFORM_WINDOWS
+#define _PEPARSE_WINDOWS_CONFLICTS
+#endif
+#include <pe-parse/parse.h>
+
 namespace speakeasy {
 
 // ── Data structures ──────────────────────────────────────────
@@ -80,7 +85,6 @@ struct LoadedImage {
     std::vector<SectionEntry> sections;
     std::vector<uint64_t> tls_callbacks;
 };
-
 // ── PE Loader ────────────────────────────────────────────────
 
 /**
@@ -96,6 +100,11 @@ public:
      */
     explicit PeLoader(const std::string& path = "",
                       const std::vector<uint8_t>& data = {});
+
+    /**
+     * Destructor to clean up parsed PE resources.
+     */
+    ~PeLoader();
 
     /**
      * Parse the PE and produce a memory image suitable for loading.
@@ -130,6 +139,7 @@ private:
     std::vector<ExportEntry> exports_;
     std::vector<SectionEntry> sections_;
     std::vector<uint64_t> tls_callbacks_;
+    peparse::parsed_pe* parser_pe = nullptr;
 
     void parse_pe();
     uint32_t perms_from_section_chars(uint32_t chars);

@@ -86,12 +86,12 @@ public:
     /**
      * Load a module into the speakeasy emulator
      */
-    PeFile* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {});
+    speakeasy::LoadedImage* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {});
     
     /**
      * Run a previously loaded module through the configured emulator
      */
-    void run_module(PeFile* module, bool all_entrypoints = false, bool emulate_children = false);
+    void run_module(speakeasy::LoadedImage* module, bool all_entrypoints = false, bool emulate_children = false);
     
     /**
      * Load a shellcode blob into emulation space

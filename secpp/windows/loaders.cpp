@@ -6,8 +6,6 @@
 #include <stdexcept>
 #include <algorithm>
 
-#include <pe-parse/parse.h>
-#include <pe-parse/nt-headers.h>
 
 namespace speakeasy {
 
@@ -165,17 +163,33 @@ PeLoader::PeLoader(const std::string& path, const std::vector<uint8_t>& data)
         throw std::runtime_error("No PE data to parse");
     }
 
-    parse_pe();
+    try {
+        parse_pe();
+    } catch (...) {
+        if (parser_pe) {
+            peparse::DestructParsedPE(parser_pe);
+            parser_pe = nullptr;
+        }
+        throw;
+    }
+}
+
+PeLoader::~PeLoader() {
+    if (parser_pe) {
+        peparse::DestructParsedPE(parser_pe);
+    }
 }
 
 void PeLoader::parse_pe() {
-    auto* pe = peparse::ParsePEFromPointer(
+    parser_pe = peparse::ParsePEFromPointer(
         const_cast<uint8_t*>(data_.data()),
         static_cast<uint32_t>(data_.size()));
 
-    if (!pe) {
+    if (!parser_pe) {
         throw std::runtime_error("Failed to parse PE file");
     }
+
+    auto* pe = static_cast<peparse::parsed_pe*>(parser_pe);
 
     ParseCtx ctx;
 
@@ -250,16 +264,12 @@ void PeLoader::parse_pe() {
         }
     }
 
-    peparse::DestructParsedPE(pe);
 }
 
 LoadedImage PeLoader::make_image() {
     LoadedImage img;
 
-    // Re-parse to build mapped image
-    auto* pe = peparse::ParsePEFromPointer(
-        const_cast<uint8_t*>(data_.data()),
-        static_cast<uint32_t>(data_.size()));
+    auto* pe = parser_pe;
 
     if (!pe) {
         // Return what we have from parse_pe
@@ -358,7 +368,6 @@ LoadedImage PeLoader::make_image() {
         img.mapped_image.push_back(0);
     }
 
-    peparse::DestructParsedPE(pe);
 
     // Fill metadata
     img.name = path_.empty() ? "unknown" :

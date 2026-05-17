@@ -685,20 +685,19 @@ void WindowsEmulator::init_tls(void* thread) {
     (void)thr;
 }
 
-void* WindowsEmulator::load_pe(const std::string& path,
+speakeasy::LoadedImage* WindowsEmulator::load_pe(const std::string& path,
                                 const std::vector<uint8_t>& data,
                                 uint64_t imp_id) {
     // Use PeLoader to parse the PE file
     speakeasy::PeLoader loader(path, data);
-    auto img = loader.make_image();
+    speakeasy::LoadedImage img = loader.make_image();
     img.base = imp_id;  // Override base for sentinel tracking
     return load_image(&img);
 }
 
-void* WindowsEmulator::load_image(void* image) {
-    if (!image) return nullptr;
+speakeasy::LoadedImage* WindowsEmulator::load_image(speakeasy::LoadedImage* img) {
+    if (!img) return nullptr;
 
-    auto* img = static_cast<speakeasy::LoadedImage*>(image);
     if (img->mapped_image.empty() && img->regions.empty())
         return nullptr;
 
@@ -706,9 +705,10 @@ void* WindowsEmulator::load_image(void* image) {
     if (!emu_eng || img->arch != static_cast<int>(ptr_size * 8)) {
         int eng_arch = (img->arch == 64) ? speakeasy::arch::ARCH_AMD64
                                           : speakeasy::arch::ARCH_X86;
+        int mode = (img->arch == 64) ? speakeasy::arch::BITS_64 : speakeasy::arch::BITS_32;
         if (!emu_eng) {
-            // emu_eng = new EmuEngine();
-            // emu_eng->init_engine(eng_arch, ...);
+            emu_eng = new EmuEngine();
+            emu_eng->init_engine(eng_arch, mode);
         }
         ptr_size = img->arch / 8;
         page_size = speakeasy::arch::PAGE_SIZE;
@@ -741,7 +741,7 @@ void* WindowsEmulator::load_image(void* image) {
         symbols[img->base] = {img->name, ""};
     }
 
-    return reinterpret_cast<void*>(img->base);
+    return img;
 }
 
 void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {

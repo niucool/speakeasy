@@ -110,18 +110,18 @@ public:
     /**
      * Load a module into the emulator space from the specified path
      */
-    void* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {},
+    speakeasy::LoadedImage* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {},
                       bool first_time_setup = true);
     
     /**
      * Prepare module for emulation
      */
-    void prepare_module_for_emulation(void* module, bool all_entrypoints);
+    void prepare_module_for_emulation(speakeasy::LoadedImage* module, bool all_entrypoints);
     
     /**
      * Begin emulating a previously loaded module
      */
-    void run_module(void* module, bool all_entrypoints = false, bool emulate_children = false);
+    void run_module(speakeasy::LoadedImage* module, bool all_entrypoints = false, bool emulate_children = false);
     
     /**
      * Initialize name

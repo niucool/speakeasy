@@ -114,11 +114,11 @@ void Win32Emulator::init_processes(const std::vector<nlohmann::json>& processes)
     }
 }
 
-void* Win32Emulator::load_module(const std::string& path, const std::vector<uint8_t>& data,
+speakeasy::LoadedImage* Win32Emulator::load_module(const std::string& path, const std::vector<uint8_t>& data,
                                  bool first_time_setup) {
     _init_name(path, data);
     uint64_t import_id = 0x41410000;
-    void* pe = load_pe(path, data, import_id);
+    speakeasy::LoadedImage* pe = load_pe(path, data, import_id);
     if (!pe) return nullptr;
     auto* img = static_cast<speakeasy::LoadedImage*>(pe);
     if (!arch) { arch = img->arch; set_ptr_size(arch); }
@@ -126,7 +126,7 @@ void* Win32Emulator::load_module(const std::string& path, const std::vector<uint
 }
 
 
-void Win32Emulator::prepare_module_for_emulation(void* module, bool all_entrypoints) {
+void Win32Emulator::prepare_module_for_emulation(speakeasy::LoadedImage* module, bool all_entrypoints) {
     if (!module) return;
     auto* img = static_cast<speakeasy::LoadedImage*>(module);
     auto tls = img->tls_callbacks;
@@ -159,7 +159,7 @@ void Win32Emulator::prepare_module_for_emulation(void* module, bool all_entrypoi
 }
 
 
-void Win32Emulator::run_module(void* module, bool all_entrypoints, bool emulate_children) {
+void Win32Emulator::run_module(speakeasy::LoadedImage* module, bool all_entrypoints, bool emulate_children) {
     prepare_module_for_emulation(module, all_entrypoints);
     auto* img = static_cast<speakeasy::LoadedImage*>(module);
     if (processes.empty()) {
@@ -179,7 +179,7 @@ void Win32Emulator::run_module(void* module, bool all_entrypoints, bool emulate_
     while (emulate_children && !child_processes.empty()) {
         auto child = child_processes.front();
         child_processes.erase(child_processes.begin());
-        prepare_module_for_emulation(child, all_entrypoints);
+        prepare_module_for_emulation((speakeasy::LoadedImage *)child, all_entrypoints);
         curr_process = child;
         curr_thread = nullptr;  // child process thread deferred
         start();
@@ -204,8 +204,9 @@ void Win32Emulator::_init_name(const std::string& path, const std::vector<uint8_
 }
 
 void Win32Emulator::emulate_module(const std::string& path) {
-    void* mod = load_module(path, {}, true);
-    if (mod) run_module(mod);
+    speakeasy::LoadedImage* mod = load_module(path, {}, true);
+    if (mod) 
+        run_module(mod);
 }
 
 uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::string& arch,
