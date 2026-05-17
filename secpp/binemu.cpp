@@ -195,15 +195,12 @@ std::vector<std::string> BinaryEmulator::get_drive_config() {
 }
 
 void BinaryEmulator::reg_write(const std::string& reg, uint64_t val) {
-    // Look up register by name and write value
-    static std::map<std::string, int> reg_map = {
-        {"eax", 0}, {"ebx", 1}, {"ecx", 2}, {"edx", 3},
-        {"esi", 4}, {"edi", 5}, {"ebp", 6}, {"esp", 7}, {"eip", 8},
-        {"rax", 0}, {"rbx", 1}, {"rcx", 2}, {"rdx", 3},
-        {"rsi", 4}, {"rdi", 5}, {"rbp", 6}, {"rsp", 7}, {"rip", 8},
-    };
-    auto it = reg_map.find(reg);
-    if (it != reg_map.end()) reg_write(it->second, val);
+    // Python binemu.py:174-185: use central REG_LOOKUP table
+    std::string lower = reg;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    auto it = speakeasy::arch::REG_LOOKUP.find(lower);
+    if (it != speakeasy::arch::REG_LOOKUP.end())
+        reg_write(it->second, val);
 }
 
 void BinaryEmulator::reg_write(int reg, uint64_t val) {
@@ -214,14 +211,12 @@ void BinaryEmulator::reg_write(int reg, uint64_t val) {
 }
 
 uint64_t BinaryEmulator::reg_read(const std::string& reg) {
-    static std::map<std::string, int> reg_map = {
-        {"eax", 0}, {"ebx", 1}, {"ecx", 2}, {"edx", 3},
-        {"esi", 4}, {"edi", 5}, {"ebp", 6}, {"esp", 7}, {"eip", 8},
-        {"rax", 0}, {"rbx", 1}, {"rcx", 2}, {"rdx", 3},
-        {"rsi", 4}, {"rdi", 5}, {"rbp", 6}, {"rsp", 7}, {"rip", 8},
-    };
-    auto it = reg_map.find(reg);
-    if (it != reg_map.end()) return reg_read(it->second);
+    // Python binemu.py:187-198: use central REG_LOOKUP table
+    std::string lower = reg;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    auto it = speakeasy::arch::REG_LOOKUP.find(lower);
+    if (it != speakeasy::arch::REG_LOOKUP.end())
+        return reg_read(it->second);
     return 0;
 }
 
@@ -236,12 +231,14 @@ uint64_t BinaryEmulator::reg_read(int reg) {
 }
 
 void BinaryEmulator::set_hooks() {
-    // Register all hooks with the emulation engine
-    // Hook classes are refactored to accept BinaryEmulator* directly
-    for (auto& [hook_type, hook_list] : hooks) {
-        for (auto* h : hook_list) {
-            // Hook registration deferred to emu_eng-level callbacks
-            (void)h;
+    // Python binemu.py:200-213
+    static const int types[] = {HOOK_CODE, HOOK_MEM_READ, HOOK_MEM_WRITE, HOOK_MEM_INVALID, HOOK_INTERRUPT};
+    for (int ht : types) {
+        auto it = hooks_.find(ht);
+        if (it != hooks_.end()) {
+            for (Hook* hook : it->second) {
+                if (!hook->is_added()) hook->add();
+            }
         }
     }
 }
@@ -458,7 +455,55 @@ void BinaryEmulator::print_stack(int num_ptrs) {
     for (auto& line : trace) fprintf(stderr, "%s\n", line.c_str());
 }
 
+
+// Simple fnmatch for Windows (handles *, ?, [])
+static bool hook_fnmatch(const std::string& pattern, const std::string& value) {
+    if (pattern == value) return true;
+    bool has = false;
+    for (char ch : pattern) if (ch == '?' || ch == '*' || ch == '[' || ch == ']') { has = true; break; }
+    if (!has) return false;
+    size_t pi = 0, vi = 0, sp = std::string::npos, sv = 0;
+    while (vi < value.size()) {
+        if (pi < pattern.size() && (pattern[pi] == '?' || tolower(pattern[pi]) == tolower(value[vi]))) { ++pi; ++vi; }
+        else if (pi < pattern.size() && pattern[pi] == '*') { sp = pi++; sv = vi; }
+        else if (sp != std::string::npos) { pi = sp + 1; vi = ++sv; }
+        else return false;
+    }
+    while (pi < pattern.size() && pattern[pi] == '*') ++pi;
+    return pi == pattern.size();
+}
+
 // ── Hook management (deferred: Hook classes need Speakeasy*, not BinaryEmulator*) ─
+
+
+// ── Dynamic code hook dispatch ───────────────────────────────────
+
+void BinaryEmulator::_fire_dyn_code_hooks(uint64_t addr) {
+    // Python binemu.py:921-929: record profiler event + fire all DYN_CODE hooks
+    auto mm = get_address_map(addr);
+    auto* prof = get_profiler().get();
+    if (prof) {
+        auto* run = static_cast<Run*>(get_current_run().get());
+        if (run) prof->record_dyn_code_event(*run, mm ? mm->tag : "", mm ? mm->base : 0, mm ? mm->size : 0);
+    }
+    auto it = hooks_.find(HOOK_DYN_CODE);
+    if (it != hooks_.end()) {
+        for (Hook* h : it->second) {
+            static_cast<DynCodeHook*>(h)->cb(mm);
+        }
+    }
+}
+
+void BinaryEmulator::_set_dyn_code_hook(uint64_t addr, size_t size) {
+    // Python binemu.py:931-946: install a one-shot code hook that fires dyn_code_hooks
+    static const size_t MAX_HOOK_SIZE = 0x10;
+    if (size > MAX_HOOK_SIZE) size = MAX_HOOK_SIZE;
+
+    // Create a self-disabling hook that fires _fire_dyn_code_hooks on first hit
+    add_code_hook([this, addr](uint64_t, uint32_t) {
+        this->_fire_dyn_code_hooks(addr);
+    }, addr, addr + size);
+}
 
 void* BinaryEmulator::get_module_from_addr(uint64_t addr) {
     for (auto& mod : modules) {
@@ -470,64 +515,138 @@ void* BinaryEmulator::get_module_from_addr(uint64_t addr) {
 }
 
 std::vector<ApiHook> BinaryEmulator::get_api_hooks(const std::string& mod_name, const std::string& func_name) {
-    // Check if api hooks exist
-    auto it = hooks.find(HOOK_API);
-    if (it == hooks.end()) return {};
+    // Python binemu.py:822-852: two-level fnmatch wildcard dispatch
+    std::string ml = mod_name; std::transform(ml.begin(), ml.end(), ml.begin(), ::tolower);
+    std::string fl = func_name; std::transform(fl.begin(), fl.end(), fl.begin(), ::tolower);
 
-    // hooks[HOOK_API] is stored as void* pointer to pair<map<string,ApiLevel>, bool>
-    // For now, return empty until we have proper type storage
-    return {};
+    const auto& [mdict, wmod] = api_hooks_;
+    std::vector<const ApiLevel*> cand;
+    auto ex = mdict.find(ml);
+    if (ex != mdict.end()) cand.push_back(&ex->second);
+    if (wmod) for (auto& [sm, al] : mdict)
+        if (hook_fnmatch(sm, ml) && sm != ml) cand.push_back(&al);
+
+    std::vector<ApiHook> r;
+    for (auto* al : cand) {
+        auto& [fdict, wapi] = *al;
+        auto fi = fdict.find(fl);
+        if (fi != fdict.end()) for (auto& h : fi->second) r.push_back(h);
+        if (wapi) for (auto& [sf, hs] : fdict)
+            if (hook_fnmatch(sf, fl) && sf != fl) for (auto& h : hs) r.push_back(h);
+    }
+    return r;
 }
 
 // Hook registration methods (deferred until Hook classes are refactored
 // to accept BinaryEmulator* instead of Speakeasy*)
 
 ApiHook BinaryEmulator::add_api_hook(std::function<void()> cb, const std::string& module,
-                                      const std::string& api_name, int argc,
-                                      void* call_conv, BinaryEmulator* emu) {
-    (void)cb; (void)module; (void)api_name; (void)argc; (void)call_conv; (void)emu;
-    return ApiHook(nullptr, nullptr, nullptr, "", "", 0, nullptr);
+                                       const std::string& api_name, int argc,
+                                       void* call_conv, BinaryEmulator* emu) {
+    // Python binemu.py:854-895: nested dict with wildcard flag propagation
+    std::string ml = module; std::transform(ml.begin(), ml.end(), ml.begin(), ::tolower);
+    std::string fl = api_name; std::transform(fl.begin(), fl.end(), fl.begin(), ::tolower);
+
+    bool wm = false, wa = false;
+    for (const char* w : {"?", "*", "[", "]"}) {
+        if (ml.find(w) != std::string::npos) wm = true;
+        if (fl.find(w) != std::string::npos) wa = true;
+    }
+
+    if (!emu) emu = this;
+    ApiHook hook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, ml, fl, argc, call_conv);
+
+    ApiLevel ad = {{}, wa};
+    ad.first[fl].push_back(hook);
+
+    auto& [mdict, pwm] = api_hooks_;
+    auto mi = mdict.find(ml);
+    if (mi == mdict.end()) {
+        mdict[ml] = ad;
+    } else {
+        auto& [fdict, pwa] = mi->second;
+        fdict[fl].push_back(hook);
+        mi->second.second = pwa | wa;
+    }
+    api_hooks_.second = pwm | wm;
+
+    if (emu_eng) hook.add();
+    return hook;
 }
 
 CodeHook BinaryEmulator::add_code_hook(std::function<void()> cb, uint64_t begin, uint64_t end,
                                         std::map<std::string, std::string> ctx, BinaryEmulator* emu) {
-    (void)cb; (void)begin; (void)end; (void)ctx; (void)emu;
-    return CodeHook(nullptr, nullptr, nullptr, 0, 0);
+    if (!emu) emu = this;
+    auto* h = new CodeHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, begin, end);
+    hooks_[HOOK_CODE].push_back(h);
+    if (emu_eng) h->add();
+    return *h;
 }
 
 DynCodeHook BinaryEmulator::add_dyn_code_hook(std::function<void()> cb,
                                                std::vector<std::string> ctx, BinaryEmulator* emu) {
-    (void)cb; (void)ctx; (void)emu;
-    return DynCodeHook(nullptr, nullptr, nullptr);
+    if (!emu) emu = this;
+    auto* h = new DynCodeHook(emu, emu_eng, [cb]() -> bool { cb(); return true; });
+    hooks_[HOOK_DYN_CODE].push_back(h);
+    return *h;
 }
 
 ReadMemHook BinaryEmulator::add_mem_read_hook(std::function<void()> cb, uint64_t begin, uint64_t end,
                                                BinaryEmulator* emu) {
-    (void)cb; (void)begin; (void)end; (void)emu;
-    return ReadMemHook(nullptr, nullptr, nullptr, 0, 0);
+    // Python binemu.py:970-992
+    if (!emu) emu = this;
+    auto* h = new ReadMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, begin, end);
+    hooks_[HOOK_MEM_READ].push_back(h);
+    if (emu_eng) h->add();
+    return *h;
 }
 
 WriteMemHook BinaryEmulator::add_mem_write_hook(std::function<void()> cb, uint64_t begin, uint64_t end,
                                                   BinaryEmulator* emu) {
-    (void)cb; (void)begin; (void)end; (void)emu;
-    return WriteMemHook(nullptr, nullptr, nullptr, 0, 0);
+    // Python binemu.py:994-1016
+    if (!emu) emu = this;
+    auto* h = new WriteMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, begin, end);
+    hooks_[HOOK_MEM_WRITE].push_back(h);
+    if (emu_eng) h->add();
+    return *h;
 }
 
 MapMemHook BinaryEmulator::add_mem_map_hook(std::function<void()> cb, uint64_t begin, uint64_t end,
                                              BinaryEmulator* emu) {
-    (void)cb; (void)begin; (void)end; (void)emu;
-    return MapMemHook(nullptr, nullptr, nullptr, 0, 0);
+    // Python binemu.py:1018-1040
+    if (!emu) emu = this;
+    auto* h = new MapMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, begin, end);
+    hooks_[HOOK_MEM_MAP].push_back(h);
+    if (emu_eng) h->add();
+    return *h;
 }
 
 InvalidMemHook BinaryEmulator::add_mem_invalid_hook(std::function<void()> cb, BinaryEmulator* emu) {
-    (void)cb; (void)emu;
-    return InvalidMemHook(nullptr, nullptr, nullptr);
+    // Python binemu.py:1056-1076: first hook is the dispatch hook (native_hook=true)
+    if (!emu) emu = this;
+    auto* hook = new InvalidMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, false);
+    auto& hl = hooks_[HOOK_MEM_INVALID];
+    if (hl.empty()) {
+        // Insert dispatch hook as first element
+        auto* dh = new InvalidMemHook(emu, emu_eng, [this](int access, uint64_t addr, size_t size, uint64_t value) -> bool {
+            return this->_hook_mem_invalid_dispatch(access, addr, size, value);
+        }, true);
+        if (emu_eng) dh->add();
+        hl.push_back(dh);
+    }
+    hl.push_back(hook);
+    if (emu_eng) hook->add();
+    return *hook;
 }
 
 InterruptHook BinaryEmulator::add_interrupt_hook(std::function<void()> cb,
                                                   std::vector<std::string> ctx, BinaryEmulator* emu) {
-    (void)cb; (void)ctx; (void)emu;
-    return InterruptHook(nullptr, nullptr, nullptr);
+    // Python binemu.py:1078-1100
+    if (!emu) emu = this;
+    auto* h = new InterruptHook(emu, emu_eng, [cb]() -> bool { cb(); return true; });
+    hooks_[HOOK_INTERRUPT].push_back(h);
+    if (emu_eng) h->add();
+    return *h;
 }
 
 // ── Stack arguments ─────────────────────────────────────────
@@ -567,14 +686,22 @@ void BinaryEmulator::set_func_args(uint64_t stack_addr, uint64_t ret_addr,
 
 InstructionHook BinaryEmulator::add_instruction_hook(std::function<void()> cb, uint64_t begin, uint64_t end,
                           std::vector<std::string> ctx, BinaryEmulator* emu, void* insn) {
-    (void)cb; (void)begin; (void)end; (void)ctx; (void)emu; (void)insn;
-    return InstructionHook(nullptr, nullptr, nullptr, std::vector<void*>(), true, nullptr);
+    // Python binemu.py:1102-1124
+    if (!emu) emu = this;
+    auto* h = new InstructionHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, {}, true, insn);
+    hooks_[HOOK_INSN].push_back(h);
+    if (emu_eng) h->add();
+    return *h;
 }
 
 InvalidInstructionHook BinaryEmulator::add_invalid_instruction_hook(std::function<void()> cb,
                                          std::vector<std::string> ctx, BinaryEmulator* emu) {
-    (void)cb; (void)ctx; (void)emu;
-    return InvalidInstructionHook(nullptr, nullptr, nullptr, std::vector<void*>(), true);
+    // Python binemu.py:1126-1147
+    if (!emu) emu = this;
+    auto* h = new InvalidInstructionHook(emu, emu_eng, [cb]() -> bool { cb(); return true; });
+    hooks_[HOOK_INSN_INVALID].push_back(h);
+    if (emu_eng) h->add();
+    return *h;
 }
 
 std::vector<uint64_t> BinaryEmulator::get_func_argv(int callconv, int argc) {
@@ -645,15 +772,27 @@ int BinaryEmulator::get_ptr_size() {
 // ── String utilities ────────────────────────────────────────
 
 std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max_chars) {
-    std::string result;
+    // Python binemu.py:657-685: read strings with encoding
+    std::vector<uint8_t> raw;
     for (int i = 0; max_chars == 0 || i < max_chars; ++i) {
         auto data = mem_read(address + i * width, width);
         if (data.empty()) break;
-        uint16_t ch = 0;
-        for (size_t j = 0; j < data.size(); ++j)
-            ch |= static_cast<uint16_t>(data[j]) << (j * 8);
-        if (ch == 0) break;
-        result += static_cast<char>(ch & 0xFF);
+        bool zero = true;
+        for (auto b : data) if (b != 0) { zero = false; break; }
+        if (zero) break;
+        raw.insert(raw.end(), data.begin(), data.end());
+    }
+    if (width == 2) {
+        std::string result;
+        for (size_t i = 0; i + 1 < raw.size(); i += 2) {
+            if (raw[i+1] == 0) { if (raw[i] != 0) result += static_cast<char>(raw[i]); }
+            else result += '?';
+        }
+        return result;
+    }
+    std::string result;
+    for (auto b : raw) {
+        if (b >= 0x20 || b == '\t' || b == '\n') result += static_cast<char>(b);
     }
     return result;
 }
@@ -693,12 +832,18 @@ size_t BinaryEmulator::mem_copy(uint64_t dst, uint64_t src, size_t n) {
 }
 
 void BinaryEmulator::write_mem_string(const std::string& str, uint64_t address, int width) {
-    for (size_t i = 0; i < str.length(); ++i) {
-        uint16_t ch = static_cast<uint16_t>(str[i]);
-        std::vector<uint8_t> bytes(width, 0);
-        for (int j = 0; j < width; ++j)
-            bytes[j] = static_cast<uint8_t>((ch >> (j * 8)) & 0xFF);
-        mem_write(address + i * width, bytes);
+    // Python binemu.py:746-762: write string with encoding and null terminator
+    std::string data = str;
+    if (data.empty() || data.back() != '\0') data += '\0';
+    if (width == 2) {
+        for (size_t i = 0; i < data.length(); ++i) {
+            uint16_t ch = static_cast<uint16_t>(static_cast<uint8_t>(data[i]));
+            std::vector<uint8_t> bytes = {static_cast<uint8_t>(ch & 0xFF), 0};
+            mem_write(address + i * width, bytes);
+        }
+    } else {
+        std::vector<uint8_t> bytes(data.begin(), data.end());
+        mem_write(address, bytes);
     }
 }
 
@@ -736,10 +881,12 @@ std::tuple<uint64_t, uint64_t> BinaryEmulator::reset_stack(uint64_t base) {
 }
 
 std::tuple<uint64_t, uint64_t> BinaryEmulator::alloc_stack(size_t size) {
-    uint64_t sp = get_stack_ptr();
-    sp -= size;
-    set_stack_ptr(sp);
-    return {sp, sp + size};
+    // Python binemu.py:595-610: allocate memory for the stack
+    auto [addr, block_size] = get_valid_ranges(size, 0x1200000);
+    mem_map(block_size, addr, "emu.stack");
+    uint64_t base = addr + block_size;
+    mem_reserve(size, base);
+    return reset_stack(base);
 }
 
 uint64_t BinaryEmulator::get_return_val() {

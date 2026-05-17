@@ -21,10 +21,13 @@
 #include "version.h"
 #include "errors.h"
 
-// Constants
-const bool WILDCARD_FLAG = true;  // sentinel for wildcard API/module matching
-// typedef std::tuple<std::map<std::string, std::vector<ApiHook>>, WILDCARD_FLAG> API_LEVEL;
-// typedef std::tuple<std::map<std::string, API_LEVEL>, WILDCARD_FLAG> MODULE_LEVEL;
+// Hook type aliases (match Python binemu.py:24-26)
+// WILDCARD_FLAG = bool
+// API_LEVEL  = tuple[dict[str, list[ApiHook]], WILDCARD_FLAG]
+// MODULE_LEVEL = tuple[dict[str, API_LEVEL], WILDCARD_FLAG]
+
+using ApiLevel = std::pair<std::map<std::string, std::vector<ApiHook>>, bool>;
+using ModuleLevel = std::pair<std::map<std::string, ApiLevel>, bool>;
 
 // Generic emulator class for binary code
 class BinaryEmulator : public MemoryManager {
@@ -39,7 +42,8 @@ protected:
     EmuEngine* emu_eng;
     std::vector<void*> maps;
     std::map<std::string, std::string> config;
-    std::map<int, std::vector<void*>> hooks;
+    ModuleLevel api_hooks_{};
+    std::map<int, std::vector<Hook*>> hooks_;
     
     std::shared_ptr<Profiler> profiler;
     double runtime;
@@ -203,6 +207,9 @@ public:
     InvalidInstructionHook add_invalid_instruction_hook(std::function<void()> cb, 
                                                         std::vector<std::string> ctx = {}, 
                                                         BinaryEmulator* emu = nullptr);
+    
+    void _fire_dyn_code_hooks(uint64_t addr);
+    void _set_dyn_code_hook(uint64_t addr, size_t size);
     
     // Virtual methods to be implemented by subclasses
     virtual void on_emu_complete() = 0;
