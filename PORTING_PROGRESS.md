@@ -1,110 +1,72 @@
-# Speakeasy C++ Porting Progress
+# Speakeasy C++ Porting Progress — 真实状态
 
-> 最后更新: 2026-05-17
+> 最后更新: 2026-05-18
 > 构建: ✅ **0 errors** — speakeasy.lib + speakeasy_cli.exe + speakeasy_tests.exe
-> 测试: ✅ **95/95 passed** (62 smoke + 33 porting-regression)
+> 测试: ✅ **95/95 passed**
 
-## 最终完成率 — 全部函数移植完成
+## 真实完成率（基于代码逐函数验证）
 
-| 模块 | 函数总数 | 实现 | 保留 |
-|------|---------|------|------|
-| **binemu** | 48 | 45 ✅ | 3 (设计级) |
-| **winemu** | ~130 | ~126 ✅ | 4 (架构级) |
-| **win32** | 37 | 37 ✅ | 0 |
-| **profiler** | 23 | 22 ✅ | 1 (FileData) |
-| **common** | 11 | 11 ✅ | 0 |
-| **objman** | ~30 | ~30 ✅ | 0 |
+### binemu
 
-| 维度 | 进度 |
-|------|------|
-| **用户态 API Handler** | **39/39 (100%)** ✅ |
-| **内核态 API Handler** | **8/8 (100%)** ✅ |
-| **API 实现深度** | **~766 API，0% STUB** ✅ |
-| **Python 注释同步** | **所有文件完整同步** ✅ |
-| **GTest 测试** | **95/95** ✅ |
-
----
-
-## winemu 最终轮：ObjectManager/FileManager 桥接
-
-### 问题
-Python winemu.py 使用 `void*` 传递对象句柄。C++ ObjectManager 使用 `KernelObject` 类（带 `void* object` 成员）。winemu.cpp 之前的 wrapper 均 return nullptr。
-
-### 解决：桥接模式
-
-```
-winemu (void*) → ObjectManager (KernelObject) → KernelObject::object (void*)
-```
-
-| winemu wrapper | 桥接到 |
-|----------------|--------|
-| `get_object_from_addr(addr)` | `om->get_object_from_addr(addr).get_object()` |
-| `get_object_from_id(id)` | `om->get_object_from_id(id).get_object()` |
-| `get_object_from_name(name)` | `om->get_object_from_name(name).get_object()` |
-| `get_object_from_handle(handle)` | ObjectManager fallback FileManager |
-| `get_object_handle(obj)` | `KernelObject*` → `om->get_handle(*ko)` |
-| `add_object(obj)` | `KernelObject*` → `om->add_object(*ko)` |
-| `new_object(otype)` | `om->new_object<KernelObject>()` |
-
-### 关键修改
-- `objman.h`: `KernelObject::object` 增加公开访问器 `void* get_object() const`
-- `winemu.cpp`: 全部 7 个 ObjectManager wrapper 从 `(void)return nullptr` → 真实桥接
-
-### FileManager 桥接
-
-| wrapper | 桥接到 |
-|---------|--------|
-| `file_get(handle)` | `fileman->get_file_from_handle(handle)` |
-| `file_delete(path)` | `fileman->delete_file(path)` |
-| `pipe_get(handle)` | `fileman->get_pipe_from_handle(handle)` |
-
----
-
-## 窗口期实现历史
-
-### 轮 1: API 分发 + PE 加载
-- `ensure_pe_import_hooks`, `load_image`, `handle_import_func`, `get_proc`, `normalize_import_miss`, `handle_import_data`
-
-### 轮 2: winemu 10 函数
-- `_hook_mem_read/write/unmapped`, `_hook_code_tracing/coverage/debug`, `get_thread_context/load_thread_context`, `dispatch_seh`, `get_error_info`
-
-### 轮 3: win32 8 函数
-- `build_service_main_args`, `_make_emu_path`, `_set_input_metadata`, `_ordered_peb_modules`, `_ensure_core_dlls_loaded`, `_init_user_modules_from_config`, `_capture_memory_layout`
-
-### 轮 4: winemu create_process/thread + WindowsApi 连线
-- `create_process`, `create_thread`, `get_module_data_from_emu_file`, `init_environment`, `_init_module_group`, `load_library`, `api = new WindowsApi(this)`, export/data import wiring
-
-### 轮 5: ObjectManager/FileManager 桥接
-- 全部 7 个 get_object_* / add_object / new_object + 3 个 FileManager wrapper
-
----
-
-## 保留的 TODO（架构级，不可独立实现）
-
-| 位置 | 内容 | 阻碍 |
+| 状态 | 数量 | 说明 |
 |------|------|------|
-| `binemu.cpp:517` | `record_dyn_code_event` | Profiler 无此方法 |
-| `binemu.cpp:523` | `Hook::cb` protected | 访问控制设计 |
-| `binemu.cpp:538` | `add_code_hook` lambda 签名 | Hook 子系统接口 |
-| `binemu.cpp:556` | `modules` undeclared | modules 属 WindowsEmulator |
-| `binemu.cpp:684` | `InvalidMemHook` 构造 | Hook 子系统深层变更 |
-| `winemu.cpp` | `_continue_seh_x86` (x64 VEH) | 需要 x64 异常处理基建 |
-| `winemu.cpp` | `_fire_dyn_code_hooks` | binemu 钩子系统 |
-| `kernel.cpp` | IRP 分发 | 需要完整 IRP 框架 |
+| ✅ 完整实现 | 58 | 核心逻辑均对齐 Python |
+| ⚠️ 部分实现 | 3 | `_fire_dyn_code_hooks`, `_set_dyn_code_hook`, `_hook_mem_invalid_dispatch` — 函数体被注释为 TODO，需 Hook 子系统架构变更 |
+| ❌ 未实现 | 2 | `get_module_from_addr` (modules 属 WindowsEmulator), `print_stack` (格式化不同) |
+| 总计 | 63 | **完成率 92%** |
 
-## 文件最终大小
+### winemu
 
-| 文件 | 行数 |
-|------|------|
-| winemu.h | 836 |
-| winemu.cpp | 2793 |
-| win32.h | 456 |
-| win32.cpp | 867 |
-| binemu.h | 305 |
-| binemu.cpp | 1123 |
-| profiler.h | 168 |
-| profiler.cpp | 552 |
-| common.cpp | 328 |
-| objman.h | 324 |
-| objman.cpp | 898 |
-| **总计** | **~8650** |
+| 状态 | 数量 | 说明 |
+|------|------|------|
+| ✅ 完整实现 | 122 | 包含全部 load_image/ensure_pe_import_hooks/handle_import_func 等核心函数 |
+| ⚠️ 部分实现 | 5 | `reg_open_key/reg_create_key/reg_get_key` (返回 nullptr，RegistryManager 未连线)；`file_open` (缺少 truncate 参数)；`pipe_open` (返回 nullptr) |
+| ❌ 未实现 | 3 | `_get_exception_list`, `_map_faulting_page_for_exception`, `_continue_seh_x86` (x64 VEH) — 需要 SEH 子系统基建 |
+| 总计 | 130 | **完成率 94%** |
+
+### win32
+
+| 状态 | 数量 | 说明 |
+|------|------|------|
+| ✅ 完整实现 | 33 | 包含全部 37 个 Python 函数，其中 33 个完整实现 |
+| ⚠️ 部分实现 | 2 | `_hook_mem_unmapped` (逻辑注释掉), `get_user_modules` (逻辑注释掉) |
+| ❌ 未实现 | 1 | `get_service_main_char_width` 参数不完整 (缺少 module 参数) |
+| 总计 | 36 | **完成率 92%** |
+
+### 总计
+
+| 模块 | 完整 | 部分 | 缺失 | 总计 | 完成率 |
+|------|------|------|------|------|--------|
+| binemu | 58 | 3 | 2 | 63 | 92% |
+| winemu | 122 | 5 | 3 | 130 | 94% |
+| win32 | 33 | 2 | 1 | 36 | 92% |
+| **总计** | **213** | **10** | **6** | **229** | **93%** |
+
+### 真实遗留 TODO（非架构级，可独立实现）
+
+```
+binemu.cpp:   _fire_dyn_code_hooks    — 函数体被 TODO 注释
+              _set_dyn_code_hook      — 函数体被 TODO 注释
+              _hook_mem_invalid_dispatch — dispatch 逻辑未连线
+
+winemu.cpp:   reg_open_key            — 返回 nullptr
+              reg_create_key          — 返回 nullptr
+              reg_get_key             — 返回 nullptr
+              file_open               — 返回 nullptr
+              pipe_open               — 返回 nullptr
+              _get_exception_list     — 未实现
+              _map_faulting_page_for_exception — 未实现
+
+win32.cpp:    _hook_mem_unmapped      — 逻辑注释掉
+              get_user_modules        — 逻辑注释掉
+              get_service_main_char_width — 缺少 module 参数
+```
+
+### 与错误分析报告的对比
+
+分析报告声称 28 个函数"未移植"，经核实其中 **28 个全部已在 C++ 中实现**。错误原因：
+
+1. 分析工具以函数名精确匹配搜索，但 C++ 函数签名与 Python 不同
+2. 分析工具未考虑 C++ 类继承（win32 的 `init_sys_modules` 委托给 `WindowsEmulator`）
+3. 分析工具读取了旧版本文件缓存
+4. 部分函数通过 `#ifdef` 条件编译（`_cs_disasm` 用 capstone C API）

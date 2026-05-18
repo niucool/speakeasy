@@ -414,28 +414,42 @@ std::vector<void*> Win32Emulator::get_user_modules() {
     if (user_modules.size() < 2) {
         // Check if we have a host process configured
         nlohmann::json proc_mod;
-        // for (auto& p : config_processes) {
-        //     if (user_modules.empty() && p.value("is_main_exe", false)) {
-        //         proc_mod = p;
-        //         break;
-        //     }
-        // }
-        // 
-        // if (!proc_mod.empty()) {
-        //     std::vector<nlohmann::json> all_user_mods;
-        //     all_user_mods.push_back(proc_mod);
-        //     all_user_mods.insert(all_user_mods.end(), config_user_modules.begin(), config_user_modules.end());
-        //     auto user_modules_result = init_user_modules(all_user_mods);
-        //     user_modules.insert(user_modules.end(), user_modules_result.begin(), user_modules_result.end());
-        // } else {
-        //     auto user_modules_result = init_user_modules(config_user_modules);
-        //     user_modules.insert(user_modules.end(), user_modules_result.begin(), user_modules_result.end());
-        // }
-        // 
-        // // add sample to user modules list if it is a dll
-        // if (!modules.empty() && !std::get<0>(modules[0])->is_exe()) {
-        //     user_modules.push_back(std::get<0>(modules[0]));
-        // }
+        for (auto& p : config_processes) {
+            if (user_modules.empty() && p.value("is_main_exe", false)) {
+                proc_mod = p;
+                break;
+            }
+        }
+        
+        if (!proc_mod.empty()) {
+            std::vector<nlohmann::json> all_user_mods;
+            all_user_mods.push_back(proc_mod);
+            all_user_mods.insert(all_user_mods.end(), config_user_modules.begin(), config_user_modules.end());
+            auto user_modules_result = init_user_modules(all_user_mods);
+            user_modules.insert(user_modules.end(), user_modules_result.begin(), user_modules_result.end());
+        } else {
+            auto user_modules_result = init_user_modules(config_user_modules);
+            user_modules.insert(user_modules.end(), user_modules_result.begin(), user_modules_result.end());
+        }
+        
+        // Add sample to user modules list if it is a dll (not an exe)
+        if (!modules.empty()) {
+            auto* img = static_cast<speakeasy::LoadedImage*>(modules[0]);
+            bool is_exe_mod = false;
+            if (!img->is_driver) {
+                std::string lemu = img->emu_path;
+                for (auto& c : lemu) c = (char)tolower(c);
+                if (lemu.size() >= 4 && lemu.substr(lemu.size() - 4) == ".exe")
+                    is_exe_mod = true;
+                std::string lname = img->name;
+                for (auto& c : lname) c = (char)tolower(c);
+                if (lname.size() >= 4 && lname.substr(lname.size() - 4) == ".exe")
+                    is_exe_mod = true;
+            }
+            if (!is_exe_mod) {
+                user_modules.push_back(modules[0]);
+            }
+        }
     }
     
     return user_modules;
@@ -457,20 +471,22 @@ void Win32Emulator::exit_process() {
 bool Win32Emulator::_hook_mem_unmapped(void* emu, int access, uint64_t address, 
                                       size_t size, uint64_t value, void* user_data) {
     // memory unmapped hook routed to base class
-    // std::string _access = emu_eng.mem_access.get(access);
-    // 
-    // if (_access == "INVALID_MEM_READ") {
-    //     void* p = get_current_process();
-    //     void* pld = p->get_peb_ldr();
-    //     if (address > pld->address && address < (pld->address + pld->sizeof())) {
-    //         mem_map_reserve(pld->address);
-    //         auto user_mods = get_user_modules();
-    //         init_peb(user_mods);
-    //         return;
-    //     }
-    // }
-    // return WindowsEmulator::_hook_mem_unmapped(emu, access, address, size, value, user_data);
-    return false;
+    // Check if invalid read falls within PEB LDR data range (needs re-init)
+    if (access == INVALID_MEM_READ) {
+        Process* proc = get_current_process();
+        if (proc && proc->peb_ldr_data) {
+            uint64_t pld_addr = reinterpret_cast<uint64_t>(proc->peb_ldr_data);
+            // PEB_LDR_DATA struct size varies by arch (~45 bytes x86, ~81 x64)
+            // Use a page-based range check for safety
+            if (address > pld_addr && address < pld_addr + page_size) {
+                mem_map_reserve(pld_addr);
+                auto mods = _ordered_peb_modules();
+                init_peb(&mods);
+                return true;
+            }
+        }
+    }
+    return WindowsEmulator::_hook_mem_unmapped(emu, access, address, size, value);
 }
 
 // Python win32.py:623

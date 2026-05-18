@@ -212,7 +212,7 @@ public:
     // @abstractmethod
     // def init_processes(self, processes: list[Any]) -> None:
     //     """Initialize configured processes. Subclasses must implement."""
-    virtual void init_processes(const std::vector<void*>& processes) {}
+    virtual void init_processes(const std::vector<void*>& lprocesses) {}
 
     // ── Bootstrap ─────────────────────────────────────────────
     // Python winemu.py:155
@@ -725,6 +725,10 @@ public:
     // def _get_exception_list(self):
     //     """Retrieves the exception handler list for the current thread"""
     uint64_t _get_exception_list();
+    // Python winemu.py:2652
+    // def _map_faulting_page_for_exception(self, faulting_address):
+    //     """Map a single page at faulting_address with RW permissions for SEH recovery"""
+    void _map_faulting_page_for_exception(uint64_t faulting_address);
     // Python winemu.py:2478
     // def _dispatch_seh_x86(self, except_code):
     //     """Get the initial SEH handler when dispatching a CPU exception that occurs during emulation"""

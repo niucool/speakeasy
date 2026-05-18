@@ -439,10 +439,13 @@ bool WindowsEmulator::_handle_invalid_write(void* emu, uint64_t address,
 // ── File ─────────────────────────────────────────────────────
 // Python winemu.py:267
 // def file_open(self, path, create=False, truncate=False):
-//     """Open an emulated file using the file manager"""
+//     """Open a file in the emulated filesystem"""
 void* WindowsEmulator::file_open(const std::string& path, bool create) {
     auto* fm = static_cast<FileManager*>(fileman);
-    if (fm) fm->file_open(path, create);
+    if (fm) {
+        uint32_t h = fm->file_open(path, create);
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
+    }
     return nullptr;
 }
 
@@ -452,7 +455,10 @@ void* WindowsEmulator::file_open(const std::string& path, bool create) {
 void* WindowsEmulator::pipe_open(const std::string& path, const std::string& mode,
                                   int num_instances, size_t out_size, size_t in_size) {
     auto* fm = static_cast<FileManager*>(fileman);
-    if (fm) fm->pipe_open(path, mode, num_instances, out_size, in_size);
+    if (fm) {
+        uint32_t h = fm->pipe_open(path, mode, num_instances, out_size, in_size);
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
+    }
     return nullptr;
 }
 
@@ -469,7 +475,10 @@ bool WindowsEmulator::does_file_exist(const std::string& path) {
 //     """Open or create a registry key in the emulation space"""
 void* WindowsEmulator::reg_open_key(const std::string& path, bool create) {
     auto* rm = static_cast<RegistryManager*>(regman);
-    if (rm) rm->open_key(path, create);
+    if (rm) {
+        uint32_t h = rm->open_key(path, create);
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
+    }
     return nullptr;
 }
 
@@ -477,8 +486,14 @@ void* WindowsEmulator::reg_open_key(const std::string& path, bool create) {
 // def reg_get_key(self, handle=0, path=""):
 //     """Get registry key by path or handle"""
 void* WindowsEmulator::reg_get_key(int handle, const std::string& path) {
-    (void)handle; (void)path;
-    return nullptr;
+    auto* rm = static_cast<RegistryManager*>(regman);
+    if (!rm) return nullptr;
+    std::shared_ptr<RegKey> key;
+    if (handle != 0)
+        key = rm->get_key_from_handle(static_cast<uint32_t>(handle));
+    else if (!path.empty())
+        key = rm->get_key_from_path(path);
+    return key ? reinterpret_cast<void*>(key.get()) : nullptr;
 }
 
 // Python winemu.py:371
@@ -486,7 +501,10 @@ void* WindowsEmulator::reg_get_key(int handle, const std::string& path) {
 //     """Create a registry key"""
 void* WindowsEmulator::reg_create_key(const std::string& path) {
     auto* rm = static_cast<RegistryManager*>(regman);
-    if (rm) rm->create_key(path);
+    if (rm) {
+        auto key = rm->create_key(path);
+        return key ? reinterpret_cast<void*>(key.get()) : nullptr;
+    }
     return nullptr;
 }
 
@@ -2810,4 +2828,20 @@ void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
 uint64_t WindowsEmulator::_get_exception_list() {
     uint64_t teb = (ptr_size == 4) ? fs_addr : gs_addr;
     return (teb != 0) ? read_ptr(teb) : 0;
+}
+
+// Python winemu.py:2652
+// def _map_faulting_page_for_exception(self, faulting_address):
+//     """Map a single page at faulting_address with RW permissions for SEH recovery"""
+void WindowsEmulator::_map_faulting_page_for_exception(uint64_t faulting_address) {
+    uint64_t fakeout = faulting_address & ~(page_size - 1);
+    // Check if already mapped
+    for (const auto& region : get_mem_regions()) {
+        uint64_t base = std::get<0>(region);
+        uint64_t end = std::get<1>(region);
+        if (base <= fakeout && fakeout <= end)
+            return;
+    }
+    mem_map(page_size, fakeout, PERM_MEM_RW, "emu.seh.fault_page");
+    tmp_maps.push_back({fakeout, page_size});
 }

@@ -154,17 +154,17 @@ struct DriverInfo {
     std::vector<std::map<std::string, std::string>> devices;
 };
 
-struct SystemModule {
+struct Module {
     std::string name;
     std::string base_addr;
     std::string path;
+};
+
+struct SystemModule : public Module {
     DriverInfo driver;  // optional
 };
 
-struct UserModule {
-    std::string name;
-    std::string base_addr;
-    std::string path;
+struct UserModule : public Module {
 };
 
 struct ModulesConfig {
