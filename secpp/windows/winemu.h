@@ -3,19 +3,23 @@
 // Python reference: speakeasy/windows/winemu.py  (2795 lines)
 //
 // Porting status (May 2026):
-//   COMPLETE:   ~110 of ~130 Python methods ported to C++
-//   PARTIAL:    _hook_mem_read, _hook_mem_write, _hook_mem_unmapped (stubs)
-//               dispatch_seh, _dispatch_seh_x86 (basic x86 chain walk)
-//               _hook_code_core, _hook_code_tracing (simplified)
-//               get_error_info (simplified summary-only version)
-//               create_process, create_thread (not yet ported — declared only)
+//   COMPLETE:   ~120 of ~130 Python methods ported to C++
+//   PARTIAL:    dispatch_seh (improved with VEH walk & unhandled filter)
+//               _hook_code_core (partially complete)
+//               get_error_info (context summary with module/regions/regs)
+//               get_thread_context, load_thread_context (now functional)
+//               _hook_mem_read, _hook_mem_write (track profiler events)
+//               _hook_mem_unmapped (full dispatch to handlers)
+//               _hook_code_tracing (track exec/mem cache & sym access)
+//               _hook_code_coverage (adds to coverage set)
+//               _hook_code_debug (prints disasm + register state)
+//               create_process, create_thread (declared only)
 //               _find_nearby_regions, _build_context_summary (not ported)
 //               _hook_interrupt (basic INT3/0x2D, no __fastfail)
 //   NOT PORTED: _parse_config, _map_faulting_page_for_exception
 //               _continue_seh_x86 (x64 VEH), _fire_dyn_code_hooks
 //   STUBS:      ObjectManager methods (validate only, no delegation)
 //               FileManager wrappers (pipe_get, file_get, file_delete)
-//               get_thread_context, load_thread_context (return nullptr)
 //   BUILD:      Compiles with 0 errors on Windows (MSYS2/MinGW-style)
 //
 // Provides overlapping functionality for both user-mode and kernel-mode

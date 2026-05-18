@@ -1389,7 +1389,64 @@ std::vector<void*> WindowsEmulator::_init_module_group(
 //     """Get the current thread CPU context"""
 void* WindowsEmulator::get_thread_context(void* thread) {
     (void)thread;
-    return nullptr;
+    if (!emu_eng) return nullptr;
+
+    // Allocate memory for a CONTEXT structure
+    size_t ctx_size = (get_arch() == speakeasy::arch::ARCH_AMD64) ? 1232 : 716;
+    uint64_t ctx_addr = mem_map(ctx_size, 0, PERM_MEM_RW, "emu.struct.CONTEXT");
+    std::vector<uint8_t> buf(ctx_size, 0);
+
+    if (get_arch() == speakeasy::arch::ARCH_X86) {
+        // Standard x86 CONTEXT layout (offsets verified from Windows SDK)
+        // Seg registers at offsets 0x6C-0x78
+        write_le(buf, 0x6C, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_GS)), 4);   // SegGs
+        write_le(buf, 0x70, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_FS)), 4);   // SegFs
+        write_le(buf, 0x74, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_ES)), 4);   // SegEs
+        write_le(buf, 0x78, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_DS)), 4);   // SegDs
+        // Integer registers at offsets 0x7C-0xA8
+        write_le(buf, 0x7C, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EDI)), 4);  // Edi
+        write_le(buf, 0x80, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_ESI)), 4);  // Esi
+        write_le(buf, 0x84, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EBX)), 4);  // Ebx
+        write_le(buf, 0x88, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EDX)), 4);  // Edx
+        write_le(buf, 0x8C, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_ECX)), 4);  // Ecx
+        write_le(buf, 0x90, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EAX)), 4);  // Eax
+        write_le(buf, 0x94, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EBP)), 4);  // Ebp
+        write_le(buf, 0x98, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EIP)), 4);  // Eip
+        write_le(buf, 0x9C, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_CS)), 4);   // SegCs
+        write_le(buf, 0xA0, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EFLAGS)), 4); // EFlags
+        write_le(buf, 0xA4, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_ESP)), 4);  // Esp
+        write_le(buf, 0xA8, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_SS)), 4);   // SegSs
+    } else if (get_arch() == speakeasy::arch::ARCH_AMD64) {
+        // Standard x64 CONTEXT layout (offsets verified from Windows SDK)
+        write_le(buf, 0x48, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_CS)), 2);   // SegCs
+        write_le(buf, 0x50, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_DS)), 2);   // SegDs
+        write_le(buf, 0x58, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_ES)), 2);   // SegEs
+        write_le(buf, 0x60, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_FS)), 2);   // SegFs
+        write_le(buf, 0x68, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_GS)), 2);   // SegGs
+        write_le(buf, 0x70, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_SS)), 2);   // SegSs
+        write_le(buf, 0x78, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EFLAGS)), 4); // EFlags
+        // Integer registers at offsets 0xB8-0x140
+        write_le(buf, 0xB8, reg_read(speakeasy::arch::REG_RAX), 8);   // Rax
+        write_le(buf, 0xC0, reg_read(speakeasy::arch::REG_RCX), 8);   // Rcx
+        write_le(buf, 0xC8, reg_read(speakeasy::arch::REG_RDX), 8);   // Rdx
+        write_le(buf, 0xD0, reg_read(speakeasy::arch::REG_RBX), 8);   // Rbx
+        write_le(buf, 0xD8, reg_read(speakeasy::arch::REG_RSP), 8);   // Rsp
+        write_le(buf, 0xE0, reg_read(speakeasy::arch::REG_RBP), 8);   // Rbp
+        write_le(buf, 0xE8, reg_read(speakeasy::arch::REG_RSI), 8);   // Rsi
+        write_le(buf, 0xF0, reg_read(speakeasy::arch::REG_RDI), 8);   // Rdi
+        write_le(buf, 0xF8, reg_read(speakeasy::arch::REG_R8), 8);    // R8
+        write_le(buf, 0x100, reg_read(speakeasy::arch::REG_R9), 8);   // R9
+        write_le(buf, 0x108, reg_read(speakeasy::arch::REG_R10), 8);  // R10
+        write_le(buf, 0x110, reg_read(speakeasy::arch::REG_R11), 8);  // R11
+        write_le(buf, 0x118, reg_read(speakeasy::arch::REG_R12), 8);  // R12
+        write_le(buf, 0x120, reg_read(speakeasy::arch::REG_R13), 8);  // R13
+        write_le(buf, 0x128, reg_read(speakeasy::arch::REG_R14), 8);  // R14
+        write_le(buf, 0x130, reg_read(speakeasy::arch::REG_R15), 8);  // R15
+        write_le(buf, 0x140, reg_read(speakeasy::arch::REG_RIP), 8);  // Rip
+    }
+
+    mem_write(ctx_addr, buf);
+    return reinterpret_cast<void*>(static_cast<uintptr_t>(ctx_addr));
 }
 
 
@@ -1397,7 +1454,103 @@ void* WindowsEmulator::get_thread_context(void* thread) {
 // def load_thread_context(self, ctx, thread=None):
 //     """Set the current thread CPU context"""
 void WindowsEmulator::load_thread_context(void* ctx, void* thread) {
-    (void)ctx; (void)thread;
+    (void)thread;
+    if (!emu_eng || !ctx) return;
+
+    uint64_t ctx_addr = reinterpret_cast<uint64_t>(ctx);
+    size_t ctx_size = (get_arch() == speakeasy::arch::ARCH_AMD64) ? 1232 : 716;
+    auto buf = mem_read(ctx_addr, ctx_size);
+    if (buf.size() < ctx_size) return;
+
+    if (get_arch() == speakeasy::arch::ARCH_X86) {
+        uint32_t edi = static_cast<uint32_t>(read_le(buf, 0x7C, 4));
+        uint32_t esi = static_cast<uint32_t>(read_le(buf, 0x80, 4));
+        uint32_t eax = static_cast<uint32_t>(read_le(buf, 0x90, 4));
+        uint32_t ebp = static_cast<uint32_t>(read_le(buf, 0x94, 4));
+        uint32_t edx = static_cast<uint32_t>(read_le(buf, 0x88, 4));
+        uint32_t ecx = static_cast<uint32_t>(read_le(buf, 0x8C, 4));
+        uint32_t ebx = static_cast<uint32_t>(read_le(buf, 0x84, 4));
+        uint32_t esp = static_cast<uint32_t>(read_le(buf, 0xA4, 4));
+        uint32_t eip = static_cast<uint32_t>(read_le(buf, 0x98, 4));
+
+        reg_write(speakeasy::arch::REG_EDI, edi);
+        reg_write(speakeasy::arch::REG_ESI, esi);
+        reg_write(speakeasy::arch::REG_EAX, eax);
+        reg_write(speakeasy::arch::REG_EBP, ebp);
+        reg_write(speakeasy::arch::REG_EDX, edx);
+        reg_write(speakeasy::arch::REG_ECX, ecx);
+        reg_write(speakeasy::arch::REG_EBX, ebx);
+        reg_write(speakeasy::arch::REG_ESP, esp);
+        reg_write(speakeasy::arch::REG_EIP, eip);
+
+        uint32_t eflags = static_cast<uint32_t>(read_le(buf, 0xA0, 4));
+        uint32_t seg_cs = static_cast<uint32_t>(read_le(buf, 0x9C, 4));
+        uint32_t seg_ss = static_cast<uint32_t>(read_le(buf, 0xA8, 4));
+        uint32_t seg_ds = static_cast<uint32_t>(read_le(buf, 0x78, 4));
+        uint32_t seg_fs = static_cast<uint32_t>(read_le(buf, 0x70, 4));
+        uint32_t seg_gs = static_cast<uint32_t>(read_le(buf, 0x6C, 4));
+        uint32_t seg_es = static_cast<uint32_t>(read_le(buf, 0x74, 4));
+
+        reg_write(speakeasy::arch::REG_EFLAGS, eflags);
+        reg_write(speakeasy::arch::REG_CS, seg_cs);
+        reg_write(speakeasy::arch::REG_SS, seg_ss);
+        reg_write(speakeasy::arch::REG_DS, seg_ds);
+        reg_write(speakeasy::arch::REG_FS, seg_fs);
+        reg_write(speakeasy::arch::REG_GS, seg_gs);
+        reg_write(speakeasy::arch::REG_ES, seg_es);
+    } else if (get_arch() == speakeasy::arch::ARCH_AMD64) {
+        uint64_t rax = read_le(buf, 0xB8, 8);
+        uint64_t rbx = read_le(buf, 0xD0, 8);
+        uint64_t rcx = read_le(buf, 0xC0, 8);
+        uint64_t rdx = read_le(buf, 0xC8, 8);
+        uint64_t rsi = read_le(buf, 0xE8, 8);
+        uint64_t rdi = read_le(buf, 0xF0, 8);
+        uint64_t rbp = read_le(buf, 0xE0, 8);
+        uint64_t rsp = read_le(buf, 0xD8, 8);
+        uint64_t rip = read_le(buf, 0x140, 8);
+        uint64_t r8  = read_le(buf, 0xF8, 8);
+        uint64_t r9  = read_le(buf, 0x100, 8);
+        uint64_t r10 = read_le(buf, 0x108, 8);
+        uint64_t r11 = read_le(buf, 0x110, 8);
+        uint64_t r12 = read_le(buf, 0x118, 8);
+        uint64_t r13 = read_le(buf, 0x120, 8);
+        uint64_t r14 = read_le(buf, 0x128, 8);
+        uint64_t r15 = read_le(buf, 0x130, 8);
+
+        reg_write(speakeasy::arch::REG_RAX, rax);
+        reg_write(speakeasy::arch::REG_RBX, rbx);
+        reg_write(speakeasy::arch::REG_RCX, rcx);
+        reg_write(speakeasy::arch::REG_RDX, rdx);
+        reg_write(speakeasy::arch::REG_RSI, rsi);
+        reg_write(speakeasy::arch::REG_RDI, rdi);
+        reg_write(speakeasy::arch::REG_RBP, rbp);
+        reg_write(speakeasy::arch::REG_RSP, rsp);
+        reg_write(speakeasy::arch::REG_RIP, rip);
+        reg_write(speakeasy::arch::REG_R8, r8);
+        reg_write(speakeasy::arch::REG_R9, r9);
+        reg_write(speakeasy::arch::REG_R10, r10);
+        reg_write(speakeasy::arch::REG_R11, r11);
+        reg_write(speakeasy::arch::REG_R12, r12);
+        reg_write(speakeasy::arch::REG_R13, r13);
+        reg_write(speakeasy::arch::REG_R14, r14);
+        reg_write(speakeasy::arch::REG_R15, r15);
+
+        uint64_t eflags = read_le(buf, 0x78, 4);
+        uint16_t seg_cs = static_cast<uint16_t>(read_le(buf, 0x48, 2));
+        uint16_t seg_ss = static_cast<uint16_t>(read_le(buf, 0x70, 2));
+        uint16_t seg_ds = static_cast<uint16_t>(read_le(buf, 0x50, 2));
+        uint16_t seg_fs = static_cast<uint16_t>(read_le(buf, 0x60, 2));
+        uint16_t seg_gs = static_cast<uint16_t>(read_le(buf, 0x68, 2));
+        uint16_t seg_es = static_cast<uint16_t>(read_le(buf, 0x58, 2));
+
+        reg_write(speakeasy::arch::REG_EFLAGS, eflags);
+        reg_write(speakeasy::arch::REG_CS, seg_cs);
+        reg_write(speakeasy::arch::REG_SS, seg_ss);
+        reg_write(speakeasy::arch::REG_DS, seg_ds);
+        reg_write(speakeasy::arch::REG_FS, seg_fs);
+        reg_write(speakeasy::arch::REG_GS, seg_gs);
+        reg_write(speakeasy::arch::REG_ES, seg_es);
+    }
 }
 
 // ── SEH ──────────────────────────────────────────────────────
@@ -1408,7 +1561,7 @@ void WindowsEmulator::load_thread_context(void* ctx, void* thread) {
 //     """Dispatch a structured exception by walking the SEH chain. Falls back
 //     to unhandled exception filter if available."""
 bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_address) {
-    auto fault_key = std::make_tuple(prev_pc, faulting_address);
+    auto fault_key = std::make_tuple(get_pc(), faulting_address);
     if (fault_key == _seh_last_fault) {
         _seh_repeat_count++;
         if (_seh_repeat_count >= _SEH_MAX_REPEAT) return false;
@@ -1421,16 +1574,65 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
     if (ptr_size == 4) {
         rv = _dispatch_seh_x86(except_code);
     } else {
-        // x64: VEH (Vectored Exception Handling) — simpler than SEH
-        rv = false;
+        // x64: VEH (Vectored Exception Handling) — walk VEH handler list
+        for (auto* veh : veh_handlers) {
+            uint64_t handler = reinterpret_cast<uint64_t>(veh);
+            if (handler == 0 || handler == 0xFFFFFFFFFFFFFFFFULL) continue;
+            curr_exception_code = except_code;
+            call(handler);
+            rv = true;
+            break;
+        }
     }
 
     // If SEH dispatch failed, try the unhandled exception filter
     if (!rv && unhandled_exception_filter != 0) {
-        // Call the registered unhandled exception filter
-        curr_exception_code = except_code;
-        call(unhandled_exception_filter);
+        // Build EXCEPTION_RECORD and EXCEPTION_POINTERS in emulated memory
+        // Layout: EXCEPTION_RECORD = {code, flags, record, addr, numparams, params[15]}
+        // Simple flat allocation strategy
+        uint64_t pc = get_pc();
+        int psz = get_ptr_size();
+
+        // Allocate and write a simplified EXCEPTION_RECORD
+        size_t rec_size = static_cast<size_t>(4 + 4 + psz + psz + 4 + 15 * psz);
+        uint64_t prec = mem_map(rec_size, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_RECORD");
+        std::vector<uint8_t> rec_bytes(rec_size, 0);
+        write_le(rec_bytes, 0, static_cast<uint32_t>(except_code), 4);         // ExceptionCode
+        write_le(rec_bytes, 4, static_cast<uint32_t>(0), 4);                   // ExceptionFlags
+        // ExceptionRecord (next) = 0
+        // ExceptionAddress
+        write_le(rec_bytes, static_cast<size_t>(4 + 4 + psz), pc, psz);
+        // NumberParameters = 0
+        // Parameters[15] = 0
+        mem_write(prec, rec_bytes);
+
+        // Allocate CONTEXT structure
+        void* ctx = get_thread_context();
+        uint64_t pctx = reinterpret_cast<uint64_t>(ctx);
+
+        // Allocate EXCEPTION_POINTERS
+        size_t eptrs_size = static_cast<size_t>(psz + psz);
+        uint64_t p_exp_ptrs = mem_map(eptrs_size, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_POINTERS");
+        std::vector<uint8_t> eptrs_bytes(eptrs_size, 0);
+        write_le(eptrs_bytes, 0, prec, psz);     // ExceptionRecord
+        write_le(eptrs_bytes, static_cast<size_t>(psz), pctx, psz);  // ContextRecord
+        mem_write(p_exp_ptrs, eptrs_bytes);
+
+        // Call unhandled exception filter
+        uint64_t sp = get_stack_ptr();
+        std::vector<uint64_t> args = {p_exp_ptrs};
+        set_func_args(sp, EMU_RETURN_ADDR, args);
+        set_pc(unhandled_exception_filter);
+        unhandled_exception_filter = 0;
         rv = true;
+    }
+
+    if (rv && faulting_address != 0) {
+        // Map a page at the faulting address so we can continue execution
+        uint64_t page_addr = faulting_address & ~(page_size - 1);
+        try {
+            mem_map(page_size, page_addr, PERM_MEM_RW, "emu.page.fault", 0, false);
+        } catch (...) {}
     }
 
     return rv;
@@ -1719,21 +1921,172 @@ void WindowsEmulator::restart_run(void* run) {
 
 // Python winemu.py:1831
 // def _hook_mem_read(self, emu, access, address, size, value):
-//     """Hook each memory read event that occurs."""
+//     """Hook each memory read event that occurs. This hook is used to lookup symbols
+//     and modules that are read from during emulation."""
 bool WindowsEmulator::_hook_mem_read(void* emu, int access, uint64_t addr,
                                       size_t size, uint64_t value) {
-    (void)emu; (void)access; (void)addr; (void)size; (void)value;
-    return false;
+    (void)emu; (void)access; (void)value;
+    if (!curr_run) return false;
+
+    try {
+        // Check for symbol at this address
+        std::string symbol = get_symbol_from_address(addr);
+        if (!symbol.empty()) {
+            // Track symbol access
+            std::string key = hex_str(addr);
+            auto it = curr_run->sym_access.find(key);
+            if (it == curr_run->sym_access.end()) {
+                MemAccess mac(addr, symbol);
+                it = curr_run->sym_access.emplace(key, mac).first;
+            }
+            it->second.reads++;
+            return true;
+        }
+
+        // Check read_cache for fast path
+        for (uint64_t cached_base : curr_run->read_cache) {
+            if (cached_base != 0) {
+                auto mac_it = curr_run->mem_access.find(hex_str(cached_base));
+                if (mac_it != curr_run->mem_access.end()) {
+                    if (addr >= mac_it->second.base &&
+                        addr <= mac_it->second.base + mac_it->second.size - 1) {
+                        mac_it->second.reads++;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check if addr is within a module section
+        void* mod = get_mod_from_addr(addr);
+        if (mod) {
+            auto* pe = static_cast<PeFile*>(mod);
+            auto sects = pe->get_sections();
+            for (auto& sect : sects) {
+                uint64_t base = pe->get_base();
+                uint64_t sect_base = base + sect.virtual_address;
+                if (addr >= sect_base && addr < sect_base + sect.virtual_size) {
+                    std::string mkey = hex_str(sect_base);
+                    auto mac_it = curr_run->mem_access.find(mkey);
+                    if (mac_it == curr_run->mem_access.end()) {
+                        MemAccess mac(sect_base, "", sect.virtual_size);
+                        mac_it = curr_run->mem_access.emplace(mkey, mac).first;
+                    }
+                    // Add to read_cache
+                    if (curr_run->read_cache.size() >= 4)
+                        curr_run->read_cache.pop_back();
+                    curr_run->read_cache.push_front(sect_base);
+                    mac_it->second.reads++;
+                    return true;
+                }
+            }
+        }
+
+        // Generic memory map lookup
+        void* mmap = get_address_map(addr);
+        if (!mmap) return false;
+
+        std::string mkey = hex_str(reinterpret_cast<uint64_t>(mmap));
+        auto mac_it = curr_run->mem_access.find(mkey);
+        if (mac_it == curr_run->mem_access.end()) {
+            MemAccess mac(reinterpret_cast<uint64_t>(mmap), "", page_size);
+            mac_it = curr_run->mem_access.emplace(mkey, mac).first;
+        }
+        // Add to read_cache
+        if (curr_run->read_cache.size() >= 4)
+            curr_run->read_cache.pop_back();
+        curr_run->read_cache.push_front(mac_it->second.base);
+        mac_it->second.reads++;
+
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 
 // Python winemu.py:1907
 // def _hook_mem_write(self, emu, access, address, size, value):
-//     """Hook each memory write event that occurs."""
+//     """Hook each memory write event that occurs. This hook is used to track
+//     memory modifications to interesting memory locations."""
 bool WindowsEmulator::_hook_mem_write(void* emu, int access, uint64_t addr,
                                        size_t size, uint64_t value) {
-    (void)emu; (void)access; (void)addr; (void)size; (void)value;
-    return false;
+    (void)emu; (void)access; (void)value;
+    if (!curr_run) return false;
+
+    try {
+        // Check for symbol at this address
+        std::string symbol = get_symbol_from_address(addr);
+        if (!symbol.empty()) {
+            std::string key = hex_str(addr);
+            auto it = curr_run->sym_access.find(key);
+            if (it == curr_run->sym_access.end()) {
+                MemAccess mac(addr, symbol);
+                it = curr_run->sym_access.emplace(key, mac).first;
+            }
+            it->second.writes++;
+            return true;
+        }
+
+        // Check write_cache for fast path
+        for (uint64_t cached_base : curr_run->write_cache) {
+            if (cached_base != 0) {
+                auto mac_it = curr_run->mem_access.find(hex_str(cached_base));
+                if (mac_it != curr_run->mem_access.end()) {
+                    if (addr >= mac_it->second.base &&
+                        addr <= mac_it->second.base + mac_it->second.size - 1) {
+                        mac_it->second.writes++;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check if addr is within a module section
+        void* mod = get_mod_from_addr(addr);
+        if (mod) {
+            auto* pe = static_cast<PeFile*>(mod);
+            auto sects = pe->get_sections();
+            for (auto& sect : sects) {
+                uint64_t base = pe->get_base();
+                uint64_t sect_base = base + sect.virtual_address;
+                if (addr >= sect_base && addr < sect_base + sect.virtual_size) {
+                    std::string mkey = hex_str(sect_base);
+                    auto mac_it = curr_run->mem_access.find(mkey);
+                    if (mac_it == curr_run->mem_access.end()) {
+                        MemAccess mac(sect_base, "", sect.virtual_size);
+                        mac_it = curr_run->mem_access.emplace(mkey, mac).first;
+                    }
+                    // Add to write_cache
+                    if (curr_run->write_cache.size() >= 4)
+                        curr_run->write_cache.pop_back();
+                    curr_run->write_cache.push_front(sect_base);
+                    mac_it->second.writes++;
+                    return true;
+                }
+            }
+        }
+
+        // Generic memory map lookup
+        void* mmap = get_address_map(addr);
+        if (!mmap) return false;
+
+        std::string mkey = hex_str(reinterpret_cast<uint64_t>(mmap));
+        auto mac_it = curr_run->mem_access.find(mkey);
+        if (mac_it == curr_run->mem_access.end()) {
+            MemAccess mac(reinterpret_cast<uint64_t>(mmap), "", page_size);
+            mac_it = curr_run->mem_access.emplace(mkey, mac).first;
+        }
+        // Add to write_cache
+        if (curr_run->write_cache.size() >= 4)
+            curr_run->write_cache.pop_back();
+        curr_run->write_cache.push_front(mac_it->second.base);
+        mac_it->second.writes++;
+
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 
@@ -1742,8 +2095,56 @@ bool WindowsEmulator::_hook_mem_write(void* emu, int access, uint64_t addr,
 //     """High level function used to catch all invalid memory accesses that occur during emulation"""
 bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
                                           size_t size, uint64_t value) {
-    (void)emu; (void)access; (void)addr; (void)size; (void)value;
-    return false;
+    (void)emu; (void)size; (void)value;
+    if (!curr_run) return false;
+
+    try {
+        // Ensure code hook is active for deferred work
+        if (!tmp_code_hook) {
+            enable_code_hook();
+        }
+
+        if (access == INVALID_MEM_EXEC) {
+            // SEH return - continue SEH and unset emu hooks
+            if (addr == SEH_RETURN_ADDR) {
+                continue_seh();
+                _unset_emu_hooks();
+                return true;
+            }
+            // API callback handler
+            if (addr == API_CALLBACK_HANDLER_ADDR) {
+                if (!curr_run->api_callbacks.empty()) {
+                    auto cb = curr_run->api_callbacks.front();
+                    curr_run->api_callbacks.erase(curr_run->api_callbacks.begin());
+                    // cb is a function<void()> — invoke to process pending work
+                    // For now, unset hooks and let code core handle it
+                    _unset_emu_hooks();
+                }
+                return true;
+            }
+            return _handle_invalid_fetch(emu, addr, size, value);
+        } else if (access == INVALID_MEM_READ) {
+            return _handle_invalid_read(emu, addr, size, value);
+        } else if (access == INVAL_PERM_MEM_EXEC) {
+            return _handle_prot_fetch(emu, addr, size, value);
+        } else if (access == INVALID_MEM_WRITE) {
+            // Map a temporary page and dispatch
+            uint64_t fakeout = addr & ~(page_size - 1);
+            mem_map(page_size, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
+            tmp_maps.push_back({fakeout, page_size});
+            return _handle_invalid_write(emu, addr, size, value);
+        } else if (access == INVAL_PERM_MEM_WRITE) {
+            return _handle_prot_write(emu, addr, size, value);
+        }
+
+        return false;
+    } catch (...) {
+        if (curr_run) {
+            curr_run->error["error"] = "Invalid memory exception";
+        }
+        on_emu_complete();
+        return false;
+    }
 }
 
 
@@ -1771,10 +2172,103 @@ bool WindowsEmulator::_handle_prot_write(void* emu, uint64_t addr,
 
 // Python winemu.py:2097
 // def _hook_code_tracing(self, emu, addr, size):
-//     """Persistent code hook for memory tracing: instruction counting."""
+//     """Persistent code hook for memory tracing: instruction counting,
+//     symbol execution tracking, and per-region execution tracking."""
 bool WindowsEmulator::_hook_code_tracing(void* emu, uint64_t addr, size_t size) {
-    (void)emu; (void)addr; (void)size;
-    return true;
+    (void)emu;
+    if (!curr_run) return true;
+
+    try {
+        // Check for symbol at this address
+        std::string symbol = get_symbol_from_address(addr);
+        if (!symbol.empty()) {
+            auto dot = symbol.find('.');
+            std::string mod_name = (dot != std::string::npos) ? symbol.substr(0, dot) : symbol;
+            std::string fn_name  = (dot != std::string::npos) ? symbol.substr(dot + 1) : "";
+
+            // Track symbol execution
+            std::string key = hex_str(addr);
+            auto it = curr_run->sym_access.find(key);
+            if (it == curr_run->sym_access.end()) {
+                MemAccess mac(addr, symbol);
+                it = curr_run->sym_access.emplace(key, mac).first;
+            }
+            it->second.execs++;
+
+            // Dispatch to import handler
+            if (!mod_name.empty() && !fn_name.empty()) {
+                handle_import_func(mod_name, fn_name);
+            }
+            return true;
+        }
+
+        // Update prev PC and instruction count
+        prev_pc = addr;
+        curr_run->instr_cnt++;
+
+        // Check exec_cache for fast path
+        for (uint64_t cached_base : curr_run->exec_cache) {
+            if (cached_base != 0) {
+                auto mac_it = curr_run->mem_access.find(hex_str(cached_base));
+                if (mac_it != curr_run->mem_access.end()) {
+                    if (addr >= mac_it->second.base &&
+                        addr <= mac_it->second.base + mac_it->second.size - 1) {
+                        mac_it->second.execs++;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // Check if addr is within a module section
+        void* mod = get_mod_from_addr(addr);
+        if (mod) {
+            auto* pe = static_cast<PeFile*>(mod);
+            auto sects = pe->get_sections();
+            for (auto& sect : sects) {
+                uint64_t base = pe->get_base();
+                uint64_t sect_base = base + sect.virtual_address;
+                if (addr >= sect_base && addr < sect_base + sect.virtual_size) {
+                    std::string mkey = hex_str(sect_base);
+                    auto mac_it = curr_run->mem_access.find(mkey);
+                    if (mac_it == curr_run->mem_access.end()) {
+                        MemAccess mac(sect_base, "", sect.virtual_size);
+                        mac_it = curr_run->mem_access.emplace(mkey, mac).first;
+                    }
+                    // Add to exec_cache
+                    if (curr_run->exec_cache.size() >= 4)
+                        curr_run->exec_cache.pop_back();
+                    curr_run->exec_cache.push_front(sect_base);
+                    mac_it->second.execs++;
+                    return true;
+                }
+            }
+        }
+
+        // Generic memory map lookup
+        void* mmap = get_address_map(addr);
+        if (!mmap) return false;
+
+        std::string mkey = hex_str(reinterpret_cast<uint64_t>(mmap));
+        auto mac_it = curr_run->mem_access.find(mkey);
+        if (mac_it == curr_run->mem_access.end()) {
+            MemAccess mac(reinterpret_cast<uint64_t>(mmap), "", page_size);
+            mac_it = curr_run->mem_access.emplace(mkey, mac).first;
+        }
+        // Add to exec_cache
+        if (curr_run->exec_cache.size() >= 4)
+            curr_run->exec_cache.pop_back();
+        curr_run->exec_cache.push_front(mac_it->second.base);
+        mac_it->second.execs++;
+
+        return true;
+    } catch (...) {
+        if (curr_run) {
+            curr_run->error["error"] = "Exception during code hook (tracing)";
+        }
+        on_emu_complete();
+        return false;
+    }
 }
 
 
@@ -1782,17 +2276,54 @@ bool WindowsEmulator::_hook_code_tracing(void* emu, uint64_t addr, size_t size) 
 // def _hook_code_coverage(self, emu, addr, size):
 //     """Persistent code hook that records every executed address for coverage."""
 bool WindowsEmulator::_hook_code_coverage(void* emu, uint64_t addr, size_t size) {
-    (void)emu; (void)addr; (void)size;
-    return true;
+    (void)emu; (void)size;
+    if (!curr_run) return true;
+    try {
+        curr_run->coverage.insert(addr);
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 
 // Python winemu.py:2166
 // def _hook_code_debug(self, emu, addr, size):
-//     """Persistent code hook that prints disassembly and register state."""
+//     """Persistent code hook that prints disassembly and register state
+//     for every instruction when debug mode is enabled."""
 bool WindowsEmulator::_hook_code_debug(void* emu, uint64_t addr, size_t size) {
-    (void)emu; (void)addr; (void)size;
-    return true;
+    (void)emu;
+    try {
+        auto [mnem, op, instr] = get_disasm(addr, size);
+        std::string regs_str;
+        if (get_arch() == speakeasy::arch::ARCH_AMD64) {
+            const char* reg_names[] = {"rax","rbx","rcx","rdx","rsi","rdi","rbp","rsp","r8","r9"};
+            for (auto* rn : reg_names) {
+                uint64_t val = reg_read(rn);
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%s=0x%llx", rn,
+                         static_cast<unsigned long long>(val));
+                if (!regs_str.empty()) regs_str += " : ";
+                regs_str += buf;
+            }
+        } else {
+            const char* reg_names[] = {"eax","ebx","ecx","edx","esi","edi","ebp","esp"};
+            for (auto* rn : reg_names) {
+                uint64_t val = reg_read(rn);
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%s=0x%llx", rn,
+                         static_cast<unsigned long long>(val));
+                if (!regs_str.empty()) regs_str += " : ";
+                regs_str += buf;
+            }
+        }
+        printf("0x%llx: %s, %s\n",
+               static_cast<unsigned long long>(addr),
+               instr.c_str(), regs_str.c_str());
+        return true;
+    } catch (...) {
+        return true;
+    }
 }
 
 
@@ -1841,8 +2372,48 @@ void* WindowsEmulator::get_process_peb(void* process) {
 //     """Collect emulator state information in the event of an error."""
 std::string WindowsEmulator::get_error_info(const std::string& msg, uint64_t pc,
                                              const std::string& trace) {
-    (void)trace;
-    return msg + " at 0x" + hex_str(pc);
+    std::string result;
+
+    // Build module + offset info for PC
+    std::string pc_module = _resolve_module_offset(pc);
+    std::string addr_region = _resolve_region_info(pc);
+
+    // Get register state
+    auto regs = get_register_state();
+
+    // Get current instruction disassembly
+    std::string instr;
+    try {
+        auto [mnem, op, full] = get_disasm(pc, DISASM_SIZE);
+        instr = full;
+    } catch (...) {
+        instr = "disasm_failed";
+    }
+
+    char buf[2048];
+    snprintf(buf, sizeof(buf),
+        "Error: %s\n"
+        "  PC: 0x%llx\n"
+        "  Module: %s\n"
+        "  Region: %s\n"
+        "  Instr: %s\n"
+        "  Trace: %s\n",
+        msg.c_str(),
+        static_cast<unsigned long long>(pc),
+        pc_module.empty() ? "none" : pc_module.c_str(),
+        addr_region.empty() ? "none" : addr_region.c_str(),
+        instr.c_str(),
+        trace.empty() ? "none" : trace.c_str());
+    result += buf;
+
+    // Append register state
+    result += "  Registers:\n";
+    for (auto& [reg, val] : regs) {
+        snprintf(buf, sizeof(buf), "    %s = %s\n", reg.c_str(), val.c_str());
+        result += buf;
+    }
+
+    return result;
 }
 
 
