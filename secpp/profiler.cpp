@@ -1,11 +1,22 @@
-// profiler.cpp
+// profiler.cpp — Execution profiler and report generation
+// Ported from: speakeasy/profiler.py (796 lines)
+// Python docstrings embedded as C++ comments on each method.
+// Reference: // Python:<line> points to the Python source line.
+
 #include "profiler.h"
 #include <nlohmann/json.hpp>
 #include <picosha2.h>
+#include <cmath>
 #include <cctype>
 
 using namespace speakeasy;
 
+// Python:91-131 — Run class implementation
+// class Run:
+//     """Represents the basic execution primative for the emulation engine.
+//     A "run" can represent any form of execution: a thread, a callback,
+//     an exported function, or even a child process."""
+//     def __init__(self):
 Run::Run() : instr_cnt(0), ret_val(nullptr), process_context(nullptr),
              thread(nullptr), start_addr(0), num_apis(0) {
     network["dns"] = std::vector<std::map<std::string, std::string>>();
@@ -17,10 +28,29 @@ Run::Run() : instr_cnt(0), ret_val(nullptr), process_context(nullptr),
     write_cache = std::deque<uint64_t>(4);
 }
 
+// Python:126-130
+// def get_api_count(self):
+//     """Get the number of APIs that were called during the run"""
+//     return self.num_apis
 int Run::get_api_count() {
     return num_apis;
 }
 
+// Python:133-151 — Profiler class implementation
+// class Profiler:
+//     """The profiler class exists to generate an execution report
+//     for all runs that occur within a binary emulation."""
+//     def __init__(self):
+//         self.start_time: float = 0
+//         self.strings: dict[str, list[str]] = {"ansi": [], "unicode": []}
+//         self.decoded_strings: dict[str, list[str]] = {"ansi": [], "unicode": []}
+//         self.last_data: list[int] = [0, 0]
+//         self.last_event: AnyEvent | dict[str, Any] = {}
+//         self.set_start_time()
+//         self.runtime: float = 0
+//         self.meta: dict[str, Any] = {}
+//         self.runs: list[Run] = []
+//         self.artifact_store = ArtifactStore()
 Profiler::Profiler() : start_time(0), runtime(0) {
     set_start_time();
     strings["ansi"] = std::vector<std::string>();
@@ -30,10 +60,19 @@ Profiler::Profiler() : start_time(0), runtime(0) {
     last_data = {0, 0};
 }
 
+// Python:153-158
+// def add_input_metadata(self, meta):
+//     """Add top level profiler fields containing metadata for the
+//     module that will be emulated"""
+//     self.meta = meta
 void Profiler::add_input_metadata(const std::map<std::string, std::string>& meta_input) {
     this->meta = meta_input;
 }
 
+// Python:160-164
+// def set_start_time(self):
+//     """Get the start time for a sample so we can time the execution length"""
+//     self.start_time = time.time()
 void Profiler::set_start_time() {
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = now.time_since_epoch();
@@ -41,6 +80,10 @@ void Profiler::set_start_time() {
     start_time = nanoseconds.count() / 1000000000.0;
 }
 
+// Python:166-170
+// def get_run_time(self):
+//     """Get the time spent emulating a specific "run\""""
+//     return time.time() - self.start_time
 double Profiler::get_run_time() {
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = now.time_since_epoch();
@@ -49,40 +92,117 @@ double Profiler::get_run_time() {
     return current_time - start_time;
 }
 
+// Python:172-176
+// def stop_run_clock(self):
+//     """Stop the runtime clock to include in the report"""
+//     self.runtime = self.get_run_time()
 void Profiler::stop_run_clock() {
     runtime = get_run_time();
 }
 
+// Python:178-182
+// def get_epoch_time(self):
+//     """Get the current time in epoch format"""
+//     return int(time.time())
 long Profiler::get_epoch_time() {
     return static_cast<long>(std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count());
 }
 
+// Python:184-188
+// def add_run(self, run: Run) -> None:
+//     """Add a new run to the captured run list"""
+//     self.runs.append(run)
 void Profiler::add_run(std::shared_ptr<Run> run) {
     runs.push_back(run);
 }
 
+// Internal helper: store binary data to artifact store
 std::string Profiler::handle_binary_data(const std::vector<uint8_t>& data) {
     if (data.empty()) return "";
     return artifact_store.put_bytes(data);
 }
 
-void Profiler::log_error(const std::string& error) {
-    if (meta.find("errors") == meta.end()) {
-        meta["errors"] = "";
-    }
-    meta["errors"] += error + ";";
+// Python:190-195
+// def put_binary_data(self, data: bytes, limit: int | None = None) -> str | None:
+//     """Store binary data and return its artifact reference."""
+//     if not data: return None
+//     payload = data[:limit] if limit is not None else data
+//     return self.artifact_store.put_bytes(payload)
+std::string Profiler::put_binary_data(const std::vector<uint8_t>& data, int limit) {
+    if (data.empty()) return "";
+    std::vector<uint8_t> payload_buf;
+    const std::vector<uint8_t>& payload = (limit > 0) ?
+        (payload_buf = std::vector<uint8_t>(data.begin(), data.begin() + std::min((size_t)limit, data.size())), payload_buf) : data;
+    return artifact_store.put_bytes(payload);
 }
 
-void Profiler::log_dropped_files(std::shared_ptr<Run> /*run*/, const std::vector<void*>& files) {
+// Python:197-206
+// def merge_binary_data(self, artifact_ref: str | None, data: bytes, limit: int | None = None) -> str | None:
+//     """Append raw bytes to an existing artifact payload and store the merged result."""
+//     if not artifact_ref: return self.put_binary_data(data, limit=limit)
+//     merged = self.artifact_store.get_bytes(artifact_ref)
+//     merged.extend(data)
+//     if limit is not None and len(merged) > limit: merged = merged[:limit]
+//     return self.artifact_store.put_bytes(merged)
+std::string Profiler::merge_binary_data(const std::string& ref, const std::vector<uint8_t>& data, int limit) {
+    if (ref.empty()) return put_binary_data(data, limit);
+    std::vector<uint8_t> merged = artifact_store.get_bytes(ref);
+    merged.insert(merged.end(), data.begin(), data.end());
+    if (limit > 0 && (int)merged.size() > limit) merged.resize(limit);
+    return artifact_store.put_bytes(merged);
+}
+
+// Python:214-225 — log dropped files from an emulation run
+// def record_dropped_files_event(self, run, files):
+//     for f in files:
+//         run.dropped_files.append({
+//             "name": f.get_name(), "hash": f.get_hash(), "path": f.get_path(),
+//         })
+void Profiler::log_dropped_files(std::shared_ptr<Run> run, const std::vector<void*>& files) {
+    record_dropped_files_event(run, files);
+}
+
+// Python:214-225 — stub: needs FileData C++ class
+void Profiler::record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<void*>& files) {
     for (void* f : files) {
         (void)f;
-        // When a FileData C++ class is implemented, this will iterate,
-        // call get_data()/get_hash(), and populate run->dropped_files.
+        // TODO: When FileData C++ class is implemented, iterate,
+        // call get_name()/get_hash()/get_path(), populate run->dropped_files.
     }
 }
 
+// Python:208-212
+// def record_error_event(self, error: ErrorInfo) -> None:
+//     """Log a top level emulator error for the emulation report."""
+//     self.meta.setdefault("errors", []).append(error.to_dict())
+void Profiler::record_error_event(const speakeasy::ErrorInfo& error) {
+    if (meta.find("errors") == meta.end()) {
+        meta["errors"] = "[]";
+    }
+    std::string err_json = error.to_json().dump();
+    if (meta["errors"].size() <= 2) meta["errors"] = err_json;
+    else {
+        std::string val = meta["errors"];
+        val.pop_back();
+        if (val.size() > 1) val += ",";
+        val += err_json + "]";
+        meta["errors"] = val;
+    }
+}
+
+// Legacy string-based error logging (Python compat)
+void Profiler::log_error(const std::string& error) {
+    speakeasy::ErrorInfo ei;
+    ei.type = "internal_error";
+    ei.context_summary = error;
+    record_error_event(ei);
+}
+
+// Python:227-259
+// def record_api_event(self, run, pos: TracePosition, name, ret, argv):
+//     """Log a call to an OS API. This includes arguments, return address, and return value"""
 void Profiler::log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name,
                        void* ret, const std::vector<std::string>& argv,
                        const std::vector<std::string>& ctx) {
@@ -150,7 +270,7 @@ void Profiler::log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string&
         entry["ctx"] = ctx_json.dump();
     }
 
-    // Dedup against last 3 API entries
+    // Dedup against last 3 API entries (Python: self.events[-3:] logic)
     bool is_duplicate = false;
     int start_idx = std::max(0, (int)run->apis.size() - 3);
     for (int i = start_idx; i < (int)run->apis.size(); i++) {
@@ -165,6 +285,11 @@ void Profiler::log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string&
     }
 }
 
+// Python:261-338
+// def record_file_access_event(self, run, pos, path, event_type, data=None, handle=0,
+//                               disposition=[], access=[], buffer=0, size=None):
+//     """Log file access events. This will include things like handles being opened,
+//     data reads, and data writes."""
 void Profiler::log_file_access(std::shared_ptr<Run> run, const std::string& path,
                                const std::string& event_type,
                                const std::vector<uint8_t>& data,
@@ -225,6 +350,11 @@ void Profiler::log_file_access(std::shared_ptr<Run> run, const std::string& path
     }
 }
 
+// Python:340-416
+// def record_registry_access_event(self, run, pos, path, event_type, value_name=None,
+//                                   data=None, handle=0, disposition=[], access=[],
+//                                   buffer=0, size=None):
+//     """Log registry access events that occur during emulation including values being read/written"""
 void Profiler::log_registry_access(std::shared_ptr<Run> run, const std::string& path,
                                    const std::string& event_type,
                                    const std::string& value_name,
@@ -265,6 +395,10 @@ void Profiler::log_registry_access(std::shared_ptr<Run> run, const std::string& 
     }
 }
 
+// Python:418-522
+// def record_process_event(self, run, pos: TracePosition, proc, event_type, kwargs):
+//     """Log process events (create, exit, memory alloc/free/protect, thread create/inject)
+//     that are created within another process."""
 void Profiler::log_process_event(std::shared_ptr<Run> run, void* proc,
                                  const std::string& event_type,
                                  const std::map<std::string, std::string>& kwargs) {
@@ -324,6 +458,9 @@ void Profiler::log_process_event(std::shared_ptr<Run> run, void* proc,
     run->process_events.push_back(event);
 }
 
+// Python:524-537
+// def record_dns_event(self, run, pos: TracePosition, domain, ip=""):
+//     """Log DNS name lookups for the emulation report"""
 void Profiler::log_dns(std::shared_ptr<Run> run, const std::string& domain,
                        const std::string& ip) {
     for (const auto& evt : run->network["dns"]) {
@@ -340,6 +477,9 @@ void Profiler::log_dns(std::shared_ptr<Run> run, const std::string& domain,
     run->network["dns"].push_back(entry);
 }
 
+// Python:539-567
+// def record_http_event(self, run, pos, server, port, proto, headers, body, secure):
+//     """Log HTTP traffic that occur during emulation"""
 void Profiler::log_http(std::shared_ptr<Run> run, const std::string& server, int port,
                         const std::string& /*proto*/,
                         const std::string& headers,
@@ -367,6 +507,27 @@ void Profiler::log_http(std::shared_ptr<Run> run, const std::string& server, int
     run->network["traffic"].push_back(entry);
 }
 
+// Python:569-576
+// def record_dyn_code_event(self, run, tag, base, size):
+//     """Log code that is generated at runtime and then executed"""
+//     if base not in run.base_addrs:
+//         run.dyn_code["mmap"].append({"tag": tag, "base": hex(base), ...})
+//         run.base_addrs.add(base)
+void Profiler::log_dyn_code(std::shared_ptr<Run> run, const std::string& tag,
+                            uint64_t base, uint64_t size) {
+    if (run->base_addrs.find(base) == run->base_addrs.end()) {
+        std::map<std::string, std::string> entry;
+        entry["tag"] = tag;
+        entry["base"] = "0x" + hex_str(base, false);
+        entry["size"] = "0x" + hex_str(size, false);
+        run->dyn_code["mmap"].push_back(entry);
+        run->base_addrs.insert(base);
+    }
+}
+
+// Python:578-595
+// def record_network_event(self, run, pos, server, port, typ, proto, data, method):
+//     """Log network activity for an emulation run"""
 void Profiler::log_network(std::shared_ptr<Run> run, const std::string& server, int port,
                            const std::string& typ,
                            const std::string& proto,
@@ -385,81 +546,121 @@ void Profiler::log_network(std::shared_ptr<Run> run, const std::string& server, 
     run->network["traffic"].push_back(entry);
 }
 
-void Profiler::log_dyn_code(std::shared_ptr<Run> run, const std::string& tag,
-                            uint64_t base, uint64_t size) {
-    if (run->base_addrs.find(base) == run->base_addrs.end()) {
-        std::map<std::string, std::string> entry;
-        entry["tag"] = tag;
-        entry["base"] = "0x" + hex_str(base, false);
-        entry["size"] = "0x" + hex_str(size, false);
-        run->dyn_code["mmap"].push_back(entry);
-        run->base_addrs.insert(base);
-    }
+// Python:597-620 — handled exception event
+// def record_exception_event(self, run, pos, exc_va, handler_va, code, ...):
+//     """Log an exception that was generated during emulation"""
+void Profiler::log_exception(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info) {
+    run->handled_exceptions.push_back(info);
 }
 
-nlohmann::json Profiler::get_json_report() const {
-    nlohmann::json report;
-    report["report_version"] = __report_version__;
+// Python:622-633 — module load event
+// def record_module_load_event(self, run, pos, name, path, base, size):
+//     """Log a module being loaded into the emulated process"""
+void Profiler::log_module_load(std::shared_ptr<Run> run, const std::string& name,
+                               const std::string& path, uint64_t base, uint64_t size) {
+    std::map<std::string, std::string> entry;
+    entry["name"] = name;  entry["path"] = path;
+    entry["base"] = "0x" + hex_str(base, false);
+    entry["size"] = "0x" + hex_str(size, false);
+    entry["event"] = "module_load";
+    run->process_events.push_back(entry);
+}
 
-    if (!meta.empty()) {
-        report["input"] = meta;
-    }
+// Python:642-796
+// def get_report(self) -> Report:
+//     """Build the full emulation report from all runs and metadata"""
+speakeasy::Report Profiler::get_report() const {
+    speakeasy::Report rpt;
+    rpt.report_version = __report_version__;
+    rpt.emulation_total_runtime = std::round(runtime * 1000.0) / 1000.0;
+    rpt.timestamp = static_cast<int64_t>(start_time);
+    if (meta.count("arch"))      rpt.arch = meta.at("arch");
+    if (meta.count("filepath"))  rpt.filepath = meta.at("filepath");
+    if (meta.count("sha256"))    rpt.sha256 = meta.at("sha256");
+    if (meta.count("size"))      rpt.size = std::stoi(meta.at("size"));
+    if (meta.count("filetype"))  rpt.filetype = meta.at("filetype");
+    if (meta.count("image_base")) rpt.image_base = std::stoull(meta.at("image_base"));
 
-    nlohmann::json runs_array = nlohmann::json::array();
+    // Build entry points from runs
     for (auto& run : runs) {
-        nlohmann::json r;
-        r["start_addr"] = hex_str(run->start_addr);
-        r["instr_cnt"] = run->instr_cnt;
-        r["num_apis"] = run->num_apis;
-
-        // Compute API hash from accumulated data
-        if (!run->api_hash_data.empty()) {
-            r["api_hash"] = picosha2::hash256_hex_string(run->api_hash_data);
+        speakeasy::EntryPoint ep;
+        ep.ep_type = run->type;
+        ep.start_addr = run->start_addr;
+        for (auto& a : run->args) {
+            try { ep.ep_args.push_back(std::stoull(a, nullptr, 0)); }
+            catch (...) { ep.ep_args.push_back(0); }
         }
-
-        if (!run->apis.empty())              r["apis"] = run->apis;
-        if (!run->file_access.empty())       r["file_access"] = run->file_access;
-        if (!run->registry_access.empty())   r["registry_access"] = run->registry_access;
-        if (!run->process_events.empty())    r["process_events"] = run->process_events;
-        if (!run->dropped_files.empty())     r["dropped_files"] = run->dropped_files;
-        if (!run->dyn_code["mmap"].empty())  r["dyn_code"] = run->dyn_code;
-        if (!run->network["dns"].empty() || !run->network["traffic"].empty()) {
-            r["network"] = run->network;
+        ep.instr_count = run->instr_cnt > 0 ? std::optional<int>(run->instr_cnt) : std::nullopt;
+        if (!run->api_hash_data.empty())
+            ep.apihash = picosha2::hash256_hex_string(run->api_hash_data);
+        if (run->ret_val)
+            ep.ret_val = reinterpret_cast<uint64_t>(run->ret_val);
+        if (!run->error.empty()) {
+            speakeasy::ErrorInfo ei;
+            ei.type = run->error.count("type") ? run->error.at("type") : "error";
+            ei.context_summary = run->error.count("message") ? run->error.at("message") : "";
+            ep.error = ei;
         }
-
-        runs_array.push_back(r);
-    }
-    report["runs"] = runs_array;
-
-    if (!strings.empty())         report["static_strings"] = strings;
-    if (!decoded_strings.empty()) report["decoded_strings"] = decoded_strings;
-    if (meta.count("errors"))     report["errors"] = meta.at("errors");
-
-    auto artifact_data = artifact_store.to_report_data();
-    if (!artifact_data.empty()) {
-        nlohmann::json data_json = nlohmann::json::object();
-        for (const auto& [digest, artifact] : artifact_data) {
-            data_json[digest] = artifact.to_json();
-        }
-        report["data"] = data_json;
+        rpt.entry_points.push_back(ep);
     }
 
-    return report;
+    // Strings report
+    auto ansi_it = strings.find("ansi");
+    auto uni_it = strings.find("unicode");
+    auto dansi_it = decoded_strings.find("ansi");
+    auto duni_it = decoded_strings.find("unicode");
+    if ((ansi_it != strings.end() && !ansi_it->second.empty()) ||
+        (uni_it != strings.end() && !uni_it->second.empty()) ||
+        (dansi_it != decoded_strings.end() && !dansi_it->second.empty()) ||
+        (duni_it != decoded_strings.end() && !duni_it->second.empty())) {
+        speakeasy::StringsReport sr;
+        if(ansi_it != strings.end())
+            sr.static_strings.ansi = ansi_it->second;
+        if (uni_it != strings.end())
+            sr.static_strings.unicode = uni_it->second;
+        if (dansi_it != decoded_strings.end())
+            sr.in_memory.ansi = dansi_it->second;
+        if (duni_it != decoded_strings.end())
+            sr.in_memory.unicode = duni_it->second;
+        rpt.strings = sr;
+    }
+
+    // Data artifacts
+    auto art_data = artifact_store.to_report_data();
+    if (!art_data.empty()) {
+        std::map<std::string, speakeasy::DataArtifact> data_map;
+        for (auto& [digest, a] : art_data) {
+            speakeasy::DataArtifact da;
+            da.compression = a.compression;
+            da.encoding    = a.encoding;
+            da.size        = a.size;
+            da.data        = a.data;
+            data_map[digest] = da;
+        }
+        rpt.data = data_map;
+    }
+
+    return rpt;
+}
+
+// Python:635-641
+// def get_json_report(self) -> str:
+//     return json.dumps(self.get_report().to_dict(), indent=4, default=str, ensure_ascii=False)
+nlohmann::json Profiler::get_json_report() const {
+    return get_report().to_json();
 }
 
 std::string Profiler::get_json_report_string() const {
-    return get_json_report().dump();
+    return get_json_report().dump(4);
 }
 
-std::map<std::string, std::string> Profiler::get_report() {
+std::map<std::string, std::string> Profiler::get_profile_summary() const {
     std::map<std::string, std::string> profile;
     profile["report_version"] = __report_version__;
     profile["runtime"] = std::to_string(runtime);
     profile["num_runs"] = std::to_string(runs.size());
     int total_apis = 0;
-    for (auto& run : runs) {
-        total_apis += run->num_apis;
-    }
+    for (auto& run : runs) total_apis += run->num_apis;
     profile["total_apis"] = std::to_string(total_apis);
     return profile;
 }

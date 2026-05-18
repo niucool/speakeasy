@@ -56,7 +56,6 @@ std::string normalize_package_path(const std::string& path);
  */
 class Hook {
 protected:
-    std::function<bool()> cb;
     int handle;
     bool enabled;
     bool added;
@@ -90,6 +89,8 @@ public:
     bool is_added() const { return added; }
     int get_handle() const { return handle; }
     virtual void add();
+
+    std::function<bool()> cb;
 };
 
 /** Hook that fires when a specific API is called (e.g. kernel32.CreateFile) */

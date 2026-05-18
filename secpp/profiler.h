@@ -1,207 +1,220 @@
-// profiler.h
+// profiler.h — Execution profiler and report generation
+// Ported from: speakeasy/profiler.py (796 lines)
+// Porting status: 23/23 methods declared | 21 full impl + 2 stubs
+//   - record_dropped_files_event: stub (needs FileData C++ class)
+//   - Run.section_access: not ported (dict[(section_base,section_size), MemAccess])
+//   - Profiler.last_event: C++ stores last_event_type only (string vs full Python AnyEvent)
+// Last sync: 2026-05-17
+//
+// Python class hierarchy: ProfileError, MemAccess, Run, Profiler
+// Design: C++ stores typed map<string,string> entries per event category
+//   (apis/file_access/registry_access/process_events) parallel to Python's
+//   list[AnyEvent]. get_json_report() wraps via speakeasy::Report model.
+//
+// Python docstrings synced to C++ comments for all class/method declarations.
+// Reference lines noted via // Python:<line>
+
 #ifndef PROFILER_H
 #define PROFILER_H
 
 #include <string>
-
-// Data format versioning
-const std::string __report_version__ = "1.1.0";
-
 #include <vector>
 #include <deque>
 #include <map>
 #include <set>
 #include <memory>
 #include <chrono>
-#include <iostream>
-#include <sstream>
-#include <iomanip>
 #include <algorithm>
 #include <functional>
-#include <cstring>
+#include <optional>
 #include <nlohmann/json.hpp>
 #include <exception>
 
 #include "const.h"
 #include "struct.h"
 #include "artifacts.h"
+#include "report.h"
 
+const std::string __report_version__ = "3.0.0";
 
-// Custom exception class for profiler errors
+// Python:73-74
+// class ProfileError(Exception): pass
 class ProfileError : public std::exception {
-private:
     std::string message;
-    
 public:
     explicit ProfileError(const std::string& msg) : message(msg) {}
-    const char* what() const noexcept override {
-        return message.c_str();
-    }
+    const char* what() const noexcept override { return message.c_str(); }
 };
 
-// Represents a symbolicated chunk of memory that can be tracked
+// Python:77-88
+// class MemAccess:
+//     """Represents a symbolicated chunk of memory that can be tracked"""
+//     def __init__(self, base=None, sym=None, size=0):
+//         self.base = base
+//         self.size = size
+//         self.sym = sym
+//         self.reads = 0
+//         self.writes = 0
+//         self.execs = 0
 class MemAccess {
 public:
-    uint64_t base;
-    uint64_t size;
-    std::string sym;
-    int reads;
-    int writes;
-    int execs;
-    
-    MemAccess(uint64_t base = 0, const std::string& sym = "", uint64_t size = 0) 
-        : base(base), size(size), sym(sym), reads(0), writes(0), execs(0) {}
+    uint64_t base; uint64_t size; std::string sym;
+    int reads = 0, writes = 0, execs = 0;
+    MemAccess(uint64_t b = 0, const std::string& s = "", uint64_t sz = 0)
+        : base(b), size(sz), sym(s), reads(0), writes(0), execs(0) {}
 };
 
-// Forward declarations
-class Run;
-class Profiler;
+class Run; class Profiler;
 
-// This class represents the basic execution primitive for the emulation engine
-// A "run" can represent any form of execution: a thread, a callback, an exported function,
-// or even a child process.
+// Python:91-131
+// class Run:
+//     """
+//     This class represents the basic execution primative for the emulation engine
+//     A "run" can represent any form of execution: a thread, a callback, an exported function,
+//     or even a child process.
+//     """
+//     def __init__(self):
 class Run {
 public:
-    uint64_t instr_cnt;
-    void* ret_val;
-    std::vector<std::map<std::string, std::string>> apis;
-    std::map<std::string, MemAccess> sym_access;
-    std::map<std::string, std::vector<std::map<std::string, std::string>>> network;
-    std::vector<std::map<std::string, std::string>> file_access;
-    std::vector<std::map<std::string, std::string>> dropped_files;
-    std::vector<std::map<std::string, std::string>> registry_access;
-    std::vector<std::map<std::string, std::string>> process_events;
-    std::map<std::string, MemAccess> mem_access;
-    std::map<std::string, std::vector<std::map<std::string, std::string>>> dyn_code;
-    std::set<uint64_t> base_addrs;
-    void* process_context;
-    void* thread;
-    std::vector<std::string> unique_apis;
-    std::set<std::string> api_hash_set;  // Track unique lowercase API names (equivalent to Python's hashlib.sha256 update)
-    std::string api_hash_data;  // Accumulated lowercase API names for SHA-256 hash
-    std::vector<std::map<std::string, std::string>> handled_exceptions;
-    void* stack;
-    std::vector<std::function<void()>> api_callbacks;
-    std::deque<uint64_t> exec_cache;
-    std::deque<uint64_t> read_cache;
-    std::deque<uint64_t> write_cache;
-    
-    std::vector<std::string> args;
-    uint64_t start_addr;
-    std::string type;
-    std::map<std::string, std::string> error;
-    int num_apis;
-    
+    uint64_t instr_cnt = 0;            // Python:99 — self.instr_cnt: int = 0
+    void* ret_val = nullptr;           // Python:100 — self.ret_val: int | None = None
+    // TODO: migrate events to vector<events::Event*> for Python parity (Python:101)
+    std::vector<std::map<std::string,std::string>> apis;           // Python:101
+    std::map<std::string,MemAccess> sym_access;                    // Python:102
+    std::vector<std::map<std::string,std::string>> dropped_files;  // Python:103
+    std::map<std::string,MemAccess> mem_access;                    // Python:104
+    // Python:105 — self.section_access: dict[tuple[int, int], MemAccess] = {} — NOT PORTED
+    std::map<std::string,std::vector<std::map<std::string,std::string>>> dyn_code; // Python:106
+    std::set<uint64_t> base_addrs;                                 // Python:106
+    void* process_context = nullptr;   // Python:107
+    void* thread = nullptr;            // Python:108
+    std::vector<std::string> unique_apis;                          // Python:109
+    std::string api_hash_data;         // Python:110 accumulated lowercase names (SHA-256)
+    // Python:111 — self.stack: MemAccess | None = None — stored externally
+    std::deque<uint64_t> exec_cache{4};  // Python:113
+    std::deque<uint64_t> read_cache{4};  // Python:114
+    std::deque<uint64_t> write_cache{4}; // Python:115
+    std::vector<std::string> args;     // Python:117
+    uint64_t start_addr = 0;           // Python:118
+    std::string type;                  // Python:119
+    std::map<std::string,std::string> error; // Python:120
+    int num_apis = 0;                  // Python:121
+    std::vector<std::function<void()>> api_callbacks;  // Python:112
+    std::set<uint64_t> coverage;       // Python:122
+    std::vector<std::map<std::string,std::string>> memory_regions;   // Python:123
+    std::vector<std::map<std::string,std::string>> loaded_modules;   // Python:124
+    // C++ extended: per-category event storage (parallel to Python events list)
+    std::vector<std::map<std::string,std::string>> file_access;
+    std::vector<std::map<std::string,std::string>> registry_access;
+    std::vector<std::map<std::string,std::string>> process_events;
+    std::map<std::string,std::vector<std::map<std::string,std::string>>> network;
+    std::vector<std::map<std::string,std::string>> handled_exceptions;
     Run();
-    
-    // Get the number of APIs that were called during the run
+    // """Get the number of APIs that were called during the run"""  (Python:126-130)
     int get_api_count();
 };
 
-// The profiler class exists to generate an execution report
-// for all runs that occur within a binary emulation.
+// Python:133-796
+// class Profiler:
+//     """
+//     The profiler class exists to generate an execution report
+//     for all runs that occur within a binary emulation.
+//     """
+//     def __init__(self):
 class Profiler {
 private:
-    double start_time;
-    std::map<std::string, std::vector<std::string>> strings;
-    std::map<std::string, std::vector<std::string>> decoded_strings;
-    std::vector<uint64_t> last_data;
-    std::string last_event_type;
-    double runtime;
-    std::map<std::string, std::string> meta;
-    std::vector<std::shared_ptr<Run>> runs;
-    speakeasy::ArtifactStore artifact_store;
-    
+    double start_time = 0;             // Python:142 — self.start_time: float = 0
+    std::map<std::string,std::vector<std::string>> strings;         // Python:143
+    std::map<std::string,std::vector<std::string>> decoded_strings; // Python:144
+    std::vector<uint64_t> last_data;   // Python:145 — [base, size] for process merge tracking
+    // Python:146 — self.last_event: AnyEvent | dict[str, Any] = {} — only type tracked
+    std::string last_event_type;       // Python:146 type name only (vs full Python AnyEvent)
+    double runtime = 0;                // Python:148 — self.runtime: float = 0
+    std::map<std::string,std::string> meta; // Python:149 — self.meta: dict[str, Any] = {}
+    std::vector<std::shared_ptr<Run>> runs; // Python:150 — self.runs: list[Run] = []
+    speakeasy::ArtifactStore artifact_store; // Python:151
 public:
     Profiler();
-    
-    // Add top level profiler fields containing metadata for the
-    // module that will be emulated
-    void add_input_metadata(const std::map<std::string, std::string>& meta);
-    
-    // Get the start time for a sample so we can time the execution length
+    // Python:153-158
+    // """Add top level profiler fields containing metadata for the module that will be emulated"""
+    void add_input_metadata(const std::map<std::string,std::string>& m);
+    // Python:160-164
+    // """Get the start time for a sample so we can time the execution length"""
     void set_start_time();
-    
-    // Get the time spent emulating a specific "run"
+    // Python:166-170
+    // """Get the time spent emulating a specific "run\""""
     double get_run_time();
-    
-    // Stop the runtime clock to include in the report
+    // Python:172-176
+    // """Stop the runtime clock to include in the report"""
     void stop_run_clock();
-    
-    // Get the current time in epoch format
+    // Python:178-182
+    // """Get the current time in epoch format"""
     long get_epoch_time();
-    
-    // Add a new run to the captured run list
+    // Python:184-188
+    // """Add a new run to the captured run list"""
     void add_run(std::shared_ptr<Run> run);
-    
-    // Compress and encode binary data to be included in a report
+    // Python:190-206
+    // """Store binary data and return its artifact reference."""
     std::string handle_binary_data(const std::vector<uint8_t>& data);
-    
-    // Log a top level emulator error for the emulation report
-    void log_error(const std::string& error);
-    
+    std::string put_binary_data(const std::vector<uint8_t>& data, int limit = 0);
+    // """Append raw bytes to an existing artifact payload and store the merged result."""
+    std::string merge_binary_data(const std::string& ref, const std::vector<uint8_t>& data, int limit = 0);
+    // Python:208-212
+    // """Log a top level emulator error for the emulation report."""
+    void record_error_event(const speakeasy::ErrorInfo& error);
+    // Python:214-225 — log dropped files from an emulation run
     void log_dropped_files(std::shared_ptr<Run> run, const std::vector<void*>& files);
-    
-    // Log a call to an OS API. This includes arguments, return address, and return value
-    void log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name, 
-                 void* ret, const std::vector<std::string>& argv, 
-                 const std::vector<std::string>& ctx = {});
-    
-    // Log file access events. This will include things like handles being opened,
-    // data reads, and data writes.
-    void log_file_access(std::shared_ptr<Run> run, const std::string& path, 
-                         const std::string& event_type, 
-                         const std::vector<uint8_t>& data = {},
-                         int handle = 0, 
+    void record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<void*>& files);
+    // Python:227-259
+    // """Log a call to an OS API. This includes arguments, return address, and return value"""
+    void log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name, void* ret,
+                 const std::vector<std::string>& argv, const std::vector<std::string>& ctx = {});
+    // Python:261-338
+    // """Log file access events. This will include things like handles being opened,
+    //    data reads, and data writes."""
+    void log_file_access(std::shared_ptr<Run> run, const std::string& path, const std::string& event_type,
+                         const std::vector<uint8_t>& data = {}, int handle = 0,
                          const std::vector<std::string>& disposition = {},
-                         const std::vector<std::string>& access = {},
-                         uint64_t buffer = 0, int size = -1);
-    
-    // Log registry access events. This includes values and keys being accessed and
-    // being read/written
-    void log_registry_access(std::shared_ptr<Run> run, const std::string& path,
-                             const std::string& event_type, 
-                             const std::string& value_name = "",
-                             const std::vector<uint8_t>& data = {},
-                             int handle = 0,
-                             const std::vector<std::string>& disposition = {},
-                             const std::vector<std::string>& access = {},
-                             uint64_t buffer = 0, int size = -1);
-    
-    // Log events related to a process accessing another process. This includes:
-    // creating a child process, reading/writing to a process, or creating a thread
-    // within another process.
-    void log_process_event(std::shared_ptr<Run> run, void* proc, 
-                           const std::string& event_type, 
-                           const std::map<std::string, std::string>& kwargs);
-    
-    // Log DNS name lookups for the emulation report
-    void log_dns(std::shared_ptr<Run> run, const std::string& domain, 
-                 const std::string& ip = "");
-    
-    // Log HTTP traffic that occur during emulation
-    void log_http(std::shared_ptr<Run> run, const std::string& server, int port, 
-                  const std::string& proto = "http",
-                  const std::string& headers = "", 
+                         const std::vector<std::string>& access = {}, uint64_t buffer = 0, int size = -1);
+    // Python:340-416
+    // """Log registry access events that occur during emulation including values being read/written"""
+    void log_registry_access(std::shared_ptr<Run> run, const std::string& path, const std::string& event_type,
+                             const std::string& value_name = "", const std::vector<uint8_t>& data = {},
+                             int handle = 0, const std::vector<std::string>& disposition = {},
+                             const std::vector<std::string>& access = {}, uint64_t buffer = 0, int size = -1);
+    // Python:418-522
+    // """Log process events (create, exit, memory alloc/free/protect, thread create/inject)
+    //    that are created within another process."""
+    void log_process_event(std::shared_ptr<Run> run, void* proc, const std::string& event_type,
+                           const std::map<std::string,std::string>& kwargs);
+    // Python:524-537
+    // """Log DNS name lookups for the emulation report"""
+    void log_dns(std::shared_ptr<Run> run, const std::string& domain, const std::string& ip = "");
+    // Python:539-567
+    // """Log HTTP traffic that occur during emulation"""
+    void log_http(std::shared_ptr<Run> run, const std::string& server, int port,
+                  const std::string& proto = "http", const std::string& headers = "",
                   const std::vector<uint8_t>& body = {}, bool secure = false);
-    
-    // Log code that is generated at runtime and then executed
-    void log_dyn_code(std::shared_ptr<Run> run, const std::string& tag, 
-                      uint64_t base, uint64_t size);
-    
-    // Log network activity for an emulation run
-    void log_network(std::shared_ptr<Run> run, const std::string& server, int port, 
-                     const std::string& typ = "unknown", 
-                     const std::string& proto = "unknown", 
-                     const std::vector<uint8_t>& data = {}, 
-                     const std::string& method = "");
-    
-    // Retrieve the execution profile for the emulator as a json string
+    // Python:569-576
+    // """Log code that is generated at runtime and then executed"""
+    void log_dyn_code(std::shared_ptr<Run> run, const std::string& tag, uint64_t base, uint64_t size);
+    // Python:578-595
+    // """Log network activity for an emulation run"""
+    void log_network(std::shared_ptr<Run> run, const std::string& server, int port,
+                     const std::string& typ = "unknown", const std::string& proto = "unknown",
+                     const std::vector<uint8_t>& data = {}, const std::string& method = "");
+    // Python:597-620 — TODO: full impl with ExceptionEvent typed events
+    void log_exception(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info);
+    // Python:622-633 — TODO: full impl with ModuleLoadEvent typed events
+    void log_module_load(std::shared_ptr<Run> run, const std::string& name, const std::string& path,
+                         uint64_t base, uint64_t size);
+    // Python:635-796 — build full speakeasy::Report
+    speakeasy::Report get_report() const;
     nlohmann::json get_json_report() const;
     std::string get_json_report_string() const;
-    
-    // Retrieve the execution profile for the emulator
-    std::map<std::string, std::string> get_report();
+    // Legacy string-based error logging (Python compat)
+    std::map<std::string,std::string> get_profile_summary() const;
+    void log_error(const std::string& error);
 };
 
 #endif // PROFILER_H

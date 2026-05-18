@@ -107,7 +107,7 @@ public:
     /**
      * Get the emulation report from the emulator
      */
-    nlohmann::json get_report();
+    speakeasy::Report get_report();
     
     /**
      * Get the emulation report from the emulator formatted as a JSON string

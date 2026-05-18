@@ -231,7 +231,7 @@ TEST(ProfilerEventTest, ProfilerGetReport) {
     Profiler prof;
     prof.set_start_time();
     auto report = prof.get_report();
-    EXPECT_TRUE(report.empty() || report.size() > 0);
+    EXPECT_TRUE(report.report_version.size() > 0);  // Report is always valid, has version
 }
 
 TEST(ProfilerEventTest, MultipleFileAccesses) {

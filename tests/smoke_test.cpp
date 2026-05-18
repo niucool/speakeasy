@@ -333,7 +333,7 @@ TEST(ProfilerTest, ProfilerLogError) {
 TEST(ProfilerTest, ProfilerGetReport) {
     Profiler prof;
     auto report = prof.get_report();
-    EXPECT_TRUE(report.empty() || report.size() > 0);
+    EXPECT_TRUE(report.report_version.size() > 0);  // Report is always valid, has version
 }
 
 TEST(ProfilerTest, ProfilerEmptyJsonReport) {

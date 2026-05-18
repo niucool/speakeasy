@@ -53,14 +53,14 @@ TEST(ReportTest, DataArtifactJson) {
 }
 
 TEST(ReportTest, EmuReportJson) {
-    EmuReport report;
+    Report report;
     report.sha256 = "abc123";
-    report.file_type = "dll";
+    report.filetype = "dll";
     report.arch = "x86";
 
     nlohmann::json j = report.to_json();
     EXPECT_EQ(j["sha256"], "abc123");
-    EXPECT_EQ(j["file_type"], "dll");
+    EXPECT_EQ(j["filetype"], "dll");
     EXPECT_EQ(j["arch"], "x86");
 }
 

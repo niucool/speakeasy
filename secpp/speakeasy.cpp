@@ -166,9 +166,9 @@ void Speakeasy::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t offs
     emu->run_shellcode(sc_addr, stack_commit, offset);
 }
 
-nlohmann::json Speakeasy::get_report() { return emu->get_report(); }
+speakeasy::Report Speakeasy::get_report() { return emu->get_report(); }
 
-std::string Speakeasy::get_json_report() { return emu->get_json_report_string(); }
+std::string Speakeasy::get_json_report() { return emu->get_report().to_json_string(); }
 
 void* Speakeasy::add_api_hook(std::function<void()> cb, const std::string& module, 
                              const std::string& api_name, int argc, const std::string& call_conv) {

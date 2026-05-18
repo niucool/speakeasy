@@ -348,7 +348,7 @@ LoadedImage* PeLoader::make_image() {
         }
 
         // Build memory region
-        MemoryRegion region;
+        ModuleRegion region;
         region.base = image_base + sec.va;
         region.name = sec.name;
         auto end = region.name.find_last_not_of(" \t\0");

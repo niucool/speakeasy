@@ -42,7 +42,7 @@ struct PeMetadata {
     std::map<int, std::string> string_table;  // for LoadString
 };
 
-struct MemoryRegion {
+struct ModuleRegion {
     uint64_t base = 0;
     std::vector<uint8_t> data;
     std::string name;
@@ -77,7 +77,7 @@ struct LoadedImage {
     uint64_t ep = 0;
     int arch = 0;                 // 32 or 64
     bool is_driver = false;
-    std::vector<MemoryRegion> regions;
+    std::vector<ModuleRegion> regions;
     std::vector<uint8_t> mapped_image;
     PeMetadata metadata;
     std::vector<ImportEntry> imports;
