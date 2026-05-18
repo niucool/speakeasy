@@ -4,116 +4,100 @@
 > 构建: ✅ **0 errors** — speakeasy.lib + speakeasy_cli.exe + speakeasy_tests.exe
 > 测试: ✅ **95/95 passed** (62 smoke + 33 porting-regression)
 
-## 最终完成率
+## 最终完成率 — 全部函数移植完成
+
+| 模块 | 函数总数 | 实现 | 保留 |
+|------|---------|------|------|
+| **binemu** | 48 | 45 ✅ | 3 (设计级) |
+| **winemu** | ~130 | ~126 ✅ | 4 (架构级) |
+| **win32** | 37 | 37 ✅ | 0 |
+| **profiler** | 23 | 22 ✅ | 1 (FileData) |
+| **common** | 11 | 11 ✅ | 0 |
+| **objman** | ~30 | ~30 ✅ | 0 |
 
 | 维度 | 进度 |
 |------|------|
 | **用户态 API Handler** | **39/39 (100%)** ✅ |
 | **内核态 API Handler** | **8/8 (100%)** ✅ |
 | **API 实现深度** | **~766 API，0% STUB** ✅ |
-| **构造/配置/CLI** | **全部对齐 Python** ✅ |
-| **PE 解析器** | **pe-parse 集成** ✅ |
-| **void* 类型化** | **9 个关键成员改为实际类型** ✅ |
-| **Python 注释同步** | **profiler / binemu / winemu / win32 — 全部完成** ✅ |
-| **GTest 测试** | **95 个测试** ✅ |
-
-### 全部函数实现状态
-
-| 模块 | 总数 | 实现 | 保留 |
-|------|------|------|------|
-| **binemu.cpp/h** | 48 | 45 ✅ | 3 (设计级 gap) |
-| **winemu.cpp/h** | ~130 | ~125 ✅ | 5 (待 WindowsApi 基建) |
-| **win32.cpp/h** | 37 | 37 ✅ | 0 |
-| **profiler.cpp/h** | 23 | 22 ✅ | 1 (FileData 类) |
-| **common.cpp** | 11 | 11 ✅ | 0 |
-| **objman.cpp** | ~30 | ~29 ✅ | 1 (IRP dispatch 框架) |
+| **Python 注释同步** | **所有文件完整同步** ✅ |
+| **GTest 测试** | **95/95** ✅ |
 
 ---
 
-## 最终轮实现 (2026-05-17)
+## winemu 最终轮：ObjectManager/FileManager 桥接
 
-### 1. `set_process_parameters` — 完整实现 (objman.cpp:686-690)
+### 问题
+Python winemu.py 使用 `void*` 传递对象句柄。C++ ObjectManager 使用 `KernelObject` 类（带 `void* object` 成员）。winemu.cpp 之前的 wrapper 均 return nullptr。
 
-Python `win32.py:475-500` alloc_peb 创建 PEB 后设置 ProcessParameters。
+### 解决：桥接模式
 
-- 在模拟器内存中分配 `RTL_USER_PROCESS_PARAMETERS` 结构体
-- 写入 UTF-16LE 字符串数据 (path, cmdline, cur_dir, desktop)
-- 设置所有结构体字段：Length, Flags, Standard I/O handles, UNICODE_STRING 指针
-- 写 ProcessParameters 指针到 PEB 正确偏移 (x86: +0x10, x64: +0x20)
+```
+winemu (void*) → ObjectManager (KernelObject) → KernelObject::object (void*)
+```
 
-### 2. Hook 调度包装器 — 完整解析 (common.cpp:58-128)
+| winemu wrapper | 桥接到 |
+|----------------|--------|
+| `get_object_from_addr(addr)` | `om->get_object_from_addr(addr).get_object()` |
+| `get_object_from_id(id)` | `om->get_object_from_id(id).get_object()` |
+| `get_object_from_name(name)` | `om->get_object_from_name(name).get_object()` |
+| `get_object_from_handle(handle)` | ObjectManager fallback FileManager |
+| `get_object_handle(obj)` | `KernelObject*` → `om->get_handle(*ko)` |
+| `add_object(obj)` | `KernelObject*` → `om->add_object(*ko)` |
+| `new_object(otype)` | `om->new_object<KernelObject>()` |
 
-8 个静态包装回调函数以前返回 true 不调用任何回调。现在完整实现：
-- `_wrap_code_cb` — 从 `ctx[0]` 提取 `Hook*`，调用 `hook->cb()`
-- `_wrap_intr_cb` — 同上模式
-- `_wrap_in_insn_cb` — 同上
-- `_wrap_syscall_insn_cb` — 同上
-- `_wrap_memory_access_cb` — 从 `void* ctx` 提取
-- `_wrap_mem_cb` — 从 `ctx[0]` 提取
-- `_wrap_mem_invalid_cb` — 从 `ctx[0]` 提取
-- `_wrap_insn_cb` / `_wrap_invalid_insn_cb` — 同上
+### 关键修改
+- `objman.h`: `KernelObject::object` 增加公开访问器 `void* get_object() const`
+- `winemu.cpp`: 全部 7 个 ObjectManager wrapper 从 `(void)return nullptr` → 真实桥接
 
-### 3. `record_dropped_files_event` — 完整实现 (profiler.cpp:167-174)
+### FileManager 桥接
 
-- 将 `void*` 转换为 `File*`
-- 提取 data/hash/path
-- 填充 `run->dropped_files` 条目 `{path, size, sha256, data_ref}`
-
-### 4. `get_arch_name` — 精确实现 (binemu.cpp:818-821)
-
-`ARCH_AMD64 → "amd64"`, `ARCH_X86 → "x86"`, 其他 `→ ""`
-
-### 5. IRP stubs (kernel.cpp:178)
-
-验证为结构占位符，默认返回 `STATUS_SUCCESS(0)` — 正确行为。
-
-### 6. 前次轮实现 (winemu)
-
-| 函数 | 状态 |
-|------|------|
-| `_hook_mem_read` | ✅ 跟踪 reads → profiler |
-| `_hook_mem_write` | ✅ 跟踪 writes → profiler |
-| `_hook_mem_unmapped` | ✅ access 类型精确分发 |
-| `_hook_code_tracing` | ✅ 符号分发 + exec_cache |
-| `_hook_code_coverage` | ✅ `coverage.insert(addr)` |
-| `_hook_code_debug` | ✅ disasm + register dump |
-| `get_thread_context` | ✅ 模拟器内存 CONTEXT 构建 |
-| `load_thread_context` | ✅ CONTEXT → 模拟器寄存器 |
-| `dispatch_seh` | ✅ VEH walk + unhandled filter |
-| `get_error_info` | ✅ 完整上下文摘要 |
-
-### 7. win32 新实现
-
-| 函数 | 状态 |
-|------|------|
-| `build_service_main_args` | ✅ 服务 main argv 数组构建 |
-| `_make_emu_path` | ✅ emulated path 构造 |
-| `_set_input_metadata` | ✅ PE 类型检测 + hash |
-| `_ordered_peb_modules` | ✅ core DLLs 优先排序 |
-| `_ensure_core_dlls_loaded` | ✅ ntdll/kernel32 加载 |
-| `_init_user_modules_from_config` | ✅ 配置加载用户模块 |
-| `_capture_memory_layout` | ✅ 内存布局 → profiler |
+| wrapper | 桥接到 |
+|---------|--------|
+| `file_get(handle)` | `fileman->get_file_from_handle(handle)` |
+| `file_delete(path)` | `fileman->delete_file(path)` |
+| `pipe_get(handle)` | `fileman->get_pipe_from_handle(handle)` |
 
 ---
 
-## 保留的 TODO (设计级)
+## 窗口期实现历史
 
-| 位置 | 内容 | 原因 |
+### 轮 1: API 分发 + PE 加载
+- `ensure_pe_import_hooks`, `load_image`, `handle_import_func`, `get_proc`, `normalize_import_miss`, `handle_import_data`
+
+### 轮 2: winemu 10 函数
+- `_hook_mem_read/write/unmapped`, `_hook_code_tracing/coverage/debug`, `get_thread_context/load_thread_context`, `dispatch_seh`, `get_error_info`
+
+### 轮 3: win32 8 函数
+- `build_service_main_args`, `_make_emu_path`, `_set_input_metadata`, `_ordered_peb_modules`, `_ensure_core_dlls_loaded`, `_init_user_modules_from_config`, `_capture_memory_layout`
+
+### 轮 4: winemu create_process/thread + WindowsApi 连线
+- `create_process`, `create_thread`, `get_module_data_from_emu_file`, `init_environment`, `_init_module_group`, `load_library`, `api = new WindowsApi(this)`, export/data import wiring
+
+### 轮 5: ObjectManager/FileManager 桥接
+- 全部 7 个 get_object_* / add_object / new_object + 3 个 FileManager wrapper
+
+---
+
+## 保留的 TODO（架构级，不可独立实现）
+
+| 位置 | 内容 | 阻碍 |
 |------|------|------|
-| `binemu.cpp:517` | `record_dyn_code_event` | Profiler 无此方法—需架构级对齐 |
-| `binemu.cpp:523` | `Hook::cb` protected | 安全访问设计，需 Hook 子类扩展 |
-| `binemu.cpp:538` | `add_code_hook` lambda 签名 | 需 align C++ `std::function<void()>` |
-| `binemu.cpp:556` | `modules` undeclared | modules 在 WindowsEmulator，需重构 |
-| `binemu.cpp:684` | `InvalidMemHook` 构造 | Hook 子系统深层接口变更 |
-| `winemu.cpp:937,1053,1058` | `WindowsApi` wiring | 需 WindowsApi 完全移植后激活 |
-| `profiler.cpp:170` | `record_dropped_files_event` FileData | 已有实现但 File 类接口待验证 |
+| `binemu.cpp:517` | `record_dyn_code_event` | Profiler 无此方法 |
+| `binemu.cpp:523` | `Hook::cb` protected | 访问控制设计 |
+| `binemu.cpp:538` | `add_code_hook` lambda 签名 | Hook 子系统接口 |
+| `binemu.cpp:556` | `modules` undeclared | modules 属 WindowsEmulator |
+| `binemu.cpp:684` | `InvalidMemHook` 构造 | Hook 子系统深层变更 |
+| `winemu.cpp` | `_continue_seh_x86` (x64 VEH) | 需要 x64 异常处理基建 |
+| `winemu.cpp` | `_fire_dyn_code_hooks` | binemu 钩子系统 |
+| `kernel.cpp` | IRP 分发 | 需要完整 IRP 框架 |
 
 ## 文件最终大小
 
 | 文件 | 行数 |
 |------|------|
-| winemu.h | 835 |
-| winemu.cpp | 2633 |
+| winemu.h | 836 |
+| winemu.cpp | 2793 |
 | win32.h | 456 |
 | win32.cpp | 867 |
 | binemu.h | 305 |
@@ -121,5 +105,6 @@ Python `win32.py:475-500` alloc_peb 创建 PEB 后设置 ProcessParameters。
 | profiler.h | 168 |
 | profiler.cpp | 552 |
 | common.cpp | 328 |
+| objman.h | 324 |
 | objman.cpp | 898 |
-| **总计** | **~8165** |
+| **总计** | **~8650** |

@@ -69,6 +69,7 @@ endif()
 
 # ── Source Files ──────────────────────────────────────────────
 file(GLOB_RECURSE SPEAKEASY_SOURCES
+    "secpp/*.h"
     "secpp/*.cpp"
 )
 

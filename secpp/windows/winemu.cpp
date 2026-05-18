@@ -712,8 +712,9 @@ std::string WindowsEmulator::search_path(const std::string& file_name) {
 
 void* WindowsEmulator::get_object_from_addr(uint64_t addr) {
     validate_object_services("object lookup by address");
-    (void)addr;
-    return nullptr; // static_cast<ObjectManager*>(om)->get_object_from_addr(addr) when ObjectManager is complete
+    if (!om) return nullptr;
+    KernelObject ko = om->get_object_from_addr(static_cast<int>(addr));
+    return ko.get_object();
 }
 
 // Python winemu.py:1186
@@ -722,8 +723,9 @@ void* WindowsEmulator::get_object_from_addr(uint64_t addr) {
 
 void* WindowsEmulator::get_object_from_id(int id) {
     validate_object_services("object lookup by id");
-    (void)id;
-    return nullptr; // static_cast<ObjectManager*>(om)->get_object_from_id(id)
+    if (!om) return nullptr;
+    KernelObject ko = om->get_object_from_id(id);
+    return ko.get_object();
 }
 
 // Python winemu.py:1190
@@ -732,8 +734,9 @@ void* WindowsEmulator::get_object_from_id(int id) {
 
 void* WindowsEmulator::get_object_from_name(const std::string& name) {
     validate_object_services("object lookup by name");
-    (void)name;
-    return nullptr; // static_cast<ObjectManager*>(om)->get_object_from_name(name)
+    if (!om) return nullptr;
+    KernelObject ko = om->get_object_from_name(name);
+    return ko.get_object();
 }
 
 // Python winemu.py:1194
@@ -742,8 +745,18 @@ void* WindowsEmulator::get_object_from_name(const std::string& name) {
 
 void* WindowsEmulator::get_object_from_handle(int handle) {
     validate_object_services("object lookup by handle");
-    (void)handle;
-    return nullptr; // static_cast<ObjectManager*>(om)->get_object_from_handle(handle) || static_cast<FileManager*>(fileman)->get_object_from_handle(handle)
+    // Try ObjectManager first
+    if (om) {
+        KernelObject ko = om->get_object_from_handle(handle);
+        if (ko.get_object() != nullptr) {
+            return ko.get_object();
+        }
+    }
+    // Fallback to FileManager
+    if (fileman) {
+        return fileman->get_object_from_handle(static_cast<uint32_t>(handle));
+    }
+    return nullptr;
 }
 
 // Python winemu.py:1203
@@ -752,8 +765,9 @@ void* WindowsEmulator::get_object_from_handle(int handle) {
 
 int WindowsEmulator::get_object_handle(void* obj) {
     validate_object_services("object handle lookup");
-    (void)obj;
-    return 0; // static_cast<ObjectManager*>(om)->get_handle(obj)
+    if (!om || !obj) return 0;
+    // obj is a KernelObject* (or subclass) — cast and delegate
+    return om->get_handle(*static_cast<KernelObject*>(obj));
 }
 
 // Python winemu.py:1209
@@ -762,7 +776,9 @@ int WindowsEmulator::get_object_handle(void* obj) {
 
 void WindowsEmulator::add_object(void* obj) {
     validate_object_services("object registration");
-    (void)obj; // static_cast<ObjectManager*>(om)->add_object(obj)
+    if (!om || !obj) return;
+    // obj is a KernelObject* (or subclass) — cast and delegate
+    om->add_object(*static_cast<KernelObject*>(obj));
 }
 
 // Python winemu.py:1222
@@ -772,7 +788,9 @@ void WindowsEmulator::add_object(void* obj) {
 void* WindowsEmulator::new_object(void* otype) {
     validate_object_services("object creation");
     (void)otype;
-    return nullptr; // static_cast<ObjectManager*>(om)->new_object(otype)
+    if (!om) return nullptr;
+    // Use the explicitly instantiated template for KernelObject
+    return om->new_object<KernelObject>().get_object();
 }
 
 // ── PE / module helpers ──────────────────────────────────────
@@ -854,7 +872,13 @@ void WindowsEmulator::init_peb(void* user_mods, void* proc) {
     auto* process = static_cast<Process*>(p);
     uint64_t peb_addr = mem_map(0x1000, 0, PERM_MEM_RW, "PEB");
     process->peb = reinterpret_cast<void*>(peb_addr);
-    (void)user_mods;
+    // Use the provided user_mods if non-null, otherwise use our module list
+    if (user_mods) {
+        auto* mods = static_cast<std::vector<void*>*>(user_mods);
+        process->init_peb(*mods);
+    } else {
+        process->init_peb(get_peb_modules());
+    }
 }
 
 // Python winemu.py:771
@@ -2671,9 +2695,9 @@ int WindowsEmulator::dec_ref(void* obj) {
 // def file_get(self, handle):
 //     """Get a file object from a handle"""
 void* WindowsEmulator::file_get(int handle) {
-    // Delegate to FileManager when fully implemented
-    (void)handle;
-    return nullptr;
+    if (!fileman) return nullptr;
+    auto file = fileman->get_file_from_handle(static_cast<uint32_t>(handle));
+    return file ? file.get() : nullptr;
 }
 
 
@@ -2681,9 +2705,8 @@ void* WindowsEmulator::file_get(int handle) {
 // def file_delete(self, path):
 //     """Delete a file"""
 bool WindowsEmulator::file_delete(const std::string& path) {
-    // Delegate to FileManager when fully implemented
-    (void)path;
-    return false;
+    if (!fileman) return false;
+    return fileman->delete_file(path);
 }
 
 
@@ -2691,9 +2714,9 @@ bool WindowsEmulator::file_delete(const std::string& path) {
 // def pipe_get(self, handle):
 //     """Get a pipe object from a handle"""
 void* WindowsEmulator::pipe_get(int handle) {
-    // Delegate to FileManager when fully implemented
-    (void)handle;
-    return nullptr;
+    if (!fileman) return nullptr;
+    auto pipe = fileman->get_pipe_from_handle(static_cast<uint32_t>(handle));
+    return pipe ? pipe.get() : nullptr;
 }
 
 

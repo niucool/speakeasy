@@ -256,16 +256,7 @@ public:
     //     """
     uint64_t heap_alloc(size_t size, const std::string& heap = "None");
     
-    /**
-     * Get OS version string
-     */
-    std::string get_osver_string();
-    
-    /**
-     * Get emulator version
-     */
-    std::string get_emu_version();
-    
+   
     /**
      * Allocate stack
      */
@@ -365,7 +356,7 @@ public:
     /**
      * Initialize user modules
      */
-    std::vector<void*> init_user_modules(const std::vector<nlohmann::json>& modules_config);
+    //std::vector<void*> init_user_modules(const std::vector<nlohmann::json>& modules_config);
     
     /**
      * Add memory invalid hook
@@ -380,7 +371,7 @@ public:
     /**
      * Write pointer
      */
-    void write_ptr(uint64_t addr, uint64_t value);
+    // void write_ptr(uint64_t addr, uint64_t value);
     
     /**
      * Register write

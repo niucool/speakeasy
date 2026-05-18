@@ -120,6 +120,7 @@ public:
     std::string get_mem_tag();
     int get_handle();
     virtual std::string get_obj_name() const { return name; }
+    void* get_object() const { return object; }
 };
 
 /**
