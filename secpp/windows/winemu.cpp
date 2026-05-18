@@ -561,7 +561,7 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
     // Switch process context if needed
     if (run->process_context &&
         run->process_context != get_current_process()) {
-        alloc_peb(run->process_context);
+        alloc_peb(static_cast<Process*>(run->process_context));
         set_current_process(static_cast<Process*>(run->process_context));
     }
 

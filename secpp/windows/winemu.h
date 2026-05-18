@@ -207,7 +207,7 @@ public:
     // @abstractmethod
     // def alloc_peb(self, proc: Any) -> None:
     //     """Allocate memory for the Process Environment Block (PEB). Subclasses must implement."""
-    virtual void alloc_peb(void* proc) {}
+    virtual void alloc_peb(Process* proc) = 0;
     // Python winemu.py:69
     // @abstractmethod
     // def init_processes(self, processes: list[Any]) -> None:

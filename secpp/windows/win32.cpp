@@ -315,15 +315,14 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
 //     """
 //     Allocate memory for the Process Environment Block (PEB)
 //     """
-void Win32Emulator::alloc_peb(void* proc) {
+void Win32Emulator::alloc_peb(Process* proc) {
     if (!proc) return;
-    auto* p = static_cast<Process*>(proc);
-    if (p->is_peb_active) return;
-    p->is_peb_active = true;
+    if (proc->is_peb_active) return;
+    proc->is_peb_active = true;
     size_t peb_size = 0x1000;
     auto [res, sz] = get_valid_ranges(peb_size, 0);
     // mem_reserve for PEB deferred
-    p->peb = reinterpret_cast<void*>(res);
+    proc->peb = reinterpret_cast<void*>(res);
 }
 
 // Python win32.py:529
@@ -338,12 +337,23 @@ void Win32Emulator::set_unhandled_exception_handler(uint64_t handler_addr) {
 // Python win32.py:535
 // def setup(self):
 void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
-    (void)stack_commit; (void)first_time_setup;
     int my_arch = get_arch();
     _setup_gdt(my_arch);
     setup_user_shared_data();
     set_ptr_size(this->arch);
     peb_addr = (my_arch == 32) ? fs_addr + 0x30 : gs_addr + 0x60;
+
+    if (stack_commit > 0) {
+        auto stack_info = alloc_stack(stack_commit);
+        stack_base = std::get<0>(stack_info);
+    }
+
+    if (first_time_setup) {
+        _ensure_core_dlls_loaded();
+        init_sys_modules(config_system_modules);
+        _init_user_modules_from_config();
+        set_hooks();
+    }
 }
 
 // Python win32.py:556
@@ -352,34 +362,25 @@ void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
 //     Get the system modules (e.g. drivers) that are loaded in the emulator
 //     """
 std::vector<void*> Win32Emulator::init_sys_modules(const std::vector<nlohmann::json>& modules_config) {
-    std::vector<void*> sys_mods;
-    
-    // for (auto& modconf : modules_config) {
-    //     // DecoyModule creation deferred
-    //     // w32common.DecoyModule mod;
-    //     // mod.name = modconf["name"];
-    //     // uint64_t base = modconf.value("base_addr", 0);
-    //     // if (base.is_string()) {
-    //     //     base = std::stoull(base.get<std::string>(), nullptr, 16);
-    //     // }
-    //     // mod.decoy_base = base;
-    //     // mod.decoy_path = modconf["path"];
-    //     // 
-    //     // auto drv = modconf.find("driver");
-    //     // if (drv != modconf.end()) {
-    //     //     auto devs = drv->find("devices");
-    //     //     if (devs != drv->end()) {
-    //     //         for (auto& dev : devs->get<std::vector<nlohmann::json>>()) {
-    //     //             std::string name = dev.value("name", "");
-    //     //             Device* dobj = static_cast<Device*>(new_object("Device"));
-    //     //             dobj->name = name;
-    //     //         }
-    //     //     }
-    //     // }
-    //     // 
-    //     // sys_mods.push_back(mod);
-    // }
-    
+    // Delegate to base class (WindowsEmulator) which properly parses JSON config objects
+    auto sys_mods = WindowsEmulator::init_sys_modules(modules_config);
+
+    // Handle driver devices from config (Python win32.py:562-568)
+    for (auto& modconf : modules_config) {
+        auto drv_it = modconf.find("driver");
+        if (drv_it != modconf.end() && !drv_it->is_null()) {
+            auto devs_it = drv_it->find("devices");
+            if (devs_it != drv_it->end() && devs_it->is_array()) {
+                for (auto& dev : *devs_it) {
+                    std::string name = dev.value("name", "");
+                    auto* dobj = new Device(this);
+                    dobj->init_device(name, 0, 0, nullptr);
+                    // Device objects tracked by ObjectManager if needed
+                }
+            }
+        }
+    }
+
     return sys_mods;
 }
 
@@ -389,22 +390,22 @@ std::vector<void*> Win32Emulator::init_sys_modules(const std::vector<nlohmann::j
 //     Create a process to be used to host shellcode or DLLs
 //     """
 void* Win32Emulator::init_container_process() {
-    // for (auto& p : config_processes) {
-    //     if (p.value("is_main_exe", false)) {
-    //         std::string name = p.value("name", "");
-    //         std::string emu_path = p.value("path", "");
-    //         uint64_t base = p.value("base_addr", 0);
-    //         if (base.is_string()) {
-    //             base = std::stoull(base.get<std::string>(), nullptr, 0);
-    //         }
-    //         std::string cmd_line = p.value("command_line", "");
-    //         
-    //         // Process creation deferred
-    //         // Process* proc = new Process(this, name=name,
-    //         //                             path=emu_path, base=base, cmdline=cmd_line);
-    //         // return proc;
-    //     }
-    // }
+    for (auto& p : config_processes) {
+        if (p.value("is_main_exe", false)) {
+            std::string name = p.value("name", "");
+            std::string emu_path = p.value("path", "");
+            uint64_t base = p.value("base_addr", uint64_t(0));
+            // Handle string hex base (e.g. "0x10000")
+            if (p["base_addr"].is_string()) {
+                std::string base_str = p["base_addr"].get<std::string>();
+                base = std::stoull(base_str, nullptr, 0);
+            }
+            std::string cmd_line = p.value("command_line", "");
+
+            auto* proc = new Process(this, nullptr, {}, name, emu_path, cmd_line, (int)base, 0);
+            return proc;
+        }
+    }
     return nullptr;
 }
 

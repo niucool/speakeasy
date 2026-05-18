@@ -41,7 +41,7 @@ public:
     // ── WindowsEmulator pure-virtual overrides ────────────────
     void on_run_complete() override;
     void on_emu_complete() override;
-    void alloc_peb(void* proc) override {}
+    void alloc_peb(Process* proc) override {}
 
     // ── System ────────────────────────────────────────────────
     uint64_t get_system_time() const { return system_time_; }
