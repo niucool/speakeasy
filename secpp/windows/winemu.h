@@ -599,20 +599,20 @@ public:
     // def init_environment(self, system_modules=None, user_modules=None):
     //     """Initialize the emulated system and user module environments."""
     std::vector<void*> init_environment(
-        const std::vector<void*>& system_modules = {},
-        const std::vector<void*>& user_modules = {});
+        const std::vector<nlohmann::json>& system_modules = {},
+        const std::vector<nlohmann::json>& user_modules = {});
     // Python winemu.py:2302
     // def init_sys_modules(self, modules_config):
     //     """Initialize system modules from the config."""
-    std::vector<void*> init_sys_modules(const std::vector<void*>& modules_config);
+    std::vector<void*> init_sys_modules(const std::vector<nlohmann::json>& modules_config);
     // Python winemu.py:2305
     // def init_user_modules(self, modules_config):
     //     """Initialize user modules from the config."""
-    std::vector<void*> init_user_modules(const std::vector<void*>& modules_config);
+    std::vector<void*> init_user_modules(const std::vector<nlohmann::json>& modules_config);
     // Python winemu.py:2308
     // def _init_module_group(self, modules_config, default_base=None):
     //     """Initialize a group of modules from config objects."""
-    std::vector<void*> _init_module_group(const std::vector<void*>& modules_config, uint64_t default_base = 0);
+    std::vector<void*> _init_module_group(const std::vector<nlohmann::json>& modules_config, uint64_t default_base = 0);
 
     // ── Thread context ────────────────────────────────────────
     // Python winemu.py:2364
@@ -801,14 +801,6 @@ public:
     // def _resolve_region_info(self, addr: int) -> RegionInfo | None:
     //     """Return a RegionInfo for the region containing addr, or None if unmapped."""
     std::string _resolve_region_info(uint64_t addr);
-
-    // ── Concrete implementations of BinaryEmulator pure virtuals ─
-    // Python winemu.py:— (inherited from BinaryEmulator)
-    std::tuple<uint64_t, size_t> get_valid_ranges(size_t size, uint64_t addr = 0) override;
-    std::vector<void*> get_mem_maps() override;
-    std::string get_address_tag(uint64_t ptr) override;
-    void* get_address_map(uint64_t addr) override;
-    void mem_reserve(size_t size, uint64_t base = 0) override;
 
     // ── Hardware interrupts ───────────────────────────────────
     // Python winemu.py:2742

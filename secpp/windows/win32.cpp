@@ -480,30 +480,6 @@ void Win32Emulator::set_hooks() {
     set_mem_tracing_hooks();
 }
 
-void Win32Emulator::add_run(std::shared_ptr<Run> run) {
-    WindowsEmulator::add_run(run);
-}
-
-
-void Win32Emulator::init_teb(void* thread, void* peb) {
-    WindowsEmulator::init_teb(thread, peb);
-}
-
-void Win32Emulator::start() {
-    WindowsEmulator::start();
-}
-
-std::vector<uint8_t> Win32Emulator::mem_read(uint64_t addr, size_t size) {
-    return WindowsEmulator::mem_read(addr, size);
-}
-
-void Win32Emulator::mem_write(uint64_t addr, const std::vector<uint8_t>& data) {
-    WindowsEmulator::mem_write(addr, data);
-}
-
-std::tuple<uint64_t, uint64_t> Win32Emulator::alloc_stack(size_t size) {
-    return WindowsEmulator::alloc_stack(size);
-}
 
 // Python win32.py:637
 // def stop(self):
@@ -860,8 +836,3 @@ void Win32Emulator::_capture_memory_layout() {
     }
 }
 
-void* Win32Emulator::get_address_map(uint64_t) { return nullptr; }
-std::tuple<uint64_t, size_t> Win32Emulator::get_valid_ranges(size_t, uint64_t) { return {0,0}; }
-uint64_t Win32Emulator::mem_map(uint64_t n, uint64_t base, uint32_t perms, const std::string& tag) {
-    return MemoryManager::mem_map(n, base, perms, tag);
-}

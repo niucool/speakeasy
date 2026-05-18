@@ -60,7 +60,7 @@ class MemAccess {
 public:
     uint64_t base; uint64_t size; std::string sym;
     int reads = 0, writes = 0, execs = 0;
-    MemAccess(uint64_t b = 0, const std::string& s = "", uint64_t sz = 0)
+    MemAccess(uint64_t b = 0, uint64_t sz = 0, const std::string& s = "")
         : base(b), size(sz), sym(s), reads(0), writes(0), execs(0) {}
 };
 

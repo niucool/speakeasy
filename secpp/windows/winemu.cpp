@@ -1492,8 +1492,8 @@ std::vector<uint8_t> WindowsEmulator::get_module_data_from_emu_file(
 // def init_environment(self, system_modules=None, user_modules=None):
 //     """Initialize the emulated system and user module environments."""
 std::vector<void*> WindowsEmulator::init_environment(
-    const std::vector<void*>& system_modules,
-    const std::vector<void*>& user_modules) {
+    const std::vector<nlohmann::json>& system_modules,
+    const std::vector<nlohmann::json>& user_modules) {
     auto sys_mods = _init_module_group(system_modules, 0);
     _init_module_group(user_modules, 0x6F000000);
     return sys_mods;
@@ -1504,7 +1504,7 @@ std::vector<void*> WindowsEmulator::init_environment(
 // def init_sys_modules(self, modules_config):
 //     """Initialize system modules from the config."""
 std::vector<void*> WindowsEmulator::init_sys_modules(
-    const std::vector<void*>& modules_config) {
+    const std::vector<nlohmann::json>& modules_config) {
     return _init_module_group(modules_config, 0);
 }
 
@@ -1513,54 +1513,84 @@ std::vector<void*> WindowsEmulator::init_sys_modules(
 // def init_user_modules(self, modules_config):
 //     """Initialize user modules from the config."""
 std::vector<void*> WindowsEmulator::init_user_modules(
-    const std::vector<void*>& modules_config) {
+    const std::vector<nlohmann::json>& modules_config) {
     return _init_module_group(modules_config, 0x6F000000);
 }
 
 
 // Python winemu.py:2308
 // def _init_module_group(self, modules_config, default_base=None):
-//     """Initialize a group of modules from config objects."""
+//     """Initialize a group of modules from config objects.
+//     Python: for modconf in modules_config:
+//         modname = getattr(modconf, "name", None) or "unknown"
+//         base_addr = getattr(modconf, "base_addr", None) or default_base
+//         emu_path = getattr(modconf, "path", None) or (modname + ".dll")
+//         images = getattr(modconf, "images", []) or []
+//         native_path = self.get_native_module_path(mod_name=modname)
+//         Priority: native PE file -> API handler (JIT PE) -> placeholder stub."""
 std::vector<void*> WindowsEmulator::_init_module_group(
-    const std::vector<void*>& modules_config, uint64_t default_base) {
+    const std::vector<nlohmann::json>& modules_config, uint64_t default_base) {
     std::vector<void*> rtmods;
-    for (auto* mc : modules_config) {
-        if (!mc) continue;
+    for (const auto& modconf : modules_config) {
+        // modname = getattr(modconf, "name", None) or "unknown"
+        std::string modname = "unknown";
+        if (modconf.contains("name") && modconf["name"].is_string())
+            modname = modconf["name"].get<std::string>();
 
-        // Try to interpret the config entry — treat as string path
-        const char* cstr = static_cast<const char*>(mc);
-        std::string modname = cstr ? std::string(cstr) : "unknown";
+        // base_addr = getattr(modconf, "base_addr", None) or default_base
+        uint64_t base_addr = default_base;
+        if (modconf.contains("base_addr")) {
+            auto& ba = modconf["base_addr"];
+            if (ba.is_string()) {
+                std::string bs = ba.get<std::string>();
+                if (bs.find("0x") == 0 || bs.find("0X") == 0)
+                    base_addr = std::stoull(bs, nullptr, 16);
+                else
+                    base_addr = std::stoull(bs, nullptr, 10);
+            } else if (ba.is_number())
+                base_addr = ba.get<uint64_t>();
+        }
 
-        // Extract just the module name from the path
-        std::string name_only = modname;
-        auto slash = name_only.find_last_of("/\\");
-        if (slash != std::string::npos) name_only = name_only.substr(slash + 1);
-        auto dot = name_only.find_last_of('.');
-        if (dot != std::string::npos) name_only = name_only.substr(0, dot);
+        // emu_path = getattr(modconf, "path", None) or (modname + ".dll")
+        std::string emu_path = modname + ".dll";
+        if (modconf.contains("path") && modconf["path"].is_string())
+            emu_path = modconf["path"].get<std::string>();
 
-        // Try native PE path first
-        std::string native_path = get_native_module_path(name_only);
-        if (!native_path.empty()) {
+        // images = getattr(modconf, "images", []) or []
+        std::vector<nlohmann::json> images;
+        if (modconf.contains("images") && modconf["images"].is_array())
+            images = modconf["images"].get<std::vector<nlohmann::json>>();
+
+        // native_path = self.get_native_module_path(mod_name=modname)
+        std::string native_path = get_native_module_path(modname);
+
+        // Try images first (arch-specific)
+        std::string path;
+        for (const auto& img : images) {
+            if (img.contains("arch") && img["arch"].is_number() &&
+                img["arch"].get<int>() == get_arch()) {
+                if (img.contains("name") && img["name"].is_string())
+                    path = get_native_module_path(img["name"].get<std::string>());
+            }
+        }
+        if (path.empty()) path = native_path;
+
+        if (!path.empty()) {
+            // PeLoader(path=path, base_override=base_addr, emu_path=emu_path)
             try {
-                speakeasy::PeLoader loader(native_path, std::vector<uint8_t>{});
+                speakeasy::PeLoader loader(path, std::vector<uint8_t>{});
                 auto* img = loader.make_image();
-                if (default_base) img->base = default_base;
+                if (base_addr) img->base = base_addr;
+                if (!emu_path.empty()) img->emu_path = emu_path;
                 auto* rtmod = load_image(img);
                 if (rtmod) rtmods.push_back(rtmod);
                 continue;
             } catch (...) {}
         }
 
-        // Fallback: try loading from the path string directly
-        if (!modname.empty()) {
-            try {
-                speakeasy::PeLoader loader(modname, std::vector<uint8_t>{});
-                auto* img = loader.make_image();
-                if (default_base) img->base = default_base;
-                auto* rtmod = load_image(img);
-                if (rtmod) rtmods.push_back(rtmod);
-            } catch (...) {}
-        }
+        // No native PE path found — try ApiModuleLoader if api wired
+        // (DecoyLoader fallback would create placeholder stub)
+        // For now, skip modules without a native PE file.
     }
     return rtmods;
 }
@@ -2120,7 +2150,7 @@ bool WindowsEmulator::_hook_mem_read(void* emu, int access, uint64_t addr,
             std::string key = hex_str(addr);
             auto it = curr_run->sym_access.find(key);
             if (it == curr_run->sym_access.end()) {
-                MemAccess mac(addr, symbol);
+                MemAccess mac(addr, 0, symbol);
                 it = curr_run->sym_access.emplace(key, mac).first;
             }
             it->second.reads++;
@@ -2153,7 +2183,7 @@ bool WindowsEmulator::_hook_mem_read(void* emu, int access, uint64_t addr,
                     std::string mkey = hex_str(sect_base);
                     auto mac_it = curr_run->mem_access.find(mkey);
                     if (mac_it == curr_run->mem_access.end()) {
-                        MemAccess mac(sect_base, "", sect.virtual_size);
+                        MemAccess mac(sect_base, sect.virtual_size);
                         mac_it = curr_run->mem_access.emplace(mkey, mac).first;
                     }
                     // Add to read_cache
@@ -2167,13 +2197,13 @@ bool WindowsEmulator::_hook_mem_read(void* emu, int access, uint64_t addr,
         }
 
         // Generic memory map lookup
-        void* mmap = get_address_map(addr);
+        std::shared_ptr<MemMap> mmap = get_address_map(addr);
         if (!mmap) return false;
 
-        std::string mkey = hex_str(reinterpret_cast<uint64_t>(mmap));
+        std::string mkey = hex_str(mmap->get_base());
         auto mac_it = curr_run->mem_access.find(mkey);
         if (mac_it == curr_run->mem_access.end()) {
-            MemAccess mac(reinterpret_cast<uint64_t>(mmap), "", page_size);
+            MemAccess mac(mmap->get_base(), page_size);
             mac_it = curr_run->mem_access.emplace(mkey, mac).first;
         }
         // Add to read_cache
@@ -2205,7 +2235,7 @@ bool WindowsEmulator::_hook_mem_write(void* emu, int access, uint64_t addr,
             std::string key = hex_str(addr);
             auto it = curr_run->sym_access.find(key);
             if (it == curr_run->sym_access.end()) {
-                MemAccess mac(addr, symbol);
+                MemAccess mac(addr, 0, symbol);
                 it = curr_run->sym_access.emplace(key, mac).first;
             }
             it->second.writes++;
@@ -2238,7 +2268,7 @@ bool WindowsEmulator::_hook_mem_write(void* emu, int access, uint64_t addr,
                     std::string mkey = hex_str(sect_base);
                     auto mac_it = curr_run->mem_access.find(mkey);
                     if (mac_it == curr_run->mem_access.end()) {
-                        MemAccess mac(sect_base, "", sect.virtual_size);
+                        MemAccess mac(sect_base, sect.virtual_size);
                         mac_it = curr_run->mem_access.emplace(mkey, mac).first;
                     }
                     // Add to write_cache
@@ -2252,13 +2282,13 @@ bool WindowsEmulator::_hook_mem_write(void* emu, int access, uint64_t addr,
         }
 
         // Generic memory map lookup
-        void* mmap = get_address_map(addr);
+        std::shared_ptr<MemMap> mmap = get_address_map(addr);
         if (!mmap) return false;
 
-        std::string mkey = hex_str(reinterpret_cast<uint64_t>(mmap));
+        std::string mkey = hex_str(mmap->get_base());
         auto mac_it = curr_run->mem_access.find(mkey);
         if (mac_it == curr_run->mem_access.end()) {
-            MemAccess mac(reinterpret_cast<uint64_t>(mmap), "", page_size);
+            MemAccess mac(mmap->get_base(), mmap->get_size());
             mac_it = curr_run->mem_access.emplace(mkey, mac).first;
         }
         // Add to write_cache
@@ -2374,7 +2404,7 @@ bool WindowsEmulator::_hook_code_tracing(void* emu, uint64_t addr, size_t size) 
             std::string key = hex_str(addr);
             auto it = curr_run->sym_access.find(key);
             if (it == curr_run->sym_access.end()) {
-                MemAccess mac(addr, symbol);
+                MemAccess mac(addr, 0, symbol);
                 it = curr_run->sym_access.emplace(key, mac).first;
             }
             it->second.execs++;
@@ -2416,7 +2446,7 @@ bool WindowsEmulator::_hook_code_tracing(void* emu, uint64_t addr, size_t size) 
                     std::string mkey = hex_str(sect_base);
                     auto mac_it = curr_run->mem_access.find(mkey);
                     if (mac_it == curr_run->mem_access.end()) {
-                        MemAccess mac(sect_base, "", sect.virtual_size);
+                        MemAccess mac(sect_base, sect.virtual_size);
                         mac_it = curr_run->mem_access.emplace(mkey, mac).first;
                     }
                     // Add to exec_cache
@@ -2430,13 +2460,13 @@ bool WindowsEmulator::_hook_code_tracing(void* emu, uint64_t addr, size_t size) 
         }
 
         // Generic memory map lookup
-        void* mmap = get_address_map(addr);
+        std::shared_ptr<MemMap> mmap = get_address_map(addr);
         if (!mmap) return false;
 
-        std::string mkey = hex_str(reinterpret_cast<uint64_t>(mmap));
+        std::string mkey = hex_str(mmap->get_base());
         auto mac_it = curr_run->mem_access.find(mkey);
         if (mac_it == curr_run->mem_access.end()) {
-            MemAccess mac(reinterpret_cast<uint64_t>(mmap), "", page_size);
+            MemAccess mac(mmap->get_base(), page_size);
             mac_it = curr_run->mem_access.emplace(mkey, mac).first;
         }
         // Add to exec_cache
@@ -2618,40 +2648,6 @@ std::string WindowsEmulator::_resolve_region_info(uint64_t addr) {
     return "";
 }
 
-// ── Concrete BinaryEmulator overrides ────────────────────────
-
-
-// Python winemu.py:— (BinaryEmulator override)
-std::tuple<uint64_t, size_t> WindowsEmulator::get_valid_ranges(size_t size, uint64_t addr) {
-    (void)size; (void)addr;
-    return {0, 0};
-}
-
-
-// Python winemu.py:— (BinaryEmulator override)
-std::vector<void*> WindowsEmulator::get_mem_maps() {
-    return {};
-}
-
-
-// Python winemu.py:— (BinaryEmulator override)
-std::string WindowsEmulator::get_address_tag(uint64_t ptr) {
-    (void)ptr;
-    return "";
-}
-
-
-// Python winemu.py:— (BinaryEmulator override)
-void* WindowsEmulator::get_address_map(uint64_t addr) {
-    (void)addr;
-    return nullptr;
-}
-
-
-// Python winemu.py:— (BinaryEmulator override)
-void WindowsEmulator::mem_reserve(size_t size, uint64_t base) {
-    (void)size; (void)base;
-}
 
 // ── Hardware interrupts ──────────────────────────────────────
 
@@ -2671,6 +2667,7 @@ bool WindowsEmulator::_hook_interrupt(void* emu, int intnum) {
 // def add_run(self, run):
 //     """Add a run to the emulation run queue"""
 void WindowsEmulator::add_run(std::shared_ptr<Run> run) {
+    run_queue.push_back(run);
 }
 
 // ── Bootstrap / reference counting ────────────────────────────

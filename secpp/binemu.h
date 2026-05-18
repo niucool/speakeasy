@@ -295,12 +295,7 @@ public:
     // Virtual methods to be implemented by subclasses
     virtual void on_emu_complete() = 0;
     virtual void _set_emu_hooks() = 0;
-    virtual std::tuple<uint64_t, size_t> get_valid_ranges(size_t size, uint64_t addr = 0) = 0;
     virtual std::shared_ptr<void> get_current_run() = 0;
-    virtual std::vector<void*> get_mem_maps() = 0;
-    virtual std::string get_address_tag(uint64_t ptr) = 0;
-    virtual void* get_address_map(uint64_t addr) = 0;
-    virtual void mem_reserve(size_t size, uint64_t base = 0) = 0;
 };
 
 #endif // BINEMU_H
