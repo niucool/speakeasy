@@ -4,6 +4,7 @@
 // Reference: // Python:<line> points to the Python source line.
 
 #include "profiler.h"
+#include "windows/fileman.h"
 #include <nlohmann/json.hpp>
 #include <picosha2.h>
 #include <cmath>
@@ -164,12 +165,40 @@ void Profiler::log_dropped_files(std::shared_ptr<Run> run, const std::vector<voi
     record_dropped_files_event(run, files);
 }
 
-// Python:214-225 — stub: needs FileData C++ class
+// Python:214-225 — log dropped files from an emulation run
+// def record_dropped_files_event(self, run, files):
+//     for f in files:
+//         data = f.get_data()
+//         if data is None:
+//             continue
+//         _hash = f.get_hash()
+//         data_ref = None
+//         if len(data) <= MAX_EMBEDDED_FILE_SIZE:
+//             data_ref = self.artifact_store.put_bytes(data)
+//         entry = {"path": f.path, "size": len(data), "sha256": _hash, "data_ref": data_ref}
+//         run.dropped_files.append(entry)
 void Profiler::record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<void*>& files) {
-    for (void* f : files) {
-        (void)f;
-        // TODO: When FileData C++ class is implemented, iterate,
-        // call get_name()/get_hash()/get_path(), populate run->dropped_files.
+    for (void* f_ptr : files) {
+        if (!f_ptr) continue;
+        // The void* elements are File* pointers from get_dropped_files()
+        auto* f = static_cast<File*>(f_ptr);
+        if (!f) continue;
+
+        auto data = f->get_data();
+        if (data.empty()) continue;
+
+        std::string hash = f->get_hash();
+        std::string path = f->get_path();
+
+        // Build entry matching Python: {"path", "size", "sha256", "data_ref"}
+        std::map<std::string, std::string> entry;
+        entry["path"] = path;
+        entry["size"] = std::to_string(data.size());
+        entry["sha256"] = hash;
+        // data_ref only set for small files; for now, store a placeholder
+        entry["data_ref"] = (data.size() <= MAX_EMBEDDED_FILE_SIZE) ? hash : "";
+
+        run->dropped_files.push_back(entry);
     }
 }
 

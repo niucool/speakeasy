@@ -817,8 +817,11 @@ int BinaryEmulator::get_arch() {
 
 std::string BinaryEmulator::get_arch_name() {
     // Python binemu.py:638-646 doc: "Get the name of current emulated architecture"
-    // TODO: Python returns "amd64" for ARCH_AMD64, "x86" for ARCH_X86, "" otherwise
-    return get_arch() == 64 ? "amd64" : "x86";
+    // Returns "amd64" for ARCH_AMD64, "x86" for ARCH_X86, "" otherwise
+    int arch = get_arch();
+    if (arch == speakeasy::arch::ARCH_AMD64) return "amd64";
+    if (arch == speakeasy::arch::ARCH_X86) return "x86";
+    return "";
 }
 
 void BinaryEmulator::set_ptr_size(int arch) {

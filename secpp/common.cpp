@@ -57,9 +57,12 @@ void Hook::disable() {
  */
 bool Hook::_wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx) {
     // Static wrapper — the 'container' field from the Hook is passed
-    // as the last element in ctx (or as the cb_data from hook_add).
-    // Currently stubbed — see commented-out logic.
-    (void)emu; (void)addr; (void)size; (void)ctx;
+    // as ctx[0] (registered as cb_data from hook_add).
+    // Dispatch to the actual Hook's callback.
+    (void)emu; (void)addr; (void)size;
+    if (ctx.empty()) return true;
+    auto* hook = static_cast<Hook*>(ctx[0]);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 
@@ -67,7 +70,10 @@ bool Hook::_wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vec
  * Wrapper for interrupt callback
  */
 bool Hook::_wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx) {
-    (void)emu; (void)num; (void)ctx;
+    (void)emu; (void)num;
+    if (ctx.empty()) return true;
+    auto* hook = static_cast<Hook*>(ctx[0]);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 
@@ -75,7 +81,10 @@ bool Hook::_wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx) {
  * Wrapper for IN/INSB/OUT/OUTSB instruction callback
  */
 bool Hook::_wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx) {
-    (void)emu; (void)port; (void)size; (void)ctx;
+    (void)emu; (void)port; (void)size;
+    if (ctx.empty()) return true;
+    auto* hook = static_cast<Hook*>(ctx[0]);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 
@@ -83,7 +92,10 @@ bool Hook::_wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vecto
  * Wrapper for syscall/sysenter instruction callback
  */
 bool Hook::_wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx) {
-    (void)emu; (void)ctx;
+    (void)emu;
+    if (ctx.empty()) return true;
+    auto* hook = static_cast<Hook*>(ctx[0]);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 
@@ -91,7 +103,10 @@ bool Hook::_wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx) {
  * Wrapper for memory access callback (read/write/invalid)
  */
 bool Hook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx) {
-    (void)emu; (void)access; (void)addr; (void)size; (void)value; (void)ctx;
+    (void)emu; (void)access; (void)addr; (void)size; (void)value;
+    if (!ctx) return true;
+    auto* hook = static_cast<Hook*>(ctx);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 
@@ -99,7 +114,10 @@ bool Hook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t
  * Wrapper for memory callback
  */
 bool Hook::_wrap_mem_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx) {
-    (void)emu; (void)access; (void)addr; (void)size; (void)value; (void)ctx;
+    (void)emu; (void)access; (void)addr; (void)size; (void)value;
+    if (ctx.empty()) return true;
+    auto* hook = static_cast<Hook*>(ctx[0]);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 
@@ -107,7 +125,10 @@ bool Hook::_wrap_mem_cb(void* emu, int access, uint64_t addr, uint32_t size, int
  * Wrapper for invalid memory callback
  */
 bool Hook::_wrap_mem_invalid_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx) {
-    (void)emu; (void)access; (void)addr; (void)size; (void)value; (void)ctx;
+    (void)emu; (void)access; (void)addr; (void)size; (void)value;
+    if (ctx.empty()) return true;
+    auto* hook = static_cast<Hook*>(ctx[0]);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 
@@ -115,7 +136,10 @@ bool Hook::_wrap_mem_invalid_cb(void* emu, int access, uint64_t addr, uint32_t s
  * Wrapper for instruction callback
  */
 bool Hook::_wrap_insn_cb(void* emu, const std::vector<void*>& ctx) {
-    (void)emu; (void)ctx;
+    (void)emu;
+    if (ctx.empty()) return true;
+    auto* hook = static_cast<Hook*>(ctx[0]);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 
@@ -123,7 +147,10 @@ bool Hook::_wrap_insn_cb(void* emu, const std::vector<void*>& ctx) {
  * Wrapper for invalid instruction callback
  */
 bool Hook::_wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx) {
-    (void)emu; (void)ctx;
+    (void)emu;
+    if (ctx.empty()) return true;
+    auto* hook = static_cast<Hook*>(ctx[0]);
+    if (hook && hook->cb) return hook->cb();
     return true;
 }
 

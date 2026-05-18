@@ -934,7 +934,7 @@ speakeasy::LoadedImage* WindowsEmulator::load_image(speakeasy::LoadedImage* img)
 
     // ── Initialize API handler ──
     if (!api) {
-        // api = new WindowsApi(this);  // TODO: wire up when WindowsApi is fully ported
+        api = new WindowsApi(reinterpret_cast<Emulator*>(this));
     }
 
     advance_bootstrap_phase(BootstrapPhase::ENGINE_API_READY);
@@ -1050,19 +1050,37 @@ speakeasy::LoadedImage* WindowsEmulator::load_image(speakeasy::LoadedImage* img)
             if (is_primary) {
                 symbols[exp.address] = {img->name, exp.name};
             }
-            // TODO: register export func/data handlers when WindowsApi is wired
+            // Register export func/data handlers via WindowsApi
+            auto [handler, func_ptr] = api->get_export_func_handler(img->name, exp.name);
+            (void)handler;
+            (void)func_ptr;
         }
     }
 
     // ── Process data imports (data exports like function pointers) ──
-    // TODO: handle_import_data when WindowsApi::handle_import_data is ported
-    // for (auto& imp : img->imports) {
-    //     auto [handler, data_handler] = api->get_data_export_handler(imp.dll_name, imp.func_name);
-    //     if (data_handler) {
-    //         uint64_t data_ptr = api->handle_import_data(imp.dll_name, imp.func_name);
-    //         ...
-    //     }
-    // }
+    if (api) {
+        for (auto& imp : img->imports) {
+            auto [handler, data_handler] = api->get_data_export_handler(imp.dll_name, imp.func_name);
+            if (data_handler) {
+                // Call the data initializer to get the address of imported data
+                void* data_ptr = api->call_data_func(handler, data_handler, 0);
+                if (data_ptr) {
+                    // Patch the IAT entry to point to the data
+                    uint64_t data_addr = reinterpret_cast<uint64_t>(data_ptr);
+                    uint64_t iat_addr = imp.iat_address;
+                    std::vector<uint8_t> ptr_bytes(get_ptr_size());
+                    for (size_t i = 0; i < ptr_bytes.size(); ++i)
+                        ptr_bytes[i] = static_cast<uint8_t>((data_addr >> (i * 8)) & 0xFF);
+                    try { mem_write(iat_addr, ptr_bytes); } catch (...) {}
+                }
+            } else {
+                // Not data import, but check for function handler
+                auto [mod, func] = api->get_export_func_handler(imp.dll_name, imp.func_name);
+                (void)mod;
+                (void)func;
+            }
+        }
+    }
 
     // ── Register module ──
     if (img->base != 0) {
@@ -1245,6 +1263,99 @@ void WindowsEmulator::set_current_process(Process* process) { curr_process = pro
 
 void WindowsEmulator::set_current_thread(Thread* thread) { curr_thread = thread; }
 
+// Python winemu.py:1226
+// def create_process(self, path=None, cmdline=None, image=None, child=False):
+//     """Create a process object that will exist in the emulator"""
+void* WindowsEmulator::create_process(const std::string& path,
+                                       const std::string& cmdline,
+                                       void* image, bool child) {
+    validate_object_services("process creation");
+
+    // Determine file path from cmdline if path not given
+    std::string file_path = path;
+    if (file_path.empty() && !cmdline.empty()) {
+        file_path = cmdline;
+        // Strip quotes from first token
+        auto sp = file_path.find(' ');
+        if (sp != std::string::npos) file_path = file_path.substr(0, sp);
+        if (file_path.size() >= 2 && file_path.front() == '"' && file_path.back() == '"')
+            file_path = file_path.substr(1, file_path.size() - 2);
+    }
+
+    auto* p = new Process(this);
+
+    if (!image) {
+        // Try to get PE data from emulated filesystem
+        auto mod_data = get_module_data_from_emu_file(file_path);
+        if (!mod_data.empty()) {
+            // Load PE from raw data
+            try {
+                speakeasy::PeLoader loader(file_path, mod_data);
+                auto* img = loader.make_image();
+                auto* rtmod = load_image(img);
+                p->pe = rtmod;
+            } catch (...) {
+                p->pe = nullptr;
+            }
+        } else {
+            // Fall back to loading by name
+            p->pe = load_module_by_name(file_path, path);
+        }
+    } else {
+        p->pe = image;
+    }
+
+    p->path = file_path;
+    p->cmdline = cmdline;
+
+    // Create an initial thread for the process
+    auto* t = new Thread(this);
+    p->threads.push_back(*t);
+    delete t;  // threads vector stores copies
+
+    if (child) {
+        child_processes.push_back(p);
+    } else {
+        processes.push_back(p);
+    }
+
+    return p;
+}
+
+// Python winemu.py:1293
+// def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
+//     """Create a thread object that will exist in the emulator"""
+void* WindowsEmulator::create_thread(uint64_t addr, void* ctx, void* proc_obj,
+                                      const std::string& thread_type, bool is_suspended) {
+    validate_object_services("thread creation");
+
+    if (run_queue.size() >= static_cast<size_t>(max_runs)) {
+        return nullptr;
+    }
+
+    auto* thread = new Thread(this);
+    if (proc_obj) {
+        auto* proc = static_cast<Process*>(proc_obj);
+        thread->set_context(ctx);
+    }
+
+    auto run = std::make_shared<Run>();
+    run->type = thread_type;
+    run->start_addr = addr;
+    run->instr_cnt = 0;
+    run->args = {reinterpret_cast<const char*>(&ctx), reinterpret_cast<const char*>(&ctx) + sizeof(ctx)};
+    run->process_context = proc_obj;
+    run->thread = thread;
+
+    if (!is_suspended) {
+        run_queue.push_back(run);
+    } else {
+        suspended_runs.push_back(run);
+    }
+
+    return thread;
+}
+
 // ── Module loading ───────────────────────────────────────────
 
 
@@ -1278,8 +1389,25 @@ std::string WindowsEmulator::get_native_module_path(const std::string& mod_name)
 //     """Load a library (DLL) by name. Returns its base address or 0."""
 void* WindowsEmulator::load_library(const std::string& mod_name) {
     std::string lib = normalize_mod_name(mod_name);
+
+    // Check if already loaded
+    void* existing = get_mod_by_name(lib);
+    if (existing) {
+        return reinterpret_cast<void*>(static_cast<PeFile*>(existing)->get_base());
+    }
+
     if (!modules_always_exist) return nullptr;
-    return load_module_by_name(lib);
+
+    void* mod = load_module_by_name(lib);
+    if (!mod) return nullptr;
+
+    // Add to current process PEB if available
+    auto* proc = get_current_process();
+    if (proc && proc->peb_ldr_data) {
+        proc->add_module_to_peb(mod);
+    }
+
+    return reinterpret_cast<void*>(static_cast<PeFile*>(mod)->get_base());
 }
 
 
@@ -1326,8 +1454,13 @@ void* WindowsEmulator::load_module_by_name(const std::string& name,
 //     """Get raw PE data from a file inside the emulated filesystem."""
 std::vector<uint8_t> WindowsEmulator::get_module_data_from_emu_file(
     const std::string& file_path) {
-    if (!does_file_exist(file_path)) return {};
-    return {};
+    if (!fileman || !does_file_exist(file_path)) return {};
+
+    auto mod_file = fileman->get_file_from_path(file_path);
+    if (!mod_file) return {};
+
+    // Get the raw bytes from the file object
+    return mod_file->get_data(-1, false);
 }
 
 
@@ -1337,9 +1470,9 @@ std::vector<uint8_t> WindowsEmulator::get_module_data_from_emu_file(
 std::vector<void*> WindowsEmulator::init_environment(
     const std::vector<void*>& system_modules,
     const std::vector<void*>& user_modules) {
-    (void)system_modules;
-    (void)user_modules;
-    return {};
+    auto sys_mods = _init_module_group(system_modules, 0);
+    _init_module_group(user_modules, 0x6F000000);
+    return sys_mods;
 }
 
 
@@ -1369,14 +1502,41 @@ std::vector<void*> WindowsEmulator::_init_module_group(
     std::vector<void*> rtmods;
     for (auto* mc : modules_config) {
         if (!mc) continue;
-        // For void* config entries, try to cast to a path string and load
-        const char* path = static_cast<const char*>(mc);
-        try {
-            speakeasy::PeLoader loader(std::string(path), std::vector<uint8_t>{});
-            auto* img = loader.make_image();
-            auto* rtmod = load_image(img);
-            if (rtmod) rtmods.push_back(rtmod);
-        } catch (...) {}
+
+        // Try to interpret the config entry — treat as string path
+        const char* cstr = static_cast<const char*>(mc);
+        std::string modname = cstr ? std::string(cstr) : "unknown";
+
+        // Extract just the module name from the path
+        std::string name_only = modname;
+        auto slash = name_only.find_last_of("/\\");
+        if (slash != std::string::npos) name_only = name_only.substr(slash + 1);
+        auto dot = name_only.find_last_of('.');
+        if (dot != std::string::npos) name_only = name_only.substr(0, dot);
+
+        // Try native PE path first
+        std::string native_path = get_native_module_path(name_only);
+        if (!native_path.empty()) {
+            try {
+                speakeasy::PeLoader loader(native_path, std::vector<uint8_t>{});
+                auto* img = loader.make_image();
+                if (default_base) img->base = default_base;
+                auto* rtmod = load_image(img);
+                if (rtmod) rtmods.push_back(rtmod);
+                continue;
+            } catch (...) {}
+        }
+
+        // Fallback: try loading from the path string directly
+        if (!modname.empty()) {
+            try {
+                speakeasy::PeLoader loader(modname, std::vector<uint8_t>{});
+                auto* img = loader.make_image();
+                if (default_base) img->base = default_base;
+                auto* rtmod = load_image(img);
+                if (rtmod) rtmods.push_back(rtmod);
+            } catch (...) {}
+        }
     }
     return rtmods;
 }

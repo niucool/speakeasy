@@ -82,6 +82,7 @@ enum class BootstrapPhase {
 class MemAccess;
 class Run;
 class WindowsEmuError;
+class WindowsApi;
 
 // ── WindowsEmulator ──────────────────────────────────────────
 // Python winemu.py:51
@@ -183,7 +184,7 @@ protected:
     DriveManager* driveman = nullptr;
     CryptoManager* cryptman = nullptr;
     ApiHammer* hammer = nullptr;
-    void* api = nullptr;
+    WindowsApi* api = nullptr;
     ObjectManager* om = nullptr;     // ObjectManager
     void* wintypes = nullptr;
 

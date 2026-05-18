@@ -64,6 +64,7 @@ private:
     std::string mod_name;
     std::string bin_base_name;
     uint64_t stack_base;
+    std::map<std::string,std::string> input;
     std::vector<nlohmann::json> config_processes;
     std::vector<nlohmann::json> config_system_modules;
     std::vector<nlohmann::json> config_user_modules;

@@ -549,9 +549,45 @@ uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {
 int Win32Emulator::build_service_main_args(const std::string& service_name,
                                            const std::vector<std::string>& service_args,
                                            int char_width) {
-    // STUB: Not yet implemented
-    (void)service_name; (void)service_args; (void)char_width;
-    return 0;
+    int ptr_sz = get_ptr_size();
+    std::vector<std::string> args;
+    args.push_back(service_name);
+    args.insert(args.end(), service_args.begin(), service_args.end());
+
+    std::string codec;
+    if (char_width == 1) codec = "utf-8";
+    else if (char_width == 2) codec = "utf-16le";
+    else return 0;
+
+    std::vector<std::vector<uint8_t>> enc_args;
+    size_t total_str_size = 0;
+    for (auto& arg : args) {
+        std::string null_term = arg + "\x00";
+        if (codec == "utf-16le") {
+            std::vector<uint8_t> bytes;
+            for (char c : null_term) {
+                bytes.push_back((uint8_t)c);
+                bytes.push_back(0);
+            }
+            enc_args.push_back(bytes);
+        } else {
+            enc_args.push_back(std::vector<uint8_t>(null_term.begin(), null_term.end()));
+        }
+        total_str_size += enc_args.back().size();
+    }
+
+    size_t ptr_count = enc_args.size() + 1;
+    size_t total_size = ptr_count * ptr_sz + total_str_size;
+    uint64_t argv_ptr = mem_map(total_size, 0x41420000, PERM_MEM_RW, "emu.service_main_argv");
+
+    uint64_t str_ptr = argv_ptr + (ptr_count * ptr_sz);
+    for (size_t i = 0; i < enc_args.size(); i++) {
+        write_ptr(argv_ptr + (i * ptr_sz), str_ptr);
+        mem_write(str_ptr, enc_args[i]);
+        str_ptr += enc_args[i].size();
+    }
+    write_ptr(argv_ptr + (enc_args.size() * ptr_sz), 0);
+    return (int)enc_args.size();
 }
 
 // Python win32.py:93
@@ -566,35 +602,147 @@ int Win32Emulator::get_service_main_char_width(const std::string& export_name) {
 // Python win32.py:188
 // def _make_emu_path(self, path, data):
 std::string Win32Emulator::_make_emu_path(const std::string& path, const std::vector<uint8_t>& data) {
-    // STUB: Not yet implemented
-    (void)data;
-    return path;
+    (void)path; (void)data;
+    std::string cd = get_cd();
+    if (!cd.empty() && cd.back() != '\\') cd += '\\';
+    // Extract basename from file_name
+    std::string base;
+    auto pos = file_name.find_last_of("/\\");
+    base = (pos != std::string::npos) ? file_name.substr(pos + 1) : file_name;
+    return cd + base;
 }
 
 // Python win32.py:194
 // def _set_input_metadata(self, path, data):
 void Win32Emulator::_set_input_metadata(const std::string& path, const std::vector<uint8_t>& data) {
-    // STUB: Not yet implemented
-    (void)path; (void)data;
+    if (!profiler) return;
+    
+    input.clear();
+    try {
+        PeFile pe(path, data, IMPORT_HOOK_ADDR, 4, "", true);
+        std::string pe_type = "unknown";
+        if (pe.is_driver()) {
+            pe_type = "driver";
+        } else {
+            // Use path extension to guess dll vs exe
+            std::string ext;
+            auto dot = path.find_last_of('.');
+            if (dot != std::string::npos) ext = path.substr(dot);
+            for (auto& c : ext) c = (char)tolower(c);
+            if (ext == ".exe") pe_type = "exe";
+            else pe_type = "dll";
+        }
+        std::string arch_str = "unknown";
+        if (pe.get_ptr_size() == 8) arch_str = "x64";
+        else if (pe.get_ptr_size() == 4) arch_str = "x86";
+        
+        std::string hash_val = pe._hash_pe(path, data);
+        
+        input["path"] = path;
+        input["sha256"] = hash_val;
+        input["size"] = std::to_string(data.size());
+        input["arch"] = arch_str;
+        input["filetype"] = pe_type;
+        input["emu_version"] = get_emu_version();
+        input["os_run"] = get_osver_string();
+    } catch (...) {
+        input["path"] = path;
+        input["size"] = std::to_string(data.size());
+        input["emu_version"] = get_emu_version();
+        input["os_run"] = get_osver_string();
+    }
+    profiler->add_input_metadata(input);
 }
 
 // Python win32.py:500
 // def _ordered_peb_modules(self):
 std::vector<void*> Win32Emulator::_ordered_peb_modules() {
-    // STUB: Not yet implemented
-    return {};
+    const std::map<std::string, int> CORE_ORDER = {
+        {"ntdll", 0}, {"kernel32", 1}, {"kernelbase", 2}
+    };
+    auto mods = get_peb_modules();
+    std::vector<void*> exe_mods;
+    std::vector<std::pair<int, void*>> core_mods;
+    std::vector<void*> other_mods;
+    
+    for (void* m : mods) {
+        auto* img = static_cast<speakeasy::LoadedImage*>(m);
+        // Check if this is an EXE: not a driver and has an .exe extension or was loaded as main module
+        std::string lname = img->name;
+        for (auto& c : lname) c = (char)tolower(c);
+        std::string lemu = img->emu_path;
+        for (auto& c : lemu) c = (char)tolower(c);
+        
+        bool is_exe_mod = false;
+        if (!img->is_driver) {
+            if (lemu.size() >= 4 && lemu.substr(lemu.size() - 4) == ".exe")
+                is_exe_mod = true;
+            if (lname.size() >= 4 && lname.substr(lname.size() - 4) == ".exe")
+                is_exe_mod = true;
+        }
+        
+        if (is_exe_mod) {
+            exe_mods.push_back(m);
+            continue;
+        }
+        
+        std::string bn = lname;
+        if (bn.empty()) {
+            auto pos = lemu.find_last_of("/\\");
+            std::string base = (pos != std::string::npos) ? lemu.substr(pos + 1) : lemu;
+            auto dot = base.find_last_of('.');
+            bn = (dot != std::string::npos) ? base.substr(0, dot) : base;
+        } else {
+            auto dot = bn.find_last_of('.');
+            bn = (dot != std::string::npos) ? bn.substr(0, dot) : bn;
+        }
+        
+        auto it = CORE_ORDER.find(bn);
+        if (it != CORE_ORDER.end()) {
+            core_mods.push_back({it->second, m});
+        } else {
+            other_mods.push_back(m);
+        }
+    }
+    
+    std::sort(core_mods.begin(), core_mods.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
+    
+    std::vector<void*> result = exe_mods;
+    for (auto& cm : core_mods) result.push_back(cm.second);
+    result.insert(result.end(), other_mods.begin(), other_mods.end());
+    return result;
 }
 
 // Python win32.py:523
 // def _ensure_core_dlls_loaded(self):
 void Win32Emulator::_ensure_core_dlls_loaded() {
-    // STUB: Not yet implemented
+    const std::vector<std::string> CORE_DLLS = {"ntdll", "kernel32", "kernelbase"};
+    for (auto& dll : CORE_DLLS) {
+        if (!get_mod_by_name(dll)) {
+            load_module_by_name(dll);
+        }
+    }
 }
 
 // Python win32.py:589
 // def _init_user_modules_from_config(self):
 void Win32Emulator::_init_user_modules_from_config() {
-    // STUB: Not yet implemented
+    nlohmann::json proc_mod;
+    for (auto& p : config_processes) {
+        if (p.value("is_main_exe", false)) {
+            proc_mod = p;
+            break;
+        }
+    }
+    std::vector<nlohmann::json> all_user_mods;
+    if (!proc_mod.empty()) {
+        all_user_mods.push_back(proc_mod);
+        all_user_mods.insert(all_user_mods.end(), config_user_modules.begin(), config_user_modules.end());
+    } else {
+        all_user_mods = config_user_modules;
+    }
+    init_user_modules(all_user_mods);
 }
 
 // Python win32.py:670
@@ -603,7 +751,113 @@ void Win32Emulator::_init_user_modules_from_config() {
 //     Capture current memory layout and loaded modules for the run report.
 //     """
 void Win32Emulator::_capture_memory_layout() {
-    // STUB: Not yet implemented
+    if (!curr_run) return;
+    const std::string EXCLUDED_TAG_PREFIXES[] = {"emu.stack", "api.heap", "emu.process_heap"};
+    
+    auto prot_to_string = [](uint32_t prot) -> std::string {
+        if (prot == 0) return "---";
+        std::string s;
+        s += (prot & PERM_MEM_READ) ? 'r' : '-';
+        s += (prot & PERM_MEM_WRITE) ? 'w' : '-';
+        s += (prot & PERM_MEM_EXEC) ? 'x' : '-';
+        return s;
+    };
+    
+    // Build modules_by_base map
+    std::map<uint64_t, speakeasy::LoadedImage*> modules_by_base;
+    for (void* m : modules) {
+        auto* img = static_cast<speakeasy::LoadedImage*>(m);
+        if (img->image_size > 0) {
+            modules_by_base[img->base] = img;
+        }
+    }
+    
+    auto mmaps = MemoryManager::get_mem_maps();
+    
+    for (auto& mm : mmaps) {
+        std::string prot = prot_to_string(mm->get_prot());
+        uint64_t mm_base = mm->get_base();
+        uint64_t mm_size = mm->get_size();
+        std::string tag = mm->get_tag();
+        
+        auto mod_it = modules_by_base.find(mm_base);
+        speakeasy::LoadedImage* mod = nullptr;
+        if (mod_it != modules_by_base.end() && tag.find("emu.module.") == 0) {
+            mod = mod_it->second;
+        }
+        
+        if (mod && !mod->sections.empty()) {
+            std::string mod_name = mod->name.empty() ? "unknown" : mod->name;
+            
+            // Headers region
+            uint32_t first_section_rva = mod->sections[0].virtual_address;
+            uint64_t hdr_size = (first_section_rva > 0 && first_section_rva < mm_size) 
+                                ? first_section_rva : mm_size;
+            std::string hdr_tag = "emu.module." + mod_name + ".headers.0x" + 
+                                  std::to_string(mm_base);
+            
+            std::map<std::string,std::string> hdr_dict;
+            hdr_dict["tag"] = hdr_tag;
+            hdr_dict["address"] = std::to_string(mm_base);
+            hdr_dict["size"] = std::to_string(hdr_size);
+            hdr_dict["prot"] = "r--";
+            hdr_dict["is_free"] = mm->is_free() ? "true" : "false";
+            curr_run->memory_regions.push_back(hdr_dict);
+            
+            // Section regions
+            for (auto& sect : mod->sections) {
+                uint64_t sec_addr = (uint64_t)sect.virtual_address + mm_base;
+                std::string sec_prot = prot_to_string(sect.perms);
+                std::string sec_tag = "emu.module." + mod_name + "." + sect.name + 
+                                      ".0x" + std::to_string(sec_addr);
+                std::map<std::string,std::string> sec_dict;
+                sec_dict["tag"] = sec_tag;
+                sec_dict["address"] = std::to_string(sec_addr);
+                sec_dict["size"] = std::to_string((uint64_t)sect.virtual_size);
+                sec_dict["prot"] = sec_prot;
+                sec_dict["is_free"] = mm->is_free() ? "true" : "false";
+                curr_run->memory_regions.push_back(sec_dict);
+            }
+        } else {
+            std::map<std::string,std::string> region_dict;
+            region_dict["tag"] = tag;
+            region_dict["address"] = std::to_string(mm_base);
+            region_dict["size"] = std::to_string(mm_size);
+            region_dict["prot"] = prot;
+            region_dict["is_free"] = mm->is_free() ? "true" : "false";
+            curr_run->memory_regions.push_back(region_dict);
+        }
+    }
+    
+    // Add loaded modules
+    for (void* m : modules) {
+        auto* img = static_cast<speakeasy::LoadedImage*>(m);
+        if (img->image_size == 0) continue;
+        std::string mod_name = img->name;
+        if (mod_name.empty()) {
+            auto pos = img->emu_path.find_last_of("/\\");
+            mod_name = (pos != std::string::npos) ? img->emu_path.substr(pos + 1) : img->emu_path;
+            if (mod_name.empty()) mod_name = "unknown";
+        }
+        
+        std::vector<std::map<std::string,std::string>> segments;
+        for (auto& sect : img->sections) {
+            std::map<std::string,std::string> seg;
+            seg["name"] = sect.name;
+            seg["address"] = std::to_string((uint64_t)sect.virtual_address + img->base);
+            seg["size"] = std::to_string((uint64_t)sect.virtual_size);
+            seg["prot"] = prot_to_string(sect.perms);
+            segments.push_back(seg);
+        }
+        
+        std::map<std::string,std::string> mod_entry;
+        mod_entry["name"] = mod_name;
+        mod_entry["path"] = img->emu_path;
+        mod_entry["base"] = std::to_string(img->base);
+        mod_entry["size"] = std::to_string(img->image_size);
+        mod_entry["segments"] = ""; // segments stored separately above
+        curr_run->loaded_modules.push_back(mod_entry);
+    }
 }
 
 void* Win32Emulator::get_address_map(uint64_t) { return nullptr; }

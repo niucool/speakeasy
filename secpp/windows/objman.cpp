@@ -684,9 +684,205 @@ void Process::set_peb_ldr_address(int addr) {
 }
 
 void Process::set_process_parameters(void* emu) {
-    // Python: set PEB.ProcessParameters
-    // Requires PEB type to be ported. For now, stub.
-    (void)emu;
+    // Python: creates RTL_USER_PROCESS_PARAMETERS, sets PEB.ProcessParameters
+    // Python objman.py:527-530
+    //   process_parameters = RTL_USER_PROCESS_PARAMETERS(emu=emu, proc=self)
+    //   self.peb.object.ProcessParameters = process_parameters.address
+    //   self.peb.write_back()
+    if (!emu || !this->peb) return;
+
+    auto* be = BE(emu);
+    int ptr_size = be->get_ptr_size();
+    int arch = be->get_arch();
+
+    // Build UTF-16LE string data
+    auto to_utf16le = [](const std::string& s) -> std::vector<uint8_t> {
+        std::vector<uint8_t> out;
+        for (size_t i = 0; i < s.size(); ++i) {
+            out.push_back(static_cast<uint8_t>(s[i] & 0xFF));
+            out.push_back(static_cast<uint8_t>((s[i] >> 8) & 0xFF));
+        }
+        out.push_back(0); out.push_back(0); // null terminator
+        return out;
+    };
+
+    // RTL_USER_PROCESS_PARAMETERS layout (simplified, based on Python ntoskrnl.py:637-667)
+    // Fields we need to compute struct size:
+    // MaximumLength(4) + Length(4) + Flags(4) + DebugFlags(4) +
+    // ConsoleHandle(ps) + ConsoleFlags(4) +
+    // [4 pad on x64] +
+    // StandardInput(ps) + StandardOutput(ps) + StandardError(ps) +
+    // CurrentDirectory(UNICODE_STRING + Ptr) +
+    // DllPath(UNICODE_STRING) + ImagePathName(UNICODE_STRING) + CommandLine(UNICODE_STRING) +
+    // Environment(ps) +
+    // StartingX(4)+StartingY(4)+CountX(4)+CountY(4)+CountCharsX(4)+CountCharsY(4)+
+    // FillAttribute(4)+WindowFlags(4)+ShowWindowFlags(4) +
+    // WindowTitle(UNICODE_STRING) + DesktopInfo(UNICODE_STRING) +
+    // ShellInfo(UNICODE_STRING) + RuntimeData(UNICODE_STRING)
+
+    // UNICODE_STRING = USHORT(2) + USHORT(2) + PWSTR(ps) = 4+ps
+    // On x64, PWSTR at offset 8 due to 4-byte alignment padding → 16 bytes
+    int us_size = (arch == speakeasy::arch::ARCH_AMD64) ? 16 : (4 + ptr_size);
+    // CURDIR = UNICODE_STRING + Ptr(ps)
+    int curdir_size = us_size + ptr_size;
+
+    // Calculate struct size
+    // Header fields
+    int offset = 0;
+    offset += 4 + 4 + 4 + 4;               // MaximumLength..DebugFlags
+    offset += ptr_size;                      // ConsoleHandle
+    offset += 4;                             // ConsoleFlags
+    if (arch == speakeasy::arch::ARCH_AMD64 && offset % 8) offset += 4; // align
+    offset += ptr_size;                      // StandardInput
+    offset += ptr_size;                      // StandardOutput
+    offset += ptr_size;                      // StandardError
+    offset += curdir_size;                   // CurrentDirectory
+    offset += us_size;                       // DllPath
+    offset += us_size;                       // ImagePathName
+    offset += us_size;                       // CommandLine
+    offset += ptr_size;                      // Environment
+    offset += 4+4+4+4+4+4+4+4+4;            // StartingX..ShowWindowFlags
+    offset += us_size;                       // WindowTitle
+    offset += us_size;                       // DesktopInfo
+    offset += us_size;                       // ShellInfo
+    offset += us_size;                       // RuntimeData
+    int struct_size = offset;
+
+    // Build string data (UTF-16LE)
+    auto proc_path_utf16 = to_utf16le(this->path.empty() ? "C:\\Windows\\System32\\unknown.exe" : this->path);
+    std::string cmdline_with_null = this->cmdline + '\0';
+    auto proc_cmdline_utf16 = to_utf16le(cmdline_with_null);
+    std::string cur_dir = this->path;
+    size_t last_slash = cur_dir.find_last_of("\\/");
+    if (last_slash != std::string::npos) cur_dir = cur_dir.substr(0, last_slash);
+    if (!cur_dir.empty() && cur_dir.back() != '\\') cur_dir += '\\';
+    auto cur_dir_utf16 = to_utf16le(cur_dir);
+    std::string desktop_name = "WinSta0\\Default";
+    auto desktop_utf16 = to_utf16le(desktop_name);
+
+    size_t string_data_size = proc_path_utf16.size() + proc_cmdline_utf16.size() +
+                              cur_dir_utf16.size() + desktop_utf16.size();
+
+    // Allocate memory for the struct + string data
+    uint64_t base = be->mem_map(struct_size + string_data_size, 0,
+                                PERM_MEM_RW, "emu.struct.ProcessParameters");
+    uint64_t str_offset = base + struct_size;
+
+    // Write string data
+    be->mem_write(str_offset, proc_path_utf16);
+    uint64_t path_addr = str_offset;
+    str_offset += proc_path_utf16.size();
+
+    be->mem_write(str_offset, proc_cmdline_utf16);
+    uint64_t cmdline_addr = str_offset;
+    str_offset += proc_cmdline_utf16.size();
+
+    be->mem_write(str_offset, cur_dir_utf16);
+    uint64_t cur_dir_addr = str_offset;
+    str_offset += cur_dir_utf16.size();
+
+    be->mem_write(str_offset, desktop_utf16);
+    uint64_t desktop_addr = str_offset;
+
+    // Helper: write pointer value at offset
+    auto write_ptr = [&](uint64_t struct_base, int off, uint64_t val) {
+        std::vector<uint8_t> ptr_bytes;
+        for (int i = 0; i < ptr_size; ++i) {
+            ptr_bytes.push_back(static_cast<uint8_t>((val >> (i * 8)) & 0xFF));
+        }
+        be->mem_write(struct_base + off, ptr_bytes);
+    };
+    // Helper: write uint16 at offset
+    auto write_u16 = [&](uint64_t struct_base, int off, uint16_t val) {
+        std::vector<uint8_t> bytes = {static_cast<uint8_t>(val & 0xFF),
+                                       static_cast<uint8_t>((val >> 8) & 0xFF)};
+        be->mem_write(struct_base + off, bytes);
+    };
+    // Helper: write uint32 at offset
+    auto write_u32 = [&](uint64_t struct_base, int off, uint32_t val) {
+        std::vector<uint8_t> bytes(4);
+        bytes[0] = static_cast<uint8_t>(val & 0xFF);
+        bytes[1] = static_cast<uint8_t>((val >> 8) & 0xFF);
+        bytes[2] = static_cast<uint8_t>((val >> 16) & 0xFF);
+        bytes[3] = static_cast<uint8_t>((val >> 24) & 0xFF);
+        be->mem_write(struct_base + off, bytes);
+    };
+    // Helper: write UNICODE_STRING at offset
+    auto write_unicode_string = [&](uint64_t struct_base, int off, uint16_t len_bytes,
+                                    uint16_t max_len_bytes, uint64_t buf_addr) {
+        int us_off = off;
+        write_u16(struct_base, us_off, len_bytes);     // Length
+        write_u16(struct_base, us_off + 2, max_len_bytes); // MaximumLength
+        // Buffer pointer: at offset 4 for x86, offset 8 for x64
+        int buf_off = (arch == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
+        write_ptr(struct_base, us_off + buf_off, buf_addr);
+    };
+
+    // Now write the struct fields
+    int o = 0;
+    write_u32(base, o, struct_size); o += 4; // MaximumLength
+    write_u32(base, o, struct_size); o += 4; // Length
+    write_u32(base, o, 1);          o += 4; // Flags = 1 (STARTF_USESHOWWINDOW)
+    write_u32(base, o, 0);          o += 4; // DebugFlags
+    write_ptr(base, o, 0);          o += ptr_size; // ConsoleHandle
+    write_u32(base, o, 0);          o += 4; // ConsoleFlags
+    if (arch == speakeasy::arch::ARCH_AMD64 && o % 8) o += 4; // align
+    write_ptr(base, o, this->stdin_handle);  o += ptr_size; // StandardInput
+    write_ptr(base, o, this->stdout_handle); o += ptr_size; // StandardOutput
+    write_ptr(base, o, this->stderr_handle); o += ptr_size; // StandardError
+
+    // CurrentDirectory
+    write_unicode_string(base, o,
+        static_cast<uint16_t>(cur_dir_utf16.size() - 2),  // Length (without null)
+        static_cast<uint16_t>(cur_dir_utf16.size()),       // MaximumLength
+        cur_dir_addr);
+    o += us_size;
+    write_ptr(base, o, 0); o += ptr_size; // CurrentDirectory.Handle
+    // DllPath (empty)
+    write_unicode_string(base, o, 0, 0, 0);
+    o += us_size;
+    // ImagePathName
+    write_unicode_string(base, o,
+        static_cast<uint16_t>(proc_path_utf16.size() - 2),
+        static_cast<uint16_t>(proc_path_utf16.size()),
+        path_addr);
+    o += us_size;
+    // CommandLine
+    write_unicode_string(base, o,
+        static_cast<uint16_t>(proc_cmdline_utf16.size() - 2),
+        static_cast<uint16_t>(proc_cmdline_utf16.size()),
+        cmdline_addr);
+    o += us_size;
+    // Environment
+    write_ptr(base, o, 0); o += ptr_size;
+    // Window position (zeros)
+    for (int i = 0; i < 9; ++i) { write_u32(base, o, 0); o += 4; }
+    // WindowTitle (empty)
+    write_unicode_string(base, o, 0, 0, 0);
+    o += us_size;
+    // DesktopInfo
+    write_unicode_string(base, o,
+        static_cast<uint16_t>(desktop_utf16.size() - 2),
+        static_cast<uint16_t>(desktop_utf16.size()),
+        desktop_addr);
+    o += us_size;
+    // ShellInfo (empty)
+    write_unicode_string(base, o, 0, 0, 0);
+    o += us_size;
+    // RuntimeData (empty)
+    write_unicode_string(base, o, 0, 0, 0);
+    (void)o; // suppress unused warning
+
+    // Write ProcessParameters pointer into PEB
+    // PEB layout (Windows offsets):
+    //   x86: ProcessParameters at PEB+0x10
+    //   x64: ProcessParameters at PEB+0x20
+    uint64_t peb_addr = reinterpret_cast<uint64_t>(this->peb);
+    if (arch == speakeasy::arch::ARCH_X86) {
+        write_ptr(peb_addr, 0x10, base);
+    } else if (arch == speakeasy::arch::ARCH_AMD64) {
+        write_ptr(peb_addr, 0x20, base);
+    }
 }
 
 void* Process::get_peb_ldr() {
