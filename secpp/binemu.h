@@ -95,6 +95,7 @@ private:
     int ptr_size_;
     std::map<std::string, std::string> exceptions;
     std::vector<std::string> drive_config;
+    std::vector<speakeasy::Module *> modules;
     std::map<std::string, std::string> filesystem_config;
     bool keep_memory_on_free;
     std::map<std::string, std::string> network_config;
@@ -242,7 +243,7 @@ public:
     void set_ptr_size(int arch);
     
     // Python binemu.py:811-820 doc: "If the supplied address belongs to a module, return it"
-    void* get_module_from_addr(uint64_t addr);
+    speakeasy::Module* get_module_from_addr(uint64_t addr);
     
     // Hook management methods (Python:822-1147)
     // Python binemu.py:822-852 doc: "If an API hook has been set, return it here"

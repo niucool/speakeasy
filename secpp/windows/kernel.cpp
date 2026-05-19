@@ -85,7 +85,7 @@ void* WinKernelEmulator::load_module(const std::string& path,
 
     std::string file_name, mod_name;
     if (!filename.empty()) {
-        this->file_name = filename;
+        file_name = filename;
         auto pos = file_name.rfind('/');
         if (pos == std::string::npos) pos = file_name.rfind('\\');
         if (pos != std::string::npos) file_name = file_name.substr(pos + 1);

@@ -358,17 +358,112 @@ void WindowsEmulator::_populate_user_shared_data(uint64_t base) {
 //     """Set up the GDT so we can access segment registers correctly.
 //     This will be done a little differently depending on architecture"""
 std::tuple<uint64_t, uint64_t> WindowsEmulator::_setup_gdt(int arch) {
-    (void)arch;
-    // Set up Global Descriptor Table segment registers
-    if (ptr_size == 4) {
-        fs_addr = 0x7FFDE000;  // default x86 TEB address
-        gs_addr = 0;
-        if (emu_eng) emu_eng->reg_write(speakeasy::arch::REG_FS, fs_addr);
-    } else {
-        fs_addr = 0;
-        gs_addr = 0x7EF00000;  // default x64 TEB address
-        if (emu_eng) emu_eng->reg_write(speakeasy::arch::REG_GS, gs_addr);
+    constexpr size_t GDT_SIZE = 0x1000;
+    constexpr size_t SEG_SIZE = 0x1000;
+    constexpr size_t ENTRY_SIZE = 0x8;
+
+    // Allocate GDT memory first so addresses are available for the lambda
+    uint64_t gdt_base = 0;
+    uint64_t gdt_addr = 0;
+    uint64_t gdt_size = 0;
+    std::tie(gdt_addr, gdt_size) = get_valid_ranges(GDT_SIZE);
+    gdt_base = gdt_addr;
+    mem_map(gdt_size, gdt_base, PERM_MEM_RW, "emu.gdt");
+
+    uint64_t seg_addr = 0;
+    uint64_t seg_size = 0;
+    std::tie(seg_addr, seg_size) = get_valid_ranges(SEG_SIZE);
+    mem_map(seg_size, seg_addr, PERM_MEM_RW, "emu.segment.gdt");
+
+    // Helper to build an 8-byte GDT entry from index, base, access bits, and limit
+    auto make_entry = [&](int index, uint64_t base, uint8_t access, uint64_t limit = 0xFFFFF000) {
+        access = access | (GDT_ACCESS_BITS::PresentBit | GDT_ACCESS_BITS::DirectionConformingBit);
+        uint64_t entry = 0;
+        entry |= (0xFFFFULL & limit);                         // bits 0-15: limit[15:0]
+        entry |= ((0xFFFFFFULL & base) << 16);                // bits 16-39: base[23:0]
+        entry |= ((uint64_t)(0xFF & access) << 40);           // bits 40-47: access byte
+        entry |= ((uint64_t)(0xFF & (limit >> 16)) << 48);    // bits 48-51: limit[19:16]
+        entry |= ((uint64_t)(0xFF & GDT_ACCESS_BITS::ProtMode32) << 52);  // bits 52-55: flags
+        entry |= ((uint64_t)(0xFF & (base >> 24)) << 56);     // bits 56-63: base[31:24]
+
+        std::vector<uint8_t> entry_bytes(8);
+        for (int i = 0; i < 8; i++) {
+            entry_bytes[i] = static_cast<uint8_t>((entry >> (i * 8)) & 0xFF);
+        }
+        uint64_t offset = static_cast<uint64_t>(index) * ENTRY_SIZE;
+        mem_write(gdt_addr + offset, entry_bytes);
+    };
+
+    auto create_selector = [](int index, uint8_t flags) -> uint64_t {
+        return static_cast<uint64_t>(flags | (index << 3));
+    };
+
+    // Entry 16: Data/Ring3 (DS)
+    {
+        uint8_t access = GDT_ACCESS_BITS::Data | GDT_ACCESS_BITS::DataWritable | GDT_ACCESS_BITS::Ring3;
+        make_entry(16, 0, access);
     }
+    // Entry 17: Code/Ring3 (CS)
+    {
+        uint8_t access = GDT_ACCESS_BITS::Code | GDT_ACCESS_BITS::CodeReadable | GDT_ACCESS_BITS::Ring3;
+        make_entry(17, 0, access);
+    }
+    // Entry 18: Data/Ring0 (SS)
+    {
+        uint8_t access = GDT_ACCESS_BITS::Data | GDT_ACCESS_BITS::DataWritable | GDT_ACCESS_BITS::Ring0;
+        make_entry(18, 0, access);
+    }
+
+    // Write GDTR base address and segment selectors
+    if (emu_eng) {
+        uint64_t gdtr_base = gdt_base;
+        emu_eng->reg_write(speakeasy::arch::REG_GDTR, gdtr_base);
+        // DS selector (index 16, Ring3)
+        emu_eng->reg_write(speakeasy::arch::REG_DS, create_selector(16, GDT_FLAGS::Ring3));
+        // CS selector (index 17, Ring3)
+        emu_eng->reg_write(speakeasy::arch::REG_CS, create_selector(17, GDT_FLAGS::Ring3));
+        // SS selector (index 18, Ring0)
+        emu_eng->reg_write(speakeasy::arch::REG_SS, create_selector(18, GDT_FLAGS::Ring0));
+    }
+
+    // Architecture-specific FS/GS segments
+    uint64_t fs_base = 0;
+    uint64_t gs_base = 0;
+
+    if (speakeasy::arch::ARCH_X86 == arch) {
+        // FS segment needed for PEB access at fs:[0x30]
+        uint64_t fs_range = 0;
+        uint64_t fs_sz = 0;
+        std::tie(fs_range, fs_sz) = get_valid_ranges(SEG_SIZE);
+        fs_base = fs_range;
+        mem_map(fs_sz, fs_base, PERM_MEM_RW, "emu.segment.fs");
+
+        uint8_t access = GDT_ACCESS_BITS::Data | GDT_ACCESS_BITS::DataWritable | GDT_ACCESS_BITS::Ring3;
+        make_entry(19, fs_base, access);
+
+        if (emu_eng) {
+            uint64_t fs_sel = create_selector(19, GDT_FLAGS::Ring3);
+            emu_eng->reg_write(speakeasy::arch::REG_FS, fs_sel);
+        }
+    } else if (speakeasy::arch::ARCH_AMD64 == arch) {
+        // GS Segment needed for PEB access at gs:[0x60]
+        uint64_t gs_range = 0;
+        uint64_t gs_sz = 0;
+        std::tie(gs_range, gs_sz) = get_valid_ranges(SEG_SIZE);
+        gs_base = gs_range;
+        mem_map(gs_sz, gs_base, PERM_MEM_RW, "emu.segment.gs");
+
+        uint8_t access = GDT_ACCESS_BITS::Data | GDT_ACCESS_BITS::DataWritable | GDT_ACCESS_BITS::Ring3;
+        make_entry(15, gs_base, access, SEG_SIZE);
+
+        if (emu_eng) {
+            uint64_t gs_sel = create_selector(15, GDT_FLAGS::Ring3);
+            emu_eng->reg_write(speakeasy::arch::REG_GS, gs_sel);
+        }
+    }
+
+    fs_addr = fs_base;
+    gs_addr = gs_base;
     return {fs_addr, gs_addr};
 }
 
@@ -612,10 +707,68 @@ void WindowsEmulator::start() {
     _set_emu_hooks();
     _prepare_run_context(run);
 
-    // Begin emulation via engine
-    if (emu_eng) {
-        emu_eng->start(curr_run->start_addr, 0, 0);
+    // Get timeout from config
+    uint64_t timeout_usec = 0;
+    if (config.timeout > 0) {
+        timeout_usec = static_cast<uint64_t>(config.timeout) * 1000000ULL;
     }
+
+    // Start profiler timer
+    if (profiler) {
+        profiler->set_start_time();
+    }
+
+    int max_instr = config.max_api_count;
+    if (max_instr <= 0) max_instr = 0;
+
+    while (true) {
+        try {
+            // Set current module
+            if (curr_run) {
+                curr_mod = get_mod_from_addr(curr_run->start_addr);
+            }
+
+            // Begin emulation via engine (synchronous)
+            if (emu_eng && curr_run) {
+                uc_err err = emu_eng->start(curr_run->start_addr, timeout_usec,
+                                             static_cast<size_t>(max_instr));
+                if (err != UC_ERR_OK) {
+                    // Check for timeout after execution
+                    if (profiler && timeout_usec > 0 &&
+                        profiler->get_run_time() > static_cast<double>(config.timeout)) {
+                        log_error("* Timeout of " + std::to_string(config.timeout) + " sec(s) reached.");
+                    } else {
+                        // Non-OK result: try next run via on_run_complete
+                        on_run_complete();
+                        if (run_queue.empty()) break;
+                        auto next = run_queue.front();
+                        run_queue.erase(run_queue.begin());
+                        _prepare_run_context(next);
+                        continue;
+                    }
+                }
+
+                // Check timeout after successful emulation
+                if (profiler && timeout_usec > 0 &&
+                    profiler->get_run_time() > static_cast<double>(config.timeout)) {
+                    log_error("* Timeout of " + std::to_string(config.timeout) + " sec(s) reached.");
+                }
+            }
+        } catch (const std::exception& e) {
+            // Exception during emulation
+            (void)e;
+            // Treat as run error
+            on_run_complete();
+            if (run_queue.empty()) break;
+            auto next = run_queue.front();
+            run_queue.erase(run_queue.begin());
+            _prepare_run_context(next);
+            continue;
+        }
+        break;
+    }
+
+    on_emu_complete();
 }
 
 // Python winemu.py:536

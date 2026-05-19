@@ -18,7 +18,7 @@ Win32Emulator::Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::v
     for (const auto& proc : cfg.processes) {
         nlohmann::json j;
         j["name"] = proc.name;
-        j["base_addr"] = proc.base_addr;
+        j["base_addr"] = proc.base;
         j["path"] = proc.path;
         j["pid"] = proc.pid;
         j["command_line"] = proc.command_line;
@@ -28,14 +28,14 @@ Win32Emulator::Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::v
     for (const auto& mod : cfg.modules.system_modules) {
         nlohmann::json j;
         j["name"] = mod.name;
-        j["base_addr"] = mod.base_addr;
+        j["base_addr"] = mod.base;
         j["path"] = mod.path;
         config_system_modules.push_back(j);
     }
     for (const auto& mod : cfg.modules.user_modules) {
         nlohmann::json j;
         j["name"] = mod.name;
-        j["base_addr"] = mod.base_addr;
+        j["base_addr"] = mod.base;
         j["path"] = mod.path;
         config_user_modules.push_back(j);
     }
@@ -318,11 +318,39 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
 void Win32Emulator::alloc_peb(Process* proc) {
     if (!proc) return;
     if (proc->is_peb_active) return;
+
+    // Map PEB memory (0x1000 bytes)
+    uint64_t peb_addr_val = mem_map(0x1000, 0, PERM_MEM_RW, "emu.struct.PEB");
+    proc->peb = reinterpret_cast<void*>(peb_addr_val);
+    this->peb_addr = peb_addr_val;
+
     proc->is_peb_active = true;
-    size_t peb_size = 0x1000;
-    auto [res, sz] = get_valid_ranges(peb_size, 0);
-    // mem_reserve for PEB deferred
-    proc->peb = reinterpret_cast<void*>(res);
+
+    // Write PEB structure fields
+    int psz = get_ptr_size();
+    if (psz == 0) psz = (ptr_size == 4) ? 4 : 8;
+
+    // +0x002: BeingDebug = 0 (1 byte)
+    std::vector<uint8_t> debug_byte = {0x00};
+    mem_write(peb_addr_val + 0x002, debug_byte);
+
+    // +0x00C: Ldr = proc->peb_ldr_data (pointer)
+    uint64_t ldr_ptr = reinterpret_cast<uint64_t>(proc->peb_ldr_data);
+    size_t ptr_sz = (psz == 4) ? 4 : 8;
+    std::vector<uint8_t> ldr_bytes(ptr_sz);
+    for (size_t i = 0; i < ptr_sz; i++) {
+        ldr_bytes[i] = static_cast<uint8_t>((ldr_ptr >> (i * 8)) & 0xFF);
+    }
+    mem_write(peb_addr_val + 0x00C, ldr_bytes);
+
+    // +0x010 (x86) or +0x020 (x64): ProcessParameters (set to 0 for now)
+    uint64_t pp_offset = (psz == 4) ? 0x010 : 0x020;
+    std::vector<uint8_t> pp_bytes(ptr_sz, 0);
+    mem_write(peb_addr_val + pp_offset, pp_bytes);
+
+    // +0x018: SessionId = 1 (4 bytes, int32)
+    std::vector<uint8_t> sid_bytes = {0x01, 0x00, 0x00, 0x00};
+    mem_write(peb_addr_val + 0x018, sid_bytes);
 }
 
 // Python win32.py:529

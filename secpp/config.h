@@ -141,7 +141,7 @@ struct NetworkConfig {
 
 struct ProcessEntry {
     std::string name;
-    std::string base_addr = "0x0";
+    uint64_t base;
     int pid = 0;
     std::string path;
     std::string command_line;
@@ -156,7 +156,8 @@ struct DriverInfo {
 
 struct Module {
     std::string name;
-    std::string base_addr;
+    uint64_t base;
+    size_t image_size;
     std::string path;
 };
 
