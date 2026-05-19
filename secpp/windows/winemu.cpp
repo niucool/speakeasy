@@ -784,7 +784,7 @@ void WindowsEmulator::resume(uint64_t addr, int count) {
 // Python winemu.py:609
 // def get_current_run(self):
 //     """Get the current run that is being emulated"""
-std::shared_ptr<void> WindowsEmulator::get_current_run() { return curr_run; }
+std::shared_ptr<Run> WindowsEmulator::get_current_run() { return curr_run; }
 // Python winemu.py:615
 // def get_current_module(self):
 //     """Get the currently running module"""
@@ -792,7 +792,12 @@ void* WindowsEmulator::get_current_module() { return curr_mod; }
 // Python winemu.py:621
 // def get_dropped_files(self):
 //     """Get all files written by the sample from the file manager"""
-std::vector<void*> WindowsEmulator::get_dropped_files() { return {}; }
+std::vector<std::shared_ptr<File>> WindowsEmulator::get_dropped_files() { 
+    if(fileman)
+        return fileman->get_dropped_files();
+    else
+        return {};
+ }
 
 // ── Process / thread ─────────────────────────────────────────
 // Python winemu.py:635

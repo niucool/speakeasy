@@ -284,7 +284,9 @@ void Speakeasy::reg_write(const std::string& reg, uint64_t val) {
     (void)reg; (void)val;
 }
 
-std::vector<void*> Speakeasy::get_dropped_files() { return {}; }
+std::vector<std::shared_ptr<File>> Speakeasy::get_dropped_files() { 
+    return emu->get_dropped_files(); 
+}
 
 std::vector<uint8_t> Speakeasy::create_file_archive() { return {}; }
 

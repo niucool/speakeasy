@@ -161,7 +161,7 @@ std::string Profiler::merge_binary_data(const std::string& ref, const std::vecto
 //         run.dropped_files.append({
 //             "name": f.get_name(), "hash": f.get_hash(), "path": f.get_path(),
 //         })
-void Profiler::log_dropped_files(std::shared_ptr<Run> run, const std::vector<void*>& files) {
+void Profiler::log_dropped_files(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files) {
     record_dropped_files_event(run, files);
 }
 
@@ -177,11 +177,8 @@ void Profiler::log_dropped_files(std::shared_ptr<Run> run, const std::vector<voi
 //             data_ref = self.artifact_store.put_bytes(data)
 //         entry = {"path": f.path, "size": len(data), "sha256": _hash, "data_ref": data_ref}
 //         run.dropped_files.append(entry)
-void Profiler::record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<void*>& files) {
-    for (void* f_ptr : files) {
-        if (!f_ptr) continue;
-        // The void* elements are File* pointers from get_dropped_files()
-        auto* f = static_cast<File*>(f_ptr);
+void Profiler::record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files) {
+    for (const auto& f : files) {
         if (!f) continue;
 
         auto data = f->get_data();

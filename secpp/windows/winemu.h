@@ -428,7 +428,7 @@ public:
     // Python winemu.py:609
     // def get_current_run(self):
     //     """Get the current run that is being emulated"""
-    std::shared_ptr<void> get_current_run();
+    std::shared_ptr<Run> get_current_run();
     // Python winemu.py:615
     // def get_current_module(self):
     //     """Get the currently running module"""
@@ -436,7 +436,7 @@ public:
     // Python winemu.py:621
     // def get_dropped_files(self):
     //     """Get all files written by the sample from the file manager"""
-    std::vector<void*> get_dropped_files();
+    std::vector<std::shared_ptr<File>> get_dropped_files();
 
     // ── Process / thread ──────────────────────────────────────
     // Python winemu.py:635

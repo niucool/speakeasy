@@ -296,7 +296,7 @@ public:
     // Virtual methods to be implemented by subclasses
     virtual void on_emu_complete() = 0;
     virtual void _set_emu_hooks() = 0;
-    virtual std::shared_ptr<void> get_current_run() = 0;
+    virtual std::shared_ptr<Run> get_current_run() = 0;
 };
 
 #endif // BINEMU_H

@@ -37,6 +37,8 @@
 
 const std::string __report_version__ = "3.0.0";
 
+class File;
+
 // Python:73-74
 // class ProfileError(Exception): pass
 class ProfileError : public std::exception {
@@ -163,8 +165,8 @@ public:
     // """Log a top level emulator error for the emulation report."""
     void record_error_event(const speakeasy::ErrorInfo& error);
     // Python:214-225 — log dropped files from an emulation run
-    void log_dropped_files(std::shared_ptr<Run> run, const std::vector<void*>& files);
-    void record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<void*>& files);
+    void log_dropped_files(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files);
+    void record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files);
     // Python:227-259
     // """Log a call to an OS API. This includes arguments, return address, and return value"""
     void log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name, void* ret,

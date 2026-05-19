@@ -252,7 +252,7 @@ public:
     /**
      * Get files that were written to disk during emulation
      */
-    std::vector<void*> get_dropped_files();
+    std::vector<std::shared_ptr<File>> get_dropped_files();
     
     /**
      * Creates a file archive package
