@@ -134,6 +134,14 @@ struct GUID : speakeasy::EmuStruct {
     uint16_t Data3    = 0;
     uint8_t  Data4[8] = {};
 
+    // Allow brace initialization
+    GUID() = default;
+    GUID(uint32_t d1, uint16_t d2, uint16_t d3, std::initializer_list<uint8_t> d4)
+        : Data1(d1), Data2(d2), Data3(d3) {
+        int i = 0;
+        for (auto b : d4) { if (i < 8) Data4[i++] = b; }
+    }
+
     size_t sizeof_obj() const override { return 16; }
     std::vector<uint8_t> get_bytes() const override {
         std::vector<uint8_t> b(16);

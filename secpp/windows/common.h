@@ -18,20 +18,20 @@
 // GDT Constants needed to set our emulator into protected mode
 // Access bits
 struct GDT_ACCESS_BITS {
-    static const uint8_t ProtMode32 = 0x4;
-    static const uint8_t PresentBit = 0x80;
-    static const uint8_t Ring3 = 0x60;
-    static const uint8_t Ring0 = 0;
-    static const uint8_t DataWritable = 0x2;
-    static const uint8_t CodeReadable = 0x2;
-    static const uint8_t DirectionConformingBit = 0x4;
-    static const uint8_t Code = 0x18;
-    static const uint8_t Data = 0x10;
+    static inline constexpr int ProtMode32 = 0x4;
+    static inline constexpr int PresentBit = 0x80;
+    static inline constexpr int Ring3 = 0x60;
+    static inline constexpr int Ring0 = 0;
+    static inline constexpr int DataWritable = 0x2;
+    static inline constexpr int CodeReadable = 0x2;
+    static inline constexpr int DirectionConformingBit = 0x4;
+    static inline constexpr int Code = 0x18;
+    static inline constexpr int Data = 0x10;
 };
 
 struct GDT_FLAGS {
-    static const uint8_t Ring3 = 0x3;
-    static const uint8_t Ring0 = 0;
+    static inline constexpr int Ring3 = 0x3;
+    static inline constexpr int Ring0 = 0;
 };
 
 // Memory addresses and constants

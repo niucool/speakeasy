@@ -80,7 +80,7 @@ constexpr uint32_t RPC_C_IMP_LEVEL_DELEGATE    = 4;
 #ifdef _WIN32
 const GUID CLSID_WbemLocator = {
 #else
-constexpr GUID CLSID_WbemLocator = {
+const GUID CLSID_WbemLocator = {
 #endif
     0x4590F811, 0x1D3A, 0x11D0,
     {0x89, 0x1F, 0x00, 0xAA, 0x00, 0x4B, 0x2E, 0x24}
@@ -90,7 +90,7 @@ constexpr GUID CLSID_WbemLocator = {
 #ifdef _WIN32
 const GUID CLSID_IWbemContext = {
 #else
-constexpr GUID CLSID_IWbemContext = {
+const GUID CLSID_IWbemContext = {
 #endif
     0x674B6698, 0xEE92, 0x11D0,
     {0xAD, 0x71, 0x00, 0xC0, 0x4F, 0xD8, 0xFD, 0xFF}
@@ -100,7 +100,7 @@ constexpr GUID CLSID_IWbemContext = {
 #ifdef _WIN32
 const GUID IID_IWbemLocator = {
 #else
-constexpr GUID IID_IWbemLocator = {
+const GUID IID_IWbemLocator = {
 #endif
     0xDC12A687, 0x737F, 0x11CF,
     {0x88, 0x4D, 0x00, 0xAA, 0x00, 0x4B, 0x2E, 0x24}
@@ -110,7 +110,7 @@ constexpr GUID IID_IWbemLocator = {
 #ifdef _WIN32
 const GUID IID_IWbemContext = {
 #else
-constexpr GUID IID_IWbemContext = {
+const GUID IID_IWbemContext = {
 #endif
     0x44ACA674, 0xE8FC, 0x11D0,
     {0xA0, 0x7C, 0x00, 0xC0, 0x4F, 0xB6, 0x88, 0x20}

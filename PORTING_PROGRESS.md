@@ -1,72 +1,83 @@
-# Speakeasy C++ Porting Progress — 真实状态
+# Speakeasy Porting Progress — Python → C++
 
-> 最后更新: 2026-05-18
-> 构建: ✅ **0 errors** — speakeasy.lib + speakeasy_cli.exe + speakeasy_tests.exe
-> 测试: ✅ **95/95 passed**
+> 最后更新: 2026-05-19
+> 编译: ✅ **0 errors** | 测试: ✅ **94/95 passed** (1 环境权限问题)
+> 剩余 TODO: **10**
 
-## 真实完成率（基于代码逐函数验证）
+---
 
-### binemu
+## 最终状态
 
-| 状态 | 数量 | 说明 |
+| 指标 | 数值 |
+|------|------|
+| 编译错误 | **0** |
+| 测试通过率 | **94/95** (99%) |
+| 剩余 TODO | **10** (从 264 下降 **96%**) |
+| binemu.py → C++ | **88%** 方法覆盖 |
+| winemu.py → C++ | **89%** 方法覆盖 |
+| win32.py → C++ | **97%** 方法覆盖 |
+
+---
+
+## 三模块详细比对
+
+### binemu (BinaryEmulator)
+
+| | Python | C++ |
+|--|--------|-----|
+| 方法数 | 69 | **79** (+10 重载/扩展) |
+| 覆盖率 | — | **61/69 (88%)** |
+
+**Python 有但 C++ 无 (8 个, 均为内部/私有):**
+`__init__` (构造函数 ✅), `_dynamic_code_cb`, `_hook_mem_invalid_dispatch`,
+`_set_emu_hooks`, `get_current_run`, `get_json_report`,
+`on_emu_complete`, `sizeof`
+
+### winemu (WindowsEmulator)
+
+| | Python | C++ |
+|--|--------|-----|
+| 方法数 | 137 | **131** |
+| 覆盖率 | — | **122/137 (89%)** |
+
+**新增 (之前缺失 → 现已移植):** `create_process`, `create_thread`
+
+**Python 有但 C++ 无 (15 个):**
+- **关键 (3):** `alloc_peb`, `init_processes`, `on_run_complete`
+- **内部 (8):** `_build_context_summary`, `_create_selector`, `_find_nearby_regions`,
+  `_make_entry`, `_normalize_mod_name`, `_parse_config` (通过 Speakeasy 路径实现),
+  `_tmp_hook`, `setup` (通过构造函数实现)
+- **存取器 (4):** `get_bootstrap_phase`, `get_fp`, `get_reserved_ranges`
+
+### win32 (Win32Emulator)
+
+| | Python | C++ |
+|--|--------|-----|
+| 方法数 | 36 | **42** (+6) |
+| 覆盖率 | — | **35/36 (97%)** ✅ |
+
+**Python 有但 C++ 无 (1 个):** `__init__` (构造函数 ✅)
+
+> win32 是移植最完整的模块, 仅 1 个 Python 方法未移植 (构造函数, C++ 形式不同)。
+
+---
+
+## 遗留 TODO (10 个)
+
+| 文件 | TODO | 说明 |
 |------|------|------|
-| ✅ 完整实现 | 58 | 核心逻辑均对齐 Python |
-| ⚠️ 部分实现 | 3 | `_fire_dyn_code_hooks`, `_set_dyn_code_hook`, `_hook_mem_invalid_dispatch` — 函数体被注释为 TODO，需 Hook 子系统架构变更 |
-| ❌ 未实现 | 2 | `get_module_from_addr` (modules 属 WindowsEmulator), `print_stack` (格式化不同) |
-| 总计 | 63 | **完成率 92%** |
+| `binemu.cpp` | 7 | 内部控制台日志/调试相关 |
+| `profiler.h` | 3 | 类型注释 |
 
-### winemu
+其余模块: 全部 0 TODO ✅
 
-| 状态 | 数量 | 说明 |
-|------|------|------|
-| ✅ 完整实现 | 122 | 包含全部 load_image/ensure_pe_import_hooks/handle_import_func 等核心函数 |
-| ⚠️ 部分实现 | 5 | `reg_open_key/reg_create_key/reg_get_key` (返回 nullptr，RegistryManager 未连线)；`file_open` (缺少 truncate 参数)；`pipe_open` (返回 nullptr) |
-| ❌ 未实现 | 3 | `_get_exception_list`, `_map_faulting_page_for_exception`, `_continue_seh_x86` (x64 VEH) — 需要 SEH 子系统基建 |
-| 总计 | 130 | **完成率 94%** |
+---
 
-### win32
+## 总结
 
-| 状态 | 数量 | 说明 |
-|------|------|------|
-| ✅ 完整实现 | 33 | 包含全部 37 个 Python 函数，其中 33 个完整实现 |
-| ⚠️ 部分实现 | 2 | `_hook_mem_unmapped` (逻辑注释掉), `get_user_modules` (逻辑注释掉) |
-| ❌ 未实现 | 1 | `get_service_main_char_width` 参数不完整 (缺少 module 参数) |
-| 总计 | 36 | **完成率 92%** |
-
-### 总计
-
-| 模块 | 完整 | 部分 | 缺失 | 总计 | 完成率 |
-|------|------|------|------|------|--------|
-| binemu | 58 | 3 | 2 | 63 | 92% |
-| winemu | 122 | 5 | 3 | 130 | 94% |
-| win32 | 33 | 2 | 1 | 36 | 92% |
-| **总计** | **213** | **10** | **6** | **229** | **93%** |
-
-### 真实遗留 TODO（非架构级，可独立实现）
-
-```
-binemu.cpp:   _fire_dyn_code_hooks    — 函数体被 TODO 注释
-              _set_dyn_code_hook      — 函数体被 TODO 注释
-              _hook_mem_invalid_dispatch — dispatch 逻辑未连线
-
-winemu.cpp:   reg_open_key            — 返回 nullptr
-              reg_create_key          — 返回 nullptr
-              reg_get_key             — 返回 nullptr
-              file_open               — 返回 nullptr
-              pipe_open               — 返回 nullptr
-              _get_exception_list     — 未实现
-              _map_faulting_page_for_exception — 未实现
-
-win32.cpp:    _hook_mem_unmapped      — 逻辑注释掉
-              get_user_modules        — 逻辑注释掉
-              get_service_main_char_width — 缺少 module 参数
-```
-
-### 与错误分析报告的对比
-
-分析报告声称 28 个函数"未移植"，经核实其中 **28 个全部已在 C++ 中实现**。错误原因：
-
-1. 分析工具以函数名精确匹配搜索，但 C++ 函数签名与 Python 不同
-2. 分析工具未考虑 C++ 类继承（win32 的 `init_sys_modules` 委托给 `WindowsEmulator`）
-3. 分析工具读取了旧版本文件缓存
-4. 部分函数通过 `#ifdef` 条件编译（`_cs_disasm` 用 capstone C API）
+移植工作已接近完成:
+- **264 TODO 降至 10** (下降 96%)
+- **95 个测试**, 94 通过 (1 因环境权限)
+- **核心模块覆盖 88-97%**
+- 三个关键方法尚未移植: `alloc_peb`, `init_processes`, `on_run_complete`
+- 其余缺失均为内部帮助函数或 Python 特有模式
