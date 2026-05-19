@@ -157,17 +157,56 @@ void Win32Emulator::init_processes(const std::vector<nlohmann::json>& processes)
 }
 
 // Python win32.py:162
-// def load_module(self, path=None, data=None, filename=None):
+// Full: Python win32.py:162
 speakeasy::LoadedImage* Win32Emulator::load_module(const std::string& path, const std::vector<uint8_t>& data,
                                  bool first_time_setup) {
     _init_name(path, data);
+    
+    // Read data from file if not provided
+    std::vector<uint8_t> file_data = data;
+    std::string resolved_path = path;
+    if (file_data.empty()) {
+        FILE* fp = fopen(path.c_str(), "rb");
+        if (fp) {
+            fseek(fp, 0, SEEK_END);
+            long sz = ftell(fp);
+            fseek(fp, 0, SEEK_SET);
+            if (sz > 0) {
+                file_data.resize(sz);
+                fread(file_data.data(), 1, sz, fp);
+            }
+            fclose(fp);
+        }
+    }
+    
+    // Set up emu path and register file
+    std::string emu_path = _make_emu_path(path, file_data);
+    if (fileman) fileman->add_existing_file(emu_path, file_data);
+    
+    // Set input metadata
+    _set_input_metadata(path, file_data);
+    
+    // Load PE
     uint64_t import_id = 0x41410000;
-    speakeasy::LoadedImage* pe = load_pe(path, data, import_id);
+    speakeasy::LoadedImage* pe = load_pe(path, file_data, import_id);
     if (!pe) return nullptr;
+    
+    pe->name = mod_name;
+    pe->emu_path = emu_path;
+    
     if (!arch) { 
         arch = pe->arch; 
         set_ptr_size(arch); 
     }
+    
+    // Set function args
+    set_func_args(stack_base, get_ret_address(), {});
+    
+    // Track input metadata
+    if (!input.empty()) {
+        input["image_base"] = std::to_string(pe->base);
+    }
+    
     return pe;
 }
 
@@ -545,13 +584,18 @@ void Win32Emulator::on_emu_complete() {
 }
 
 // Python win32.py:657
-// def on_run_complete(self):
-//     """
-//     Clean up after a run completes. This function will pop the
-//     next run from the run queue and emulate it.
-//     """
+// Python win32.py:657
 void Win32Emulator::on_run_complete() {
     run_complete = true;
+    if (curr_run) {
+        curr_run->ret_val = reinterpret_cast<void*>(static_cast<uintptr_t>(get_return_val()));
+    }
+    if (profiler) {
+        // Record dropped files - win32 Python uses get_dropped_files()
+        profiler->record_dropped_files_event(curr_run, get_dropped_files());
+        _capture_memory_layout();
+    }
+    _exec_next_run();
 }
 
 // Python win32.py:808
