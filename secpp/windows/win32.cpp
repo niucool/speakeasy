@@ -53,7 +53,7 @@ std::vector<std::string> Win32Emulator::get_argv() {
     
     if (!this->argv.empty()) {
         for (auto* m : modules) {
-            auto* img = static_cast<speakeasy::LoadedImage*>(m);
+            auto* img = m->image();
             if (!img->emu_path.empty()) argv0 = img->emu_path;
             else argv0 = img->name;
         }
@@ -187,8 +187,8 @@ speakeasy::RuntimeModule* Win32Emulator::load_module(const std::string& path, co
     _set_input_metadata(path, file_data);
     
     // Load PE
-    uint64_t import_id = 0x41410000;
-    speakeasy::RuntimeModule* pe = load_pe(path, file_data, import_id);
+    //uint64_t import_id = 0x41410000;
+    speakeasy::RuntimeModule* pe = load_pe(path, file_data);
     if (!pe) return nullptr;
     
     pe->name = mod_name;
@@ -501,7 +501,7 @@ std::vector<void*> Win32Emulator::get_user_modules() {
         
         // Add sample to user modules list if it is a dll (not an exe)
         if (!modules.empty()) {
-            auto* img = static_cast<speakeasy::LoadedImage*>(modules[0]);
+            auto* img = modules[0]->image();
             bool is_exe_mod = false;
             if (!img->is_driver) {
                 std::string lemu = img->emu_path;

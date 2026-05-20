@@ -45,8 +45,8 @@ static std::vector<uint64_t> get_process_module_bases(void* e, Process* proc) {
             if (dot != std::string::npos) mod_name = mod_name.substr(0, dot);
             auto* mod = we(e)->get_mod_by_name(mod_name);
             if (mod) {
-                auto* pe = static_cast<PeFile*>(mod);
-                bases.push_back(pe->get_base());
+                auto* pe = mod;
+                bases.push_back(pe->base);
             }
         }
     }
@@ -56,9 +56,9 @@ static std::vector<uint64_t> get_process_module_bases(void* e, Process* proc) {
 // Helper: get module base name
 static std::string get_module_base_name(void* e, Process* proc, uint64_t hModule) {
     if (hModule) {
-        auto* mod = static_cast<PeFile*>(we(e)->get_mod_from_addr(hModule));
+        auto* mod = we(e)->get_mod_from_addr(hModule);
         if (mod) {
-            std::string ep = mod->get_emu_path();
+            std::string ep = mod->emu_path;
             size_t slash = ep.rfind('\\');
             if (slash != std::string::npos) return ep.substr(slash + 1);
             return ep;
@@ -73,8 +73,8 @@ static std::string get_module_base_name(void* e, Process* proc, uint64_t hModule
 // Helper: get module file name (full path)
 static std::string get_module_file_name(void* e, Process* proc, uint64_t hModule) {
     if (hModule) {
-        auto* mod = static_cast<PeFile*>(we(e)->get_mod_from_addr(hModule));
-        if (mod) return mod->get_emu_path();
+        auto* mod = we(e)->get_mod_from_addr(hModule);
+        if (mod) return mod->emu_path;
     }
     return proc->path;
 }

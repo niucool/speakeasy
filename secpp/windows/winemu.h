@@ -101,7 +101,7 @@ protected:
     bool kernel_mode = false;
 
     // ── Modules ───────────────────────────────────────────────
-    std::vector<void*> modules;
+    std::vector<speakeasy::RuntimeModule*> modules;
     std::vector<void*> user_modules;
     std::vector<void*> sys_modules;
     std::vector<std::tuple<void*, std::tuple<uint64_t, size_t>, std::string>> mod_refs;
@@ -109,7 +109,7 @@ protected:
     // ── Runs ──────────────────────────────────────────────────
     std::shared_ptr<Run> curr_run;
     bool restart_curr_run = false;
-    void* curr_mod = nullptr;
+    speakeasy::RuntimeModule* curr_mod = nullptr;
     std::vector<std::shared_ptr<Run>> runs;
     std::vector<std::shared_ptr<Run>> run_queue;
     std::vector<std::shared_ptr<Run>> suspended_runs;
@@ -532,7 +532,7 @@ public:
     // Python winemu.py:847
     // def get_mod_from_addr(self, addr):
     //     """Get a module from an address within it."""
-    void* get_mod_from_addr(uint64_t addr);
+    speakeasy::RuntimeModule* get_mod_from_addr(uint64_t addr);
     // Python winemu.py:860
     // def _alloc_sentinel(self):
     //     """Allocate a sentinel value for import table hooking."""
@@ -540,7 +540,7 @@ public:
     // Python winemu.py:979
     // def get_mod_by_name(self, name):
     //     """Find a loaded module by name (case-insensitive)."""
-    void* get_mod_by_name(const std::string& name);
+    speakeasy::RuntimeModule* get_mod_by_name(const std::string& name);
     // Python winemu.py:990
     // def get_peb_modules(self):
     //     """Get modules that are visible in the PEB."""

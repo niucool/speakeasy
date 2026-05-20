@@ -975,17 +975,17 @@ void* WindowsEmulator::new_object(void* otype) {
 // def get_mod_from_addr(self, addr):
 //     """Get a module from an address within it."""
 
-void* WindowsEmulator::get_mod_from_addr(uint64_t addr) {
+speakeasy::RuntimeModule* WindowsEmulator::get_mod_from_addr(uint64_t addr) {
     if (curr_mod) {
-        auto* pe = static_cast<PeFile*>(curr_mod);
-        uint64_t base = pe->get_base();
-        if (addr >= base && addr < base + pe->get_image_size())
+        auto* pe = curr_mod;
+        uint64_t base = pe->base;
+        if (addr >= base && addr < base + pe->image_size)
             return curr_mod;
     }
     for (auto* m : modules) {
-        auto* pe = static_cast<PeFile*>(m);
-        uint64_t base = pe->get_base();
-        if (addr >= base && addr < base + pe->get_image_size())
+        auto* pe = m;
+        uint64_t base = pe->base;
+        if (addr >= base && addr < base + pe->image_size)
             return m;
     }
     return nullptr;
@@ -1006,16 +1006,16 @@ uint64_t WindowsEmulator::_alloc_sentinel() {
 // def get_mod_by_name(self, name):
 //     """Find a loaded module by name (case-insensitive)."""
 
-void* WindowsEmulator::get_mod_by_name(const std::string& name) {
+speakeasy::RuntimeModule* WindowsEmulator::get_mod_by_name(const std::string& name) {
     std::string nl = name;
     for (auto& c : nl) c = static_cast<char>(std::tolower(c));
 
     for (auto* m : modules) {
-        auto* pe = static_cast<PeFile*>(m);
+        auto* pe = m;
         std::string base = pe->get_base_name();
         for (auto& c : base) c = static_cast<char>(std::tolower(c));
         if (base == nl) return m;
-        std::string epath = pe->get_emu_path();
+        std::string epath = pe->emu_path;
         auto pos = epath.find_last_of("/\\");
         if (pos != std::string::npos) epath = epath.substr(pos + 1);
         for (auto& c : epath) c = static_cast<char>(std::tolower(c));
@@ -1082,7 +1082,7 @@ void WindowsEmulator::init_tls(void* thread) {
     auto* thr = static_cast<Thread*>(thread);
     auto* mod = get_mod_from_addr(curr_run->start_addr);
     if (mod) {
-        auto* pe = static_cast<PeFile*>(mod);
+        auto* pe = mod;
         std::string modname = pe->get_base_name();
         // TLS directory is stored in PeFile metadata during PeLoader::parse_pe
         // For now, init TLS with empty directory (callbacks are already in tls_callbacks_)
@@ -1102,7 +1102,8 @@ speakeasy::RuntimeModule* WindowsEmulator::load_pe(const std::string& path,
     // Use PeLoader to parse the PE file
     speakeasy::PeLoader loader(path, data);
     auto* img = loader.make_image();
-    img->base = imp_id;  // Override base for sentinel tracking
+    if(imp_id)
+        img->base = imp_id;  // Override base for sentinel tracking
     auto* result = load_image(img);
     return result;
 }
@@ -1288,7 +1289,7 @@ speakeasy::RuntimeModule* WindowsEmulator::load_image(speakeasy::LoadedImage* im
 
     // ── Register module ──
     if (img->base != 0) {
-        modules.push_back(reinterpret_cast<void*>(img->base));
+        modules.push_back(mod);
         symbols[img->base] = {img->name, ""};
     }
 
