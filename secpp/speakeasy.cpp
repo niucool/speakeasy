@@ -29,6 +29,68 @@ Speakeasy::Speakeasy(const speakeasy::SpeakeasyConfig& cfg, void* logger,
 
 Speakeasy::~Speakeasy() { shutdown(); }
 
+void Speakeasy::_auto_mount_target_directory(const std::string& path) {
+    // Python speakeasy.py:205-239 — mount sibling files into emulated current directory
+    if (path.empty()) return;
+    
+    std::error_code ec;
+    std::filesystem::path host_path(path);
+    auto target_dir = host_path.lexically_normal().parent_path();
+    
+    if (!std::filesystem::is_directory(target_dir, ec) || ec) {
+        return;
+    }
+    
+    // Get emulated current directory (config.current_dir)
+    std::string guest_cd = config.current_dir;
+    if (!guest_cd.empty() && guest_cd.back() != '\\')
+        guest_cd += '\\';
+    
+    std::vector<speakeasy::FileEntry> new_entries;
+    
+    // Use file system iterator
+    try {
+        for (const auto& entry : std::filesystem::directory_iterator(target_dir)) {
+            if (!entry.is_regular_file()) continue;
+            
+            std::string fname = entry.path().filename().string();
+            std::string emu_path = guest_cd + fname;
+            
+            speakeasy::FileEntry fe;
+            fe.mode = "full_path";
+            fe.emu_path = emu_path;
+            fe.path = entry.path().string();
+            new_entries.push_back(fe);
+        }
+    } catch (...) {
+        return;
+    }
+    
+    if (new_entries.empty()) return;
+    
+    // Sort entries by emu_path
+    std::sort(new_entries.begin(), new_entries.end(),
+              [](const speakeasy::FileEntry& a, const speakeasy::FileEntry& b) {
+                  return a.emu_path < b.emu_path;
+              });
+    
+    // Prepend new entries to config.filesystem.files
+    config.filesystem.files.insert(
+        config.filesystem.files.begin(),
+        new_entries.begin(),
+        new_entries.end());
+    
+    // Log
+    if (logger) {
+        // Simple stdout logging since we don't have Python's logger
+        printf("[speakeasy] Auto-mounted %zu file(s) from %s into %s\n",
+               new_entries.size(), target_dir.string().c_str(), guest_cd.c_str());
+        for (auto& e : new_entries) {
+            printf("[speakeasy]   %s -> %s\n", e.emu_path.c_str(), e.path.c_str());
+        }
+    }
+}
+
 void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_t>& data, bool is_raw_code) {
     if (!is_raw_code) {
         // ── Use pe-parse for PE analysis (Python: _PeParser) ──
@@ -147,6 +209,12 @@ speakeasy::RuntimeModule* Speakeasy::load_module(const std::string& path, const 
         throw SpeakeasyError("Target file is not a PE");
     _init_emulator(path, data);
     return emu->load_module(path, data);
+}
+
+speakeasy::RuntimeModule* Speakeasy::load_image(speakeasy::LoadedImage* img) {
+    // Python speakeasy.py:275-282
+    _init_hooks();
+    return emu->load_image(img);
 }
 
 void Speakeasy::run_module(speakeasy::RuntimeModule* module, bool all_entrypoints, bool emulate_children) {

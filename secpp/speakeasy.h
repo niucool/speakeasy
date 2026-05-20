@@ -60,6 +60,10 @@ private:
      * Lazily add hooks if users added them early before emulator engine was instantiated
      */
     void _init_hooks();
+    /**
+     * Mount direct-child files in the target's host directory into the emulated current directory
+     */
+    void _auto_mount_target_directory(const std::string& path);
 
 public:
     /**
@@ -87,6 +91,12 @@ public:
      * Load a module into the speakeasy emulator
      */
     speakeasy::RuntimeModule* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {});
+    
+    /**
+     * Load a pre-constructed LoadedImage into the emulator (Python speakeasy.py:275-282)
+     * Initializes the emulator if not already initialized, then delegates to emu->load_image().
+     */
+    speakeasy::RuntimeModule* load_image(speakeasy::LoadedImage* img);
     
     /**
      * Run a previously loaded module through the configured emulator
