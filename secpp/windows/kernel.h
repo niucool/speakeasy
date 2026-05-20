@@ -55,7 +55,7 @@ public:
     std::vector<Driver*> get_drivers() const { return drivers_; }
 
     // ── Module loading ────────────────────────────────────────
-    void* load_module(const std::string& path = "",
+    speakeasy::RuntimeModule* load_module(const std::string& path = "",
                       const std::vector<uint8_t>& data = {},
                       const std::string& filename = "");
     void* load_driver(const std::string& path, std::vector<uint8_t> data = {},

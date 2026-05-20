@@ -128,7 +128,7 @@ bool Speakeasy::is_pe(const std::vector<uint8_t>& data) {
     return (data.size() >= 2 && data[0] == 'M' && data[1] == 'Z');
 }
 
-speakeasy::LoadedImage* Speakeasy::load_module(const std::string& path, const std::vector<uint8_t>& data) {
+speakeasy::RuntimeModule* Speakeasy::load_module(const std::string& path, const std::vector<uint8_t>& data) {
     if (path.empty() && data.empty())
         throw SpeakeasyError("No emulation target supplied");
     if (!path.empty() && !std::ifstream(path).good())
@@ -149,7 +149,7 @@ speakeasy::LoadedImage* Speakeasy::load_module(const std::string& path, const st
     return emu->load_module(path, data);
 }
 
-void Speakeasy::run_module(speakeasy::LoadedImage* module, bool all_entrypoints, bool emulate_children) {
+void Speakeasy::run_module(speakeasy::RuntimeModule* module, bool all_entrypoints, bool emulate_children) {
     _init_hooks();
     emu->run_module(module, all_entrypoints, emulate_children);
 }

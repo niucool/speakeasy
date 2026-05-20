@@ -1096,7 +1096,7 @@ void WindowsEmulator::init_tls(void* thread) {
 //     """Parse a PE that will be used during emulation. PE type and architecture
 //     are automatically determined."""
 
-speakeasy::LoadedImage* WindowsEmulator::load_pe(const std::string& path,
+speakeasy::RuntimeModule* WindowsEmulator::load_pe(const std::string& path,
                                 const std::vector<uint8_t>& data,
                                 uint64_t imp_id) {
     // Use PeLoader to parse the PE file
@@ -1111,7 +1111,7 @@ speakeasy::LoadedImage* WindowsEmulator::load_pe(const std::string& path,
 // def load_image(self, image):
 //     """Load a parsed PE image into emulated memory, set up imports/exports, sections."""
 
-speakeasy::LoadedImage* WindowsEmulator::load_image(speakeasy::LoadedImage* img) {
+speakeasy::RuntimeModule* WindowsEmulator::load_image(speakeasy::LoadedImage* img) {
     // Python reference: winemu.py lines 993-1137
     if (!img) return nullptr;
 
@@ -1239,6 +1239,10 @@ speakeasy::LoadedImage* WindowsEmulator::load_image(speakeasy::LoadedImage* img)
         }
     }
 
+    speakeasy::RuntimeModule* mod = new speakeasy::RuntimeModule(img);
+    if ((img->base != 0) && (mod->base != img->base))
+        mod->base = img->base;
+
     // ── Process exports: build symbol table ──
     bool is_pe = (!img->sections.empty());  // PE files have sections
     bool is_shellcode = (!img->mapped_image.empty() && img->regions.size() <= 1);
@@ -1301,7 +1305,7 @@ speakeasy::LoadedImage* WindowsEmulator::load_image(speakeasy::LoadedImage* img)
         advance_bootstrap_phase(BootstrapPhase::FULL_SETUP_READY);
     }
 
-    return img;
+    return mod;
 }
 
 void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
@@ -1468,7 +1472,7 @@ void WindowsEmulator::set_current_thread(Thread* thread) { curr_thread = thread;
 //     """Create a process object that will exist in the emulator"""
 void* WindowsEmulator::create_process(const std::string& path,
                                        const std::string& cmdline,
-                                       void* image, bool child) {
+                                        speakeasy::RuntimeModule* image, bool child) {
     validate_object_services("process creation");
 
     // Determine file path from cmdline if path not given
@@ -1598,7 +1602,7 @@ void* WindowsEmulator::load_library(const std::string& mod_name) {
 
     if (!modules_always_exist) return nullptr;
 
-    void* mod = load_module_by_name(lib);
+    speakeasy::RuntimeModule* mod = load_module_by_name(lib);
     if (!mod) return nullptr;
 
     // Add to current process PEB if available
@@ -1607,7 +1611,7 @@ void* WindowsEmulator::load_library(const std::string& mod_name) {
         proc->add_module_to_peb(mod);
     }
 
-    return reinterpret_cast<void*>(static_cast<PeFile*>(mod)->get_base());
+    return reinterpret_cast<void*>(mod->base);
 }
 
 
@@ -1615,7 +1619,7 @@ void* WindowsEmulator::load_library(const std::string& mod_name) {
 // def load_module_by_name(self, name, emu_path=None, base=None):
 //     """Load a module by name using the appropriate loader.
 //     Priority: native PE file -> API handler (JIT PE) -> placeholder stub."""
-void* WindowsEmulator::load_module_by_name(const std::string& name,
+speakeasy::RuntimeModule* WindowsEmulator::load_module_by_name(const std::string& name,
                                             const std::string& emu_path,
                                             uint64_t base) {
     if (base == 0) base = 0x6F000000;

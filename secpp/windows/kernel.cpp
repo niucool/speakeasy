@@ -69,7 +69,7 @@ uint64_t WinKernelEmulator::alloc_paged_pool(size_t size, const std::string& tag
     return pool_alloc(1, size, tag);
 }
 
-void* WinKernelEmulator::load_module(const std::string& path,
+speakeasy::RuntimeModule* WinKernelEmulator::load_module(const std::string& path,
                                      const std::vector<uint8_t>& data,
                                      const std::string& filename) {
     std::vector<uint8_t> buf = data;
@@ -108,7 +108,7 @@ void* WinKernelEmulator::load_module(const std::string& path,
     img->name = mod_name;
     img->emu_path = "\\\\??\\\\" + path;
 
-    void* rtmod = load_image(img);
+    speakeasy::RuntimeModule* rtmod = load_image(img);
     return rtmod;
 }
 

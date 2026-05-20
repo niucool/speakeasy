@@ -137,12 +137,12 @@ public:
     
     // Python win32.py:162
     // def load_module(self, path=None, data=None, filename=None):
-    speakeasy::LoadedImage* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {},
+    speakeasy::RuntimeModule* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {},
                       bool first_time_setup = true);
     
     // Python win32.py:223
     // def prepare_module_for_emulation(self, module, all_entrypoints, entry_point=None):
-    void prepare_module_for_emulation(speakeasy::LoadedImage* module, bool all_entrypoints);
+    void prepare_module_for_emulation(speakeasy::RuntimeModule* module, bool all_entrypoints);
     
     // Python win32.py:293
     // def run_module(self, module, all_entrypoints=False, emulate_children=False, entry_point=None):
@@ -152,7 +152,7 @@ public:
     //     Arguments:
     //         module: Module to emulate
     //     """
-    void run_module(speakeasy::LoadedImage* module, bool all_entrypoints = false, bool emulate_children = false);
+    void run_module(speakeasy::RuntimeModule* module, bool all_entrypoints = false, bool emulate_children = false);
     
     // Python win32.py:353
     // def _init_name(self, path, data=None, filename=None):

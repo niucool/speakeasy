@@ -158,7 +158,7 @@ void Win32Emulator::init_processes(const std::vector<nlohmann::json>& processes)
 
 // Python win32.py:162
 // Full: Python win32.py:162
-speakeasy::LoadedImage* Win32Emulator::load_module(const std::string& path, const std::vector<uint8_t>& data,
+speakeasy::RuntimeModule* Win32Emulator::load_module(const std::string& path, const std::vector<uint8_t>& data,
                                  bool first_time_setup) {
     _init_name(path, data);
     
@@ -188,7 +188,7 @@ speakeasy::LoadedImage* Win32Emulator::load_module(const std::string& path, cons
     
     // Load PE
     uint64_t import_id = 0x41410000;
-    speakeasy::LoadedImage* pe = load_pe(path, file_data, import_id);
+    speakeasy::RuntimeModule* pe = load_pe(path, file_data, import_id);
     if (!pe) return nullptr;
     
     pe->name = mod_name;
@@ -213,10 +213,10 @@ speakeasy::LoadedImage* Win32Emulator::load_module(const std::string& path, cons
 
 // Python win32.py:223
 // def prepare_module_for_emulation(self, module, all_entrypoints, entry_point=None):
-void Win32Emulator::prepare_module_for_emulation(speakeasy::LoadedImage* module, bool all_entrypoints) {
+void Win32Emulator::prepare_module_for_emulation(speakeasy::RuntimeModule* module, bool all_entrypoints) {
     if (!module) return;
-    auto* img = static_cast<speakeasy::LoadedImage*>(module);
-    auto tls = img->tls_callbacks;
+    auto* img = module;
+    auto tls = img->tls_callbacks_;
     for (size_t i = 0; i < tls.size(); ++i) {
         uint64_t cb_addr = tls[i];
         if (cb_addr > img->base && cb_addr < img->base + img->image_size) {
@@ -228,12 +228,12 @@ void Win32Emulator::prepare_module_for_emulation(speakeasy::LoadedImage* module,
     }
     auto run = std::make_shared<Run>();
     run->start_addr = img->base + img->ep;
-    run->type = img->is_driver ? "driver_entry" : "module_entry";
-    if (!img->is_driver) user_modules.insert(user_modules.begin(), module);
+    run->type = img->is_driver() ? "driver_entry" : "module_entry";
+    if (!img->is_driver()) user_modules.insert(user_modules.begin(), module);
     add_run(run);
     if (all_entrypoints) {
         static const size_t MAX_EXPORTS = 100;
-        auto exports = img->exports;
+        auto exports = img->exports_;
         if (exports.size() > MAX_EXPORTS) exports.resize(MAX_EXPORTS);
         for (auto& exp : exports) {
             if (exp.name == "DllMain") continue;
@@ -254,7 +254,7 @@ void Win32Emulator::prepare_module_for_emulation(speakeasy::LoadedImage* module,
 //     Arguments:
 //         module: Module to emulate
 //     """
-void Win32Emulator::run_module(speakeasy::LoadedImage* module, bool all_entrypoints, bool emulate_children) {
+void Win32Emulator::run_module(speakeasy::RuntimeModule* module, bool all_entrypoints, bool emulate_children) {
     prepare_module_for_emulation(module, all_entrypoints);
     if (processes.empty()) {
         auto* p = new Process(this, module);
@@ -274,7 +274,7 @@ void Win32Emulator::run_module(speakeasy::LoadedImage* module, bool all_entrypoi
     while (emulate_children && !child_processes.empty()) {
         auto child = child_processes.front();
         child_processes.erase(child_processes.begin());
-        prepare_module_for_emulation((speakeasy::LoadedImage *)child, all_entrypoints);
+        prepare_module_for_emulation((speakeasy::RuntimeModule*)child, all_entrypoints);
         curr_process = static_cast<Process*>(child);
         curr_thread = nullptr;  // child process thread deferred
         start();
@@ -306,7 +306,7 @@ void Win32Emulator::_init_name(const std::string& path, const std::vector<uint8_
 //     Load and emulate binary from the given path
 //     """
 void Win32Emulator::emulate_module(const std::string& path) {
-    speakeasy::LoadedImage* mod = load_module(path, {}, true);
+    speakeasy::RuntimeModule* mod = load_module(path, {}, true);
     if (mod) 
         run_module(mod);
 }

@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 
 #include "../winenv/arch.h"
+#include "loaders.h"
 
 // Forward declarations
 class WindowsEmulator;
@@ -259,7 +260,7 @@ public:
     std::string cmdline;
     int session;
     Token token;
-    void* pe;
+    speakeasy::RuntimeModule* pe;
     void* pe_data;
     int stdin_handle;
     int stdout_handle;
@@ -273,7 +274,7 @@ public:
     int base;
 
 public:
-    Process(void* emu, void* pe = nullptr, const std::vector<void*>& user_modules = {},
+    Process(void* emu, speakeasy::RuntimeModule* pe = nullptr, const std::vector<void*>& user_modules = {},
             const std::string& name = "", const std::string& path = "",
             const std::string& cmdline = "", int base = 0, int session = 0);
 

@@ -563,12 +563,12 @@ public:
     // def load_pe(self, path=None, data=None, imp_id=winemu.IMPORT_HOOK_ADDR):
     //     """Parse a PE that will be used during emulation. PE type and architecture
     //     are automatically determined."""
-    speakeasy::LoadedImage* load_pe(const std::string& path = "", const std::vector<uint8_t>& data = {},
+    speakeasy::RuntimeModule* load_pe(const std::string& path = "", const std::vector<uint8_t>& data = {},
                   uint64_t imp_id = 0);
     // Python winemu.py:993
     // def load_image(self, image):
     //     """Load a parsed PE image into emulated memory, set up imports/exports, sections."""
-    speakeasy::LoadedImage* load_image(speakeasy::LoadedImage* image);
+    speakeasy::RuntimeModule* load_image(speakeasy::LoadedImage* image);
     // Python winemu.py:865
     // def ensure_pe_import_hooks(self, base_addr):
     //     """Ensure a PE image in emulated memory has its IAT patched with sentinel
@@ -588,7 +588,7 @@ public:
     // def load_module_by_name(self, name, emu_path=None, base=None):
     //     """Load a module by name using the appropriate loader.
     //     Priority: native PE file -> API handler (JIT PE) -> placeholder stub."""
-    void* load_module_by_name(const std::string& name,
+    speakeasy::RuntimeModule* load_module_by_name(const std::string& name,
                               const std::string& emu_path = "",
                               uint64_t base = 0);
     // Python winemu.py:2278
@@ -776,7 +776,7 @@ public:
     //     """Create a process object that will exist in the emulator.
     //     NOT YET PORTED — stub only."""
     void* create_process(const std::string& path = "", const std::string& cmdline = "",
-                         void* image = nullptr, bool child = false);
+        speakeasy::RuntimeModule* image = nullptr, bool child = false);
     // Python winemu.py:1293
     // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
     //     """Create a thread object that will exist in the emulator.

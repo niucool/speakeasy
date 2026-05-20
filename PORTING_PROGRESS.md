@@ -43,7 +43,7 @@
 **新增 (之前缺失 → 现已移植):** `create_process`, `create_thread`
 
 **Python 有但 C++ 无 (15 个):**
-- **关键 (3):** `alloc_peb`, `init_processes`, `on_run_complete`
+- **关键 (3):** ` `init_processes`, `on_run_complete`
 - **内部 (8):** `_build_context_summary`, `_create_selector`, `_find_nearby_regions`,
   `_make_entry`, `_normalize_mod_name`, `_parse_config` (通过 Speakeasy 路径实现),
   `_tmp_hook`, `setup` (通过构造函数实现)

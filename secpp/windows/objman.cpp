@@ -621,7 +621,7 @@ Token::Token(void* emu)
 
 std::vector<void*> Process::ldr_entries;
 
-Process::Process(void* emu, void* pe, const std::vector<void*>& user_modules,
+Process::Process(void* emu, speakeasy::RuntimeModule* pe, const std::vector<void*>& user_modules,
                  const std::string& name, const std::string& path,
                  const std::string& cmdline, int base, int session)
     : KernelObject(emu),
@@ -925,7 +925,7 @@ void* Process::get_module() {
 void* Process::get_ep() {
     // Python: return pe.base + pe.ep  (entry point of the PE)
     if (pe) {
-        auto* img = static_cast<speakeasy::LoadedImage*>(pe);
+        auto* img = pe;
         return reinterpret_cast<void*>(static_cast<uintptr_t>(img->base + img->ep));
     }
     return nullptr;

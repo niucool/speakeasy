@@ -31,9 +31,9 @@ static std::vector<uint64_t> get_process_module_bases(void* e, Process* proc) {
     std::vector<uint64_t> bases;
     if (!proc) return bases;
 
-    auto* module = static_cast<PeFile*>(proc->pe);
+    auto* module = proc->pe;
     if (module) {
-        bases.push_back(module->get_base());
+        bases.push_back(module->base);
     } else {
         std::string p = proc->path;
         if (!p.empty()) {
