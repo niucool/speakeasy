@@ -85,6 +85,60 @@ struct LoadedImage {
     std::vector<SectionEntry> sections;
     std::vector<uint64_t> tls_callbacks;
 };
+
+
+// ── RuntimeModule ─────────────────────────────────────────
+/**
+ * Wraps a LoadedImage with runtime state tracked during emulation.
+ * Mirrors Python speakeasy/windows/loaders.py class RuntimeModule (lines 109-167).
+ */
+class RuntimeModule {
+public:
+    // Constructed from a LoadedImage; the image pointer must remain valid.
+    explicit RuntimeModule(LoadedImage* image);
+
+    LoadedImage* image() { return _image; }
+    const LoadedImage* image() const { return _image; }
+
+    // Type checks (Python: 129-139)
+    bool is_exe() const;
+    bool is_dll() const;
+    bool is_driver() const;
+    bool is_decoy() const;
+
+    // Accessors (Python: 141-167)
+    std::string get_base_name() const;                  // ntpath.basename(emu_path)
+    uint64_t get_ep() const { return base + ep; }
+    const std::vector<ExportEntry>& get_exports() const;
+    const ExportEntry* get_export_by_name(const std::string& name) const;
+    const SectionEntry* get_section_for_addr(uint64_t addr) const;
+    const std::vector<uint64_t>& get_tls_callbacks() const;
+    const PeMetadata* get_pe_metadata() const;
+
+    // Mirrored from LoadedImage for convenience (Python: 112-123)
+    uint64_t base;
+    uint64_t image_size;
+    uint64_t ep;          // RVA, not absolute
+    int arch;
+    std::string emu_path;
+    std::string path;
+    std::string module_type; // "exe", "dll", "driver", "decoy"
+    uint64_t stack_commit;
+    bool visible_in_peb = true;
+    void* loader = nullptr;
+    std::string name;
+    std::vector<SectionEntry> sections;
+    // _image reference for deferred lookups
+    std::vector<ExportEntry> exports_;
+    std::vector<uint64_t> tls_callbacks_;
+    PeMetadata metadata_;
+
+    std::string to_string() const;
+
+private:
+    LoadedImage* _image;
+};
+
 // ── PE Loader ────────────────────────────────────────────────
 
 /**

@@ -406,4 +406,66 @@ std::string PeLoader::get_prot_string(uint32_t perms) {
     return s;
 }
 
+
+// ── RuntimeModule ─────────────────────────────────────────
+
+RuntimeModule::RuntimeModule(LoadedImage* image) : _image(image) {
+    if (!image) return;
+    base = image->base;
+    image_size = image->image_size;
+    ep = image->ep;
+    arch = image->arch;
+    emu_path = image->emu_path;
+    path = image->emu_path;
+    name = image->name;
+    sections = image->sections;
+    exports_ = image->exports;
+    tls_callbacks_ = image->tls_callbacks;
+    metadata_ = image->metadata;
+    stack_commit = 0x1000;  // default
+
+    // Derive module_type from PE characteristics
+    if (image->is_driver) module_type = "driver";
+    else if (image->metadata.subsystem == 2)  // IMAGE_SUBSYSTEM_WINDOWS_GUI = 2
+        module_type = "exe";
+    else module_type = "dll";
+}
+
+bool RuntimeModule::is_exe() const { return module_type == "exe"; }
+bool RuntimeModule::is_dll() const { return module_type == "dll"; }
+bool RuntimeModule::is_driver() const { return module_type == "driver"; }
+bool RuntimeModule::is_decoy() const { return module_type == "decoy"; }
+
+std::string RuntimeModule::get_base_name() const {
+    auto pos = emu_path.find_last_of("/\\");
+    return (pos != std::string::npos) ? emu_path.substr(pos + 1) : emu_path;
+}
+
+const std::vector<ExportEntry>& RuntimeModule::get_exports() const { return exports_; }
+
+const ExportEntry* RuntimeModule::get_export_by_name(const std::string& name) const {
+    for (const auto& exp : exports_) {
+        if (exp.name == name) return &exp;
+    }
+    return nullptr;
+}
+
+const SectionEntry* RuntimeModule::get_section_for_addr(uint64_t addr) const {
+    uint64_t offset = addr - base;
+    for (const auto& sect : sections) {
+        if (sect.virtual_address <= offset &&
+            offset < (uint64_t)sect.virtual_address + sect.virtual_size)
+            return &sect;
+    }
+    return nullptr;
+}
+
+const std::vector<uint64_t>& RuntimeModule::get_tls_callbacks() const { return tls_callbacks_; }
+
+const PeMetadata* RuntimeModule::get_pe_metadata() const { return &metadata_; }
+
+std::string RuntimeModule::to_string() const {
+    return "RuntimeModule(" + name + " at 0x" + 
+           std::to_string(base) + ")";
+}
 } // namespace speakeasy
