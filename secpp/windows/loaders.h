@@ -145,7 +145,18 @@ private:
  * Parses PE files (EXE, DLL, SYS) and produces a LoadedImage ready
  * for mapping into the emulated address space.
  */
-class PeLoader {
+// ── Abstract Loader base class ───────────────────────────
+/**
+ * Virtual base for all module loaders (PE, shellcode, API module, decoy).
+ * Mirrors the Python duck-typing contract: every loader provides make_image().
+ */
+class Loader {
+public:
+    virtual ~Loader() = default;
+    virtual LoadedImage* make_image() = 0;
+};
+
+class PeLoader : public Loader {
 public:
     /**
      * Construct a loader from a file path or raw data.
@@ -203,6 +214,57 @@ private:
 /**
  * Convert section characteristics flags to memory permissions.
  */
+
+// ── Shellcode Loader ──────────────────────────────────────
+/**
+ * Wraps raw shellcode bytes as a LoadedImage.
+ * Mirrors Python speakeasy/windows/loaders.py class ShellcodeLoader (lines 353-388).
+ */
+class ShellcodeLoader : public Loader {
+public:
+    explicit ShellcodeLoader(const std::vector<uint8_t>& data, int arch);
+    LoadedImage* make_image() override;
+private:
+    std::vector<uint8_t> data_;
+    int arch_;
+};
+
+// ── API Module Loader ─────────────────────────────────────
+/**
+ * Creates a synthetic PE image that exports API handler stubs.
+ * Mirrors Python speakeasy/windows/loaders.py class ApiModuleLoader (lines 391-508).
+ */
+class ApiModuleLoader : public Loader {
+public:
+    explicit ApiModuleLoader(const std::string& name, void* api,
+                             int arch, uint64_t base, const std::string& emu_path);
+    LoadedImage* make_image() override;
+private:
+    std::string name_;
+    void* api_;
+    int arch_;
+    uint64_t base_;
+    std::string emu_path_;
+};
+
+// ── Decoy Loader ──────────────────────────────────────────
+/**
+ * Creates a minimal LoadedImage for modules that only exist for
+ * PEB visibility (e.g. ntdll.dll, kernel32.dll as decoys).
+ * Mirrors Python speakeasy/windows/loaders.py class DecoyLoader (lines 511-540).
+ */
+class DecoyLoader : public Loader {
+public:
+    explicit DecoyLoader(const std::string& name, uint64_t base,
+                         const std::string& emu_path, uint64_t image_size);
+    LoadedImage* make_image() override;
+private:
+    std::string name_;
+    uint64_t base_;
+    std::string emu_path_;
+    uint64_t image_size_;
+};
+
 inline uint32_t perms_from_section_chars(uint32_t chars) {
     // ImageSectionCharacteristics constants (common Windows values)
     #ifndef IMAGE_SCN_MEM_READ

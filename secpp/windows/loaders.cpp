@@ -468,4 +468,82 @@ std::string RuntimeModule::to_string() const {
     return "RuntimeModule(" + name + " at 0x" + 
            std::to_string(base) + ")";
 }
+
+// ── ShellcodeLoader ──────────────────────────────────────
+
+ShellcodeLoader::ShellcodeLoader(const std::vector<uint8_t>& data, int arch)
+    : data_(data), arch_(arch) {}
+
+LoadedImage* ShellcodeLoader::make_image() {
+    auto* img = new LoadedImage();
+    img->arch = arch_;
+    img->name = "shellcode";
+    img->emu_path = "";
+    img->base = 0;
+    img->image_size = data_.size();
+    img->ep = 0;
+
+    ModuleRegion region;
+    region.base = 0;
+    region.data = data_;
+    region.name = "shellcode";
+    region.perms = 0x16;  // PERM_MEM_RWX
+    img->regions.push_back(region);
+
+    SectionEntry sect;
+    sect.name = "shellcode";
+    sect.virtual_address = 0;
+    sect.virtual_size = static_cast<uint32_t>(data_.size());
+    sect.perms = 0x16;
+    img->sections.push_back(sect);
+
+    return img;
+}
+
+// ── ApiModuleLoader ──────────────────────────────────────
+
+ApiModuleLoader::ApiModuleLoader(const std::string& name, void* api,
+                                 int arch, uint64_t base, const std::string& emu_path)
+    : name_(name), api_(api), arch_(arch), base_(base), emu_path_(emu_path) {}
+
+LoadedImage* ApiModuleLoader::make_image() {
+    // Full implementation requires JitPeFile from common.cpp (synthetic PE generation).
+    // Porting note: Python version uses speakeasy/windows/common.py JitPeFile class
+    // to create minimal PE headers with export table stubs.
+    // For now, return a minimal LoadedImage stub.
+    auto* img = new LoadedImage();
+    img->arch = arch_;
+    img->name = name_;
+    img->emu_path = emu_path_;
+    img->base = base_;
+    img->image_size = 0x10000;  // default 64K
+    img->ep = 0;
+    img->metadata.subsystem = 2;  // IMAGE_SUBSYSTEM_WINDOWS_GUI
+    return img;
+}
+
+// ── DecoyLoader ──────────────────────────────────────────
+
+DecoyLoader::DecoyLoader(const std::string& name, uint64_t base,
+                         const std::string& emu_path, uint64_t image_size)
+    : name_(name), base_(base), emu_path_(emu_path), image_size_(image_size) {}
+
+LoadedImage* DecoyLoader::make_image() {
+    auto* img = new LoadedImage();
+    img->arch = 0;
+    img->name = name_;
+    img->emu_path = emu_path_;
+    img->base = base_;
+    img->image_size = image_size_;
+    img->ep = 0;
+
+    PeMetadata meta;
+    meta.subsystem = 2;  // IMAGE_SUBSYSTEM_WINDOWS_GUI
+    meta.timestamp = 0;
+    meta.machine = 0;
+    meta.magic = 0;
+    img->metadata = meta;
+
+    return img;
+}
 } // namespace speakeasy
