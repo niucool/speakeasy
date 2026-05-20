@@ -1293,6 +1293,20 @@ speakeasy::RuntimeModule* WindowsEmulator::load_image(speakeasy::LoadedImage* im
         // Here we just ensure imports are patched after sentinel IAT setup above.
     }
 
+    // ── String profiling for primary modules (Python 1120-1124) ──
+    if (is_primary && profiler && !img->regions.empty()) {
+        auto& raw = img->regions[0].data;
+        if (!raw.empty()) {
+            auto ansi_strs = get_ansi_strings(raw);
+            auto uni_strs = get_unicode_strings(raw);
+            std::vector<std::string> ansi_only, uni_only;
+            for (auto& [offset, s] : ansi_strs) ansi_only.push_back(s);
+            for (auto& [offset, s] : uni_strs) uni_only.push_back(s);
+            profiler->set_strings("ansi", ansi_only);
+            profiler->set_strings("unicode", uni_only);
+        }
+    }
+
     // ── Register module (Python 1126) ──
     modules.push_back(mod);
 

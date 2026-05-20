@@ -54,10 +54,10 @@ int Run::get_api_count() {
 //         self.artifact_store = ArtifactStore()
 Profiler::Profiler() : start_time(0), runtime(0) {
     set_start_time();
-    strings["ansi"] = std::vector<std::string>();
-    strings["unicode"] = std::vector<std::string>();
-    decoded_strings["ansi"] = std::vector<std::string>();
-    decoded_strings["unicode"] = std::vector<std::string>();
+    strings_["ansi"] = std::vector<std::string>();
+    strings_["unicode"] = std::vector<std::string>();
+    decoded_strings_["ansi"] = std::vector<std::string>();
+    decoded_strings_["unicode"] = std::vector<std::string>();
     last_data = {0, 0};
 }
 
@@ -631,22 +631,22 @@ speakeasy::Report Profiler::get_report() const {
     }
 
     // Strings report
-    auto ansi_it = strings.find("ansi");
-    auto uni_it = strings.find("unicode");
-    auto dansi_it = decoded_strings.find("ansi");
-    auto duni_it = decoded_strings.find("unicode");
-    if ((ansi_it != strings.end() && !ansi_it->second.empty()) ||
-        (uni_it != strings.end() && !uni_it->second.empty()) ||
-        (dansi_it != decoded_strings.end() && !dansi_it->second.empty()) ||
-        (duni_it != decoded_strings.end() && !duni_it->second.empty())) {
+    auto ansi_it = strings_.find("ansi");
+    auto uni_it = strings_.find("unicode");
+    auto dansi_it = decoded_strings_.find("ansi");
+    auto duni_it = decoded_strings_.find("unicode");
+    if ((ansi_it != strings_.end() && !ansi_it->second.empty()) ||
+        (uni_it != strings_.end() && !uni_it->second.empty()) ||
+        (dansi_it != decoded_strings_.end() && !dansi_it->second.empty()) ||
+        (duni_it != decoded_strings_.end() && !duni_it->second.empty())) {
         speakeasy::StringsReport sr;
-        if(ansi_it != strings.end())
+        if(ansi_it != strings_.end())
             sr.static_strings.ansi = ansi_it->second;
-        if (uni_it != strings.end())
+        if (uni_it != strings_.end())
             sr.static_strings.unicode = uni_it->second;
-        if (dansi_it != decoded_strings.end())
+        if (dansi_it != decoded_strings_.end())
             sr.in_memory.ansi = dansi_it->second;
-        if (duni_it != decoded_strings.end())
+        if (duni_it != decoded_strings_.end())
             sr.in_memory.unicode = duni_it->second;
         rpt.strings = sr;
     }

@@ -124,10 +124,21 @@ public:
 //     """
 //     def __init__(self):
 class Profiler {
+public:
+    /** Set extracted strings for profiling (ansi/unicode) */
+    void set_strings(const std::string& key, const std::vector<std::string>& vals) {
+        strings_[key] = vals;
+    }
+    /** Get strings by category */
+    const std::vector<std::string>& get_strings(const std::string& key) const {
+        static const std::vector<std::string> empty;
+        auto it = strings_.find(key);
+        return (it != strings_.end()) ? it->second : empty;
+    }
 private:
     double start_time = 0;             // Python:142 — self.start_time: float = 0
-    std::map<std::string,std::vector<std::string>> strings;         // Python:143
-    std::map<std::string,std::vector<std::string>> decoded_strings; // Python:144
+    std::map<std::string,std::vector<std::string>> strings_;       // Python:143
+    std::map<std::string,std::vector<std::string>> decoded_strings_; // Python:144
     std::vector<uint64_t> last_data;   // Python:145 — [base, size] for process merge tracking
     // Python:146 — self.last_event: AnyEvent | dict[str, Any] = {} — only type tracked
     std::string last_event_type;       // Python:146 type name only (vs full Python AnyEvent)
