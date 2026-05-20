@@ -1257,8 +1257,14 @@ speakeasy::RuntimeModule* WindowsEmulator::load_image(speakeasy::LoadedImage* im
             }
             // Register export func/data handlers via WindowsApi
             auto [handler, func_ptr] = api->get_export_func_handler(img->name, exp.name);
-            (void)handler;
-            (void)func_ptr;
+            if (!func_ptr) {
+                // Fallback: normalize module name and retry (Python: winemu.py:1095)
+                std::string norm_name = normalize_mod_name(img->name);
+                std::tie(handler, func_ptr) = api->get_export_func_handler(norm_name, exp.name);
+            }
+            if (func_ptr) {
+                symbols[exp.address] = {img->name, exp.name};
+            }
         }
     }
 
@@ -1293,9 +1299,9 @@ speakeasy::RuntimeModule* WindowsEmulator::load_image(speakeasy::LoadedImage* im
         symbols[img->base] = {img->name, ""};
     }
 
-    // ── Allocate stack for primary image ──
+    // ── Allocate stack for primary image ── (Python: winemu.py:1128-1131)
     if (is_primary && stack_base == 0 && img->image_size > 0) {
-        size_t stack_size = img->image_size;  // reasonable default
+        size_t stack_size = img->image_size;  // fallback
         auto [sb, sp] = alloc_stack(stack_size);
         stack_base = sb;
     }
