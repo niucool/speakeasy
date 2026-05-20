@@ -1294,7 +1294,7 @@ speakeasy::RuntimeModule* WindowsEmulator::load_image(speakeasy::LoadedImage* im
     }
 
     // ── String profiling for primary modules (Python 1120-1124) ──
-    if (is_primary && profiler && !img->regions.empty()) {
+    if (is_primary && profiler && config.analysis.strings && !img->regions.empty()) {
         auto& raw = img->regions[0].data;
         if (!raw.empty()) {
             auto ansi_strs = get_ansi_strings(raw);
