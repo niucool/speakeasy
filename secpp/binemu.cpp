@@ -1066,43 +1066,53 @@ void BinaryEmulator::clean_stack_args(int argc) {
     // C++ uses linear scan (iterative) -- functionally equivalent
 std::vector<std::tuple<int, std::string>> BinaryEmulator::get_ansi_strings(
     const std::vector<uint8_t>& data, int min_len) {
+    // Python binemu.py:700-717 — regex-based printable ASCII string extraction
     std::vector<std::tuple<int, std::string>> result;
-    std::string current;
-    int start = -1;
-    for (size_t i = 0; i < data.size(); ++i) {
-        if (data[i] >= 0x20 && data[i] <= 0x7e) {
-            if (start == -1) start = static_cast<int>(i);
-            current += static_cast<char>(data[i]);
-        } else {
-            if ((int)current.length() >= min_len) {
-                result.push_back({start, current});
-            }
-            current.clear();
-            start = -1;
+    std::string s(reinterpret_cast<const char*>(data.data()), data.size());
+    std::string pattern = "[\\x20-\\x7e]{" + std::to_string(min_len) + ",}";
+    try {
+        std::regex re(pattern);
+        std::sregex_iterator it(s.begin(), s.end(), re);
+        std::sregex_iterator end;
+        size_t last_end = 0;
+        for (; it != end; ++it) {
+            size_t match_pos = s.find(it->str(), last_end);
+            if (match_pos == std::string::npos) match_pos = it->position();
+            result.push_back({static_cast<int>(match_pos), it->str()});
+            last_end = match_pos + 1;
         }
-    }
-    if ((int)current.length() >= min_len) result.push_back({start, current});
+    } catch (const std::regex_error&) {}
     return result;
 }
 
 // Python binemu.py:719-736 doc: "Get all unicode strings from a supplied memory blob"
 std::vector<std::tuple<int, std::string>> BinaryEmulator::get_unicode_strings(
     const std::vector<uint8_t>& data, int min_len) {
+    // Python binemu.py:719-736 — regex-based UTF-16LE printable ASCII string extraction
     std::vector<std::tuple<int, std::string>> result;
-    std::string current;
-    int start = -1;
-    for (size_t i = 0; i + 1 < data.size(); i += 2) {
-        uint16_t ch = data[i] | (static_cast<uint16_t>(data[i+1]) << 8);
-        if (ch >= 0x20 && ch <= 0x7e) {
-            if (start == -1) start = static_cast<int>(i);
-            current += static_cast<char>(ch);
-        } else {
-            if ((int)current.length() >= min_len) result.push_back({start, current});
-            current.clear();
-            start = -1;
+    // Build pattern: (?:[ -~] ){min_len,}
+    std::string pattern = "(?:[\\x20-\\x7e]\\x00){" + std::to_string(min_len) + ",}";
+    try {
+        std::regex re(pattern);
+        std::string s(reinterpret_cast<const char*>(data.data()), data.size());
+        std::sregex_iterator it(s.begin(), s.end(), re);
+        std::sregex_iterator end;
+        size_t last_end = 0;
+        for (; it != end; ++it) {
+            size_t match_pos = s.find(it->str(), last_end);
+            if (match_pos == std::string::npos) match_pos = it->position();
+            // Decode UTF-16LE to string
+            std::string raw = it->str();
+            std::string decoded;
+            for (size_t i = 0; i + 1 < raw.size(); i += 2) {
+                if (raw[i] >= 0x20 && raw[i] <= 0x7e)
+                    decoded += raw[i];
+            }
+            if ((int)decoded.length() >= min_len)
+                result.push_back({static_cast<int>(match_pos), decoded});
+            last_end = match_pos + 1;
         }
-    }
-    if ((int)current.length() >= min_len) result.push_back({start, current});
+    } catch (const std::regex_error&) {}
     return result;
 }
 
