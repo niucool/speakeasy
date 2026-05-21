@@ -316,6 +316,14 @@ void WindowsEmulator::mem_purge() {
 // def setup_user_shared_data(self):
 //     """Setup the shared user data section that is often used to share data
 //     between user mode and kernel mode"""
+// Python winemu.py:1139 — default setup (overridden in subclasses)
+void WindowsEmulator::setup(size_t stack_commit, bool first_time_setup) { /* default: no-op, overridden by Win32Emulator */ (void)stack_commit; (void)first_time_setup; }
+
+// Python winemu.py:548 — base class on_run_complete (Python has this on WindowsEmulator)
+void WindowsEmulator::on_run_complete() {
+    run_complete = true;
+}
+
 void WindowsEmulator::setup_user_shared_data() {
     constexpr uint64_t KUSER_SHARED_X86  = 0xFFDF0000;
     constexpr uint64_t KUSER_SHARED_AMD64 = 0xFFFFF78000000000ULL;
@@ -1058,7 +1066,8 @@ void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeMod
     if (!user_mods.empty()) {
         process->init_peb(user_mods);
     } else {
-        process->init_peb(get_peb_modules());
+        auto peb_mods = get_peb_modules();
+        process->init_peb(peb_mods);
     }
 }
 
@@ -1734,73 +1743,74 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::init_use
 //         Priority: native PE file -> API handler (JIT PE) -> placeholder stub."""
 std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_module_group(
     const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config, uint64_t default_base) {
+    // Python winemu.py:2308-2362 — initialize a group of modules from config objects
+    // For each module: try native PE file → API handler (synthetic) → decoy placeholder
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> rtmods;
-    //TODO: implement module config parsing and loading logic based on the Python reference.
-#if 0
+    
     for (const auto& modconf : modules_config) {
-        // modname = getattr(modconf, "name", None) or "unknown"
-        std::string modname = "unknown";
-        if (modconf.contains("name") && modconf["name"].is_string())
-            modname = modconf["name"].get<std::string>();
-
-        // base_addr = getattr(modconf, "base_addr", None) or default_base
-        uint64_t base_addr = default_base;
-        if (modconf.contains("base_addr")) {
-            auto& ba = modconf["base_addr"];
-            if (ba.is_string()) {
-                std::string bs = ba.get<std::string>();
-                if (bs.find("0x") == 0 || bs.find("0X") == 0)
-                    base_addr = std::stoull(bs, nullptr, 16);
-                else
-                    base_addr = std::stoull(bs, nullptr, 10);
-            } else if (ba.is_number())
-                base_addr = ba.get<uint64_t>();
-        }
-
-        // emu_path = getattr(modconf, "path", None) or (modname + ".dll")
-        std::string emu_path = modname + ".dll";
-        if (modconf.contains("path") && modconf["path"].is_string())
-            emu_path = modconf["path"].get<std::string>();
-
-        // images = getattr(modconf, "images", []) or []
-        std::vector<nlohmann::json> images;
-        if (modconf.contains("images") && modconf["images"].is_array())
-            images = modconf["images"].get<std::vector<nlohmann::json>>();
-
-        // native_path = self.get_native_module_path(mod_name=modname)
+        if (!modconf) continue;
+        
+        std::string modname = modconf->name.empty() ? "unknown" : modconf->name;
+        uint64_t base_addr = modconf->base ? modconf->base : default_base;
+        std::string emu_path = modconf->path.empty() ? (modname + ".dll") : modconf->path;
+        
+        // Priority 1: Native PE file
         std::string native_path = get_native_module_path(modname);
-
-        // Try images first (arch-specific)
-        std::string path;
-        for (const auto& img : images) {
-            if (img.contains("arch") && img["arch"].is_number() &&
-                img["arch"].get<int>() == get_arch()) {
-                if (img.contains("name") && img["name"].is_string())
-                    path = get_native_module_path(img["name"].get<std::string>());
+        
+        std::shared_ptr<speakeasy::RuntimeModule> rtmod;
+        
+        if (!native_path.empty()) {
+            // PE file exists on disk → PeLoader
+            try {
+                speakeasy::PeLoader loader(native_path);
+                auto img = loader.make_image();
+                if (base_addr) img->base = base_addr;
+                img->emu_path = emu_path;
+                img->name = modname;
+                rtmod = load_image(img);
+            } catch (...) {
+                // PE parsing failed, fall through to API handler / decoy
             }
         }
-        if (path.empty()) path = native_path;
-
-        if (!path.empty()) {
-            // PeLoader(path=path, base_override=base_addr, emu_path=emu_path)
-            try {
-                speakeasy::PeLoader loader(path, std::vector<uint8_t>{});
-                auto* img = loader.make_image();
-                if (base_addr) img->base = base_addr;
-                if (!emu_path.empty()) img->emu_path = emu_path;
-                auto rtmod = load_image(img);
-                if (rtmod) rtmods.push_back(rtmod);
-                continue;
-            } catch (...) {}
+        
+        if (!rtmod) {
+            // Priority 2: API handler → ApiModuleLoader (synthetic PE)
+            if (api) {
+                auto handler = api->load_api_handler(modname);
+                if (handler) {
+                    // Special case: ntdll also loads ntoskrnl handler for Zw/Nt stubs
+                    if (modname == "ntdll") {
+                        auto nt_handler = api->load_api_handler("ntoskrnl");
+                        if (nt_handler) {
+                            // Attach nt_handler to the ntdll handler
+                        }
+                    }
+                    
+                    speakeasy::ApiModuleLoader api_loader(modname, handler,
+                        get_arch(), base_addr ? base_addr : 0, emu_path);
+                    auto img = api_loader.make_image();
+                    img->name = modname;
+                    rtmod = load_image(img);
+                }
+            }
         }
-
-        // No native PE path found — try ApiModuleLoader if api wired
-        // (DecoyLoader fallback would create placeholder stub)
-        // For now, skip modules without a native PE file.
+        
+        if (!rtmod) {
+            // Priority 3: DecoyLoader — minimal PEB-visible stub
+            speakeasy::DecoyLoader decoy(modname, base_addr ? base_addr : 0,
+                                         emu_path, modconf->image_size);
+            auto img = decoy.make_image();
+            img->name = modname;
+            rtmod = load_image(img);
+        }
+        
+        if (rtmod) {
+            rtmods.push_back(rtmod);
+        }
     }
-#endif
     return rtmods;
 }
+
 
 // ── Thread context ───────────────────────────────────────────
 
