@@ -90,18 +90,18 @@ public:
     /**
      * Load a module into the speakeasy emulator
      */
-    speakeasy::RuntimeModule* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {});
+    std::shared_ptr<speakeasy::RuntimeModule> load_module(const std::string& path = "", const std::vector<uint8_t>& data = {});
     
     /**
      * Load a pre-constructed LoadedImage into the emulator (Python speakeasy.py:275-282)
      * Initializes the emulator if not already initialized, then delegates to emu->load_image().
      */
-    speakeasy::RuntimeModule* load_image(speakeasy::LoadedImage* img);
+    std::shared_ptr<speakeasy::RuntimeModule> load_image(std::shared_ptr<speakeasy::LoadedImage> img);
     
     /**
      * Run a previously loaded module through the configured emulator
      */
-    void run_module(speakeasy::RuntimeModule* module, bool all_entrypoints = false, bool emulate_children = false);
+    void run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints = false, bool emulate_children = false);
     
     /**
      * Load a shellcode blob into emulation space

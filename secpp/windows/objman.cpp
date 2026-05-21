@@ -305,7 +305,7 @@ void* Driver::init_driver_section() {
     uint32_t image_size = 0;
 
     if (pe) {
-        auto* img = static_cast<speakeasy::LoadedImage*>(pe);
+        auto img = pe;
         dll_base = img->base;
         entry_point = img->base + img->ep;
         image_size = static_cast<uint32_t>(img->image_size);
@@ -338,7 +338,7 @@ void* Driver::init_driver_section() {
     return reinterpret_cast<void*>(static_cast<uintptr_t>(addr));
 }
 
-void Driver::init_driver_object(const std::string& name, void* pe, bool is_decoy) {
+void Driver::init_driver_object(const std::string& name, std::shared_ptr<speakeasy::RuntimeModule> pe, bool is_decoy) {
     // Python: initialize DRIVER_OBJECT fields
     this->pe = pe;
 
@@ -621,7 +621,8 @@ Token::Token(void* emu)
 
 std::vector<void*> Process::ldr_entries;
 
-Process::Process(void* emu, speakeasy::RuntimeModule* pe, const std::vector<void*>& user_modules,
+Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
+    const std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules,
                  const std::string& name, const std::string& path,
                  const std::string& cmdline, int base, int session)
     : KernelObject(emu),
@@ -918,14 +919,14 @@ std::string Process::get_title_name() {
     return this->title;
 }
 
-void* Process::get_module() {
+std::shared_ptr<speakeasy::RuntimeModule> Process::get_module() {
     return this->pe;
 }
 
 void* Process::get_ep() {
     // Python: return pe.base + pe.ep  (entry point of the PE)
     if (pe) {
-        auto* img = pe;
+        auto img = pe;
         return reinterpret_cast<void*>(static_cast<uintptr_t>(img->base + img->ep));
     }
     return nullptr;
@@ -951,7 +952,7 @@ std::string Process::get_command_line() {
     return this->cmdline;
 }
 
-void Process::set_user_modules(const std::vector<void*>& mods) {
+void Process::set_user_modules(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& mods) {
     this->modules = mods;
 }
 
@@ -961,15 +962,15 @@ void Process::new_thread() {
     threads.push_back(t);
 }
 
-void Process::add_module_to_peb(void* module) {
+void Process::add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module) {
     // Python: add module to PEB LDR linked list
     // Requires PEB / LdrDataTableEntry types.
     // For now, just track the module pointer.
     (void)module;
 }
 
-void Process::init_peb(const std::vector<void*>& modules) {
-    for (void* mod : modules) {
+void Process::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& modules) {
+    for (auto& mod : modules) {
         add_module_to_peb(mod);
     }
 }

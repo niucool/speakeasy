@@ -129,7 +129,7 @@ public:
  */
 class Driver : public KernelObject {
 private:
-    void* pe;
+    std::shared_ptr<speakeasy::RuntimeModule> pe;
     std::vector<void*> mj_funcs;
     void* on_unload;
     bool unload_called;
@@ -152,7 +152,7 @@ public:
     std::string get_basename();
     std::string get_reg_path();
     void* init_driver_section();
-    void init_driver_object(const std::string& name = "", void* pe = nullptr, bool is_decoy = true);
+    void init_driver_object(const std::string& name = "", std::shared_ptr<speakeasy::RuntimeModule> pe = nullptr, bool is_decoy = true);
     KernelObject read_back() override;
 };
 
@@ -253,14 +253,14 @@ class Process : public KernelObject {
 public:
     static std::vector<void*> ldr_entries;
 
-    std::vector<void*> modules;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> modules;
     std::vector<Thread> threads;
     Console console;
     Thread curr_thread;
     std::string cmdline;
     int session;
     Token token;
-    speakeasy::RuntimeModule* pe;
+    std::shared_ptr<speakeasy::RuntimeModule> pe;
     void* pe_data;
     int stdin_handle;
     int stdout_handle;
@@ -274,7 +274,9 @@ public:
     int base;
 
 public:
-    Process(void* emu, speakeasy::RuntimeModule* pe = nullptr, const std::vector<void*>& user_modules = {},
+    Process(void* emu, 
+        std::shared_ptr<speakeasy::RuntimeModule> pe = nullptr,
+        const std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules = {},
             const std::string& name = "", const std::string& path = "",
             const std::string& cmdline = "", int base = 0, int session = 0);
 
@@ -287,17 +289,17 @@ public:
     void* get_token();
     int get_std_handle(int dev);
     std::string get_title_name();
-    void* get_module();
+    std::shared_ptr<speakeasy::RuntimeModule> get_module();
     void* get_ep();
     Console get_console();
     int get_session_id();
     int get_pid();
     std::string get_process_path();
     std::string get_command_line();
-    void set_user_modules(const std::vector<void*>& mods);
+    void set_user_modules(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& mods);
     void new_thread();
-    void add_module_to_peb(void* module);
-    void init_peb(const std::vector<void*>& modules);
+    void add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module);
+    void init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& modules);
 };
 
 /**

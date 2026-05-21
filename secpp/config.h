@@ -173,8 +173,8 @@ struct ModulesConfig {
     bool functions_always_exist = false;
     std::string module_directory_x86;
     std::string module_directory_x64;
-    std::vector<SystemModule> system_modules;
-    std::vector<UserModule> user_modules;
+    std::vector<std::shared_ptr<Module>> system_modules;
+    std::vector<std::shared_ptr<Module>> user_modules;
 };
 
 // ── Top-level config ────────────────────────────────────────

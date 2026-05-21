@@ -557,7 +557,7 @@ void BinaryEmulator::eval_emu_var() {
     // Reserved for config variable expansion. No-op in Python.
 }
 
-speakeasy::Module* BinaryEmulator::get_module_from_addr(uint64_t addr) {
+std::shared_ptr<speakeasy::Module> BinaryEmulator::get_module_from_addr(uint64_t addr) {
     // Python binemu.py:811-820 doc: "If the supplied address belongs to a module, return it"
     // TODO: 'modules' is a WindowsEmulator member, not BinaryEmulator — move this to WindowsEmulator
     for (auto& mod : modules) {

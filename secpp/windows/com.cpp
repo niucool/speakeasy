@@ -87,8 +87,8 @@ const std::map<std::string, std::vector<ComField>> IFACE_TYPES = {
 
 // ── COM implementation ────────────────────────────────────────
 
-COM::COM(const nlohmann::json& config)
-    : config(config) {
+COM::COM(const speakeasy::SpeakeasyConfig& cfg)
+    : config(cfg) {
 }
 
 std::shared_ptr<ComInterface> COM::get_interface(void* emu, size_t ptr_size, const std::string& name) {

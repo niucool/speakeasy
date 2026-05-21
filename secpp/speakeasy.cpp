@@ -190,7 +190,7 @@ bool Speakeasy::is_pe(const std::vector<uint8_t>& data) {
     return (data.size() >= 2 && data[0] == 'M' && data[1] == 'Z');
 }
 
-speakeasy::RuntimeModule* Speakeasy::load_module(const std::string& path, const std::vector<uint8_t>& data) {
+std::shared_ptr<speakeasy::RuntimeModule> Speakeasy::load_module(const std::string& path, const std::vector<uint8_t>& data) {
     if (path.empty() && data.empty())
         throw SpeakeasyError("No emulation target supplied");
     if (!path.empty() && !std::ifstream(path).good())
@@ -214,13 +214,13 @@ speakeasy::RuntimeModule* Speakeasy::load_module(const std::string& path, const 
     return emu->load_module(path, data);
 }
 
-speakeasy::RuntimeModule* Speakeasy::load_image(speakeasy::LoadedImage* img) {
+std::shared_ptr<speakeasy::RuntimeModule> Speakeasy::load_image(std::shared_ptr<speakeasy::LoadedImage> img) {
     // Python speakeasy.py:275-282
     _init_hooks();
     return emu->load_image(img);
 }
 
-void Speakeasy::run_module(speakeasy::RuntimeModule* module, bool all_entrypoints, bool emulate_children) {
+void Speakeasy::run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, bool emulate_children) {
     _init_hooks();
     emu->run_module(module, all_entrypoints, emulate_children);
 }

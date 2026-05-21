@@ -51,14 +51,14 @@ public:
     void set_current_irql(int irql) { irql_ = irql; }
 
     // ── Driver management ─────────────────────────────────────
-    Driver* create_driver_object(const std::string& name = "", void* pe = nullptr);
+    Driver* create_driver_object(const std::string& name = "", std::shared_ptr<speakeasy::RuntimeModule> pe = nullptr);
     std::vector<Driver*> get_drivers() const { return drivers_; }
 
     // ── Module loading ────────────────────────────────────────
-    speakeasy::RuntimeModule* load_module(const std::string& path = "",
+    std::shared_ptr<speakeasy::RuntimeModule> load_module(const std::string& path = "",
                       const std::vector<uint8_t>& data = {},
                       const std::string& filename = "");
-    void* load_driver(const std::string& path, std::vector<uint8_t> data = {},
+    std::shared_ptr<speakeasy::RuntimeModule> load_driver(const std::string& path, std::vector<uint8_t> data = {},
                       const std::string& filename = "", bool builtin = false);
 
     // ── I/O ───────────────────────────────────────────────────

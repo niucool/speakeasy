@@ -102,15 +102,15 @@ protected:
     bool kernel_mode = false;
 
     // ── Modules ───────────────────────────────────────────────
-    std::vector<speakeasy::RuntimeModule*> modules;
-    std::vector<void*> user_modules;
-    std::vector<void*> sys_modules;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> modules;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> sys_modules;
     std::vector<std::tuple<void*, std::tuple<uint64_t, size_t>, std::string>> mod_refs;
 
     // ── Runs ──────────────────────────────────────────────────
     std::shared_ptr<Run> curr_run;
     bool restart_curr_run = false;
-    speakeasy::RuntimeModule* curr_mod = nullptr;
+    std::shared_ptr<speakeasy::RuntimeModule> curr_mod;
     std::vector<std::shared_ptr<Run>> runs;
     std::vector<std::shared_ptr<Run>> run_queue;
     std::vector<std::shared_ptr<Run>> suspended_runs;
@@ -433,7 +433,7 @@ public:
     // Python winemu.py:615
     // def get_current_module(self):
     //     """Get the currently running module"""
-    void* get_current_module();
+    std::shared_ptr<speakeasy::RuntimeModule> get_current_module();
     // Python winemu.py:621
     // def get_dropped_files(self):
     //     """Get all files written by the sample from the file manager"""
@@ -533,7 +533,7 @@ public:
     // Python winemu.py:847
     // def get_mod_from_addr(self, addr):
     //     """Get a module from an address within it."""
-    speakeasy::RuntimeModule* get_mod_from_addr(uint64_t addr);
+    std::shared_ptr<speakeasy::RuntimeModule> get_mod_from_addr(uint64_t addr);
     // Python winemu.py:860
     // def _alloc_sentinel(self):
     //     """Allocate a sentinel value for import table hooking."""
@@ -541,17 +541,17 @@ public:
     // Python winemu.py:979
     // def get_mod_by_name(self, name):
     //     """Find a loaded module by name (case-insensitive)."""
-    speakeasy::RuntimeModule* get_mod_by_name(const std::string& name);
+    std::shared_ptr<speakeasy::RuntimeModule> get_mod_by_name(const std::string& name);
     // Python winemu.py:990
     // def get_peb_modules(self):
     //     """Get modules that are visible in the PEB."""
-    std::vector<void*> get_peb_modules();
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> get_peb_modules();
 
     // ── PE initialization ─────────────────────────────────────
     // Python winemu.py:760
     // def init_peb(self, user_mods, proc=None):
     //     """Initialize the Process Environment Block"""
-    void init_peb(void* user_mods, void* proc = nullptr);
+    void init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& user_mods, Process* proc);
     // Python winemu.py:771
     // def init_teb(self, thread, peb):
     //     """Initialize the Thread Information Block"""
@@ -564,12 +564,12 @@ public:
     // def load_pe(self, path=None, data=None, imp_id=winemu.IMPORT_HOOK_ADDR):
     //     """Parse a PE that will be used during emulation. PE type and architecture
     //     are automatically determined."""
-    speakeasy::RuntimeModule* load_pe(const std::string& path = "", const std::vector<uint8_t>& data = {},
+    std::shared_ptr<speakeasy::RuntimeModule> load_pe(const std::string& path = "", const std::vector<uint8_t>& data = {},
                   uint64_t imp_id = 0);
     // Python winemu.py:993
     // def load_image(self, image):
     //     """Load a parsed PE image into emulated memory, set up imports/exports, sections."""
-    speakeasy::RuntimeModule* load_image(speakeasy::LoadedImage* image);
+    std::shared_ptr<speakeasy::RuntimeModule> load_image(std::shared_ptr<speakeasy::LoadedImage> image);
     // Python winemu.py:865
     // def ensure_pe_import_hooks(self, base_addr):
     //     """Ensure a PE image in emulated memory has its IAT patched with sentinel
@@ -589,7 +589,7 @@ public:
     // def load_module_by_name(self, name, emu_path=None, base=None):
     //     """Load a module by name using the appropriate loader.
     //     Priority: native PE file -> API handler (JIT PE) -> placeholder stub."""
-    speakeasy::RuntimeModule* load_module_by_name(const std::string& name,
+    std::shared_ptr<speakeasy::RuntimeModule> load_module_by_name(const std::string& name,
                               const std::string& emu_path = "",
                               uint64_t base = 0);
     // Python winemu.py:2278
@@ -599,21 +599,21 @@ public:
     // Python winemu.py:2292
     // def init_environment(self, system_modules=None, user_modules=None):
     //     """Initialize the emulated system and user module environments."""
-    std::vector<void*> init_environment(
-        const std::vector<nlohmann::json>& system_modules = {},
-        const std::vector<nlohmann::json>& user_modules = {});
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> init_environment(
+        const std::vector<std::shared_ptr<speakeasy::Module>>& system_modules = {},
+        const std::vector<std::shared_ptr<speakeasy::Module>>& user_modules = {});
     // Python winemu.py:2302
     // def init_sys_modules(self, modules_config):
     //     """Initialize system modules from the config."""
-    std::vector<void*> init_sys_modules(const std::vector<nlohmann::json>& modules_config);
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> init_sys_modules(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config);
     // Python winemu.py:2305
     // def init_user_modules(self, modules_config):
     //     """Initialize user modules from the config."""
-    std::vector<void*> init_user_modules(const std::vector<nlohmann::json>& modules_config);
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> init_user_modules(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config);
     // Python winemu.py:2308
     // def _init_module_group(self, modules_config, default_base=None):
     //     """Initialize a group of modules from config objects."""
-    std::vector<void*> _init_module_group(const std::vector<nlohmann::json>& modules_config, uint64_t default_base = 0);
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> _init_module_group(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config, uint64_t default_base = 0);
 
     // ── Thread context ────────────────────────────────────────
     // Python winemu.py:2364
@@ -777,7 +777,7 @@ public:
     //     """Create a process object that will exist in the emulator.
     //     NOT YET PORTED — stub only."""
     void* create_process(const std::string& path = "", const std::string& cmdline = "",
-        speakeasy::RuntimeModule* image = nullptr, bool child = false);
+        std::shared_ptr<speakeasy::RuntimeModule> image = nullptr, bool child = false);
     // Python winemu.py:1293
     // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
     //     """Create a thread object that will exist in the emulator.

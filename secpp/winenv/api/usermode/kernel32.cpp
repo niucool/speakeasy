@@ -1013,14 +1013,15 @@ uint64_t Kernel32::GetModuleHandleA(void* emu, const std::string&, int,
     if (dot != std::string::npos) name = name.substr(0, dot);
     auto mods = we(emu)->get_peb_modules();
     for (auto m : mods) {
-        auto* mod = static_cast<KernelObject*>(m);
-        std::string mname = mod->get_obj_name();
-        for (auto& c : mname) c = static_cast<char>(std::tolower(c));
-        auto mdot = mname.rfind(".dll");
-        if (mdot != std::string::npos) mname = mname.substr(0, mdot);
-        if (mname == name) {
-            return reinterpret_cast<uint64_t>(mod);
-        }
+        auto mod = m;
+        //TODO:
+        //std::string mname = mod->get_obj_name();
+        //for (auto& c : mname) c = static_cast<char>(std::tolower(c));
+        //auto mdot = mname.rfind(".dll");
+        //if (mdot != std::string::npos) mname = mname.substr(0, mdot);
+        //if (mname == name) {
+        //    return reinterpret_cast<uint64_t>(mod);
+        //}
     }
     return 0;
 }
@@ -1043,14 +1044,15 @@ uint64_t Kernel32::GetModuleHandleW(void* emu, const std::string&, int,
     if (dot != std::string::npos) name = name.substr(0, dot);
     auto mods = we(emu)->get_peb_modules();
     for (auto m : mods) {
-        auto* mod = static_cast<KernelObject*>(m);
-        std::string mname = mod->get_obj_name();
-        for (auto& c : mname) c = static_cast<char>(std::tolower(c));
-        auto mdot = mname.rfind(".dll");
-        if (mdot != std::string::npos) mname = mname.substr(0, mdot);
-        if (mname == name) {
-            return reinterpret_cast<uint64_t>(mod);
-        }
+        auto mod = m;
+        //TODO:
+        //std::string mname = mod->get_obj_name();
+        //for (auto& c : mname) c = static_cast<char>(std::tolower(c));
+        //auto mdot = mname.rfind(".dll");
+        //if (mdot != std::string::npos) mname = mname.substr(0, mdot);
+        //if (mname == name) {
+        //    return reinterpret_cast<uint64_t>(mod);
+        //}
     }
     return 0;
 }
@@ -1071,9 +1073,9 @@ uint64_t Kernel32::GetModuleFileNameA(void* emu, const std::string&, int,
     } else {
         auto mods = we(emu)->get_peb_modules();
         for (auto m : mods) {
-            auto* mod = static_cast<KernelObject*>(m);
-            if (reinterpret_cast<uint64_t>(mod) == hMod) {
-                filename = mod->get_obj_name();
+            auto mod = m;
+            if (mod->base == hMod) {
+                filename = mod->emu_path;
                 break;
             }
         }
@@ -2060,7 +2062,8 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, const std::string&, int,
         auto procs = we(emu)->get_processes();
         SnapEntry se;
         se.index = 0;
-        se.items = procs;
+        //TODO:
+        //se.items = (std::vector<void*>)procs;
         se.pid = 0;
         entries[K32_TH32CS_SNAPPROCESS] = se;
     }
@@ -2089,7 +2092,8 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, const std::string&, int,
         auto mods = we(emu)->get_peb_modules();
         SnapEntry se;
         se.index = 0;
-        se.items = mods;
+        //TODO:
+        //se.items = (std::vector<void*>)mods;
         se.pid = static_cast<int>(pid);
         entries[K32_TH32CS_SNAPMODULE] = se;
     }

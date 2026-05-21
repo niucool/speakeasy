@@ -481,7 +481,7 @@ std::tuple<uint64_t, uint64_t> WindowsEmulator::_setup_gdt(int arch) {
 bool WindowsEmulator::_handle_invalid_read(void* emu, uint64_t address,
                                             size_t size, uint64_t value) {
     // Check if address is in a known module
-    auto* mod = get_mod_from_addr(address);
+    auto mod = get_mod_from_addr(address);
     if (mod) return true;
 
     if (address >= EMU_RESERVED && address <= (EMU_RESERVED + EMU_RESERVE_SIZE)) {
@@ -794,7 +794,7 @@ std::shared_ptr<Run> WindowsEmulator::get_current_run() { return curr_run; }
 // Python winemu.py:615
 // def get_current_module(self):
 //     """Get the currently running module"""
-void* WindowsEmulator::get_current_module() { return curr_mod; }
+std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_current_module() { return curr_mod; }
 // Python winemu.py:621
 // def get_dropped_files(self):
 //     """Get all files written by the sample from the file manager"""
@@ -981,15 +981,15 @@ void* WindowsEmulator::new_object(void* otype) {
 // def get_mod_from_addr(self, addr):
 //     """Get a module from an address within it."""
 
-speakeasy::RuntimeModule* WindowsEmulator::get_mod_from_addr(uint64_t addr) {
+std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_from_addr(uint64_t addr) {
     if (curr_mod) {
-        auto* pe = curr_mod;
+        auto pe = curr_mod;
         uint64_t base = pe->base;
         if (addr >= base && addr < base + pe->image_size)
             return curr_mod;
     }
-    for (auto* m : modules) {
-        auto* pe = m;
+    for (auto m : modules) {
+        auto pe = m;
         uint64_t base = pe->base;
         if (addr >= base && addr < base + pe->image_size)
             return m;
@@ -1012,12 +1012,12 @@ uint64_t WindowsEmulator::_alloc_sentinel() {
 // def get_mod_by_name(self, name):
 //     """Find a loaded module by name (case-insensitive)."""
 
-speakeasy::RuntimeModule* WindowsEmulator::get_mod_by_name(const std::string& name) {
+std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_by_name(const std::string& name) {
     std::string nl = name;
     for (auto& c : nl) c = static_cast<char>(std::tolower(c));
 
-    for (auto* m : modules) {
-        auto* pe = m;
+    for (auto m : modules) {
+        auto pe = m;
         std::string base = pe->get_base_name();
         for (auto& c : base) c = static_cast<char>(std::tolower(c));
         if (base == nl) return m;
@@ -1034,9 +1034,9 @@ speakeasy::RuntimeModule* WindowsEmulator::get_mod_by_name(const std::string& na
 // def get_peb_modules(self):
 //     """Get modules that are visible in the PEB."""
 
-std::vector<void*> WindowsEmulator::get_peb_modules() {
-    std::vector<void*> result;
-    for (auto* m : modules) {
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::get_peb_modules() {
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> result;
+    for (auto m : modules) {
         result.push_back(m);  // All modules visible in PEB by default
     }
     return result;
@@ -1048,16 +1048,15 @@ std::vector<void*> WindowsEmulator::get_peb_modules() {
 // def init_peb(self, user_mods, proc=None):
 //     """Initialize the Process Environment Block"""
 
-void WindowsEmulator::init_peb(void* user_mods, void* proc) {
+void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& user_mods, Process* proc) {
     void* p = proc ? proc : curr_process;
     if (!p) return;
     auto* process = static_cast<Process*>(p);
     uint64_t peb_addr = mem_map(0x1000, 0, PERM_MEM_RW, "PEB");
     process->peb = reinterpret_cast<void*>(peb_addr);
     // Use the provided user_mods if non-null, otherwise use our module list
-    if (user_mods) {
-        auto* mods = static_cast<std::vector<void*>*>(user_mods);
-        process->init_peb(*mods);
+    if (!user_mods.empty()) {
+        process->init_peb(user_mods);
     } else {
         process->init_peb(get_peb_modules());
     }
@@ -1086,9 +1085,9 @@ void WindowsEmulator::init_teb(void* thread, void* peb) {
 void WindowsEmulator::init_tls(void* thread) {
     if (!thread || !curr_run) return;
     auto* thr = static_cast<Thread*>(thread);
-    auto* mod = get_mod_from_addr(curr_run->start_addr);
+    auto mod = get_mod_from_addr(curr_run->start_addr);
     if (mod) {
-        auto* pe = mod;
+        auto pe = mod;
         std::string modname = pe->get_base_name();
         // TLS directory is stored in PeFile metadata during PeLoader::parse_pe
         // For now, init TLS with empty directory (callbacks are already in tls_callbacks_)
@@ -1102,15 +1101,15 @@ void WindowsEmulator::init_tls(void* thread) {
 //     """Parse a PE that will be used during emulation. PE type and architecture
 //     are automatically determined."""
 
-speakeasy::RuntimeModule* WindowsEmulator::load_pe(const std::string& path,
+std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_pe(const std::string& path,
                                 const std::vector<uint8_t>& data,
                                 uint64_t imp_id) {
     // Use PeLoader to parse the PE file
     speakeasy::PeLoader loader(path, data);
-    auto* img = loader.make_image();
+    auto img = loader.make_image();
     if(imp_id)
         img->base = imp_id;  // Override base for sentinel tracking
-    auto* result = load_image(img);
+    auto result = load_image(img);
     return result;
 }
 
@@ -1118,7 +1117,7 @@ speakeasy::RuntimeModule* WindowsEmulator::load_pe(const std::string& path,
 // def load_image(self, image):
 //     """Load a parsed PE image into emulated memory, set up imports/exports, sections."""
 
-speakeasy::RuntimeModule* WindowsEmulator::load_image(speakeasy::LoadedImage* img) {
+std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::shared_ptr<speakeasy::LoadedImage> img) {
     // Python reference: winemu.py lines 993-1137
     if (!img) return nullptr;
 
@@ -1247,7 +1246,7 @@ speakeasy::RuntimeModule* WindowsEmulator::load_image(speakeasy::LoadedImage* im
     }
 
     // ── Create RuntimeModule (Python 1079-1081) ──
-    speakeasy::RuntimeModule* mod = new speakeasy::RuntimeModule(img);
+    std::shared_ptr<speakeasy::RuntimeModule> mod = std::make_shared<speakeasy::RuntimeModule>(img);
     if (img->base != 0 && mod->base != img->base)
         mod->base = img->base;
 
@@ -1496,7 +1495,7 @@ void WindowsEmulator::set_current_thread(Thread* thread) { curr_thread = thread;
 //     """Create a process object that will exist in the emulator"""
 void* WindowsEmulator::create_process(const std::string& path,
                                        const std::string& cmdline,
-                                        speakeasy::RuntimeModule* image, bool child) {
+    std::shared_ptr<speakeasy::RuntimeModule> image, bool child) {
     validate_object_services("process creation");
 
     // Determine file path from cmdline if path not given
@@ -1519,8 +1518,8 @@ void* WindowsEmulator::create_process(const std::string& path,
             // Load PE from raw data
             try {
                 speakeasy::PeLoader loader(file_path, mod_data);
-                auto* img = loader.make_image();
-                auto* rtmod = load_image(img);
+                auto img = loader.make_image();
+                auto rtmod = load_image(img);
                 p->pe = rtmod;
             } catch (...) {
                 p->pe = nullptr;
@@ -1619,14 +1618,14 @@ void* WindowsEmulator::load_library(const std::string& mod_name) {
     std::string lib = normalize_mod_name(mod_name);
 
     // Check if already loaded
-    void* existing = get_mod_by_name(lib);
+    auto existing = get_mod_by_name(lib);
     if (existing) {
-        return reinterpret_cast<void*>(static_cast<PeFile*>(existing)->get_base());
+        return reinterpret_cast<void*>(existing->base);
     }
 
     if (!modules_always_exist) return nullptr;
 
-    speakeasy::RuntimeModule* mod = load_module_by_name(lib);
+    auto mod = load_module_by_name(lib);
     if (!mod) return nullptr;
 
     // Add to current process PEB if available
@@ -1643,7 +1642,7 @@ void* WindowsEmulator::load_library(const std::string& mod_name) {
 // def load_module_by_name(self, name, emu_path=None, base=None):
 //     """Load a module by name using the appropriate loader.
 //     Priority: native PE file -> API handler (JIT PE) -> placeholder stub."""
-speakeasy::RuntimeModule* WindowsEmulator::load_module_by_name(const std::string& name,
+std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_module_by_name(const std::string& name,
                                             const std::string& emu_path,
                                             uint64_t base) {
     if (base == 0) base = 0x6F000000;
@@ -1659,8 +1658,8 @@ speakeasy::RuntimeModule* WindowsEmulator::load_module_by_name(const std::string
     if (!native_path.empty()) {
         try {
             speakeasy::PeLoader loader(native_path, std::vector<uint8_t>{});
-            auto* img = loader.make_image();
-            auto* result = load_image(img);
+            auto img = loader.make_image();
+            auto result = load_image(img);
             return result;
         } catch (...) {}
     }
@@ -1668,8 +1667,8 @@ speakeasy::RuntimeModule* WindowsEmulator::load_module_by_name(const std::string
     if (!ep.empty()) {
         try {
             speakeasy::PeLoader loader(ep, std::vector<uint8_t>{});
-            auto* img = loader.make_image();
-            auto* result = load_image(img);
+            auto img = loader.make_image();
+            auto result = load_image(img);
             return result;
         } catch (...) {}
     }
@@ -1695,9 +1694,10 @@ std::vector<uint8_t> WindowsEmulator::get_module_data_from_emu_file(
 // Python winemu.py:2292
 // def init_environment(self, system_modules=None, user_modules=None):
 //     """Initialize the emulated system and user module environments."""
-std::vector<void*> WindowsEmulator::init_environment(
-    const std::vector<nlohmann::json>& system_modules,
-    const std::vector<nlohmann::json>& user_modules) {
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::init_environment(
+    const std::vector<std::shared_ptr<speakeasy::Module>>& system_modules,
+    const std::vector<std::shared_ptr<speakeasy::Module>>& user_modules) {
+
     auto sys_mods = _init_module_group(system_modules, 0);
     _init_module_group(user_modules, 0x6F000000);
     return sys_mods;
@@ -1707,8 +1707,8 @@ std::vector<void*> WindowsEmulator::init_environment(
 // Python winemu.py:2302
 // def init_sys_modules(self, modules_config):
 //     """Initialize system modules from the config."""
-std::vector<void*> WindowsEmulator::init_sys_modules(
-    const std::vector<nlohmann::json>& modules_config) {
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::init_sys_modules(
+    const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config) {
     return _init_module_group(modules_config, 0);
 }
 
@@ -1716,8 +1716,8 @@ std::vector<void*> WindowsEmulator::init_sys_modules(
 // Python winemu.py:2305
 // def init_user_modules(self, modules_config):
 //     """Initialize user modules from the config."""
-std::vector<void*> WindowsEmulator::init_user_modules(
-    const std::vector<nlohmann::json>& modules_config) {
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::init_user_modules(
+    const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config) {
     return _init_module_group(modules_config, 0x6F000000);
 }
 
@@ -1732,9 +1732,11 @@ std::vector<void*> WindowsEmulator::init_user_modules(
 //         images = getattr(modconf, "images", []) or []
 //         native_path = self.get_native_module_path(mod_name=modname)
 //         Priority: native PE file -> API handler (JIT PE) -> placeholder stub."""
-std::vector<void*> WindowsEmulator::_init_module_group(
-    const std::vector<nlohmann::json>& modules_config, uint64_t default_base) {
-    std::vector<void*> rtmods;
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_module_group(
+    const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config, uint64_t default_base) {
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> rtmods;
+    //TODO: implement module config parsing and loading logic based on the Python reference.
+#if 0
     for (const auto& modconf : modules_config) {
         // modname = getattr(modconf, "name", None) or "unknown"
         std::string modname = "unknown";
@@ -1786,7 +1788,7 @@ std::vector<void*> WindowsEmulator::_init_module_group(
                 auto* img = loader.make_image();
                 if (base_addr) img->base = base_addr;
                 if (!emu_path.empty()) img->emu_path = emu_path;
-                auto* rtmod = load_image(img);
+                auto rtmod = load_image(img);
                 if (rtmod) rtmods.push_back(rtmod);
                 continue;
             } catch (...) {}
@@ -1796,6 +1798,7 @@ std::vector<void*> WindowsEmulator::_init_module_group(
         // (DecoyLoader fallback would create placeholder stub)
         // For now, skip modules without a native PE file.
     }
+#endif
     return rtmods;
 }
 
@@ -2376,12 +2379,12 @@ bool WindowsEmulator::_hook_mem_read(void* emu, int access, uint64_t addr,
         }
 
         // Check if addr is within a module section
-        void* mod = get_mod_from_addr(addr);
+        auto mod = get_mod_from_addr(addr);
         if (mod) {
-            auto* pe = static_cast<PeFile*>(mod);
-            auto sects = pe->get_sections();
+            auto pe = mod;
+            auto sects = pe->sections;
             for (auto& sect : sects) {
-                uint64_t base = pe->get_base();
+                uint64_t base = pe->base;
                 uint64_t sect_base = base + sect.virtual_address;
                 if (addr >= sect_base && addr < sect_base + sect.virtual_size) {
                     std::string mkey = hex_str(sect_base);
@@ -2461,12 +2464,12 @@ bool WindowsEmulator::_hook_mem_write(void* emu, int access, uint64_t addr,
         }
 
         // Check if addr is within a module section
-        void* mod = get_mod_from_addr(addr);
+        auto mod = get_mod_from_addr(addr);
         if (mod) {
-            auto* pe = static_cast<PeFile*>(mod);
-            auto sects = pe->get_sections();
+            auto pe = mod;
+            auto sects = pe->sections;
             for (auto& sect : sects) {
-                uint64_t base = pe->get_base();
+                uint64_t base = pe->base;
                 uint64_t sect_base = base + sect.virtual_address;
                 if (addr >= sect_base && addr < sect_base + sect.virtual_size) {
                     std::string mkey = hex_str(sect_base);
@@ -2639,12 +2642,12 @@ bool WindowsEmulator::_hook_code_tracing(void* emu, uint64_t addr, size_t size) 
         }
 
         // Check if addr is within a module section
-        void* mod = get_mod_from_addr(addr);
+        auto mod = get_mod_from_addr(addr);
         if (mod) {
-            auto* pe = static_cast<PeFile*>(mod);
-            auto sects = pe->get_sections();
+            auto pe = mod;
+            auto sects = pe->sections;
             for (auto& sect : sects) {
-                uint64_t base = pe->get_base();
+                uint64_t base = pe->base;
                 uint64_t sect_base = base + sect.virtual_address;
                 if (addr >= sect_base && addr < sect_base + sect.virtual_size) {
                     std::string mkey = hex_str(sect_base);

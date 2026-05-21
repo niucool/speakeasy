@@ -12,33 +12,9 @@
 Win32Emulator::Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::vector<std::string>& argv,
                              bool debug, void* logger, void* exit_event)
     : WindowsEmulator(cfg, logger, exit_event, debug),
-      last_error(0), peb_addr(0), argv(argv), sessman(nullptr), 
-      com(nullptr), stack_base(0) {
-    // Populate from typed config
-    for (const auto& proc : cfg.processes) {
-        nlohmann::json j;
-        j["name"] = proc.name;
-        j["base_addr"] = proc.base;
-        j["path"] = proc.path;
-        j["pid"] = proc.pid;
-        j["command_line"] = proc.command_line;
-        j["is_main_exe"] = proc.is_main_exe;
-        config_processes.push_back(j);
-    }
-    for (const auto& mod : cfg.modules.system_modules) {
-        nlohmann::json j;
-        j["name"] = mod.name;
-        j["base_addr"] = mod.base;
-        j["path"] = mod.path;
-        config_system_modules.push_back(j);
-    }
-    for (const auto& mod : cfg.modules.user_modules) {
-        nlohmann::json j;
-        j["name"] = mod.name;
-        j["base_addr"] = mod.base;
-        j["path"] = mod.path;
-        config_user_modules.push_back(j);
-    }
+      last_error(0), peb_addr(0), argv(argv) {
+    com = new COM(cfg);
+    sessman = new SessionManager(cfg);
 }
 
 // Python win32.py:44
@@ -52,8 +28,8 @@ std::vector<std::string> Win32Emulator::get_argv() {
     std::string argv0 = "";
     
     if (!this->argv.empty()) {
-        for (auto* m : modules) {
-            auto* img = m->image();
+        for (auto m : modules) {
+            auto img = m->image();
             if (!img->emu_path.empty()) argv0 = img->emu_path;
             else argv0 = img->name;
         }
@@ -126,7 +102,7 @@ void Win32Emulator::remove_vectored_exception_handler(uint64_t handler) {
 // def get_processes(self):
 std::vector<void*> Win32Emulator::get_processes() {
     if (processes.size() <= 1) {
-        init_processes(config_processes);
+        init_processes(config.processes);
     }
     return std::vector<void*>(processes.begin(), processes.end());
 }
@@ -136,7 +112,9 @@ std::vector<void*> Win32Emulator::get_processes() {
 //     """
 //     Initialize configured processes set in the emulator config
 //     """
-void Win32Emulator::init_processes(const std::vector<nlohmann::json>& processes) {
+void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& processes) {
+    //TODO: implement process config parsing and initialization
+    /*
     for (const auto& proc : processes) {
         auto name = proc.value("name", "");
         auto path = proc.value("path", "");
@@ -154,11 +132,12 @@ void Win32Emulator::init_processes(const std::vector<nlohmann::json>& processes)
         p->image = image;
         this->processes.push_back(p);
     }
+*/
 }
 
 // Python win32.py:162
 // Full: Python win32.py:162
-speakeasy::RuntimeModule* Win32Emulator::load_module(const std::string& path, const std::vector<uint8_t>& data,
+std::shared_ptr<speakeasy::RuntimeModule> Win32Emulator::load_module(const std::string& path, const std::vector<uint8_t>& data,
                                  bool first_time_setup) {
     _init_name(path, data);
     
@@ -188,7 +167,7 @@ speakeasy::RuntimeModule* Win32Emulator::load_module(const std::string& path, co
     
     // Load PE
     //uint64_t import_id = 0x41410000;
-    speakeasy::RuntimeModule* pe = load_pe(path, file_data);
+    auto pe = load_pe(path, file_data);
     if (!pe) return nullptr;
     
     pe->name = mod_name;
@@ -213,9 +192,9 @@ speakeasy::RuntimeModule* Win32Emulator::load_module(const std::string& path, co
 
 // Python win32.py:223
 // def prepare_module_for_emulation(self, module, all_entrypoints, entry_point=None):
-void Win32Emulator::prepare_module_for_emulation(speakeasy::RuntimeModule* module, bool all_entrypoints) {
+void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints) {
     if (!module) return;
-    auto* img = module;
+    auto img = module;
     auto tls = img->tls_callbacks_;
     for (size_t i = 0; i < tls.size(); ++i) {
         uint64_t cb_addr = tls[i];
@@ -254,7 +233,7 @@ void Win32Emulator::prepare_module_for_emulation(speakeasy::RuntimeModule* modul
 //     Arguments:
 //         module: Module to emulate
 //     """
-void Win32Emulator::run_module(speakeasy::RuntimeModule* module, bool all_entrypoints, bool emulate_children) {
+void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, bool emulate_children) {
     prepare_module_for_emulation(module, all_entrypoints);
     if (processes.empty()) {
         auto* p = new Process(this, module);
@@ -274,9 +253,9 @@ void Win32Emulator::run_module(speakeasy::RuntimeModule* module, bool all_entryp
     while (emulate_children && !child_processes.empty()) {
         auto child = child_processes.front();
         child_processes.erase(child_processes.begin());
-        prepare_module_for_emulation((speakeasy::RuntimeModule*)child, all_entrypoints);
+        prepare_module_for_emulation(child->pe, all_entrypoints);
         curr_process = static_cast<Process*>(child);
-        curr_thread = nullptr;  // child process thread deferred
+        curr_thread = &child->threads[0];  // child process thread deferred
         start();
     }
 }
@@ -306,7 +285,7 @@ void Win32Emulator::_init_name(const std::string& path, const std::vector<uint8_
 //     Load and emulate binary from the given path
 //     """
 void Win32Emulator::emulate_module(const std::string& path) {
-    speakeasy::RuntimeModule* mod = load_module(path, {}, true);
+    auto mod = load_module(path, {}, true);
     if (mod) 
         run_module(mod);
 }
@@ -411,17 +390,18 @@ void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
     set_ptr_size(this->arch);
     peb_addr = (my_arch == 32) ? fs_addr + 0x30 : gs_addr + 0x60;
 
-    if (stack_commit > 0) {
-        auto stack_info = alloc_stack(stack_commit);
-        stack_base = std::get<0>(stack_info);
+    for (auto&symlink : config.symlinks) {
+        std::string link = symlink.name;
+        std::string target = symlink.target;
+        if (!link.empty() && !target.empty()) {
+            //this->symlinks.push_back({link, target});
+            om->add_symlink(link, target);
+        }
     }
-
-    if (first_time_setup) {
-        _ensure_core_dlls_loaded();
-        init_sys_modules(config_system_modules);
-        _init_user_modules_from_config();
-        set_hooks();
-    }
+    //_ensure_core_dlls_loaded();
+    init_sys_modules(config.modules.system_modules);
+    _init_user_modules_from_config();
+    //set_hooks();
 }
 
 // Python win32.py:556
@@ -429,25 +409,26 @@ void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
 //     """
 //     Get the system modules (e.g. drivers) that are loaded in the emulator
 //     """
-std::vector<void*> Win32Emulator::init_sys_modules(const std::vector<nlohmann::json>& modules_config) {
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::init_sys_modules(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config) {
     // Delegate to base class (WindowsEmulator) which properly parses JSON config objects
     auto sys_mods = WindowsEmulator::init_sys_modules(modules_config);
 
+    //TODO: Handle driver devices from config (Python win32.py:562-568)
     // Handle driver devices from config (Python win32.py:562-568)
-    for (auto& modconf : modules_config) {
-        auto drv_it = modconf.find("driver");
-        if (drv_it != modconf.end() && !drv_it->is_null()) {
-            auto devs_it = drv_it->find("devices");
-            if (devs_it != drv_it->end() && devs_it->is_array()) {
-                for (auto& dev : *devs_it) {
-                    std::string name = dev.value("name", "");
-                    auto* dobj = new Device(this);
-                    dobj->init_device(name, 0, 0, nullptr);
-                    // Device objects tracked by ObjectManager if needed
-                }
-            }
-        }
-    }
+    //for (auto& modconf : modules_config) {
+    //    auto drv_it = modconf.find("driver");
+    //    if (drv_it != modconf.end() && !drv_it->is_null()) {
+    //        auto devs_it = drv_it->find("devices");
+    //        if (devs_it != drv_it->end() && devs_it->is_array()) {
+    //            for (auto& dev : *devs_it) {
+    //                std::string name = dev.value("name", "");
+    //                auto* dobj = new Device(this);
+    //                dobj->init_device(name, 0, 0, nullptr);
+    //                // Device objects tracked by ObjectManager if needed
+    //            }
+    //        }
+    //    }
+    //}
 
     return sys_mods;
 }
@@ -458,27 +439,30 @@ std::vector<void*> Win32Emulator::init_sys_modules(const std::vector<nlohmann::j
 //     Create a process to be used to host shellcode or DLLs
 //     """
 void* Win32Emulator::init_container_process() {
-    for (auto& p : config_processes) {
-        if (p.value("is_main_exe", false)) {
-            std::string name = p.value("name", "");
-            std::string emu_path = p.value("path", "");
-            uint64_t base = p.value("base_addr", uint64_t(0));
-            // Handle string hex base (e.g. "0x10000")
-            if (p["base_addr"].is_string()) {
-                std::string base_str = p["base_addr"].get<std::string>();
-                base = std::stoull(base_str, nullptr, 0);
-            }
-            std::string cmd_line = p.value("command_line", "");
+    //TODO: Handle main exe process from config (Python win32.py:572-578)
+    //for (auto& p : config_processes) {
+    //    if (p.value("is_main_exe", false)) {
+    //        std::string name = p.value("name", "");
+    //        std::string emu_path = p.value("path", "");
+    //        uint64_t base = p.value("base_addr", uint64_t(0));
+    //        // Handle string hex base (e.g. "0x10000")
+    //        if (p["base_addr"].is_string()) {
+    //            std::string base_str = p["base_addr"].get<std::string>();
+    //            base = std::stoull(base_str, nullptr, 0);
+    //        }
+    //        std::string cmd_line = p.value("command_line", "");
 
-            auto* proc = new Process(this, nullptr, {}, name, emu_path, cmd_line, (int)base, 0);
-            return proc;
-        }
-    }
+    //        auto* proc = new Process(this, nullptr, {}, name, emu_path, cmd_line, (int)base, 0);
+    //        return proc;
+    //    }
+    //}
     return nullptr;
 }
 
-std::vector<void*> Win32Emulator::get_user_modules() {
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::get_user_modules() {
     // Generate the decoy user module list
+    //TODO: Handle user modules from config (Python win32.py:578-587)
+/*
     if (user_modules.size() < 2) {
         // Check if we have a host process configured
         nlohmann::json proc_mod;
@@ -519,7 +503,7 @@ std::vector<void*> Win32Emulator::get_user_modules() {
             }
         }
     }
-    
+*/    
     return user_modules;
 }
 
@@ -549,7 +533,7 @@ bool Win32Emulator::_hook_mem_unmapped(void* emu, int access, uint64_t address,
             if (address > pld_addr && address < pld_addr + page_size) {
                 mem_map_reserve(pld_addr);
                 auto mods = _ordered_peb_modules();
-                init_peb(&mods);
+                init_peb(mods, nullptr);
                 return true;
             }
         }
@@ -722,17 +706,17 @@ void Win32Emulator::_set_input_metadata(const std::string& path, const std::vect
 
 // Python win32.py:500
 // def _ordered_peb_modules(self):
-std::vector<void*> Win32Emulator::_ordered_peb_modules() {
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::_ordered_peb_modules() {
     const std::map<std::string, int> CORE_ORDER = {
         {"ntdll", 0}, {"kernel32", 1}, {"kernelbase", 2}
     };
     auto mods = get_peb_modules();
-    std::vector<void*> exe_mods;
-    std::vector<std::pair<int, void*>> core_mods;
-    std::vector<void*> other_mods;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> exe_mods;
+    std::vector<std::pair<int, std::shared_ptr<speakeasy::RuntimeModule>>> core_mods;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> other_mods;
     
-    for (void* m : mods) {
-        auto* img = static_cast<speakeasy::LoadedImage*>(m);
+    for (auto m : mods) {
+        auto img = m;
         // Check if this is an EXE: not a driver and has an .exe extension or was loaded as main module
         std::string lname = img->name;
         for (auto& c : lname) c = (char)tolower(c);
@@ -740,7 +724,7 @@ std::vector<void*> Win32Emulator::_ordered_peb_modules() {
         for (auto& c : lemu) c = (char)tolower(c);
         
         bool is_exe_mod = false;
-        if (!img->is_driver) {
+        if (!img->is_driver()) {
             if (lemu.size() >= 4 && lemu.substr(lemu.size() - 4) == ".exe")
                 is_exe_mod = true;
             if (lname.size() >= 4 && lname.substr(lname.size() - 4) == ".exe")
@@ -774,7 +758,7 @@ std::vector<void*> Win32Emulator::_ordered_peb_modules() {
     std::sort(core_mods.begin(), core_mods.end(),
               [](const auto& a, const auto& b) { return a.first < b.first; });
     
-    std::vector<void*> result = exe_mods;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> result = exe_mods;
     for (auto& cm : core_mods) result.push_back(cm.second);
     result.insert(result.end(), other_mods.begin(), other_mods.end());
     return result;
@@ -794,6 +778,7 @@ void Win32Emulator::_ensure_core_dlls_loaded() {
 // Python win32.py:589
 // def _init_user_modules_from_config(self):
 void Win32Emulator::_init_user_modules_from_config() {
+/*
     nlohmann::json proc_mod;
     for (auto& p : config_processes) {
         if (p.value("is_main_exe", false)) {
@@ -809,6 +794,7 @@ void Win32Emulator::_init_user_modules_from_config() {
         all_user_mods = config_user_modules;
     }
     init_user_modules(all_user_mods);
+*/
 }
 
 // Python win32.py:670
@@ -830,9 +816,8 @@ void Win32Emulator::_capture_memory_layout() {
     };
     
     // Build modules_by_base map
-    std::map<uint64_t, speakeasy::LoadedImage*> modules_by_base;
-    for (void* m : modules) {
-        auto* img = static_cast<speakeasy::LoadedImage*>(m);
+    std::map<uint64_t, std::shared_ptr<speakeasy::RuntimeModule>> modules_by_base;
+    for (auto img : modules) {
         if (img->image_size > 0) {
             modules_by_base[img->base] = img;
         }
@@ -847,7 +832,7 @@ void Win32Emulator::_capture_memory_layout() {
         std::string tag = mm->get_tag();
         
         auto mod_it = modules_by_base.find(mm_base);
-        speakeasy::LoadedImage* mod = nullptr;
+        std::shared_ptr<speakeasy::RuntimeModule> mod = nullptr;
         if (mod_it != modules_by_base.end() && tag.find("emu.module.") == 0) {
             mod = mod_it->second;
         }
@@ -896,8 +881,8 @@ void Win32Emulator::_capture_memory_layout() {
     }
     
     // Add loaded modules
-    for (void* m : modules) {
-        auto* img = static_cast<speakeasy::LoadedImage*>(m);
+    for (auto m : modules) {
+        auto img = m;
         if (img->image_size == 0) continue;
         std::string mod_name = img->name;
         if (mod_name.empty()) {

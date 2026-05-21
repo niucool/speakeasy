@@ -7,6 +7,8 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 
+#include "../config.h"
+
 /**
  * Base class for all GUI objects
  */
@@ -116,11 +118,11 @@ private:
     Session* curr_session;
     Station* curr_station;
     Desktop* curr_desktop;
-    nlohmann::json config;
+    const speakeasy::SpeakeasyConfig& config;
     int dev_ctx;
 
 public:
-    SessionManager(const nlohmann::json& config);
+    SessionManager(const speakeasy::SpeakeasyConfig& cfg);
     
     int create_window_class(void* class_obj, const std::string* class_name = nullptr);
     int create_window(const std::string* window_name = nullptr, const std::string* class_name = nullptr);

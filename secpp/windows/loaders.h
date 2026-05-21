@@ -95,10 +95,10 @@ struct LoadedImage {
 class RuntimeModule {
 public:
     // Constructed from a LoadedImage; the image pointer must remain valid.
-    explicit RuntimeModule(LoadedImage* image);
+    explicit RuntimeModule(std::shared_ptr<speakeasy::LoadedImage> image);
 
-    LoadedImage* image() { return _image; }
-    const LoadedImage* image() const { return _image; }
+    std::shared_ptr<speakeasy::LoadedImage> image() { return _image; }
+    const std::shared_ptr<speakeasy::LoadedImage> image() const { return _image; }
 
     // Type checks (Python: 129-139)
     bool is_exe() const;
@@ -136,7 +136,7 @@ public:
     std::string to_string() const;
 
 private:
-    LoadedImage* _image;
+    std::shared_ptr<speakeasy::LoadedImage> _image;
 };
 
 // ── PE Loader ────────────────────────────────────────────────
@@ -153,7 +153,7 @@ private:
 class Loader {
 public:
     virtual ~Loader() = default;
-    virtual LoadedImage* make_image() = 0;
+    virtual std::shared_ptr<LoadedImage> make_image() = 0;
 };
 
 class PeLoader : public Loader {
@@ -174,7 +174,7 @@ public:
     /**
      * Parse the PE and produce a memory image suitable for loading.
      */
-    LoadedImage* make_image();
+    std::shared_ptr<LoadedImage> make_image();
 
     /**
      * Get the parsed PE metadata.
@@ -223,7 +223,7 @@ private:
 class ShellcodeLoader : public Loader {
 public:
     explicit ShellcodeLoader(const std::vector<uint8_t>& data, int arch);
-    LoadedImage* make_image() override;
+    std::shared_ptr<LoadedImage> make_image() override;
 private:
     std::vector<uint8_t> data_;
     int arch_;
@@ -238,7 +238,7 @@ class ApiModuleLoader : public Loader {
 public:
     explicit ApiModuleLoader(const std::string& name, void* api,
                              int arch, uint64_t base, const std::string& emu_path);
-    LoadedImage* make_image() override;
+    std::shared_ptr<LoadedImage> make_image() override;
 private:
     std::string name_;
     void* api_;
@@ -257,7 +257,7 @@ class DecoyLoader : public Loader {
 public:
     explicit DecoyLoader(const std::string& name, uint64_t base,
                          const std::string& emu_path, uint64_t image_size);
-    LoadedImage* make_image() override;
+    std::shared_ptr<LoadedImage> make_image() override;
 private:
     std::string name_;
     uint64_t base_;

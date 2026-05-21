@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 
 #include "../errors.h"
+#include "../config.h"
 
 // ── Forward declarations ──────────────────────────────────────
 class WindowsEmulator;
@@ -67,10 +68,10 @@ extern const std::map<std::string, std::vector<ComField>> IFACE_TYPES;
 class COM {
 private:
     std::map<std::string, std::shared_ptr<ComInterface>> interfaces;
-    nlohmann::json config;
+    const speakeasy::SpeakeasyConfig& config;
 
 public:
-    explicit COM(const nlohmann::json& config);
+    explicit COM(const speakeasy::SpeakeasyConfig& cfg);
 
     // Get (or create) a COM interface instance by name.
     std::shared_ptr<ComInterface> get_interface(void* emu, size_t ptr_size, const std::string& name);

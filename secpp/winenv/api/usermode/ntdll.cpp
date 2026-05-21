@@ -1965,7 +1965,7 @@ uint64_t Ntdll::LdrLoadDll(void* emu, const std::string&, int,
         // Try to get it from module list
         auto modules = wemu->get_peb_modules();
         for (auto mod : modules) {
-            if (mod == hmod) {
+            if (mod->base == (uint64_t)hmod) {
                 // Use the module base
                 break;
             }
@@ -2003,8 +2003,8 @@ uint64_t Ntdll::LdrGetProcedureAddress(void* emu, const std::string&, int,
         // Look through modules to find the function
         auto mods = wemu->get_peb_modules();
         for (auto mod : mods) {
-            uint64_t mod_base = reinterpret_cast<uint64_t>(mod);
-            if (mod_base == hmod || mod == reinterpret_cast<void*>(hmod)) {
+            uint64_t mod_base = mod->base;
+            if (mod_base == hmod) {
                 // Found the module, try to get the function address
                 // get_proc takes mod_name and func_name
                 // We need to find the module name first

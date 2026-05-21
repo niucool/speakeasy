@@ -83,11 +83,11 @@ private:
     std::string domain;
     std::string hostname;
     std::vector<std::string> symlinks;
-    std::map<std::string, std::string> config_modules;
-    std::vector<std::string> config_system_modules;
-    std::vector<std::string> config_processes;
-    std::vector<std::string> config_user_modules;
-    std::map<std::string, std::string> config_analysis;
+    //std::map<std::string, std::string> config_modules;
+    //std::vector<std::string> config_system_modules;
+    //std::vector<std::string> config_processes;
+    //std::vector<std::string> config_user_modules;
+    //std::map<std::string, std::string> config_analysis;
     int max_instructions;
     int timeout;
     int max_api_count;
@@ -95,7 +95,7 @@ private:
     int ptr_size_;
     std::map<std::string, std::string> exceptions;
     std::vector<std::string> drive_config;
-    std::vector<speakeasy::Module *> modules;
+    std::vector <std::shared_ptr<speakeasy::Module>> modules;
     std::map<std::string, std::string> filesystem_config;
     bool keep_memory_on_free;
     std::map<std::string, std::string> network_config;
@@ -243,7 +243,7 @@ public:
     void set_ptr_size(int arch);
     
     // Python binemu.py:811-820 doc: "If the supplied address belongs to a module, return it"
-    speakeasy::Module* get_module_from_addr(uint64_t addr);
+    std::shared_ptr<speakeasy::Module> get_module_from_addr(uint64_t addr);
     
     // Hook management methods (Python:822-1147)
     // Python binemu.py:822-852 doc: "If an API hook has been set, return it here"

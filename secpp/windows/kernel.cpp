@@ -32,7 +32,7 @@ Process* WinKernelEmulator::get_system_process() {
     return proc;
 }
 
-Driver* WinKernelEmulator::create_driver_object(const std::string& name, void* pe) {
+Driver* WinKernelEmulator::create_driver_object(const std::string& name, std::shared_ptr<speakeasy::RuntimeModule> pe) {
     auto drv = std::make_unique<Driver>(static_cast<void*>(this));
     drv->init_driver_object(name, pe, false);
     Driver* drv_ptr = drv.get();
@@ -69,7 +69,7 @@ uint64_t WinKernelEmulator::alloc_paged_pool(size_t size, const std::string& tag
     return pool_alloc(1, size, tag);
 }
 
-speakeasy::RuntimeModule* WinKernelEmulator::load_module(const std::string& path,
+std::shared_ptr<speakeasy::RuntimeModule> WinKernelEmulator::load_module(const std::string& path,
                                      const std::vector<uint8_t>& data,
                                      const std::string& filename) {
     std::vector<uint8_t> buf = data;
@@ -104,15 +104,15 @@ speakeasy::RuntimeModule* WinKernelEmulator::load_module(const std::string& path
     }
 
     PeLoader loader(path, buf);
-    auto* img = loader.make_image();
+    auto img = loader.make_image();
     img->name = mod_name;
     img->emu_path = "\\\\??\\\\" + path;
 
-    speakeasy::RuntimeModule* rtmod = load_image(img);
+    auto rtmod = load_image(img);
     return rtmod;
 }
 
-void* WinKernelEmulator::load_driver(const std::string& path,
+std::shared_ptr<speakeasy::RuntimeModule> WinKernelEmulator::load_driver(const std::string& path,
                                      std::vector<uint8_t> data,
                                      const std::string& filename,
                                      bool builtin) {
@@ -129,16 +129,16 @@ void* WinKernelEmulator::load_driver(const std::string& path,
         }
     }
 
-    void* mod = load_module(path, data, filename);
+    auto mod = load_module(path, data, filename);
     if (!mod) return nullptr;
 
     std::string drv_name = filename.empty() ? path : filename;
     Driver* drv = create_driver_object(drv_name, mod);
 
     PeLoader loader(path, parsedata);
-    auto* img = loader.make_image();
+    auto img = loader.make_image();
 
-    uint64_t base = reinterpret_cast<uint64_t>(mod);
+    uint64_t base = mod->base;
     drv->driver_init_addr = base + img->ep;
     drv->driver_unload_addr = 0;
     return mod;

@@ -266,8 +266,8 @@ void PeLoader::parse_pe() {
 
 }
 
-LoadedImage* PeLoader::make_image() {
-    auto* img = new LoadedImage();
+std::shared_ptr<LoadedImage> PeLoader::make_image() {
+    auto img = std::make_shared<LoadedImage>();
 
     auto* pe = parser_pe;
 
@@ -409,7 +409,7 @@ std::string PeLoader::get_prot_string(uint32_t perms) {
 
 // ── RuntimeModule ─────────────────────────────────────────
 
-RuntimeModule::RuntimeModule(LoadedImage* image) : _image(image) {
+RuntimeModule::RuntimeModule(std::shared_ptr<speakeasy::LoadedImage> image) : _image(image) {
     if (!image) return;
     base = image->base;
     image_size = image->image_size;
@@ -474,8 +474,8 @@ std::string RuntimeModule::to_string() const {
 ShellcodeLoader::ShellcodeLoader(const std::vector<uint8_t>& data, int arch)
     : data_(data), arch_(arch) {}
 
-LoadedImage* ShellcodeLoader::make_image() {
-    auto* img = new LoadedImage();
+std::shared_ptr<LoadedImage> ShellcodeLoader::make_image() {
+    auto img = std::make_shared<LoadedImage>();
     img->arch = arch_;
     img->name = "shellcode";
     img->emu_path = "";
@@ -506,12 +506,12 @@ ApiModuleLoader::ApiModuleLoader(const std::string& name, void* api,
                                  int arch, uint64_t base, const std::string& emu_path)
     : name_(name), api_(api), arch_(arch), base_(base), emu_path_(emu_path) {}
 
-LoadedImage* ApiModuleLoader::make_image() {
+std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     // Full implementation requires JitPeFile from common.cpp (synthetic PE generation).
     // Porting note: Python version uses speakeasy/windows/common.py JitPeFile class
     // to create minimal PE headers with export table stubs.
     // For now, return a minimal LoadedImage stub.
-    auto* img = new LoadedImage();
+    auto img = std::make_shared<LoadedImage>();
     img->arch = arch_;
     img->name = name_;
     img->emu_path = emu_path_;
@@ -528,8 +528,8 @@ DecoyLoader::DecoyLoader(const std::string& name, uint64_t base,
                          const std::string& emu_path, uint64_t image_size)
     : name_(name), base_(base), emu_path_(emu_path), image_size_(image_size) {}
 
-LoadedImage* DecoyLoader::make_image() {
-    auto* img = new LoadedImage();
+std::shared_ptr<LoadedImage> DecoyLoader::make_image() {
+    auto img = std::make_shared<LoadedImage>();
     img->arch = 0;
     img->name = name_;
     img->emu_path = emu_path_;

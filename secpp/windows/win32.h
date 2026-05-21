@@ -43,8 +43,8 @@ const int DLL_PROCESS_ATTACH = 1;
 const int MAX_EXPORTS_TO_EMULATE = 10;
 
 // Forward declarations
-class SessionManager;
-class COM;
+//class SessionManager;
+//class COM;
 class WindowsApi;
 class Process;
 class Module;
@@ -67,11 +67,10 @@ private:
     std::string bin_base_name;
     uint64_t stack_base;
     std::map<std::string,std::string> input;
-    std::vector<nlohmann::json> config_processes;
-    std::vector<nlohmann::json> config_system_modules;
-    std::vector<nlohmann::json> config_user_modules;
-    std::vector<nlohmann::json> symlinks;
-    std::vector<void*> config;
+    //std::vector<nlohmann::json> config_processes;
+    //std::vector<nlohmann::json> config_system_modules;
+    //std::vector<nlohmann::json> config_user_modules;
+    //std::vector<nlohmann::json> symlinks;
 
 public:
     // Python win32.py:34
@@ -133,16 +132,16 @@ public:
     //     """
     //     Initialize configured processes set in the emulator config
     //     """
-    void init_processes(const std::vector<nlohmann::json>& processes);
+    void init_processes(const std::vector<speakeasy::ProcessEntry>& processes);
     
     // Python win32.py:162
     // def load_module(self, path=None, data=None, filename=None):
-    speakeasy::RuntimeModule* load_module(const std::string& path = "", const std::vector<uint8_t>& data = {},
+    std::shared_ptr<speakeasy::RuntimeModule> load_module(const std::string& path = "", const std::vector<uint8_t>& data = {},
                       bool first_time_setup = true);
     
     // Python win32.py:223
     // def prepare_module_for_emulation(self, module, all_entrypoints, entry_point=None):
-    void prepare_module_for_emulation(speakeasy::RuntimeModule* module, bool all_entrypoints);
+    void prepare_module_for_emulation(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints);
     
     // Python win32.py:293
     // def run_module(self, module, all_entrypoints=False, emulate_children=False, entry_point=None):
@@ -152,7 +151,7 @@ public:
     //     Arguments:
     //         module: Module to emulate
     //     """
-    void run_module(speakeasy::RuntimeModule* module, bool all_entrypoints = false, bool emulate_children = false);
+    void run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints = false, bool emulate_children = false);
     
     // Python win32.py:353
     // def _init_name(self, path, data=None, filename=None):
@@ -200,7 +199,7 @@ public:
     //     """
     //     Get the system modules (e.g. drivers) that are loaded in the emulator
     //     """
-    std::vector<void*> init_sys_modules(const std::vector<nlohmann::json>& modules_config);
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> init_sys_modules(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config);
     
     // Python win32.py:572
     // def init_container_process(self):
@@ -212,7 +211,7 @@ public:
     /**
      * Get the user modules (e.g. dlls) that are loaded in the emulator
      */
-    std::vector<void*> get_user_modules();
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> get_user_modules();
     
     // Python win32.py:603
     // def exit_process(self):
@@ -284,7 +283,7 @@ public:
     // Python win32.py:500
     // def _ordered_peb_modules(self):
     //     """Order PEB modules"""
-    std::vector<void*> _ordered_peb_modules();
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> _ordered_peb_modules();
     
     // Python win32.py:523
     // def _ensure_core_dlls_loaded(self):

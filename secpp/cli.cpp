@@ -193,7 +193,7 @@ std::string emulate_binary(const std::string& target_path,
             se.run_shellcode(sc_addr, 0x4000, raw_offset);
         } else {
             // ── PE module mode (Python: load_module + run_module) ──
-            auto* module = se.load_module(target_path);
+            auto module = se.load_module(target_path);
             se.run_module(module, true, emulate_children);
         }
 

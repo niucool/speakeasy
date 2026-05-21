@@ -71,8 +71,8 @@ WindowClass::WindowClass(void* class_obj, const std::string& name)
     : wclass(class_obj), name(name) {}
 
 // SessionManager implementation
-SessionManager::SessionManager(const nlohmann::json& config) 
-    : config(config), curr_session(nullptr), curr_station(nullptr), 
+SessionManager::SessionManager(const speakeasy::SpeakeasyConfig& cfg)
+    : config(cfg), curr_session(nullptr), curr_station(nullptr), 
       curr_desktop(nullptr) {
     dev_ctx = GuiObject::curr_handle;
 
