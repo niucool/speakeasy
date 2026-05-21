@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "winemu.h"
+class WindowsEmulator;
 
 // Class to detect and attempt to mitigate API hammering as part of anti-sandbox or
 // anti-emulation in malware samples

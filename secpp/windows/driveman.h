@@ -9,6 +9,7 @@
 #include <cstdint>
 
 #include "../winenv/arch.h"
+#include "../config.h"
 
 // Forward declarations
 class DriveManager;
@@ -16,16 +17,16 @@ class DriveManager;
 // Manages the emulation of Windows drives. Currently assumes one volume per drive.
 class DriveManager {
 private:
-    std::vector<std::map<std::string, std::string>> drives;
+    const std::vector<speakeasy::DriveEntry>& drives;
     std::vector<char> drive_letters;
 
 public:
     // Constructor
-    DriveManager(const std::vector<std::map<std::string, std::string>>& config = {});
+    DriveManager(const std::vector<speakeasy::DriveEntry>& config);
     
     // Methods
-    std::vector<std::map<std::string, std::string>>::iterator walk_drives();
-    std::map<std::string, std::string>* get_drive(const std::string& root_path = "", 
+    std::vector<speakeasy::DriveEntry>::const_iterator walk_drives();
+    const speakeasy::DriveEntry* get_drive(const std::string& root_path = "",
                                                   const std::string& volume_guid_path = "");
     int get_drive_type(const std::string& root_path);
 };

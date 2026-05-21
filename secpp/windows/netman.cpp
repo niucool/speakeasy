@@ -15,9 +15,9 @@ bool is_empty(std::shared_ptr<std::stringstream> bio) {
     return current == end;
 }
 
-std::string normalize_response_path(const std::string& path) {
-    return normalize_package_path(path);
-}
+//std::string normalize_response_path(const std::string& path) {
+//    return normalize_package_path(path);
+//}
 
 // Static member initialization
 uint32_t WininetComponent::curr_handle = 0x20;

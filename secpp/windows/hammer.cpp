@@ -13,6 +13,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "winemu.h"
+
 // Default list of APIs to always allow despite triggering API hammering detection
 const std::vector<std::string> _default_api_hammer_allowlist = {
     "kernel32.WriteProcessMemory",

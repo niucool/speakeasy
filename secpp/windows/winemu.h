@@ -47,7 +47,8 @@
 #include "netman.h"
 #include "driveman.h"
 #include "cryptman.h"
-class ApiHammer;  // forward decl — hammer.h includes winemu.h (circular)
+#include "hammer.h"
+
 #include "errors.h"
 #include "../config.h"
 #include "../struct.h"

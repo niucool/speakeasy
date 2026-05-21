@@ -31,12 +31,12 @@ WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* lo
       run_complete(false), emu_complete(false),
       curr_exception_code(0), prev_pc(0), unhandled_exception_filter(0),
       fs_addr(0), gs_addr(0) {
-    //regman = new RegistryManager(config.registry);
-    //fileman = new FileManager(this);
-    //netman = new NetworkManager(this);
-    //driveman = new DriveManager(this);
-    //cryptman = new CryptoManager(this);
-    //hammer = new ApiHammer(this);
+    regman = new RegistryManager(config.registry);
+    fileman = new FileManager(config, this);
+    netman = new NetworkManager(config.network);
+    driveman = new DriveManager(config.drives);
+    cryptman = new CryptoManager();
+    hammer = new ApiHammer(this);
 }
 
 // ── Bootstrap ────────────────────────────────────────────────
