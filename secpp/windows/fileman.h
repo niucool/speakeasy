@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <sstream>
 
+#include "../config.h"
+
 // Forward declarations
 class MapView;
 class FileMap;
@@ -112,7 +114,7 @@ private:
     std::map<uint32_t, std::shared_ptr<Pipe>> pipe_handles;
     std::map<uint32_t, std::shared_ptr<FileMap>> file_maps;
 
-    std::map<std::string, std::string> config;
+    const speakeasy::SpeakeasyConfig& config;
     std::map<std::string, std::string> file_config;
     void* emu;
     std::string emulated_binname;
@@ -120,7 +122,7 @@ private:
 
 public:
     // Constructor
-    FileManager(const std::map<std::string, std::string>& config, void* emu);
+    FileManager(const speakeasy::SpeakeasyConfig& config, void* emu);
     
     // Methods
     uint32_t file_create_mapping(uint32_t hfile, const std::string& name, size_t size, int prot);

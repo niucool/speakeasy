@@ -210,14 +210,11 @@ uint32_t Pipe::get_handle() {
 }
 
 // FileManager implementation
-FileManager::FileManager(const std::map<std::string, std::string>& config, void* emu) 
-    : config(config), emu(emu) {
-    auto cit = config.find("command_line");
-    if (cit != config.end() && !cit->second.empty()) {
-        std::string cmd = cit->second;
-        auto space = cmd.find(' ');
-        emulated_binname = (space != std::string::npos) ? cmd.substr(0, space) : cmd;
-    }
+FileManager::FileManager(const speakeasy::SpeakeasyConfig& lconfig, void* emu)
+    : config(lconfig), emu(emu) {
+    std::string cmd = config.command_line;
+    auto space = cmd.find(' ');
+    emulated_binname = (space != std::string::npos) ? cmd.substr(0, space) : cmd;
 }
 
 uint32_t FileManager::file_create_mapping(uint32_t hfile, const std::string& name, size_t size, int prot) {

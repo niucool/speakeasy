@@ -404,6 +404,7 @@ void Win32Emulator::set_unhandled_exception_handler(uint64_t handler_addr) {
 // Python win32.py:535
 // def setup(self):
 void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
+    om = new ObjectManager(this);
     int my_arch = get_arch();
     _setup_gdt(my_arch);
     setup_user_shared_data();

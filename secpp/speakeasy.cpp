@@ -81,7 +81,7 @@ void Speakeasy::_auto_mount_target_directory(const std::string& path) {
         new_entries.end());
     
     // Log
-    if (logger) {
+    if (true) {
         // Simple stdout logging since we don't have Python's logger
         printf("[speakeasy] Auto-mounted %zu file(s) from %s into %s\n",
                new_entries.size(), target_dir.string().c_str(), guest_cd.c_str());
@@ -207,6 +207,9 @@ speakeasy::RuntimeModule* Speakeasy::load_module(const std::string& path, const 
     }
     if (!is_pe(test)) 
         throw SpeakeasyError("Target file is not a PE");
+    if (!path.empty())
+        _auto_mount_target_directory(path);
+
     _init_emulator(path, data);
     return emu->load_module(path, data);
 }

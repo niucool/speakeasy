@@ -11,6 +11,7 @@
 
 #include "regdefs.h"
 #include "../errors.h"
+#include "../config.h"
 
 // Forward declarations
 class RegValue;
@@ -59,12 +60,12 @@ class RegistryManager {
 private:
     std::map<uint32_t, std::shared_ptr<RegKey>> reg_handles;
     std::vector<std::shared_ptr<RegKey>> keys;
-    nlohmann::json config;
+    const speakeasy::RegistryConfig& config;
     std::vector<std::string> reg_tree;
 
 public:
     // Constructor
-    RegistryManager(const nlohmann::json& config = nullptr);
+    RegistryManager(const speakeasy::RegistryConfig& config);
     
     // Methods
     std::string normalize_reg_path(const std::string& path);

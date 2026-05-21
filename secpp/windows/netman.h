@@ -11,6 +11,7 @@
 
 #include <nlohmann/json.hpp>
 #include "errors.h"
+#include "../config.h"
 
 // Forward declarations
 class Socket;
@@ -63,7 +64,7 @@ class WininetComponent {
 protected:
     static uint32_t curr_handle;
     // Static config stored as JSON
-    static nlohmann::json config;
+    static speakeasy::NetworkConfig config;
     uint32_t handle;
 
 public:
@@ -73,8 +74,8 @@ public:
     // Methods
     uint32_t new_handle();
     uint32_t get_handle();
-    static void set_config(const nlohmann::json& cfg) { config = cfg; }
-    static nlohmann::json get_config() { return config; }
+    static void set_config(const speakeasy::NetworkConfig& cfg) { config = cfg; }
+    static speakeasy::NetworkConfig& get_config() { return config; }
 };
 
 // WinInet request object
@@ -182,13 +183,13 @@ private:
     int curr_fd;
     uint32_t curr_handle;
     // JSON config object
-    nlohmann::json config;
+    speakeasy::NetworkConfig config;
     // DNS configuration from JSON config
-    nlohmann::json dns;
+    speakeasy::DnsConfig dns;
 
 public:
     // Constructor
-    NetworkManager(const nlohmann::json& config);
+    NetworkManager(const speakeasy::NetworkConfig& config);
     
     // Methods
     std::shared_ptr<Socket> new_socket(int family, int stype, int protocol, uint32_t flags);

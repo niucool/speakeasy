@@ -496,7 +496,7 @@ public:
     // Python winemu.py:1139
     // def setup(self):
     //     """Post-init setup hook. Subclasses override."""
-    void setup() {}
+    virtual void setup(size_t stack_commit = 0, bool first_time_setup = true) = 0;
 
     // ── Object management ──────────────────────────────────────
     // Python winemu.py:1182

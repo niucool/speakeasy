@@ -152,7 +152,7 @@ std::shared_ptr<RegValue> RegKey::get_value(const std::string& val_name) {
 }
 
 // RegistryManager implementation
-RegistryManager::RegistryManager(const nlohmann::json& config) : config(config) {
+RegistryManager::RegistryManager(const speakeasy::RegistryConfig& config) : config(config) {
     // Initialize default registry keys matching Python's regdefs.get_hkey_type
     std::vector<uint32_t> hkeys = {HKEY_CLASSES_ROOT, HKEY_CURRENT_USER,
                                    HKEY_LOCAL_MACHINE, HKEY_USERS};
@@ -306,25 +306,21 @@ std::vector<std::string> RegistryManager::get_subkeys(std::shared_ptr<RegKey> ke
 std::shared_ptr<RegKey> RegistryManager::get_key_from_config(const std::string& path) {
     // See if the emulator config file contains a handler for the requested registry path
     // Matches Python: for key in self.config.get('keys', []):
-    if (config.is_null() || !config.contains("registry") || 
-        !config["registry"].is_object() || !config["registry"].contains("keys")) {
+    //if (config.is_null() || !config.contains("registry") || 
+    //    !config["registry"].is_object() || !config["registry"].contains("keys")) {
+    //    return nullptr;
+    //}
+    if(config.keys.empty()) {
         return nullptr;
     }
     
-    const auto& keys_arr = config["registry"]["keys"];
-    if (!keys_arr.is_array()) {
-        return nullptr;
-    }
+    const auto& keys_arr = config.keys;
     
     std::string lower_path = path;
     std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::tolower);
     
     for (const auto& key_entry : keys_arr) {
-        if (!key_entry.contains("path") || !key_entry["path"].is_string()) {
-            continue;
-        }
-        
-        std::string key_path = key_entry["path"].get<std::string>();
+        std::string key_path = key_entry.path;
         std::string lower_key_path = key_path;
         std::transform(lower_key_path.begin(), lower_key_path.end(), 
                        lower_key_path.begin(), ::tolower);
@@ -332,14 +328,11 @@ std::shared_ptr<RegKey> RegistryManager::get_key_from_config(const std::string& 
         if (lower_key_path == lower_path) {
             auto new_key = std::make_shared<RegKey>(path);
             
-            if (key_entry.contains("values") && key_entry["values"].is_array()) {
-                for (const auto& value_entry : key_entry["values"]) {
-                    std::string val_name = value_entry.contains("name") ? 
-                        value_entry["name"].get<std::string>() : "";
-                    std::string val_type_str = value_entry.contains("type") ? 
-                        value_entry["type"].get<std::string>() : "REG_SZ";
-                    std::string val_data = value_entry.contains("data") ? 
-                        value_entry["data"].get<std::string>() : "";
+            if (!key_entry.values.empty()) {
+                for (const auto& value_entry : key_entry.values) {
+                    std::string val_name = value_entry.name;
+                    std::string val_type_str = value_entry.type;
+                    std::string val_data = value_entry.data;
                     
                     int val_type = get_flag_value(val_type_str);
                     new_key->create_value(val_name, val_type, val_data);

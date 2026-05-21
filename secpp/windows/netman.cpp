@@ -22,7 +22,7 @@ std::string normalize_response_path(const std::string& path) {
 // Static member initialization
 uint32_t WininetComponent::curr_handle = 0x20;
 // Static config — starts as null JSON object
-nlohmann::json WininetComponent::config = nullptr;
+speakeasy::NetworkConfig WininetComponent::config;
 
 // Socket implementation
 Socket::Socket(int fd, int family, int stype, int protocol, uint32_t flags)
@@ -233,17 +233,11 @@ std::shared_ptr<std::stringstream> WininetRequest::get_response() {
         return response;
     }
 
-    nlohmann::json cfg = WininetComponent::get_config();
-    if (cfg.is_null()) {
-        throw NetworkEmuError("No HTTP configuration supplied");
-    }
+    speakeasy::NetworkConfig& cfg = WininetComponent::get_config();
 
-    nlohmann::json http = cfg.value("http", nlohmann::json());
-    if (http.is_null() || http.empty()) {
-        throw NetworkEmuError("No HTTP configuration supplied");
-    }
+    speakeasy::HttpConfig& http = cfg.http;
 
-    nlohmann::json resps = http.value("responses", nlohmann::json::array());
+    auto& resps = http.responses;
     if (resps.empty()) {
         throw NetworkEmuError("No HTTP responses supplied");
     }
@@ -252,19 +246,19 @@ std::shared_ptr<std::stringstream> WininetRequest::get_response() {
     std::string default_resp_path;
 
     for (const auto& res : resps) {
-        std::string verb = res.value("verb", "");
+        std::string verb = res.verb;
         std::string verb_lower = verb;
         std::transform(verb_lower.begin(), verb_lower.end(), verb_lower.begin(), ::tolower);
 
         if (verb_lower == this->verb) {
-            nlohmann::json resp_files = res.value("files", nlohmann::json::array());
+            auto& resp_files = res.files;
             if (!resp_files.empty()) {
                 for (const auto& file : resp_files) {
-                    std::string mode = file.value("mode", "");
+                    std::string mode = file.mode;
                     std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
 
                     if (mode == "by_ext") {
-                        std::string ext = file.value("ext", "");
+                        std::string ext = file.ext;
                         // Extract extension from objname
                         size_t dot_pos = objname.find_last_of('.');
                         std::string obj_ext;
@@ -285,7 +279,7 @@ std::shared_ptr<std::stringstream> WininetRequest::get_response() {
                         std::transform(obj_ext_clean.begin(), obj_ext_clean.end(), obj_ext_clean.begin(), ::tolower);
 
                         if (ext_clean == obj_ext_clean) {
-                            std::string path = file.value("path", "");
+                            std::string path = file.path;
                             if (!path.empty()) {
                                 path = normalize_response_path(path);
                                 std::ifstream f(path, std::ios::binary | std::ios::ate);
@@ -301,7 +295,7 @@ std::shared_ptr<std::stringstream> WininetRequest::get_response() {
                             }
                         }
                     } else if (mode == "default") {
-                        default_resp_path = file.value("path", "");
+                        default_resp_path = file.path;
                         if (!default_resp_path.empty()) {
                             default_resp_path = normalize_response_path(default_resp_path);
                         }
@@ -400,18 +394,12 @@ std::string WininetInstance::get_user_agent() {
 }
 
 // NetworkManager implementation
-NetworkManager::NetworkManager(const nlohmann::json& config)
+NetworkManager::NetworkManager(const speakeasy::NetworkConfig& config)
     : curr_fd(4), curr_handle(0x20), config(config) {
     
     WininetComponent::set_config(config);
     
-    // Extract DNS config from network section
-    if (!config.is_null()) {
-        nlohmann::json network = config.value("network", nlohmann::json());
-        if (!network.is_null()) {
-            dns = network.value("dns", nlohmann::json());
-        }
-    }
+    dns = config.dns;
 }
 
 std::shared_ptr<Socket> NetworkManager::new_socket(int family, int stype, int protocol, uint32_t flags) {
@@ -419,31 +407,16 @@ std::shared_ptr<Socket> NetworkManager::new_socket(int family, int stype, int pr
     std::shared_ptr<Socket> sock = std::make_shared<Socket>(fd, family, stype, protocol, flags);
     curr_fd += 4;
 
-    // Fill receive queue from winsock config if available
-    if (!config.is_null()) {
-        nlohmann::json network = config.value("network", nlohmann::json());
-        if (!network.is_null()) {
-            nlohmann::json winsock = network.value("winsock", nlohmann::json());
-            if (!winsock.is_null()) {
-                nlohmann::json responses = winsock.value("responses", nlohmann::json::array());
-                if (!responses.empty()) {
-                    sock->fill_recv_queue(responses);
-                }
-            }
-        }
-    }
+    sock->fill_recv_queue(config.winsock.responses);
 
     sockets[fd] = sock;
     return sock;
 }
 
 std::string NetworkManager::name_lookup(const std::string& domain) {
-    if (dns.is_null()) {
-        return "";
-    }
 
-    nlohmann::json names = dns.value("names", nlohmann::json());
-    if (names.is_null()) {
+    auto& names = dns.names;
+    if (names.empty()) {
         return "";
     }
 
@@ -452,78 +425,28 @@ std::string NetworkManager::name_lookup(const std::string& domain) {
     std::transform(domain_lower.begin(), domain_lower.end(), domain_lower.begin(), ::tolower);
 
     // Do we have an IP for this name?
-    if (names.contains(domain_lower)) {
-        return names[domain_lower].get<std::string>();
+    for (auto& it : names) {
+        std::string name_lower = it.name;
+        std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
+        if (name_lower == domain_lower) {
+            return it.ip;
+        }
     }
     
     // Use the default IP (if any)
-    return names.value("default", "");
+    return "";
 }
 
 std::vector<uint8_t> NetworkManager::get_dns_txt(const std::string& domain) {
     /*
     Return a configured DNS TXT record (if any)
     */
-    
-    if (dns.is_null()) {
-        return std::vector<uint8_t>();
-    }
-
-    nlohmann::json txts = dns.value("txt", nlohmann::json::array());
-    if (txts.empty()) {
-        return std::vector<uint8_t>();
-    }
-
-    // Helper lambda to read TXT data from a path
-    auto read_txt_data = [](const nlohmann::json& txt) -> std::vector<uint8_t> {
-        std::string path = txt.value("path", "");
-        if (!path.empty()) {
-            path = normalize_response_path(path);
-            std::ifstream f(path, std::ios::binary | std::ios::ate);
-            if (f) {
-                std::streamsize size = f.tellg();
-                f.seekg(0, std::ios::beg);
-                std::vector<uint8_t> buf(size);
-                if (f.read(reinterpret_cast<char*>(buf.data()), size)) {
-                    return buf;
-                }
-            }
-        }
-        return std::vector<uint8_t>();
-    };
-
-    // Look for domain-specific TXT record
-    for (const auto& txt : txts) {
-        if (txt.value("name", "") == domain) {
-            return read_txt_data(txt);
-        }
-    }
-
-    // Look for default TXT record
-    for (const auto& txt : txts) {
-        if (txt.value("name", "") == "default") {
-            return read_txt_data(txt);
-        }
-    }
-
-    return std::vector<uint8_t>();
+    //TODO:
+    return {};
 }
 
 std::string NetworkManager::ip_lookup(const std::string& ip) {
-    if (dns.is_null()) {
-        return "";
-    }
-
-    // Look through DNS names for matching IP
-    nlohmann::json names = dns.value("names", nlohmann::json());
-    if (!names.is_null()) {
-        for (auto it = names.begin(); it != names.end(); ++it) {
-            if (it.value().get<std::string>() == ip) {
-                return it.key();
-            }
-        }
-    }
-
+    //TODO: Implement reverse IP lookup if needed
     return "";
 }
 
