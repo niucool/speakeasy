@@ -10,7 +10,7 @@
  */
 MemMap::MemMap(uint64_t base, uint64_t size, const std::string& tag, uint32_t prot,
                uint32_t flags, uint64_t block_base, uint64_t block_size,
-               bool shared, Process* process)
+               bool shared, std::shared_ptr<Process> process)
     : base(base), size(size), prot(prot), flags(flags), shared(shared),
       free(false), process(process), block_base(block_base), block_size(block_size) {
 
@@ -43,14 +43,14 @@ void MemMap::update_tag(const std::string& new_tag) {
 /**
  * Get the process object associated with a memory map
  */
-Process* MemMap::get_process() const {
+std::shared_ptr<Process> MemMap::get_process() const {
     return this->process;
 }
 
 /**
  * Set the process object associated with a memory map
  */
-void MemMap::set_process(Process* process) {
+void MemMap::set_process(std::shared_ptr<Process> process) {
     this->process = process;
 }
 
@@ -152,7 +152,7 @@ void MemoryManager::_hook_mem_map_dispatch(std::shared_ptr<MemMap> mm) {
 /**
  * Get current process
  */
-Process* MemoryManager::get_current_process() {
+std::shared_ptr<Process> MemoryManager::get_current_process() {
     return this->current_process;
 }
 
@@ -161,7 +161,7 @@ Process* MemoryManager::get_current_process() {
  */
 uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
                                 const std::string& tag, uint32_t flags, bool shared,
-                                Process* process) {
+                                std::shared_ptr<Process> process) {
     
     if (!process && !tag.empty() && tag.substr(0, 3) != "emu") {
         process = get_current_process();

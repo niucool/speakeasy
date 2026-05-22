@@ -181,7 +181,7 @@ public:
     //     """
     //     Allocate memory for the Process Environment Block (PEB)
     //     """
-    void alloc_peb(Process* proc) override;
+    void alloc_peb(std::shared_ptr<Process> proc) override;
     
     // Python win32.py:529
     // def set_unhandled_exception_handler(self, handler_addr):

@@ -20,15 +20,14 @@ WinKernelEmulator::WinKernelEmulator(const speakeasy::SpeakeasyConfig& cfg,
     kernel_mode_ = true;
 }
 
-Process* WinKernelEmulator::get_system_process() {
-    for (auto* ptr : processes_) {
-        auto* proc = static_cast<Process*>(ptr);
+std::shared_ptr<Process> WinKernelEmulator::get_system_process() {
+    for (auto& proc : processes_) {
         if (proc->get_pid() == 4) return proc;
     }
     // Create SYSTEM process (PID 4)
-    auto* proc = new Process(static_cast<void*>(this));
+    auto proc = std::make_shared<Process>(static_cast<void*>(this));
     proc->set_id(4);
-    processes_.push_back(static_cast<void*>(proc));
+    processes_.push_back(proc);
     return proc;
 }
 
@@ -48,7 +47,7 @@ uint64_t WinKernelEmulator::pool_alloc(int pooltype, size_t size, const std::str
     else if (pooltype == 2)    pt = "NonPagedPoolNx";
     else                       pt = "unk";
     std::string mem_tag = "api.pool." + pt + "." + tag;
-    Process* system_proc = get_system_process();
+    std::shared_ptr<Process> system_proc = get_system_process();
     uint64_t addr = static_cast<MemoryManager*>(this)->mem_map(size, 0, PERM_MEM_RWX, mem_tag, 0, false, system_proc);
     pool_allocs_.push_back({addr, pooltype, size, tag});
     return addr;
@@ -187,9 +186,9 @@ uint64_t WinKernelEmulator::irp_mj_device_control(void* drv, uint32_t ctl_code, 
 
 void WinKernelEmulator::bootstrap_object_services() {
     if (processes_.empty()) {
-        auto* sys_proc = new Process(static_cast<void*>(this));
+        auto sys_proc = std::make_shared<Process>(static_cast<void*>(this));
         sys_proc->set_id(4);
-        processes_.push_back(static_cast<void*>(sys_proc));
+        processes_.push_back(sys_proc);
         Thread sys_thread(static_cast<void*>(this));
         sys_proc->threads.push_back(sys_thread);
     }
@@ -226,8 +225,7 @@ void WinKernelEmulator::on_emu_complete() {
     for (auto* drv : drivers_) delete drv;
     drivers_.clear();
 
-    // Clear process list
-    for (auto* proc : processes_) delete static_cast<Process*>(proc);
+    // Clear process list (automatically cleaned up by std::shared_ptr)
     processes_.clear();
 }
 

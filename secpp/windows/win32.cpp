@@ -104,7 +104,12 @@ std::vector<void*> Win32Emulator::get_processes() {
     if (processes.size() <= 1) {
         init_processes(config.processes);
     }
-    return std::vector<void*>(processes.begin(), processes.end());
+    std::vector<void*> result;
+    result.reserve(processes.size());
+    for (const auto& proc : processes) {
+        result.push_back(proc.get());
+    }
+    return result;
 }
 
 // Python win32.py:140
@@ -115,8 +120,8 @@ std::vector<void*> Win32Emulator::get_processes() {
 void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& processes) {
     // Python win32.py:140-160 — initialize configured processes from emulator config
     for (const auto& proc : processes) {
-        auto* p = new Process(reinterpret_cast<void*>(this));
-        add_object(p);
+        auto p = std::make_shared<Process>(reinterpret_cast<void*>(this));
+        add_object(p.get());
         
         // p->name set via Process constructor
         if (proc.pid) p->id = proc.pid;
@@ -231,7 +236,7 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
 void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, bool emulate_children) {
     prepare_module_for_emulation(module, all_entrypoints);
     if (processes.empty()) {
-        auto* p = new Process(this, module);
+        auto p = std::make_shared<Process>(this, module);
         p->path = module->emu_path;
         p->base = module->base;
         curr_process = p;
@@ -243,13 +248,13 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
         curr_process->threads.push_back(*t);
     curr_thread = t;
     alloc_peb(curr_process);
-    init_teb(t, curr_process);
+    init_teb(t, curr_process.get());
     start();
     while (emulate_children && !child_processes.empty()) {
         auto child = child_processes.front();
         child_processes.erase(child_processes.begin());
         prepare_module_for_emulation(child->pe, all_entrypoints);
-        curr_process = static_cast<Process*>(child);
+        curr_process = child;
         curr_thread = &child->threads[0];  // child process thread deferred
         start();
     }
@@ -311,14 +316,14 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
     run->start_addr = sc_addr + offset;
     add_run(run);
     if (processes.empty()) {
-        auto* p = new Process(this);
+        auto p = std::make_shared<Process>(this);
         processes.push_back(p);
         curr_process = p;
     }
     auto* t = new Thread();
     
     
-    if (curr_process) static_cast<Process*>(curr_process)->threads.push_back(*t);
+    if (curr_process) curr_process->threads.push_back(*t);
     curr_thread = t;
     start();
 }
@@ -328,7 +333,7 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
 //     """
 //     Allocate memory for the Process Environment Block (PEB)
 //     """
-void Win32Emulator::alloc_peb(Process* proc) {
+void Win32Emulator::alloc_peb(std::shared_ptr<Process> proc) {
     if (!proc) return;
     if (proc->is_peb_active) return;
 
@@ -443,10 +448,12 @@ void* Win32Emulator::init_container_process() {
             uint64_t base = p.base;
             std::string cmd_line = p.command_line.empty() ? "" : p.command_line;
             
-            auto* proc = new Process(reinterpret_cast<void*>(this), nullptr,
-                                     {}, name, emu_path,
-                                     cmd_line, static_cast<int>(base), 0);
-            return proc;
+            auto proc = std::make_shared<Process>((void *)this, nullptr,
+                                     std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{}, name, emu_path,
+                                     cmd_line, base, 0);
+            curr_process = proc;
+            processes.push_back(proc);
+            return proc.get();
         }
     }
     return nullptr;
@@ -482,7 +489,7 @@ bool Win32Emulator::_hook_mem_unmapped(void* emu, int access, uint64_t address,
     // memory unmapped hook routed to base class
     // Check if invalid read falls within PEB LDR data range (needs re-init)
     if (access == INVALID_MEM_READ) {
-        Process* proc = get_current_process();
+        std::shared_ptr<Process> proc = get_current_process();
         if (proc && proc->peb_ldr_data) {
             uint64_t pld_addr = reinterpret_cast<uint64_t>(proc->peb_ldr_data);
             // PEB_LDR_DATA struct size varies by arch (~45 bytes x86, ~81 x64)

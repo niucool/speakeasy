@@ -41,12 +41,19 @@ public:
     // ── WindowsEmulator pure-virtual overrides ────────────────
     void on_run_complete() override;
     void on_emu_complete() override;
-    void alloc_peb(Process* proc) override {}
+    void alloc_peb(std::shared_ptr<Process> proc) override {}
 
     // ── System ────────────────────────────────────────────────
     uint64_t get_system_time() const { return system_time_; }
-    Process* get_system_process();
-    std::vector<void*> get_processes() { return processes_; }
+    std::shared_ptr<Process> get_system_process();
+    std::vector<void*> get_processes() {
+        std::vector<void*> result;
+        result.reserve(processes_.size());
+        for (const auto& proc : processes_) {
+            result.push_back(proc.get());
+        }
+        return result;
+    }
     int get_current_irql() const { return irql_; }
     void set_current_irql(int irql) { irql_ = irql; }
 
@@ -90,7 +97,7 @@ private:
     bool kernel_mode_ = true;
     int irql_ = 0;
     uint64_t system_time_ = SYSTEM_TIME_START;
-    std::vector<void*> processes_;
+    std::vector<std::shared_ptr<Process>> processes_;
     std::vector<Driver*> drivers_;
     std::vector<std::tuple<uint64_t, int, size_t, std::string>> pool_allocs_;
 };

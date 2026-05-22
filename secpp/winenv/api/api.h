@@ -71,7 +71,7 @@ public:
     
     // Memory allocation methods
     uint64_t pool_alloc(int pool_type, size_t size, const std::string& tag);
-    uint64_t heap_alloc(size_t size, uint64_t heap);
+    uint64_t heap_alloc(size_t size, const std::string& heap);
     uint64_t mem_alloc(size_t size, uint64_t base = 0, const std::string& tag = "", 
                        int flags = 0, int perms = 0, bool shared = false, void* process = nullptr);
     bool mem_free(uint64_t addr);

@@ -20,6 +20,7 @@
 #include <stdexcept>
 
 #include "../../windows/winemu.h"   // WindowsEmulator
+#include "../../windows/win32.h"   // WindowsEmulator
 #include "../../profiler.h"         // Run, Profiler
 #include "../../struct.h"           // EmuStruct
 #include "../../winenv/arch.h"      // ARCH_X86, ARCH_AMD64
@@ -27,6 +28,10 @@
 using namespace speakeasy;
 
 // ── Helper: emu() returns typed pointer ───────────────────────
+
+static inline Win32Emulator* winemu32(void* raw) {
+    return static_cast<Win32Emulator*>(raw);
+}
 
 static inline WindowsEmulator* winemu(void* raw) {
     return static_cast<WindowsEmulator*>(raw);
@@ -165,16 +170,19 @@ uint64_t ApiHandler::pool_alloc(int pool_type, size_t size, const std::string& t
     return winemu(emu)->mem_map(size, 0, 4, tag);
 }
 
-uint64_t ApiHandler::heap_alloc(size_t size, uint64_t heap) {
-    (void)heap;
-    return winemu(emu)->mem_map(size, 0, 4, "heap");
+uint64_t ApiHandler::heap_alloc(size_t size, const std::string& heap) {
+    return winemu32(emu)->heap_alloc(size, heap);
 }
 
-uint64_t ApiHandler::mem_alloc(size_t size, uint64_t base, const std::string& tag,
+uint64_t ApiHandler::mem_alloc(size_t size, uint64_t base, const std::string& tag, 
                                int flags, int perms, bool shared, void* process) {
+    std::shared_ptr<Process> proc_ptr = nullptr;
+    if (process) {
+        proc_ptr = winemu(emu)->find_process(process);
+    }
     return winemu(emu)->mem_map(size, base, static_cast<uint32_t>(perms), tag,
                                 static_cast<uint32_t>(flags), shared,
-                                static_cast<Process*>(process));
+                                proc_ptr);
 }
 
 bool ApiHandler::mem_free(uint64_t addr) {
@@ -429,12 +437,12 @@ size_t ApiHandler::mem_write(uint64_t addr, const std::vector<uint8_t>& data) {
 
 void* ApiHandler::create_thread(uint64_t addr, void* ctx, void* hproc,
                                 const std::string& thread_type, bool is_suspended) {
-    return winemu(emu)->create_thread(addr, ctx, hproc, thread_type, is_suspended);
+    auto proc = winemu(emu)->find_process(hproc);
+    if (!proc) {
+        proc = winemu(emu)->get_current_process();
+    }
+    return winemu(emu)->create_thread(addr, ctx, proc, thread_type, is_suspended);
 }
-
-// ═══════════════════════════════════════════════════════════════
-// Object Management
-// ═══════════════════════════════════════════════════════════════
 
 void* ApiHandler::get_object_from_id(int id) {
     return winemu(emu)->get_object_from_id(id);

@@ -685,11 +685,13 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
     uint64_t stk_ptr = get_stack_ptr();
     (void)stk_ptr;
 
-    // Switch process context if needed
     if (run->process_context &&
         run->process_context != get_current_process()) {
-        alloc_peb(static_cast<Process*>(run->process_context));
-        set_current_process(static_cast<Process*>(run->process_context));
+        auto proc_sp = run->process_context;
+        if (proc_sp) {
+            alloc_peb(proc_sp);
+            set_current_process(proc_sp);
+        }
     }
 
     // Reset SEH state
@@ -815,9 +817,29 @@ std::vector<std::shared_ptr<File>> WindowsEmulator::get_dropped_files() {
 
 // ── Process / thread ─────────────────────────────────────────
 // Python winemu.py:635
-// def get_processes(self):
-//     """Get the current processes that exist in the emulation space"""
-std::vector<void*> WindowsEmulator::get_processes() { return std::vector<void*>(processes.begin(), processes.end()); }
+std::vector<void*> WindowsEmulator::get_processes() {
+    std::vector<void*> result;
+    result.reserve(processes.size());
+    for (const auto& proc : processes) {
+        result.push_back(proc.get());
+    }
+    return result;
+}
+
+std::shared_ptr<Process> WindowsEmulator::find_process(void* proc_ptr) {
+    if (!proc_ptr) return nullptr;
+    for (const auto& proc : processes) {
+        if (proc.get() == proc_ptr) {
+            return proc;
+        }
+    }
+    for (const auto& proc : child_processes) {
+        if (proc.get() == proc_ptr) {
+            return proc;
+        }
+    }
+    return nullptr;
+}
 // Python winemu.py:643
 // def kill_process(self, proc):
 //     """Terminate a process (i.e. remove it from the known process list)"""
@@ -1056,10 +1078,9 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::get_peb_
 // def init_peb(self, user_mods, proc=None):
 //     """Initialize the Process Environment Block"""
 
-void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& user_mods, Process* proc) {
-    void* p = proc ? proc : curr_process;
-    if (!p) return;
-    auto* process = static_cast<Process*>(p);
+void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& user_mods, std::shared_ptr<Process> proc) {
+    std::shared_ptr<Process> process = proc ? proc : curr_process;
+    if (!process) return;
     uint64_t peb_addr = mem_map(0x1000, 0, PERM_MEM_RW, "PEB");
     process->peb = reinterpret_cast<void*>(peb_addr);
     // Use the provided user_mods if non-null, otherwise use our module list
@@ -1487,12 +1508,12 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
 //     """Get the current thread that is emulating"""
 
 void* WindowsEmulator::get_current_thread() { return curr_thread; }
-Process* WindowsEmulator::get_current_process() { return curr_process; }
+std::shared_ptr<Process> WindowsEmulator::get_current_process() { return curr_process; }
 // Python winemu.py:664
 // def set_current_process(self, process):
 //     """Set the current process that is emulating"""
 
-void WindowsEmulator::set_current_process(Process* process) { curr_process = process; }
+void WindowsEmulator::set_current_process(std::shared_ptr<Process> process) { curr_process = process; }
 // Python winemu.py:670
 // def set_current_thread(self, thread):
 //     """Set the current thread"""
@@ -1518,7 +1539,7 @@ void* WindowsEmulator::create_process(const std::string& path,
             file_path = file_path.substr(1, file_path.size() - 2);
     }
 
-    auto* p = new Process(this);
+    auto p = std::make_shared<Process>(this);
 
     if (!image) {
         // Try to get PE data from emulated filesystem
@@ -1555,13 +1576,13 @@ void* WindowsEmulator::create_process(const std::string& path,
         processes.push_back(p);
     }
 
-    return p;
+    return p.get();
 }
 
 // Python winemu.py:1293
 // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
 //     """Create a thread object that will exist in the emulator"""
-void* WindowsEmulator::create_thread(uint64_t addr, void* ctx, void* proc_obj,
+void* WindowsEmulator::create_thread(uint64_t addr, void* ctx, std::shared_ptr<Process> proc_obj,
                                       const std::string& thread_type, bool is_suspended) {
     validate_object_services("thread creation");
 
@@ -1569,11 +1590,8 @@ void* WindowsEmulator::create_thread(uint64_t addr, void* ctx, void* proc_obj,
         return nullptr;
     }
 
-    auto* thread = new Thread(this);
-    if (proc_obj) {
-        auto* proc = static_cast<Process*>(proc_obj);
-        thread->set_context(ctx);
-    }
+    auto thread = std::make_shared<Thread>(this);
+    thread->set_process(proc_obj);
 
     auto run = std::make_shared<Run>();
     run->type = thread_type;
@@ -1589,7 +1607,7 @@ void* WindowsEmulator::create_thread(uint64_t addr, void* ctx, void* proc_obj,
         suspended_runs.push_back(run);
     }
 
-    return thread;
+    return thread.get();
 }
 
 // ── Module loading ───────────────────────────────────────────
@@ -1638,7 +1656,7 @@ void* WindowsEmulator::load_library(const std::string& mod_name) {
     if (!mod) return nullptr;
 
     // Add to current process PEB if available
-    auto* proc = get_current_process();
+    auto proc = get_current_process();
     if (proc && proc->peb_ldr_data) {
         proc->add_module_to_peb(mod);
     }
@@ -2787,10 +2805,9 @@ void WindowsEmulator::resume_thread(void* thread) {
 // def get_process_peb(self, process):
 //     """Get the PEB for a given process."""
 void* WindowsEmulator::get_process_peb(void* process) {
-    void* p = process ? process : curr_process;
-    if (p) {
-        auto* proc = static_cast<Process*>(p);
-        return proc->peb;
+    auto proc_sp = process ? find_process(process) : curr_process;
+    if (proc_sp) {
+        return proc_sp->peb;
     }
     return nullptr;
 }

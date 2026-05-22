@@ -624,14 +624,14 @@ std::vector<void*> Process::ldr_entries;
 Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
     const std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules,
                  const std::string& name, const std::string& path,
-                 const std::string& cmdline, int base, int session)
+                 const std::string& cmdline, uint64_t basel, int session)
     : KernelObject(emu),
       modules(user_modules), cmdline(cmdline),
       session(session), token(emu),
       pe(pe), pe_data(nullptr),
       stdin_handle(0), stdout_handle(0), stderr_handle(0),
       peb(nullptr), peb_ldr_data(nullptr), is_peb_active(false),
-      path(path), base(base) {
+      path(path), base(basel) {
 
     // Python: object = EPROCESS(ptr_size)
     // address = emu.mem_map(sizeof(), tag=..., perms=1, base=0xE0000000)

@@ -119,9 +119,9 @@ protected:
     bool emu_complete = false;
 
     // ── Processes ─────────────────────────────────────────────
-    std::vector<Process*> processes;
-    std::vector<Process*> child_processes;
-    Process* curr_process = nullptr;
+    std::vector<std::shared_ptr<Process>> processes;
+    std::vector<std::shared_ptr<Process>> child_processes;
+    std::shared_ptr<Process> curr_process = nullptr;
     Thread* curr_thread = nullptr;
 
     // ── Memory / hooks ────────────────────────────────────────
@@ -208,7 +208,7 @@ public:
     // @abstractmethod
     // def alloc_peb(self, proc: Any) -> None:
     //     """Allocate memory for the Process Environment Block (PEB). Subclasses must implement."""
-    virtual void alloc_peb(Process* proc) = 0;
+    virtual void alloc_peb(std::shared_ptr<Process> proc) = 0;
     // Python winemu.py:69
     // @abstractmethod
     // def init_processes(self, processes: list[Any]) -> None:
@@ -455,11 +455,12 @@ public:
     // Python winemu.py:658
     // def get_current_process(self):
     //     """Get the current process that is emulating"""
-    Process* get_current_process();
+    std::shared_ptr<Process> get_current_process();
+    std::shared_ptr<Process> find_process(void* proc_ptr);
     // Python winemu.py:664
     // def set_current_process(self, process):
-    //     """Set the current process that is emulating"""
-    void set_current_process(Process* process);
+    //     // """Set the current process that is emulating"""
+    void set_current_process(std::shared_ptr<Process> process);
     // Python winemu.py:670
     // def set_current_thread(self, thread):
     //     """Set the current thread"""
@@ -551,7 +552,7 @@ public:
     // Python winemu.py:760
     // def init_peb(self, user_mods, proc=None):
     //     """Initialize the Process Environment Block"""
-    void init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& user_mods, Process* proc);
+    void init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& user_mods, std::shared_ptr<Process> proc);
     // Python winemu.py:771
     // def init_teb(self, thread, peb):
     //     """Initialize the Thread Information Block"""
@@ -782,7 +783,7 @@ public:
     // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
     //     """Create a thread object that will exist in the emulator.
     //     NOT YET PORTED — stub only."""
-    void* create_thread(uint64_t addr, void* ctx, void* proc_obj,
+    void* create_thread(uint64_t addr, void* ctx, std::shared_ptr<Process> proc_obj,
                         const std::string& thread_type = "thread", bool is_suspended = false);
     // Python winemu.py:1322
     // def resume_thread(self, thread):

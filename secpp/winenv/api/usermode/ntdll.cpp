@@ -906,10 +906,16 @@ uint64_t Ntdll::NtCreateThread(void* emu, const std::string&, int,
 
     // Get the process object
     void* proc_obj = wemu->get_object_from_handle(static_cast<int>(proc_handle));
-    if (!proc_obj) proc_obj = wemu->get_current_process();
+    std::shared_ptr<Process> proc_sp;
+    if (proc_obj) {
+        proc_sp = wemu->find_process(proc_obj);
+    }
+    if (!proc_sp) {
+        proc_sp = wemu->get_current_process();
+    }
 
     // Create the thread
-    void* thread_obj = wemu->create_thread(start_addr, nullptr, proc_obj,
+    void* thread_obj = wemu->create_thread(start_addr, nullptr, proc_sp,
                                             "thread", create_suspended != 0);
     if (!thread_obj) return NT_UNSUCCESSFUL;
 
@@ -925,7 +931,7 @@ uint64_t Ntdll::NtCreateThread(void* emu, const std::string&, int,
     // Write CLIENT_ID if provided
     if (client_id_ptr != 0) {
         // UniqueProcess (ptr) + UniqueThread (ptr)
-        auto* proc = static_cast<Process*>(wemu->get_current_process());
+        std::shared_ptr<Process> proc = wemu->get_current_process();
         int pid = proc ? proc->get_pid() : 4;
         write_ptr(emu, client_id_ptr, static_cast<uint64_t>(pid));
         int tid = static_cast<int>(reinterpret_cast<uintptr_t>(thread_obj) & 0xFFFF);
@@ -1082,9 +1088,13 @@ uint64_t Ntdll::NtQueryInformationProcess(void* emu, const std::string&, int,
 
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
 
+    std::shared_ptr<Process> proc;
     void* proc_obj = wemu->get_object_from_handle(static_cast<int>(proc_handle));
-    if (!proc_obj) proc_obj = wemu->get_current_process();
-    auto* proc = static_cast<Process*>(proc_obj);
+    if (proc_obj) {
+        proc = wemu->find_process(proc_obj);
+    } else {
+        proc = wemu->get_current_process();
+    }
 
     int psz = get_ptr_size(emu);
 
@@ -1866,9 +1876,8 @@ uint64_t Ntdll::RtlNtStatusToDosError(void* emu, const std::string&, int,
 uint64_t Ntdll::CsrGetProcessId(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>&) {
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
-    void* proc = wemu->get_current_process();
-    if (proc) {
-        auto* p = static_cast<Process*>(proc);
+    auto p = wemu->get_current_process();
+    if (p) {
         return static_cast<uint64_t>(p->get_pid());
     }
     return 4; // Default PID
@@ -2204,13 +2213,12 @@ uint64_t Ntdll::RtlGetCurrentPeb(void* emu, const std::string&, int,
                                   const std::vector<uint64_t>&) {
     // PPEB RtlGetCurrentPeb();
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
-    void* proc = wemu->get_current_process();
+    auto proc = wemu->get_current_process();
     if (proc) {
-        auto* p = static_cast<Process*>(proc);
         // Get the PEB address from the process
         // The WindowsEmulator stores PEB address in the process object
         // Use the get_process_peb method
-        void* peb = wemu->get_process_peb(proc);
+        void* peb = wemu->get_process_peb(proc.get());
         return reinterpret_cast<uint64_t>(peb);
     }
     return 0;

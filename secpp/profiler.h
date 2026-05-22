@@ -34,6 +34,7 @@
 #include "struct.h"
 #include "artifacts.h"
 #include "report.h"
+#include "windows/objman.h"
 
 const std::string __report_version__ = "3.0.0";
 
@@ -88,8 +89,8 @@ public:
     // Python:105 — self.section_access: dict[tuple[int, int], MemAccess] = {} — NOT PORTED
     std::map<std::string,std::vector<std::map<std::string,std::string>>> dyn_code; // Python:106
     std::set<uint64_t> base_addrs;                                 // Python:106
-    void* process_context = nullptr;   // Python:107
-    void* thread = nullptr;            // Python:108
+    std::shared_ptr<Process> process_context = nullptr;   // Python:107
+    std::shared_ptr<Thread> thread = nullptr;            // Python:108
     std::vector<std::string> unique_apis;                          // Python:109
     std::string api_hash_data;         // Python:110 accumulated lowercase names (SHA-256)
     // Python:111 — self.stack: MemAccess | None = None — stored externally

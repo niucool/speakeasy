@@ -1073,7 +1073,7 @@ uint64_t Ntoskrnl::IoGetCurrentProcess(void* e, const std::string&, int, const s
     // PEPROCESS IoGetCurrentProcess()
     (void)a;
     // Return current process pointer
-    return reinterpret_cast<uint64_t>(we(e)->get_current_process());
+    return reinterpret_cast<uint64_t>(we(e)->get_current_process().get());
 }
 
 uint64_t Ntoskrnl::IoWMIRegistrationControl(void* e, const std::string&, int, const std::vector<uint64_t>& a) {

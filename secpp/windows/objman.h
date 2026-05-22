@@ -90,7 +90,7 @@ public:
 class KernelObject {
 protected:
     void* emu;
-    int address;
+    uint64_t address;
     std::string name;
     void* object;
     int arch;
@@ -199,6 +199,7 @@ public:
     IoStackLocation get_curr_stack_loc();
 };
 
+class Process;  // Forward declaration for circular dependency with Thread
 /**
  * Represents a Windows ETHREAD object that describes an OS level thread
  */
@@ -216,6 +217,7 @@ private:
     int last_error;
     int stack_base;
     int stack_commit;
+    std::shared_ptr<Process> process;
 
 public:
     Thread(void* emu, int stack_base = 0, int stack_commit = 0);
@@ -225,6 +227,8 @@ public:
     SEH get_seh();
     void* get_context();
     void set_context(void* ctx);
+    std::shared_ptr<Process> get_process() { return process; }
+    void set_process(std::shared_ptr<Process> proc) { process = proc; } 
     void init_teb(int teb_addr, int peb_addr);
     void* get_teb();
     void set_last_error(int code);
@@ -271,14 +275,14 @@ public:
     std::string path;
     std::string image;
     std::string title;
-    int base;
+    uint64_t base;
 
 public:
     Process(void* emu, 
         std::shared_ptr<speakeasy::RuntimeModule> pe = nullptr,
         const std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules = {},
             const std::string& name = "", const std::string& path = "",
-            const std::string& cmdline = "", int base = 0, int session = 0);
+            const std::string& cmdline = "", uint64_t base = 0, int session = 0);
 
     void* get_peb();
     void set_peb_ldr_address(int addr);

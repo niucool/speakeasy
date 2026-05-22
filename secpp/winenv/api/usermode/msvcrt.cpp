@@ -1363,7 +1363,7 @@ uint64_t Msvcrt::_beginthreadex(void* e, const std::string&, int, const std::vec
     uint64_t start_address = a.size() > 2 ? a[2] : 0;
     uint64_t arglist       = a.size() > 3 ? a[3] : 0;
     uint64_t thrdaddr      = a.size() > 5 ? a[5] : 0;
-    auto* proc = we(e)->get_current_process();
+    auto proc = we(e)->get_current_process();
     auto* thread = we(e)->create_thread(start_address, reinterpret_cast<void*>(arglist), proc);
     if (thrdaddr && thread) {
         // Write thread ID
@@ -1378,7 +1378,7 @@ uint64_t Msvcrt::_beginthread(void* e, const std::string&, int, const std::vecto
     // start_address, stack_size, arglist
     uint64_t start_address = a.size() > 0 ? a[0] : 0;
     uint64_t arglist       = a.size() > 2 ? a[2] : 0;
-    auto* proc = we(e)->get_current_process();
+    auto proc = we(e)->get_current_process();
     auto* thread = we(e)->create_thread(start_address, reinterpret_cast<void*>(arglist), proc);
     return reinterpret_cast<uint64_t>(thread);
 }

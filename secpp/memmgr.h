@@ -29,7 +29,7 @@ private:
     uint32_t flags;
     bool shared;
     bool free;
-    Process* process;
+    std::shared_ptr<Process> process;
     uint64_t block_base;
     uint64_t block_size;
 
@@ -39,7 +39,7 @@ public:
      */
     MemMap(uint64_t base, uint64_t size, const std::string& tag, uint32_t prot, 
            uint32_t flags, uint64_t block_base, uint64_t block_size,
-           bool shared = false, Process* process = nullptr);
+           bool shared = false, std::shared_ptr<Process> process = nullptr);
 
     /**
      * Set the tag for the memory mapping
@@ -49,12 +49,12 @@ public:
     /**
      * Get the process object associated with a memory map
      */
-    Process* get_process() const;
+    std::shared_ptr<Process> get_process() const;
 
     /**
      * Set the process object associated with a memory map
      */
-    void set_process(Process* process);
+    void set_process(std::shared_ptr<Process> process);
 
     /**
      * Get the tag for the memory mapping
@@ -122,7 +122,7 @@ private:
     // Assuming these would be defined elsewhere
     void* emu_eng;
     void* hooks;
-    Process* current_process;
+    std::shared_ptr<Process> current_process;
 
     /**
      * Dispatch memory map hooks
@@ -132,7 +132,7 @@ private:
     /**
      * Get current process
      */
-    Process* get_current_process();
+    std::shared_ptr<Process> get_current_process();
 
     /**
      * Remove an entire memory region that may not have blocks allocated within it
@@ -155,7 +155,7 @@ public:
      */
     uint64_t mem_map(uint64_t size, uint64_t base = 0, uint32_t perms = common::PERM_MEM_RWX,
                      const std::string& tag = "", uint32_t flags = 0, bool shared = false,
-                     Process* process = nullptr);
+                     std::shared_ptr<Process> process = nullptr);
 
     /**
      * Free a block of memory, if all blocks in a block are set to free, unmap the entire block

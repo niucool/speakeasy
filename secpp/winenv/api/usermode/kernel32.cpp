@@ -999,9 +999,8 @@ uint64_t Kernel32::GetModuleHandleA(void* emu, const std::string&, int,
                                      const std::vector<uint64_t>& argv) {
     uint64_t mod_name_ptr = argv[0];
     if (!mod_name_ptr) {
-        void* proc = we(emu)->get_current_process();
-        if (proc) {
-            auto* p = static_cast<Process*>(proc);
+        auto p = we(emu)->get_current_process();
+        if (p) {
             return static_cast<uint64_t>(p->base);
         }
         return 0;
@@ -1030,9 +1029,8 @@ uint64_t Kernel32::GetModuleHandleW(void* emu, const std::string&, int,
                                      const std::vector<uint64_t>& argv) {
     uint64_t mod_name_ptr = argv[0];
     if (!mod_name_ptr) {
-        void* proc = we(emu)->get_current_process();
-        if (proc) {
-            auto* p = static_cast<Process*>(proc);
+        auto p = we(emu)->get_current_process();
+        if (p) {
             return static_cast<uint64_t>(p->base);
         }
         return 0;
@@ -1065,9 +1063,8 @@ uint64_t Kernel32::GetModuleFileNameA(void* emu, const std::string&, int,
     if (!buf_ptr || buf_sz == 0) return 0;
     std::string filename;
     if (hMod == 0) {
-        void* proc = we(emu)->get_current_process();
-        if (proc) {
-            auto* p = static_cast<Process*>(proc);
+        auto p = we(emu)->get_current_process();
+        if (p) {
             filename = p->path;
         }
     } else {
@@ -1123,14 +1120,14 @@ uint64_t Kernel32::CreateProcessA(void* emu, const std::string&, int,
         w32(emu)->set_last_error(K32_ERR_FILE_NOT_FOUND);
         return 0;
     }
-    auto* p = static_cast<Process*>(proc);
-    auto* threads = &p->threads;
+    auto p = we(emu)->find_process(proc);
+    auto* threads = p ? &p->threads : nullptr;
     int proc_handle = we(emu)->get_object_handle(proc);
     int thread_handle = 0;
     if (threads && !threads->empty()) {
         thread_handle = we(emu)->get_object_handle(&(*threads)[0]);
     }
-    if (pi_ptr) {
+    if (pi_ptr && p) {
         std::vector<uint8_t> pi_buf(static_cast<size_t>(ptr_sz(emu) == 8 ? 24 : 16), 0);
         write_le(pi_buf, 0, static_cast<uint64_t>(proc_handle), static_cast<size_t>(ptr_sz(emu)));
         write_le(pi_buf, static_cast<size_t>(ptr_sz(emu)), static_cast<uint64_t>(thread_handle), static_cast<size_t>(ptr_sz(emu)));
@@ -1151,12 +1148,12 @@ uint64_t Kernel32::OpenProcess(void* emu, const std::string&, int,
     (void)access; (void)inherit;
     auto procs = we(emu)->get_processes();
     for (auto p : procs) {
-        auto* proc = static_cast<Process*>(p);
-        if (static_cast<uint32_t>(proc->get_pid()) == pid) {
-            int h = we(emu)->get_object_handle(proc);
+        auto proc = we(emu)->find_process(p);
+        if (proc && static_cast<uint32_t>(proc->get_pid()) == pid) {
+            int h = we(emu)->get_object_handle(p);
             if (h == 0) {
-                we(emu)->add_object(proc);
-                h = we(emu)->get_object_handle(proc);
+                we(emu)->add_object(p);
+                h = we(emu)->get_object_handle(p);
             }
             if (h) {
                 w32(emu)->set_last_error(K32_ERR_SUCCESS);
@@ -1184,9 +1181,9 @@ uint64_t Kernel32::GetCurrentProcess(void* emu, const std::string&, int,
 
 uint64_t Kernel32::GetCurrentProcessId(void* emu, const std::string&, int,
                                         const std::vector<uint64_t>&) {
-    void* proc = we(emu)->get_current_process();
+    auto proc = we(emu)->get_current_process();
     if (proc) {
-        return static_cast<uint64_t>(static_cast<Process*>(proc)->get_pid());
+        return static_cast<uint64_t>(proc->get_pid());
     }
     return 0;
 }
@@ -1208,7 +1205,7 @@ uint64_t Kernel32::CreateThread(void* emu, const std::string&, int,
     uint32_t flags = static_cast<uint32_t>(argv[4]);
     uint64_t tid_ptr = argv[5];
     (void)attrs; (void)stack_sz;
-    void* proc = we(emu)->get_current_process();
+    auto proc = we(emu)->get_current_process();
     bool suspended = (flags & 0x00000004) != 0;
     void* thread = we(emu)->create_thread(start_addr, reinterpret_cast<void*>(param), proc, "thread", suspended);
     if (!thread) return 0;
@@ -1233,7 +1230,7 @@ uint64_t Kernel32::CreateRemoteThread(void* emu, const std::string&, int,
     uint32_t flags = static_cast<uint32_t>(argv[5]);
     uint64_t tid_ptr = argv[6];
     (void)hProcess; (void)attrs; (void)stack_sz;
-    void* proc = we(emu)->get_current_process();
+    auto proc = we(emu)->get_current_process();
     bool suspended = (flags & 0x00000004) != 0;
     void* thread = we(emu)->create_thread(start_addr, reinterpret_cast<void*>(param), proc, "injected_thread", suspended);
     if (!thread) return 0;
@@ -2071,7 +2068,8 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, const std::string&, int,
         void* proc_obj = nullptr;
         auto procs = we(emu)->get_processes();
         for (auto p : procs) {
-            if (pid == 0 || static_cast<Process*>(p)->get_pid() == static_cast<int>(pid)) {
+            auto proc = we(emu)->find_process(p);
+            if (proc && (pid == 0 || proc->get_pid() == static_cast<int>(pid))) {
                 proc_obj = p;
                 break;
             }
@@ -2081,9 +2079,11 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, const std::string&, int,
         se.items.clear();
         se.pid = static_cast<int>(pid);
         if (proc_obj) {
-            auto* p = static_cast<Process*>(proc_obj);
-            for (auto& t : p->threads) {
-                se.items.push_back(&t);
+            auto p = we(emu)->find_process(proc_obj);
+            if (p) {
+                for (auto& t : p->threads) {
+                    se.items.push_back(&t);
+                }
             }
         }
         entries[K32_TH32CS_SNAPTHREAD] = se;
@@ -2122,7 +2122,8 @@ static uint64_t process32_impl(void* emu, const std::vector<uint64_t>& argv, boo
     size_t struct_sz = 4 + 4 + 4 + static_cast<size_t>(ps) + 4 + 4 + 4 + 4 + 4 + 260;
     std::vector<uint8_t> buf(struct_sz, 0);
     write_le(buf, 0, static_cast<uint32_t>(struct_sz), 4);
-    auto* proc = static_cast<Process*>(entry.items[static_cast<size_t>(idx)]);
+    auto proc = we(emu)->find_process(entry.items[static_cast<size_t>(idx)]);
+    if (!proc) return 0;
     write_le(buf, 8, static_cast<uint32_t>(proc->get_pid()), 4);
     std::string exe = proc->image.empty() ? "emulated.exe" : proc->image;
     size_t exe_off = struct_sz - 260;
