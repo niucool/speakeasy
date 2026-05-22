@@ -80,14 +80,16 @@ static int pefile_sec_cb(void* cbd, const peparse::VA& sec_base,
                          const std::string& sec_name,
                          const peparse::image_section_header& sec,
                          const peparse::bounded_buffer* sec_data) {
+    (void)sec_name;
     auto* ctx = static_cast<PeSectionCtx*>(cbd);
     PeSection s;
     s.name = std::string((const char*)sec.Name, 8);
     auto nul = s.name.find('\0');
     if (nul != std::string::npos) s.name.erase(nul);
-    s.virtual_address = sec_base - ctx->image_base;
+    s.virtual_address = static_cast<uint32_t>(sec_base - ctx->image_base);
     s.virtual_size = sec.Misc.VirtualSize;
     s.raw_size = sec.SizeOfRawData;
+    s.pointer_to_raw_data = sec.PointerToRawData;
     ctx->sections.push_back(s);
     (void)sec_data;
     return 0;
@@ -102,28 +104,27 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
       path(path), emu_path(emu_path), parsed_pe(nullptr) {
     (void)fast_load;
     // Load PE data
-    std::vector<uint8_t> pe_data;
     if (!data.empty()) {
-        pe_data = data;
+        raw_pe_data = data;
         file_size = data.size();
     } else {
         std::ifstream f(path, std::ios::binary | std::ios::ate);
         if (!f.is_open()) throw PeParseException("Cannot open: " + path);
         file_size = f.tellg();
         f.seekg(0);
-        pe_data.resize(file_size);
-        f.read((char*)pe_data.data(), file_size);
+        raw_pe_data.resize(file_size);
+        f.read((char*)raw_pe_data.data(), file_size);
     }
     
     try {
         // Parse with pe-parse
         parsed_pe = peparse::ParsePEFromPointer(
-            const_cast<uint8_t*>(pe_data.data()),
-            static_cast<uint32_t>(pe_data.size()));
+            const_cast<uint8_t*>(raw_pe_data.data()),
+            static_cast<uint32_t>(raw_pe_data.size()));
         if (!parsed_pe) throw PeParseException("Failed to parse PE");
         
         // Compute hash
-        hash = _hash_pe(path, pe_data);
+        hash = _hash_pe(path, raw_pe_data);
         
         // Header fields
         base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
@@ -146,7 +147,7 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
         exports = _get_pe_exports();
         
         // Mapped image
-        // GetRealImage not in pe-parse; skip mapped image
+        mapped_image = get_memory_mapped_image(0xF0000000);
         is_mapped = true;
         
         // Patch imports
@@ -196,8 +197,8 @@ std::string PeFile::get_emu_path() { return emu_path; }
 
 void PeFile::set_emu_path(const std::string& p) { emu_path = p; }
 
-std::string PeFile::_hash_pe(const std::string& path, const std::vector<uint8_t>& data) {
-    (void)path;
+std::string PeFile::_hash_pe(const std::string& pe_path, const std::vector<uint8_t>& data) {
+    (void)pe_path;
     return picosha2::hash256_hex_string(data.begin(), data.end());
 }
 
@@ -233,10 +234,10 @@ std::vector<PeSection> PeFile::get_sections() {
     return pe_sections;
 }
 
-PeSection* PeFile::get_section_by_name(const std::string& name) {
+PeSection* PeFile::get_section_by_name(const std::string& sec_name) {
     auto sects = get_sections();
     for (auto& s : sects) {
-        if (s.name == name) return &s;
+        if (s.name == sec_name) return &s;
     }
     return nullptr;
 }
@@ -261,9 +262,9 @@ void PeFile::_patch_imports() {
     }
 }
 
-uint64_t PeFile::get_export_by_name(const std::string& name) {
+uint64_t PeFile::get_export_by_name(const std::string& exp_name) {
     for (auto& e : get_exports()) {
-        if (e.name == name) return e.address;
+        if (e.name == exp_name) return e.address;
     }
     return 0;
 }
@@ -344,6 +345,120 @@ void PeFile::rebase(uint64_t to) {
     ep = 0; // re-read from PE if needed
 }
 
+std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_address, uint64_t base_addr) {
+    (void)base_addr;
+    if (!parsed_pe) {
+        return {};
+    }
+
+    uint32_t section_alignment = parsed_pe->peHeader.nt.OptionalHeader.SectionAlignment;
+    uint32_t file_alignment = parsed_pe->peHeader.nt.OptionalHeader.FileAlignment;
+
+    // Helper lambdas to match Python's pefile helper functions:
+    auto adjust_PointerToRawData = [](uint32_t val) -> uint32_t {
+        return val & ~0x1FF;
+    };
+
+    auto adjust_SectionAlignment = [](uint32_t val, uint32_t sect_align, uint32_t file_align) -> uint32_t {
+        if (sect_align < 0x1000) {
+            sect_align = file_align;
+        }
+        if (sect_align != 0 && (val % sect_align) != 0) {
+            return sect_align * (val / sect_align);
+        }
+        return val;
+    };
+
+    auto get_PointerToRawData_adj = [&](uint32_t ptr_raw, uint32_t virt_addr) -> uint32_t {
+        uint32_t ptrd = adjust_PointerToRawData(ptr_raw);
+        if (section_alignment < 0x1000) {
+            if (ptr_raw == virt_addr) {
+                ptrd = virt_addr;
+            }
+        }
+        return ptrd;
+    };
+
+    auto get_VirtualAddress_adj = [&](uint32_t virt_addr) -> uint32_t {
+        return adjust_SectionAlignment(virt_addr, section_alignment, file_alignment);
+    };
+
+    // Calculate offset (end of section table headers)
+    uint32_t e_lfanew = parsed_pe->peHeader.dos.e_lfanew;
+    uint32_t size_of_optional_header = parsed_pe->peHeader.nt.FileHeader.SizeOfOptionalHeader;
+    uint32_t sections_offset = e_lfanew + 4 + 20 + size_of_optional_header;
+    uint32_t offset = sections_offset + static_cast<uint32_t>(pe_sections.size()) * 40;
+
+    // Find lowest_section_offset
+    uint32_t lowest_section_offset = 0;
+    bool has_lowest = false;
+    for (auto& s : pe_sections) {
+        if (s.pointer_to_raw_data > 0) {
+            uint32_t adj_ptr = adjust_PointerToRawData(s.pointer_to_raw_data);
+            if (!has_lowest || adj_ptr < lowest_section_offset) {
+                lowest_section_offset = adj_ptr;
+                has_lowest = true;
+            }
+        }
+    }
+
+    uint32_t header_len = offset;
+    if (has_lowest && lowest_section_offset >= offset) {
+        header_len = lowest_section_offset;
+    }
+
+    std::vector<uint8_t> mapped_data;
+    if (header_len > raw_pe_data.size()) {
+        header_len = static_cast<uint32_t>(raw_pe_data.size());
+    }
+    mapped_data.assign(raw_pe_data.begin(), raw_pe_data.begin() + header_len);
+
+    // Map each section
+    for (auto& s : pe_sections) {
+        if (s.virtual_size == 0 && s.raw_size == 0) {
+            continue;
+        }
+
+        uint32_t srd = s.raw_size;
+        uint32_t prd = adjust_PointerToRawData(s.pointer_to_raw_data);
+        uint32_t VirtualAddress_adj = get_VirtualAddress_adj(s.virtual_address);
+
+        if (srd > raw_pe_data.size() ||
+            prd > raw_pe_data.size() ||
+            srd + prd > raw_pe_data.size() ||
+            VirtualAddress_adj >= max_virtual_address) {
+            continue;
+        }
+
+        int64_t padding_length = static_cast<int64_t>(VirtualAddress_adj) - static_cast<int64_t>(mapped_data.size());
+        if (padding_length > 0) {
+            mapped_data.insert(mapped_data.end(), padding_length, 0);
+        } else if (padding_length < 0) {
+            if (VirtualAddress_adj < mapped_data.size()) {
+                mapped_data.resize(VirtualAddress_adj);
+            }
+        }
+
+        // Get section data
+        uint32_t sec_offset = get_PointerToRawData_adj(s.pointer_to_raw_data, s.virtual_address);
+        uint32_t sec_end = sec_offset + s.raw_size;
+        if (s.pointer_to_raw_data + s.raw_size < sec_end) {
+            sec_end = s.pointer_to_raw_data + s.raw_size;
+        }
+
+        if (sec_offset < raw_pe_data.size()) {
+            if (sec_end > raw_pe_data.size()) {
+                sec_end = static_cast<uint32_t>(raw_pe_data.size());
+            }
+            if (sec_end >= sec_offset) {
+                mapped_data.insert(mapped_data.end(), raw_pe_data.begin() + sec_offset, raw_pe_data.begin() + sec_end);
+            }
+        }
+    }
+
+    return mapped_data;
+}
+
 // ── DecoyModule implementation ────────────────────────────
 DecoyModule::DecoyModule(const std::string& path, const std::vector<uint8_t>& data,
                          bool fast_load, uint64_t base, const std::string& emu_path,
@@ -365,6 +480,10 @@ uint64_t DecoyModule::get_base() { return decoy_base ? decoy_base : base; }
 bool DecoyModule::is_decoy() { return true; }
 std::string DecoyModule::get_base_name() { return base_name; }
 
+std::vector<uint8_t> DecoyModule::get_memory_mapped_image(uint64_t max_virtual_address, uint64_t base_addr) {
+    return PeFile::get_memory_mapped_image(max_virtual_address, base_addr);
+}
+
 // ── JitPeFile implementation ──────────────────────────────
 
 JitPeFile::JitPeFile(int arch)
@@ -373,9 +492,9 @@ JitPeFile::JitPeFile(int arch)
     update();
 }
 
-PeSection* JitPeFile::get_section_by_name(const std::string& name) {
+PeSection* JitPeFile::get_section_by_name(const std::string& sec_name) {
     for (auto& s : sections) {
-        if (s.name == name) return &s;
+        if (s.name == sec_name) return &s;
     }
     return nullptr;
 }

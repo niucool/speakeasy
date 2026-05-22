@@ -426,3 +426,27 @@ TEST(LoaderModuleClassificationTest, ApiModuleLoaderClassification) {
     EXPECT_FALSE(mod.is_decoy());
     EXPECT_EQ(mod.module_type, "dll");
 }
+
+// ══════════════════════════════════════════════════════════════════
+// PE File Memory Mapped Image Tests
+// ══════════════════════════════════════════════════════════════════
+
+TEST(PeFileMemoryMappedImageTest, GetMemoryMappedImage) {
+    std::string test_pe_path = "tests/bins/antidbg.exe";
+    std::vector<uint8_t> empty_data;
+    PeFile pe(test_pe_path, empty_data, 0, 0, test_pe_path, false);
+
+    auto mapped = pe.get_memory_mapped_image(0xF0000000);
+    EXPECT_GT(mapped.size(), 0);
+    EXPECT_LE(mapped.size(), pe.image_size);
+
+    auto sections = pe.get_sections();
+    EXPECT_FALSE(sections.empty());
+    for (auto& s : sections) {
+        if (s.raw_size > 0 && s.virtual_address > 0) {
+            EXPECT_LT(s.virtual_address, mapped.size());
+            EXPECT_LE(s.virtual_address + s.raw_size, mapped.size());
+        }
+    }
+}
+

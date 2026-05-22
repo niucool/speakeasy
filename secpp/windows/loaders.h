@@ -59,12 +59,12 @@ struct ImportEntry {
     std::string func_name;
 };
 
-struct ExportEntry {
-    std::string name;
-    uint64_t address = 0;
-    uint32_t ordinal = 0;
-    std::string execution_mode;  // "user" or "kernel"
-};
+// struct ExportEntry {
+//     std::string name;
+//     uint64_t address = 0;
+//     uint32_t ordinal = 0;
+//     std::string execution_mode;  // "user" or "kernel"
+// };
 
 class Loader;  // forward declaration
 struct LoadedImage {

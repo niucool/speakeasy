@@ -120,6 +120,7 @@ struct ExportEntry {
     uint64_t address;
     std::string forwarder;
     uint32_t ordinal;
+    std::string execution_mode;  // "user" or "kernel"
 };
 
 // Structure to represent a PE section
@@ -128,6 +129,7 @@ struct PeSection {
     uint32_t virtual_address;
     uint32_t virtual_size;
     uint32_t raw_size;
+    uint32_t pointer_to_raw_data = 0;
 };
 
 // Function to normalize DLL names
@@ -144,6 +146,7 @@ public:
     std::map<uint64_t, std::tuple<std::string, std::string>> imports;
     std::vector<ExportEntry> exports;
     std::vector<uint8_t> mapped_image;
+    std::vector<uint8_t> raw_pe_data;
     size_t image_size;
     std::map<uint64_t, std::tuple<std::string, std::string>> import_table;
     bool is_mapped;
@@ -167,21 +170,23 @@ public:
     virtual ~PeFile();
     
     // Methods
+    virtual std::vector<uint8_t> get_memory_mapped_image(uint64_t max_virtual_address = 0x10000000, 
+                                                         uint64_t base_addr = 0);
     peparse::parsed_pe* get_parsed_pe() { return parsed_pe; }
     std::vector<uint64_t> get_tls_callbacks();
     uint32_t get_resource_dir_rva();
     virtual std::string get_emu_path();
     void set_emu_path(const std::string& path);
-    std::string _hash_pe(const std::string& path = "", const std::vector<uint8_t>& data = {});
+    std::string _hash_pe(const std::string& pe_path = "", const std::vector<uint8_t>& data = {});
     std::map<uint64_t, std::tuple<std::string, std::string>> _get_pe_imports();
     std::vector<ExportEntry> get_exports();
     std::vector<ExportEntry> _get_pe_exports();
     std::vector<PeSection> _get_pe_sections();
     std::vector<PeSection> get_sections();
-    PeSection* get_section_by_name(const std::string& name);
+    PeSection* get_section_by_name(const std::string& sec_name);
     int _get_architecture();
     void _patch_imports();
-    uint64_t get_export_by_name(const std::string& name);
+    uint64_t get_export_by_name(const std::string& exp_name);
     std::vector<uint8_t> get_raw_data();
     int find_bytes(const std::vector<uint8_t>& pattern, int offset = 0);
     void set_bytes(int offset, const std::vector<uint8_t>& pattern);
@@ -214,7 +219,7 @@ public:
     
     // Methods
     std::vector<uint8_t> get_memory_mapped_image(uint64_t max_virtual_address = 0x10000000, 
-                                                 uint64_t base = 0);
+                                                 uint64_t base_addr = 0) override;
     uint64_t get_base() override;
     std::string get_emu_path() override;
     std::string get_base_name();
@@ -235,7 +240,7 @@ public:
     JitPeFile(int arch);
     
     // Methods
-    PeSection* get_section_by_name(const std::string& name);
+    PeSection* get_section_by_name(const std::string& sec_name);
     int get_section_count();
     std::vector<PeSection> get_sections();
     std::vector<uint8_t> get_raw_pe();
