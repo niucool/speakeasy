@@ -1125,14 +1125,14 @@ uint64_t Kernel32::CreateProcessA(void* emu, const std::string&, int,
     int proc_handle = we(emu)->get_object_handle(proc);
     int thread_handle = 0;
     if (threads && !threads->empty()) {
-        thread_handle = we(emu)->get_object_handle(&(*threads)[0]);
+        thread_handle = we(emu)->get_object_handle((*threads)[0].get());
     }
     if (pi_ptr && p) {
         std::vector<uint8_t> pi_buf(static_cast<size_t>(ptr_sz(emu) == 8 ? 24 : 16), 0);
         write_le(pi_buf, 0, static_cast<uint64_t>(proc_handle), static_cast<size_t>(ptr_sz(emu)));
         write_le(pi_buf, static_cast<size_t>(ptr_sz(emu)), static_cast<uint64_t>(thread_handle), static_cast<size_t>(ptr_sz(emu)));
         write_le(pi_buf, static_cast<size_t>(ptr_sz(emu) * 2), static_cast<uint64_t>(p->get_pid()), 4);
-        int tid = (threads && !threads->empty()) ? (*threads)[0].get_id() : 0;
+        int tid = (threads && !threads->empty()) ? (*threads)[0]->get_id() : 0;
         write_le(pi_buf, static_cast<size_t>(ptr_sz(emu) * 2 + 4), static_cast<uint64_t>(tid), 4);
         mm(emu)->mem_write(pi_ptr, pi_buf);
     }
@@ -1207,11 +1207,11 @@ uint64_t Kernel32::CreateThread(void* emu, const std::string&, int,
     (void)attrs; (void)stack_sz;
     auto proc = we(emu)->get_current_process();
     bool suspended = (flags & 0x00000004) != 0;
-    void* thread = we(emu)->create_thread(start_addr, reinterpret_cast<void*>(param), proc, "thread", suspended);
+    auto thread = we(emu)->create_thread(start_addr, reinterpret_cast<void*>(param), proc, "thread", suspended);
     if (!thread) return 0;
-    int h = we(emu)->get_object_handle(thread);
+    int h = we(emu)->get_object_handle(thread.get());
     if (tid_ptr) {
-        int tid = static_cast<Thread*>(thread)->get_id();
+        int tid = thread->get_id();
         std::vector<uint8_t> tid_buf(4);
         write_le(tid_buf, 0, static_cast<uint64_t>(tid), 4);
         mm(emu)->mem_write(tid_ptr, tid_buf);
@@ -1232,11 +1232,11 @@ uint64_t Kernel32::CreateRemoteThread(void* emu, const std::string&, int,
     (void)hProcess; (void)attrs; (void)stack_sz;
     auto proc = we(emu)->get_current_process();
     bool suspended = (flags & 0x00000004) != 0;
-    void* thread = we(emu)->create_thread(start_addr, reinterpret_cast<void*>(param), proc, "injected_thread", suspended);
+    auto thread = we(emu)->create_thread(start_addr, reinterpret_cast<void*>(param), proc, "injected_thread", suspended);
     if (!thread) return 0;
-    int h = we(emu)->get_object_handle(thread);
+    int h = we(emu)->get_object_handle(thread.get());
     if (tid_ptr) {
-        int tid = static_cast<Thread*>(thread)->get_id();
+        int tid = thread->get_id();
         std::vector<uint8_t> tid_buf(4);
         write_le(tid_buf, 0, static_cast<uint64_t>(tid), 4);
         mm(emu)->mem_write(tid_ptr, tid_buf);
@@ -1265,9 +1265,9 @@ uint64_t Kernel32::TerminateThread(void* emu, const std::string&, int,
 
 uint64_t Kernel32::GetCurrentThread(void* emu, const std::string&, int,
                                      const std::vector<uint64_t>&) {
-    void* thread = we(emu)->get_current_thread();
+    auto thread = we(emu)->get_current_thread();
     if (thread) {
-        int h = we(emu)->get_object_handle(thread);
+        int h = we(emu)->get_object_handle(thread.get());
         if (h) return static_cast<uint64_t>(h);
     }
     return static_cast<uint64_t>(-2);
@@ -1275,9 +1275,9 @@ uint64_t Kernel32::GetCurrentThread(void* emu, const std::string&, int,
 
 uint64_t Kernel32::GetCurrentThreadId(void* emu, const std::string&, int,
                                        const std::vector<uint64_t>&) {
-    void* thread = we(emu)->get_current_thread();
+    auto thread = we(emu)->get_current_thread();
     if (thread) {
-        return static_cast<uint64_t>(static_cast<Thread*>(thread)->get_id());
+        return static_cast<uint64_t>(thread->get_id());
     }
     return 0;
 }
@@ -2082,7 +2082,7 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, const std::string&, int,
             auto p = we(emu)->find_process(proc_obj);
             if (p) {
                 for (auto& t : p->threads) {
-                    se.items.push_back(&t);
+                    se.items.push_back(t.get());
                 }
             }
         }

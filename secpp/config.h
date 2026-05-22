@@ -45,6 +45,7 @@ struct ExceptionsConfig {
 struct ApiHammeringConfig {
     bool enabled = false;
     int threshold = 2000;
+    std::vector<std::string> allow_list;
 };
 
 struct SymlinkEntry {

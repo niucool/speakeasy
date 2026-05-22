@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <memory>
 
+#include "../config.h"
+
 class WindowsEmulator;
 
 // Class to detect and attempt to mitigate API hammering as part of anti-sandbox or
@@ -21,7 +23,7 @@ private:
     size_t hammer_offset;
     std::map<std::string, uint64_t> hammer_patch_cache; // patch content key -> location in hammer_memregion
 
-    std::map<std::string, std::string> config;
+    const speakeasy::ApiHammeringConfig& config;
     int api_threshold;
     bool enabled;
     std::set<std::string> allow_list;
@@ -29,7 +31,7 @@ private:
 public:
     // Constructor
     ApiHammer(WindowsEmulator* emu,
-              const std::map<std::string, std::string>& cfg = {});
+        const speakeasy::SpeakeasyConfig& cfg = {});
     
     // Methods
     bool is_allowed_api(const std::string& apiname);

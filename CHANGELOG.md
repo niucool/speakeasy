@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### 2026-05-22
+
+#### Changed
+
+- **secpp**: 将 Thread 指针生命周期管理重构为 `std::shared_ptr<Thread>`，避免多处内存泄漏并现代化线程生命周期管理。
+  - **objman.h/cpp**: 将 Process 类中的 `std::vector<Thread> threads` 修改为 `std::vector<std::shared_ptr<Thread>> threads`，`Thread curr_thread` 修改为 `std::shared_ptr<Thread> curr_thread`。
+  - **winemu.h/cpp**: 将 emulator 的 `curr_thread` 重构为 `std::shared_ptr<Thread>`，并将 `init_teb`、`init_tls`、`get_thread_context`、`load_thread_context`、`resume_thread` 等 API/辅助签名中的 `void* thread` 或 `Thread*` 统一更新为 `std::shared_ptr<Thread>`，添加 `find_thread` 和 `find_thread_by_ptr` 线程安全检索辅助函数。
+  - **win32.cpp**: 更新 `run_module` 和 `run_shellcode` 中线程对象的创建方式，由 `new Thread` 重构为 `std::make_shared<Thread>` 并正确归入 Process 的线程向量中，解决了裸指针内存泄漏。
+  - **kernel32.cpp**: 将 `CreateProcessA`、`CreateThread`、`CreateRemoteThread` 等函数中对 `Thread*` / `void* thread` 的检索和传递转换为 `std::shared_ptr<Thread>` 并在需要裸指针时获取 `.get()` 或 `->get_id()`，更新 Snapshot 线程存储。
+  - **ntdll.cpp**: 重构线程相关的 `NtCreateThread`、`NtOpenThread`、`NtGetContextThread` 函数，使用 `wemu->find_thread` 等方法实现安全的线程转换与生命周期控制。
+  - **msvcrt.cpp**: 更新 `_beginthreadex` 和 `_beginthread` 以接收 `std::shared_ptr<Thread>` 并返回 `thread.get()`，完成 C++ 线程智能指针管理的全面现代化。
+
 ### 2026-05-21
 
 #### Added

@@ -441,7 +441,8 @@ void* ApiHandler::create_thread(uint64_t addr, void* ctx, void* hproc,
     if (!proc) {
         proc = winemu(emu)->get_current_process();
     }
-    return winemu(emu)->create_thread(addr, ctx, proc, thread_type, is_suspended);
+    auto thread = winemu(emu)->create_thread(addr, ctx, proc, thread_type, is_suspended);
+    return thread.get();
 }
 
 void* ApiHandler::get_object_from_id(int id) {

@@ -59,8 +59,8 @@ private:
     uint64_t peb_addr;
     std::vector<std::tuple<uint64_t, size_t, std::string>> heap_allocs;
     std::vector<std::string> argv;
-    SessionManager* sessman;
-    COM* com;
+    std::shared_ptr<SessionManager> sessman;
+    std::shared_ptr<COM> com;
     std::string command_line;
     std::string file_name;
     std::string mod_name;
@@ -107,7 +107,7 @@ public:
     //     Get the session manager for the emulator. This will manage things like desktops,
     //     windows, and session isolation
     //     """
-    SessionManager* get_session_manager();
+    std::shared_ptr<SessionManager> get_session_manager();
     
     // Python win32.py:121
     // def add_vectored_exception_handler(self, first, handler):

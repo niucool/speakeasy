@@ -258,9 +258,9 @@ public:
     static std::vector<void*> ldr_entries;
 
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> modules;
-    std::vector<Thread> threads;
+    std::vector<std::shared_ptr<Thread>> threads;
     Console console;
-    Thread curr_thread;
+    std::shared_ptr<Thread> curr_thread;
     std::string cmdline;
     int session;
     Token token;

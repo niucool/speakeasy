@@ -13,8 +13,8 @@ Win32Emulator::Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::v
                              bool debug, void* logger, void* exit_event)
     : WindowsEmulator(cfg, logger, exit_event, debug),
       last_error(0), peb_addr(0), argv(argv) {
-    com = new COM(cfg);
-    sessman = new SessionManager(cfg);
+    com = std::make_shared<COM>(cfg);
+    sessman = std::make_shared<SessionManager>(cfg);
 }
 
 // Python win32.py:44
@@ -68,7 +68,7 @@ int Win32Emulator::get_last_error() {
 //     Get the session manager for the emulator. This will manage things like desktops,
 //     windows, and session isolation
 //     """
-SessionManager* Win32Emulator::get_session_manager() {
+std::shared_ptr<SessionManager> Win32Emulator::get_session_manager() {
     return sessman;
 }
 
@@ -242,10 +242,10 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
         curr_process = p;
         processes.push_back(p);
     }
-    auto* t = new Thread(this);
+    auto t = std::make_shared<Thread>(this);
     
     if (curr_process) 
-        curr_process->threads.push_back(*t);
+        curr_process->threads.push_back(t);
     curr_thread = t;
     alloc_peb(curr_process);
     init_teb(t, curr_process.get());
@@ -255,7 +255,7 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
         child_processes.erase(child_processes.begin());
         prepare_module_for_emulation(child->pe, all_entrypoints);
         curr_process = child;
-        curr_thread = &child->threads[0];  // child process thread deferred
+        curr_thread = child->threads[0];  // child process thread deferred
         start();
     }
 }
@@ -320,10 +320,8 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
         processes.push_back(p);
         curr_process = p;
     }
-    auto* t = new Thread();
-    
-    
-    if (curr_process) curr_process->threads.push_back(*t);
+    auto t = std::make_shared<Thread>(this);
+    if (curr_process) curr_process->threads.push_back(t);
     curr_thread = t;
     start();
 }

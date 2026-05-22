@@ -122,7 +122,7 @@ protected:
     std::vector<std::shared_ptr<Process>> processes;
     std::vector<std::shared_ptr<Process>> child_processes;
     std::shared_ptr<Process> curr_process = nullptr;
-    Thread* curr_thread = nullptr;
+    std::shared_ptr<Thread> curr_thread = nullptr;
 
     // ── Memory / hooks ────────────────────────────────────────
     uint64_t page_size = 4096;
@@ -175,12 +175,12 @@ protected:
     bool functions_always_exist = false;
 
     // ── Managers ──────────────────────────────────────────────
-    RegistryManager* regman = nullptr;
-    FileManager* fileman = nullptr;
-    NetworkManager* netman = nullptr;
-    DriveManager* driveman = nullptr;
-    CryptoManager* cryptman = nullptr;
-    ApiHammer* hammer = nullptr;
+    std::shared_ptr<RegistryManager> regman = nullptr;
+    std::shared_ptr<FileManager> fileman = nullptr;
+    std::shared_ptr<NetworkManager> netman = nullptr;
+    std::shared_ptr<DriveManager> driveman = nullptr;
+    std::shared_ptr<CryptoManager> cryptman = nullptr;
+    std::shared_ptr<ApiHammer> hammer = nullptr;
     WindowsApi* api = nullptr;
     ObjectManager* om = nullptr;     // ObjectManager
     void* wintypes = nullptr;
@@ -451,7 +451,7 @@ public:
     // Python winemu.py:652
     // def get_current_thread(self):
     //     """Get the current thread that is emulating"""
-    void* get_current_thread();
+    std::shared_ptr<Thread> get_current_thread();
     // Python winemu.py:658
     // def get_current_process(self):
     //     """Get the current process that is emulating"""
@@ -464,7 +464,7 @@ public:
     // Python winemu.py:670
     // def set_current_thread(self, thread):
     //     """Set the current thread"""
-    void set_current_thread(Thread* thread);
+    void set_current_thread(std::shared_ptr<Thread> thread);
 
     // ── Environment ────────────────────────────────────────────
     // Python winemu.py:1142
@@ -556,11 +556,11 @@ public:
     // Python winemu.py:771
     // def init_teb(self, thread, peb):
     //     """Initialize the Thread Information Block"""
-    void init_teb(void* thread, void* peb);
+    void init_teb(std::shared_ptr<Thread> thread, void* peb);
     // Python winemu.py:780
     // def init_tls(self, thread):
     //     """Initialize implicit thread local storage. Meant to be called after init_teb."""
-    void init_tls(void* thread);
+    void init_tls(std::shared_ptr<Thread> thread);
     // Python winemu.py:809
     // def load_pe(self, path=None, data=None, imp_id=winemu.IMPORT_HOOK_ADDR):
     //     """Parse a PE that will be used during emulation. PE type and architecture
@@ -620,11 +620,11 @@ public:
     // Python winemu.py:2364
     // def get_thread_context(self, thread=None):
     //     """Get the current thread CPU context"""
-    void* get_thread_context(void* thread = nullptr);
+    void* get_thread_context(std::shared_ptr<Thread> thread = nullptr);
     // Python winemu.py:2418
     // def load_thread_context(self, ctx, thread=None):
     //     """Set the current thread CPU context"""
-    void load_thread_context(void* ctx, void* thread = nullptr);
+    void load_thread_context(void* ctx, std::shared_ptr<Thread> thread = nullptr);
 
     // ── API / import handling ──────────────────────────────────
     // Python winemu.py:1639
@@ -692,11 +692,11 @@ public:
     // Python winemu.py:1389
     // def _handle_invalid_fetch(self, emu, address, size, value):
     //     """Called when an attempt to emulate an instruction from an invalid address"""
-    bool _handle_invalid_fetch(void* emu, uint64_t addr, size_t size, uint64_t value);
+    bool _handle_invalid_fetch(void* emu, uint64_t addr, uint64_t size, uint64_t value);
     // Python winemu.py:1802
     // def _handle_prot_write(self, emu, address, size, value):
     //     """Handle protection violation on write access by mapping a fake page and logging error."""
-    bool _handle_prot_write(void* emu, uint64_t addr, size_t size, uint64_t value);
+    bool _handle_prot_write(void* emu, uint64_t addr, uint64_t size, uint64_t value);
 
     // ── Code hooks (additional) ────────────────────────────────
     // Python winemu.py:2097
@@ -783,12 +783,15 @@ public:
     // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
     //     """Create a thread object that will exist in the emulator.
     //     NOT YET PORTED — stub only."""
-    void* create_thread(uint64_t addr, void* ctx, std::shared_ptr<Process> proc_obj,
+    std::shared_ptr<Thread> create_thread(uint64_t addr, void* ctx, std::shared_ptr<Process> proc_obj,
                         const std::string& thread_type = "thread", bool is_suspended = false);
-    // Python winemu.py:1322
     // def resume_thread(self, thread):
     //     """Resume a previously suspended thread"""
-    void resume_thread(void* thread);
+    void resume_thread(std::shared_ptr<Thread> thread);
+
+    // Helpers to lookup thread
+    std::shared_ptr<Thread> find_thread(int handle_or_id);
+    std::shared_ptr<Thread> find_thread_by_ptr(void* thread_ptr);
     // Python winemu.py:1333
     // def get_process_peb(self, process):
     //     """Get the PEB for a given process."""

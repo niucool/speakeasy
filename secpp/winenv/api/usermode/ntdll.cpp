@@ -915,15 +915,15 @@ uint64_t Ntdll::NtCreateThread(void* emu, const std::string&, int,
     }
 
     // Create the thread
-    void* thread_obj = wemu->create_thread(start_addr, nullptr, proc_sp,
+    auto thread_obj = wemu->create_thread(start_addr, nullptr, proc_sp,
                                             "thread", create_suspended != 0);
     if (!thread_obj) return NT_UNSUCCESSFUL;
 
     // Write the thread handle
     if (thread_handle_ptr != 0) {
-        int thread_handle = wemu->get_object_handle(thread_obj);
+        int thread_handle = wemu->get_object_handle(thread_obj.get());
         if (thread_handle == 0) {
-            thread_handle = reinterpret_cast<uintptr_t>(thread_obj) & 0xFFFF;
+            thread_handle = reinterpret_cast<uintptr_t>(thread_obj.get()) & 0xFFFF;
         }
         write_ptr(emu, thread_handle_ptr, static_cast<uint64_t>(thread_handle));
     }
@@ -934,7 +934,7 @@ uint64_t Ntdll::NtCreateThread(void* emu, const std::string&, int,
         std::shared_ptr<Process> proc = wemu->get_current_process();
         int pid = proc ? proc->get_pid() : 4;
         write_ptr(emu, client_id_ptr, static_cast<uint64_t>(pid));
-        int tid = static_cast<int>(reinterpret_cast<uintptr_t>(thread_obj) & 0xFFFF);
+        int tid = static_cast<int>(reinterpret_cast<uintptr_t>(thread_obj.get()) & 0xFFFF);
         write_ptr(emu, client_id_ptr + get_ptr_size(emu), static_cast<uint64_t>(tid));
     }
 
@@ -953,8 +953,8 @@ uint64_t Ntdll::NtOpenThread(void* emu, const std::string&, int,
 
     if (client_id_ptr != 0) {
         uint64_t tid = read_ptr(emu, client_id_ptr + get_ptr_size(emu));
-        // Try to find a thread by its handle
-        void* thread_obj = wemu->get_object_from_handle(static_cast<int>(tid));
+        // Try to find a thread by its handle or ID
+        auto thread_obj = wemu->find_thread(static_cast<int>(tid));
         if (thread_obj) {
             if (thread_handle_ptr != 0) {
                 write_ptr(emu, thread_handle_ptr, tid);
@@ -964,10 +964,10 @@ uint64_t Ntdll::NtOpenThread(void* emu, const std::string&, int,
     }
 
     // Fallback: return the current thread
-    void* curr_thread = wemu->get_current_thread();
+    auto curr_thread = wemu->get_current_thread();
     if (curr_thread && thread_handle_ptr != 0) {
-        int h = wemu->get_object_handle(curr_thread);
-        if (h == 0) h = reinterpret_cast<uintptr_t>(curr_thread) & 0xFFFF;
+        int h = wemu->get_object_handle(curr_thread.get());
+        if (h == 0) h = reinterpret_cast<uintptr_t>(curr_thread.get()) & 0xFFFF;
         write_ptr(emu, thread_handle_ptr, static_cast<uint64_t>(h));
         return NT_SUCCESS;
     }
@@ -1016,7 +1016,7 @@ uint64_t Ntdll::NtGetContextThread(void* emu, const std::string&, int,
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
 
     // Get the thread object
-    void* thread_obj = wemu->get_object_from_handle(static_cast<int>(thread_handle));
+    auto thread_obj = wemu->find_thread(static_cast<int>(thread_handle));
     if (!thread_obj) {
         thread_obj = wemu->get_current_thread();
     }

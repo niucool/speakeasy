@@ -45,36 +45,14 @@ static bool is_direct_ptr_instr(const std::string& mnem, const std::string& inst
 
 // ApiHammer implementation
 ApiHammer::ApiHammer(WindowsEmulator* emu,
-                     const std::map<std::string, std::string>& cfg)
-    : emu(emu), hammer_memregion(0), hammer_offset(0) {
-
-    // Store the config
-    config = cfg;
+                     const speakeasy::SpeakeasyConfig& cfg)
+    : emu(emu), config(cfg.api_hammering), hammer_memregion(0), hammer_offset(0) {
 
     // Load api_hammering configuration from the provided config map
-    auto threshold_it = config.find("threshold");
-    api_threshold = (threshold_it != config.end())
-        ? std::stoi(threshold_it->second) : 1000;
+    api_threshold = config.threshold;
+    enabled = config.enabled;
 
-    auto enabled_it = config.find("enabled");
-    enabled = (enabled_it != config.end())
-        ? (enabled_it->second == "true" || enabled_it->second == "1") : false;
-
-    auto allow_it = config.find("allow_list");
-    if (allow_it != config.end()) {
-        // Allow list is comma-separated
-        std::string raw = allow_it->second;
-        std::vector<std::string> items;
-        size_t pos = 0;
-        while ((pos = raw.find(',')) != std::string::npos) {
-            items.push_back(raw.substr(0, pos));
-            raw.erase(0, pos + 1);
-        }
-        if (!raw.empty()) items.push_back(raw);
-        allow_list = _lowercase_set(items);
-    } else {
-        allow_list = _lowercase_set(_default_api_hammer_allowlist);
-    }
+    allow_list = _lowercase_set(config.allow_list.empty() ? _default_api_hammer_allowlist : config.allow_list);
 }
 
 bool ApiHammer::is_allowed_api(const std::string& apiname) {

@@ -31,12 +31,12 @@ WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* lo
       run_complete(false), emu_complete(false),
       curr_exception_code(0), prev_pc(0), unhandled_exception_filter(0),
       fs_addr(0), gs_addr(0) {
-    regman = new RegistryManager(config.registry);
-    fileman = new FileManager(config, this);
-    netman = new NetworkManager(config.network);
-    driveman = new DriveManager(config.drives);
-    cryptman = new CryptoManager();
-    hammer = new ApiHammer(this);
+    regman = std::make_shared<RegistryManager>(config.registry);
+    fileman = std::make_shared<FileManager>(config, this);
+    netman = std::make_shared<NetworkManager>(config.network);
+    driveman = std::make_shared<DriveManager>(config.drives);
+    cryptman = std::make_shared<CryptoManager>();
+    hammer = std::make_shared<ApiHammer>(this, config);
 }
 
 // ── Bootstrap ────────────────────────────────────────────────
@@ -1096,15 +1096,14 @@ void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeMod
 // def init_teb(self, thread, peb):
 //     """Initialize the Thread Information Block"""
 
-void WindowsEmulator::init_teb(void* thread, void* peb) {
+void WindowsEmulator::init_teb(std::shared_ptr<Thread> thread, void* peb) {
     if (!thread) return;
-    auto* thr = static_cast<Thread*>(thread);
     auto* peb_obj = static_cast<Process*>(peb);
     uint64_t peb_addr = peb_obj ? reinterpret_cast<uint64_t>(peb_obj->peb) : 0;
     if (ptr_size == 4) {
-        thr->init_teb(static_cast<int>(fs_addr), static_cast<int>(peb_addr));
+        thread->init_teb(static_cast<int>(fs_addr), static_cast<int>(peb_addr));
     } else {
-        thr->init_teb(static_cast<int>(gs_addr), static_cast<int>(peb_addr));
+        thread->init_teb(static_cast<int>(gs_addr), static_cast<int>(peb_addr));
     }
 }
 
@@ -1112,18 +1111,16 @@ void WindowsEmulator::init_teb(void* thread, void* peb) {
 // def init_tls(self, thread):
 //     """Initialize implicit thread local storage. Meant to be called after init_teb."""
 
-void WindowsEmulator::init_tls(void* thread) {
+void WindowsEmulator::init_tls(std::shared_ptr<Thread> thread) {
     if (!thread || !curr_run) return;
-    auto* thr = static_cast<Thread*>(thread);
     auto mod = get_mod_from_addr(curr_run->start_addr);
     if (mod) {
         auto pe = mod;
         std::string modname = pe->get_base_name();
         // TLS directory is stored in PeFile metadata during PeLoader::parse_pe
         // For now, init TLS with empty directory (callbacks are already in tls_callbacks_)
-        thr->init_tls(0, modname);
+        thread->init_tls(0, modname);
     }
-    (void)thr;
 }
 
 // Python winemu.py:809
@@ -1507,7 +1504,7 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
 // def get_current_thread(self):
 //     """Get the current thread that is emulating"""
 
-void* WindowsEmulator::get_current_thread() { return curr_thread; }
+std::shared_ptr<Thread> WindowsEmulator::get_current_thread() { return curr_thread; }
 std::shared_ptr<Process> WindowsEmulator::get_current_process() { return curr_process; }
 // Python winemu.py:664
 // def set_current_process(self, process):
@@ -1518,7 +1515,7 @@ void WindowsEmulator::set_current_process(std::shared_ptr<Process> process) { cu
 // def set_current_thread(self, thread):
 //     """Set the current thread"""
 
-void WindowsEmulator::set_current_thread(Thread* thread) { curr_thread = thread; }
+void WindowsEmulator::set_current_thread(std::shared_ptr<Thread> thread) { curr_thread = thread; }
 
 // Python winemu.py:1226
 // def create_process(self, path=None, cmdline=None, image=None, child=False):
@@ -1566,9 +1563,8 @@ void* WindowsEmulator::create_process(const std::string& path,
     p->cmdline = cmdline;
 
     // Create an initial thread for the process
-    auto* t = new Thread(this);
-    p->threads.push_back(*t);
-    delete t;  // threads vector stores copies
+    auto t = std::make_shared<Thread>(this);
+    p->threads.push_back(t);
 
     if (child) {
         child_processes.push_back(p);
@@ -1582,7 +1578,7 @@ void* WindowsEmulator::create_process(const std::string& path,
 // Python winemu.py:1293
 // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
 //     """Create a thread object that will exist in the emulator"""
-void* WindowsEmulator::create_thread(uint64_t addr, void* ctx, std::shared_ptr<Process> proc_obj,
+std::shared_ptr<Thread> WindowsEmulator::create_thread(uint64_t addr, void* ctx, std::shared_ptr<Process> proc_obj,
                                       const std::string& thread_type, bool is_suspended) {
     validate_object_services("thread creation");
 
@@ -1607,7 +1603,7 @@ void* WindowsEmulator::create_thread(uint64_t addr, void* ctx, std::shared_ptr<P
         suspended_runs.push_back(run);
     }
 
-    return thread.get();
+    return thread;
 }
 
 // ── Module loading ───────────────────────────────────────────
@@ -1836,7 +1832,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_mo
 // Python winemu.py:2364
 // def get_thread_context(self, thread=None):
 //     """Get the current thread CPU context"""
-void* WindowsEmulator::get_thread_context(void* thread) {
+void* WindowsEmulator::get_thread_context(std::shared_ptr<Thread> thread) {
     (void)thread;
     if (!emu_eng) return nullptr;
 
@@ -1902,7 +1898,7 @@ void* WindowsEmulator::get_thread_context(void* thread) {
 // Python winemu.py:2418
 // def load_thread_context(self, ctx, thread=None):
 //     """Set the current thread CPU context"""
-void WindowsEmulator::load_thread_context(void* ctx, void* thread) {
+void WindowsEmulator::load_thread_context(void* ctx, std::shared_ptr<Thread> thread) {
     (void)thread;
     if (!emu_eng || !ctx) return;
 
@@ -2795,9 +2791,46 @@ void WindowsEmulator::set_debug_hooks() {
 // Python winemu.py:1322
 // def resume_thread(self, thread):
 //     """Resume a previously suspended thread"""
-void WindowsEmulator::resume_thread(void* thread) {
+void WindowsEmulator::resume_thread(std::shared_ptr<Thread> thread) {
     (void)thread;
     resume(0);  // Resume emulation at current PC
+}
+
+std::shared_ptr<Thread> WindowsEmulator::find_thread(int handle_or_id) {
+    for (const auto& proc : processes) {
+        for (const auto& t : proc->threads) {
+            if (t->get_id() == handle_or_id || get_object_handle(t.get()) == handle_or_id) {
+                return t;
+            }
+        }
+    }
+    for (const auto& proc : child_processes) {
+        for (const auto& t : proc->threads) {
+            if (t->get_id() == handle_or_id || get_object_handle(t.get()) == handle_or_id) {
+                return t;
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::shared_ptr<Thread> WindowsEmulator::find_thread_by_ptr(void* thread_ptr) {
+    if (!thread_ptr) return nullptr;
+    for (const auto& proc : processes) {
+        for (const auto& t : proc->threads) {
+            if (t.get() == thread_ptr) {
+                return t;
+            }
+        }
+    }
+    for (const auto& proc : child_processes) {
+        for (const auto& t : proc->threads) {
+            if (t.get() == thread_ptr) {
+                return t;
+            }
+        }
+    }
+    return nullptr;
 }
 
 

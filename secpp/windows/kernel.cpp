@@ -189,7 +189,7 @@ void WinKernelEmulator::bootstrap_object_services() {
         auto sys_proc = std::make_shared<Process>(static_cast<void*>(this));
         sys_proc->set_id(4);
         processes_.push_back(sys_proc);
-        Thread sys_thread(static_cast<void*>(this));
+        std::shared_ptr<Thread> sys_thread = std::make_shared<Thread>(static_cast<void*>(this));
         sys_proc->threads.push_back(sys_thread);
     }
     advance_bootstrap_phase(BootstrapPhase::OBJECT_MANAGER_READY);

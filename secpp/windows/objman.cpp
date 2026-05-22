@@ -958,7 +958,7 @@ void Process::set_user_modules(std::vector<std::shared_ptr<speakeasy::RuntimeMod
 
 void Process::new_thread() {
     // Python: create a Thread, add it to threads list
-    Thread t(emu);
+    auto t = std::make_shared<Thread>(emu);
     threads.push_back(t);
 }
 
