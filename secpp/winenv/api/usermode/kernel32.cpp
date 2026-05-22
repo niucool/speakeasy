@@ -533,8 +533,11 @@ uint64_t Kernel32::CreateFileMappingA(void* emu, const std::string&, int,
     uint32_t max_sz_low = static_cast<uint32_t>(argv[4]);
     uint64_t map_name_ptr = argv[5];
     (void)hFile; (void)map_attrs; (void)max_sz_high; (void)max_sz_low; (void)map_name_ptr;
-    auto* fmgr = static_cast<FileManager*>(we(emu)->get_file_manager());
-    uint32_t handle = fmgr->file_create_mapping(static_cast<uint32_t>(hFile & 0xFFFFFFFF), "", (max_sz_high << 32) | max_sz_low, static_cast<int>(prot));
+    auto fmgr = we(emu)->get_file_manager();
+    uint32_t handle = fmgr->file_create_mapping(
+        static_cast<uint32_t>(hFile & 0xFFFFFFFF), 
+        "", 
+        (max_sz_high << 32) | max_sz_low, static_cast<int>(prot));
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return static_cast<uint64_t>(handle);
 }

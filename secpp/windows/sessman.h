@@ -30,16 +30,14 @@ public:
 class Session : public GuiObject {
 private:
     int id;
-    std::map<int, class Station> stations;
+    std::map<int, std::shared_ptr<class Station>> stations;
 
 public:
     Session(int sess_id);
-    class Station new_station(const std::string& name = "WinSta0");
+    class std::shared_ptr<class Station> new_station(const std::string& name = "WinSta0");
     int get_id() const { return id; }
     // Access to stations
-    const std::map<int, class Station>& get_stations() const { return stations; }
-    // Aggregated desktops from all stations
-    std::map<int, class Desktop> get_desktops() const { return {}; }
+    const std::map<int, class std::shared_ptr<class Station>>& get_stations() const { return stations; }
 };
 
 /**
@@ -48,13 +46,13 @@ public:
 class Station : public GuiObject {
 private:
     std::string name;
-    std::map<int, class Desktop> desktops;
+    std::map<int, class std::shared_ptr<class Desktop>> desktops;
 
 public:
     Station(const std::string& name = "");
-    class Desktop new_desktop(const std::string& name = "");
+    class std::shared_ptr<class Desktop> new_desktop(const std::string& name = "");
     std::string get_name() const;
-    const std::map<int, class Desktop>& get_desktops() const { return desktops; }
+    const std::map<int, class std::shared_ptr<class Desktop>>& get_desktops() const { return desktops; }
 };
 
 /**
@@ -62,14 +60,13 @@ public:
  */
 class Desktop : public GuiObject {
 private:
-    std::map<int, class Window> windows;
-    class Window* desktop_window;
+    std::map<int, class std::shared_ptr<class Window>> windows;
+    class std::shared_ptr<class Window> desktop_window;
     std::string name;
 
 public:
     Desktop(const std::string& name = "");
-    class Window new_window();
-    class Window* get_desktop_window();
+    class std::shared_ptr<class Window> new_window();
     std::string get_name() const;
 };
 
@@ -82,7 +79,7 @@ private:
     std::string class_name;
 
 public:
-    Window(const std::string* name = nullptr, const std::string* class_name = nullptr);
+    Window(const std::string& name = "", const std::string& class_name = "");
     const std::string& get_name() const { return name; }
     const std::string& get_class_name() const { return class_name; }
 };
@@ -108,30 +105,30 @@ public:
  */
 class SessionManager {
 private:
-    std::map<int, Session> sessions;
-    std::map<int, WindowClass> window_classes;
-    std::map<int, Window> windows;
+    std::map<int, std::shared_ptr<Session>> sessions;
+    std::map<int, std::shared_ptr<WindowClass>> window_classes;
+    std::map<int, std::shared_ptr<Window>> windows;
     // For string-based lookups
-    std::map<std::string, WindowClass*> window_classes_by_name;
-    std::map<std::string, Window*> windows_by_name;
+    std::map<std::string, WindowClass> window_classes_by_name;
+    std::map<std::string, Window> windows_by_name;
     
-    Session* curr_session;
-    Station* curr_station;
-    Desktop* curr_desktop;
+    std::shared_ptr<Session> curr_session;
+    std::shared_ptr<Station> curr_station;
+    std::shared_ptr<Desktop> curr_desktop;
     const speakeasy::SpeakeasyConfig& config;
     int dev_ctx;
 
 public:
     SessionManager(const speakeasy::SpeakeasyConfig& cfg);
     
-    int create_window_class(void* class_obj, const std::string* class_name = nullptr);
-    int create_window(const std::string* window_name = nullptr, const std::string* class_name = nullptr);
-    WindowClass* get_window_class(int atom);
-    Window* get_window(int handle);
+    int create_window_class(void* class_obj, const std::string& class_name = "");
+    int create_window(const std::string& window_name = "", const std::string& class_name = "");
+    std::shared_ptr<WindowClass> get_window_class(int atom);
+    std::shared_ptr<Window> get_window(int handle);
     int get_device_context() const;
-    Desktop* get_current_desktop();
-    Station* get_current_station();
-    GuiObject* get_gui_object(int handle);
+    std::shared_ptr<Desktop> get_current_desktop();
+    std::shared_ptr<Station> get_current_station();
+    std::shared_ptr<GuiObject> get_gui_object(int handle);
 };
 
 #endif // SESSMAN_H

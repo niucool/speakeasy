@@ -359,25 +359,25 @@ public:
     // Python winemu.py:309
     // def get_file_manager(self):
     //     """Get the file emulation manager"""
-    FileManager* get_file_manager();
+    std::shared_ptr<FileManager> get_file_manager();
 
     // ── Network ───────────────────────────────────────────────
     // Python winemu.py:315
     // def get_network_manager(self):
     //     """Get the network emulation manager"""
-    NetworkManager* get_network_manager();
+    std::shared_ptr<NetworkManager> get_network_manager();
 
     // ── Crypto ────────────────────────────────────────────────
     // Python winemu.py:321
     // def get_crypt_manager(self):
     //     """Get the crypto manager"""
-    CryptoManager* get_crypt_manager();
+    std::shared_ptr<CryptoManager> get_crypt_manager();
 
     // ── Drives ────────────────────────────────────────────────
     // Python winemu.py:327
     // def get_drive_manager(self):
     //     """Get the drive manager"""
-    DriveManager* get_drive_manager();
+    std::shared_ptr<DriveManager> get_drive_manager();
 
     // ── Registry ──────────────────────────────────────────────
     // Python winemu.py:351

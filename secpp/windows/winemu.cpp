@@ -550,9 +550,8 @@ bool WindowsEmulator::_handle_invalid_write(void* emu, uint64_t address,
 // def file_open(self, path, create=False, truncate=False):
 //     """Open a file in the emulated filesystem"""
 void* WindowsEmulator::file_open(const std::string& path, bool create) {
-    auto* fm = static_cast<FileManager*>(fileman);
-    if (fm) {
-        uint32_t h = fm->file_open(path, create);
+    if (fileman) {
+        uint32_t h = fileman->file_open(path, create);
         return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
     }
     return nullptr;
@@ -563,9 +562,8 @@ void* WindowsEmulator::file_open(const std::string& path, bool create) {
 //     """Open an emulated named pipe"""
 void* WindowsEmulator::pipe_open(const std::string& path, const std::string& mode,
                                   int num_instances, size_t out_size, size_t in_size) {
-    auto* fm = static_cast<FileManager*>(fileman);
-    if (fm) {
-        uint32_t h = fm->pipe_open(path, mode, num_instances, out_size, in_size);
+    if (fileman) {
+        uint32_t h = fileman->pipe_open(path, mode, num_instances, out_size, in_size);
         return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
     }
     return nullptr;
@@ -575,17 +573,15 @@ void* WindowsEmulator::pipe_open(const std::string& path, const std::string& mod
 // def does_file_exist(self, path):
 //     """Test if a file handler for a specified emulated file exists"""
 bool WindowsEmulator::does_file_exist(const std::string& path) {
-    auto* fm = static_cast<FileManager*>(fileman);
-    return fm ? fm->does_file_exist(path) : false;
+    return fileman ? fileman->does_file_exist(path) : false;
 }
 
 // Python winemu.py:351
 // def reg_open_key(self, path, create=False):
 //     """Open or create a registry key in the emulation space"""
 void* WindowsEmulator::reg_open_key(const std::string& path, bool create) {
-    auto* rm = static_cast<RegistryManager*>(regman);
-    if (rm) {
-        uint32_t h = rm->open_key(path, create);
+    if (regman) {
+        uint32_t h = regman->open_key(path, create);
         return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
     }
     return nullptr;
@@ -595,13 +591,12 @@ void* WindowsEmulator::reg_open_key(const std::string& path, bool create) {
 // def reg_get_key(self, handle=0, path=""):
 //     """Get registry key by path or handle"""
 void* WindowsEmulator::reg_get_key(int handle, const std::string& path) {
-    auto* rm = static_cast<RegistryManager*>(regman);
-    if (!rm) return nullptr;
+    if (!regman) return nullptr;
     std::shared_ptr<RegKey> key;
     if (handle != 0)
-        key = rm->get_key_from_handle(static_cast<uint32_t>(handle));
+        key = regman->get_key_from_handle(static_cast<uint32_t>(handle));
     else if (!path.empty())
-        key = rm->get_key_from_path(path);
+        key = regman->get_key_from_path(path);
     return key ? reinterpret_cast<void*>(key.get()) : nullptr;
 }
 
@@ -609,9 +604,8 @@ void* WindowsEmulator::reg_get_key(int handle, const std::string& path) {
 // def reg_create_key(self, path):
 //     """Create a registry key"""
 void* WindowsEmulator::reg_create_key(const std::string& path) {
-    auto* rm = static_cast<RegistryManager*>(regman);
-    if (rm) {
-        auto key = rm->create_key(path);
+    if (regman) {
+        auto key = regman->create_key(path);
         return key ? reinterpret_cast<void*>(key.get()) : nullptr;
     }
     return nullptr;
@@ -2989,9 +2983,8 @@ void* WindowsEmulator::pipe_get(int handle) {
 //     """Create a memory mapping for an emulated file"""
 void* WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
                                             size_t size, int prot) {
-    auto* fm = static_cast<FileManager*>(fileman);
-    if (fm) {
-        uint32_t handle = fm->file_create_mapping(
+    if (fileman) {
+        uint32_t handle = fileman->file_create_mapping(
             static_cast<uint32_t>(reinterpret_cast<uintptr_t>(hfile)), name, size, prot);
         (void)handle;
     }
@@ -3004,22 +2997,22 @@ void* WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
 // Python winemu.py:309
 // def get_file_manager(self):
 //     """Get the file emulation manager"""
-FileManager* WindowsEmulator::get_file_manager()    { return fileman; }
+std::shared_ptr<FileManager> WindowsEmulator::get_file_manager() { return fileman; }
 
 // Python winemu.py:315
 // def get_network_manager(self):
 //     """Get the network emulation manager"""
-NetworkManager* WindowsEmulator::get_network_manager() { return netman; }
+std::shared_ptr<NetworkManager> WindowsEmulator::get_network_manager() { return netman; }
 
 // Python winemu.py:321
 // def get_crypt_manager(self):
 //     """Get the crypto manager"""
-CryptoManager* WindowsEmulator::get_crypt_manager()   { return cryptman; }
+std::shared_ptr<CryptoManager> WindowsEmulator::get_crypt_manager()   { return cryptman; }
 
 // Python winemu.py:327
 // def get_drive_manager(self):
 //     """Get the drive manager"""
-DriveManager* WindowsEmulator::get_drive_manager()   { return driveman; }
+std::shared_ptr<DriveManager> WindowsEmulator::get_drive_manager()   { return driveman; }
 
 // ── Registry wrappers ─────────────────────────────────────────
 

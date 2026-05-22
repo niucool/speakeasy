@@ -633,7 +633,7 @@ uint64_t Ntdll::NtCreateFile(void* emu, const std::string&, int,
     }
 
     // Get the handle from the file object
-    auto* file_mgr = static_cast<FileManager*>(wemu->get_file_manager());
+    auto file_mgr = wemu->get_file_manager();
     uint32_t handle = 0;
     // FileManager's file_open returns bool? Actually let's look at the method.
     // file_open returns a File* (from winemu.h: void* file_open)
@@ -739,7 +739,7 @@ uint64_t Ntdll::NtReadFile(void* emu, const std::string&, int,
     }
 
     // Get the file object from the file manager
-    auto* fm = static_cast<FileManager*>(wemu->get_file_manager());
+    auto fm = wemu->get_file_manager();
     auto file_obj = fm->get_file_from_handle(static_cast<uint32_t>(file_handle));
 
     // Also try treating file_handle as a direct File* pointer
@@ -795,7 +795,7 @@ uint64_t Ntdll::NtWriteFile(void* emu, const std::string&, int,
         return STATUS_INVALID_PARAMETER;
     }
 
-    auto* fm = static_cast<FileManager*>(wemu->get_file_manager());
+    auto fm = wemu->get_file_manager();
     auto file_obj = fm->get_file_from_handle(static_cast<uint32_t>(file_handle));
 
     if (!file_obj) {
@@ -1475,7 +1475,7 @@ uint64_t Ntdll::NtCreateSection(void* emu, const std::string&, int,
 
     if (file_handle != 0) {
         // Section backed by a file
-        auto fm_ptr = static_cast<FileManager*>(wemu->get_file_manager());
+        auto fm_ptr = wemu->get_file_manager();
         auto file_map = fm_ptr->get_mapping_from_handle(
             static_cast<uint32_t>(file_handle));
         (void)file_map;
