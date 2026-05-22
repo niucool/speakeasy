@@ -1142,7 +1142,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     // Python reference: winemu.py lines 993-1137
     if (!img) return nullptr;
 
-    if (img->mapped_image.empty() && img->regions.empty())
+    if (img->regions.empty())
         return nullptr;
 
     bool valid_arch = (img->arch == 32 || img->arch == 64);
@@ -1198,18 +1198,18 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         }
     }
 
-    // Map raw buffer if no regions (shellcode, etc.)
-    if (img->regions.empty() && !img->mapped_image.empty()) {
-        size_t map_size = img->mapped_image.size();
-        if (img->base == 0) {
-            img->base = mem_map(static_cast<uint64_t>(map_size), 0, PERM_MEM_RWX,
-                                "emu.module." + img->name);
-        } else {
-            mem_map(static_cast<uint64_t>(map_size), img->base, PERM_MEM_RWX,
-                    "emu.module." + img->name);
-        }
-        mem_write(img->base, img->mapped_image);
-    }
+    //// Map raw buffer if no regions (shellcode, etc.)
+    //if (img->regions.empty() && !img->mapped_image.empty()) {
+    //    size_t map_size = img->mapped_image.size();
+    //    if (img->base == 0) {
+    //        img->base = mem_map(static_cast<uint64_t>(map_size), 0, PERM_MEM_RWX,
+    //                            "emu.module." + img->name);
+    //    } else {
+    //        mem_map(static_cast<uint64_t>(map_size), img->base, PERM_MEM_RWX,
+    //                "emu.module." + img->name);
+    //    }
+    //    mem_write(img->base, img->mapped_image);
+    //}
 
     // ── Patch IAT with sentinel values for import hooking (Python 1042-1050) ──
     int psz = get_ptr_size();
@@ -1273,7 +1273,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
 
     // ── Determine module type (Python 1083) ──
     bool is_pe = (!img->sections.empty() && img->sections.size() > 1);  // PeLoader produces multiple sections
-    bool is_shellcode = (!img->mapped_image.empty() && img->regions.size() <= 1);
+    bool is_shellcode = (img->module_type == "shellcode");
     bool is_primary = is_pe || is_shellcode;
 
     // ── Normalize module name for API lookup (Python 1085-1086) ──

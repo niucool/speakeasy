@@ -15,10 +15,7 @@
 #include <memory>
 #include <cstdint>
 
-#ifdef PLATFORM_WINDOWS
-#define _PEPARSE_WINDOWS_CONFLICTS
-#endif
-#include <pe-parse/parse.h>
+#include "common.h"
 
 namespace speakeasy {
 
@@ -42,7 +39,7 @@ struct PeMetadata {
     std::map<int, std::string> string_table;  // for LoadString
 };
 
-struct ModuleRegion {
+struct MemoryRegion {
     uint64_t base = 0;
     std::vector<uint8_t> data;
     std::string name;
@@ -69,21 +66,35 @@ struct ExportEntry {
     std::string execution_mode;  // "user" or "kernel"
 };
 
+class Loader;  // forward declaration
 struct LoadedImage {
+    int arch = 0;                 // 32 or 64
+    std::string module_type; // "exe", "dll", "driver", "decoy"
     std::string name;
     std::string emu_path;
     uint64_t base = 0;
     uint64_t image_size = 0;
-    uint64_t ep = 0;
-    int arch = 0;                 // 32 or 64
+
     bool is_driver = false;
-    std::vector<ModuleRegion> regions;
-    std::vector<uint8_t> mapped_image;
-    PeMetadata metadata;
+    bool is_dll = false;
+    bool is_decoy = false;
+
+    std::vector<MemoryRegion> regions;
     std::vector<ImportEntry> imports;
     std::vector<ExportEntry> exports;
-    std::vector<SectionEntry> sections;
+
+    uint64_t ep = 0;
+    bool visible_in_peb = true;
+    int stack_size = 0x12000;  // default stack commit size for emulation
+
     std::vector<uint64_t> tls_callbacks;
+    int tls_directory_va = 0;
+
+    Loader* loader = nullptr;  // back-reference to the loader that created this image (for deferred lookups)
+    std::vector<SectionEntry> sections;
+    PeMetadata metadata;
+
+    //std::vector<uint8_t> mapped_image;
 };
 
 
@@ -164,7 +175,9 @@ public:
      * @param data   Raw PE bytes.
      */
     explicit PeLoader(const std::string& path = "",
-                      const std::vector<uint8_t>& data = {});
+                      const std::vector<uint8_t>& data = {},
+                      int base_override = 0,
+                      const std::string& emu_path = "");
 
     /**
      * Destructor to clean up parsed PE resources.
@@ -200,11 +213,14 @@ private:
     std::string path_;
     std::vector<uint8_t> data_;
     PeMetadata metadata_;
+    uint64_t base_override_;
+    std::string emu_path_;
+
     std::vector<ImportEntry> imports_;
     std::vector<ExportEntry> exports_;
     std::vector<SectionEntry> sections_;
     std::vector<uint64_t> tls_callbacks_;
-    peparse::parsed_pe* parser_pe = nullptr;
+    PeFile pefile;
 
     void parse_pe();
     uint32_t perms_from_section_chars(uint32_t chars);

@@ -17,6 +17,16 @@
   - **ntdll.cpp**: 重构线程相关的 `NtCreateThread`、`NtOpenThread`、`NtGetContextThread` 函数，使用 `wemu->find_thread` 等方法实现安全的线程转换与生命周期控制。
   - **msvcrt.cpp**: 更新 `_beginthreadex` 和 `_beginthread` 以接收 `std::shared_ptr<Thread>` 并返回 `thread.get()`，完成 C++ 线程智能指针管理的全面现代化。
 
+#### Fixed
+
+- **loaders.cpp**: 修复了 `PeLoader::make_image` 从 Python 移植到 C++ 时的若干移植错误：
+  - 修复了 PE 入口点 (entry point) 相对虚拟地址 (RVA) 的获取错误（此前被错误地写为硬编码的 `(sections_.empty()) ? 0 : 0` 导致始终返回 `0` 从而使得仿真环境起始执行在无效的 PE 头部），现在可以正确读取并获取 PE 的 `AddressOfEntryPoint`。
+  - 实现了 `rsrc_cb` 资源文件解析回调函数，将 PE 中的资源条目 (Resource Entry) 提取并正确填充到 `metadata_.resources` 中，与 Python 端逻辑完全对齐。
+  - 修复了 PE 模块类型分类的移植错误：解决了命令行（CUI）可执行程序（Subsystem 3）在 `RuntimeModule` 的构造函数中被错误分类为 `"dll"` 的问题。引入了 `is_dll` 和 `is_decoy` 等标志，实现了在 C++ `RuntimeModule` 构造时根据 `LoadedImage` 的 `is_decoy`、`is_driver` 和 `is_dll` 标志进行与 Python 完全对齐的类型推导。
+  - 在 `DecoyLoader::make_image` 中设置 `img->is_decoy = true;`，在 `ApiModuleLoader::make_image` 中设置 `img->is_dll = true;`，在 `PeLoader::make_image` 中依 PE 头部特征字及导入系统 DLLs 判定并填充 `is_driver` 及 `is_dll`，彻底解决了 CUI 程序分类和 decoy/api 模块分类的不一致。
+  - 修复了导入表模块后缀剥离的移植错误：在 `imp_cb` 中，使用 `.rfind('.')` 进行剥离，正确支持非 `.dll` 文件名后缀（例如 `.sys`）的剥离，与 Python 的 `os.path.splitext` 完全对齐。
+  - 在 `tests/test_porting.cpp` 中新增了 `LoaderModuleClassificationTest` 单元测试，全方位覆盖并验证 CUI exe、decoy 模块和 api 模块的加载器类型分类与智能推导逻辑。
+
 ### 2026-05-21
 
 #### Added

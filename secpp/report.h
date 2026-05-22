@@ -178,7 +178,7 @@ struct MemoryAccesses {
 };
 
 // === MemoryRegion (Python:371-425) ===
-struct MemoryRegion {
+struct MemoryRegionModel {
     std::string tag, prot;
     uint64_t address = 0, size = 0;
     bool is_free = false;
@@ -219,7 +219,7 @@ struct LoadedModule {
 
 // === MemoryLayout (Python:497-520) ===
 struct MemoryLayout {
-    std::vector<MemoryRegion> layout;
+    std::vector<MemoryRegionModel> layout;
     std::vector<LoadedModule> modules;
     nlohmann::json to_json() const {
         nlohmann::json j;

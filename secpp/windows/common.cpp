@@ -193,6 +193,7 @@ uint32_t PeFile::get_resource_dir_rva() {
 }
 
 std::string PeFile::get_emu_path() { return emu_path; }
+
 void PeFile::set_emu_path(const std::string& p) { emu_path = p; }
 
 std::string PeFile::_hash_pe(const std::string& path, const std::vector<uint8_t>& data) {
@@ -298,7 +299,14 @@ std::string PeFile::get_base_name() {
 }
 
 size_t PeFile::get_image_size() { return image_size; }
+
 bool PeFile::is_decoy() { return false; }
+
+bool PeFile::is_dll() {
+    if (!parsed_pe) return false;
+    return (parsed_pe->peHeader.nt.FileHeader.Characteristics &
+        0x2000/*peparse::IMAGE_FILE_DLL*/) != 0;
+}
 
 bool PeFile::is_driver() {
     if (!imports.empty()) {

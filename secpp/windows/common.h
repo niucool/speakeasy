@@ -135,7 +135,7 @@ std::string normalize_dll_name(const std::string& name);
 
 // Class that represents PE files loaded into the emulator
 class PeFile {
-protected:
+public:
     uint64_t imp_id;
     uint64_t imp_step;
     size_t file_size;
@@ -167,6 +167,7 @@ public:
     virtual ~PeFile();
     
     // Methods
+    peparse::parsed_pe* get_parsed_pe() { return parsed_pe; }
     std::vector<uint64_t> get_tls_callbacks();
     uint32_t get_resource_dir_rva();
     virtual std::string get_emu_path();
@@ -189,6 +190,7 @@ public:
     virtual std::string get_base_name();
     size_t get_image_size();
     virtual bool is_decoy();
+    bool is_dll();
     bool is_driver();
     bool is_dotnet();
     bool has_reloc_table();
