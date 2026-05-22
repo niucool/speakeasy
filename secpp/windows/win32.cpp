@@ -415,13 +415,14 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::init_sys_m
         auto& drv_devices = modconf->path;  // placeholder — driver info is on SystemModule only
         // C++ note: SystemModule::driver.devices requires the concrete type;
         // the config modules are stored as shared_ptr<Module>, so we check for driver via name pattern
-        
-            for (auto& dev_info : sysmod->driver.devices) {
-                auto name_it = dev_info.find("name");
-                std::string dev_name = (name_it != dev_info.end()) ? name_it->second : "";
-                auto* dobj = new Device(reinterpret_cast<void*>(this));
-                dobj->init_device(dev_name, 0, 0, nullptr);
-            }
+        auto sysmod =
+            std::dynamic_pointer_cast<speakeasy::SystemModule>(modconf);
+
+        for (auto& dev_info : sysmod->driver.devices) {
+            auto name_it = dev_info.find("name");
+            std::string dev_name = (name_it != dev_info.end()) ? name_it->second : "";
+            auto* dobj = new Device(reinterpret_cast<void*>(this));
+            dobj->init_device(dev_name, 0, 0, nullptr);
         }
     }
 
@@ -462,10 +463,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::get_user_m
     }
     return result;
 }
-*/    
-    return user_modules;
-}
-
+    
 // Python win32.py:603
 // def exit_process(self):
 //     """

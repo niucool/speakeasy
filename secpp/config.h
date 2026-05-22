@@ -159,6 +159,7 @@ struct Module {
     uint64_t base;
     size_t image_size;
     std::string path;
+    virtual ~Module() = default;
 };
 
 struct SystemModule : public Module {
