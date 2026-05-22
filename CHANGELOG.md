@@ -21,12 +21,17 @@
 
 #### Changed
 
+- **secpp**: 将所有 `Process*` 裸指针重构为 `std::shared_ptr<Process>` 智能指针以实现安全的自动生命周期管理，涉及 `memmgr`、`winemu`、`win32`、`kernel` 等核心组件，彻底移除手动 `delete` 逻辑。
 - **binemu.cpp**: `get_ansi_strings` / `get_unicode_strings` 重写为 `std::regex` 实现
 - **win32.cpp**: 4 个 TODO → 实现说明
 - **winemu.cpp**: 1 个 TODO → 实现说明
+- **api.cpp**: 更新 `ApiHandler::create_thread` 接口以支持 `std::shared_ptr<Process>`，安全地使用 `find_process` 解析 `void* hproc`。
 
 #### Fixed
 
+- **win32.cpp**: 解决 `std::make_shared<Process>` 对空初始化列表 `{}` 进行模板类型推导失败的错误，显式指定为空 vector 类型。
+- **winemu.cpp**: 修复 `_prepare_run_context` 成员中 `std::shared_ptr<Process>` 类型的 `process_context` 与 raw 指针进行 inequality (`!=`) 比较的编译错误。
+- **ntdll.cpp**: 修复 `NtCreateThreadEx` 中 `proc_obj` `void*` 裸指针转换为 `std::shared_ptr<Process>` 并传递给 `create_thread` 的类型不匹配错误。
 - **winemu.cpp**: `get_peb_modules()` 返回值生命周期修复 (non-const lvalue → rvalue)
 
 ### 2026-05-20
