@@ -121,7 +121,7 @@ public:
     std::string get_base_name() const;                  // ntpath.basename(emu_path)
     uint64_t get_ep() const { return base + ep; }
     const std::vector<ExportEntry>& get_exports() const;
-    const ExportEntry* get_export_by_name(const std::string& name) const;
+    const ExportEntry* get_export_by_name(const std::string& exp_name) const;
     const SectionEntry* get_section_for_addr(uint64_t addr) const;
     const std::vector<uint64_t>& get_tls_callbacks() const;
     const PeMetadata* get_pe_metadata() const;
@@ -213,13 +213,14 @@ private:
     std::string path_;
     std::vector<uint8_t> data_;
     PeMetadata metadata_;
-    uint64_t base_override_;
+    uint64_t base_override_ = 0;
     std::string emu_path_;
 
     std::vector<ImportEntry> imports_;
     std::vector<ExportEntry> exports_;
     std::vector<SectionEntry> sections_;
     std::vector<uint64_t> tls_callbacks_;
+    uint64_t tls_directory_rva_ = 0;
     PeFile pefile;
 
     void parse_pe();

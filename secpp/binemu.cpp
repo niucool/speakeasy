@@ -884,7 +884,7 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
     return result;
 }
 
-int BinaryEmulator::mem_string_len(uint64_t address, int width) {
+size_t BinaryEmulator::mem_string_len(uint64_t address, int width) {
     // Python binemu.py:687-698 doc: "Get the length of a string from emulated memory"
     size_t len = 0;
     while (true) {

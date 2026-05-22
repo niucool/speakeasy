@@ -181,8 +181,8 @@ protected:
     std::shared_ptr<DriveManager> driveman = nullptr;
     std::shared_ptr<CryptoManager> cryptman = nullptr;
     std::shared_ptr<ApiHammer> hammer = nullptr;
-    WindowsApi* api = nullptr;
-    ObjectManager* om = nullptr;     // ObjectManager
+    std::shared_ptr<WindowsApi> api = nullptr;
+    std::shared_ptr<ObjectManager> om = nullptr;     // ObjectManager
     void* wintypes = nullptr;
 
     // ── Helper ────────────────────────────────────────────────

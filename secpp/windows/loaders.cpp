@@ -42,6 +42,7 @@ static int sec_cb(void* cbd,
                   const peparse::image_section_header& sec,
                   const peparse::bounded_buffer* sec_data) {
     auto* ctx = static_cast<ParseCtx*>(cbd);
+    (void)sec_base;
 
     SectionEntry entry;
     entry.name = sec_name;
@@ -122,6 +123,7 @@ static int rsrc_cb(void* cbd, const peparse::resource& r) {
  * Read a single byte at a given Virtual Address from the parsed PE.
  * Returns false if the address is out of range.
  */
+/*
 static bool read_byte_at_va(peparse::parsed_pe* pe, uint64_t va,
                             uint8_t& out) {
     peparse::VA va_struct;
@@ -129,6 +131,7 @@ static bool read_byte_at_va(peparse::parsed_pe* pe, uint64_t va,
     (void)va_struct;
     return peparse::ReadByteAtVA(pe, peparse::VA(va), out);
 }
+*/
 
 /**
  * Read N bytes at a given Virtual Address using repeated ReadByteAtVA.
@@ -153,68 +156,74 @@ PeLoader::PeLoader(const std::string& path,
     const std::vector<uint8_t>& data,
     int base_override,
     const std::string& emu_path)
-    : path_(path), data_(data),base_override_(base_override), emu_path_(emu_path) {
+    : path_(path), 
+    data_(data),
+    pefile(path, data),
+    base_override_(base_override), 
+    emu_path_(emu_path) {
 }
 
 PeLoader::~PeLoader() {
 }
 
 void PeLoader::parse_pe() {
-    pefile = PeFile(path_, data_);
-
     ParseCtx ctx;
 
-    peparse::parsed_pe* pasered_pe = pefile.get_parsed_pe();
+    peparse::parsed_pe* pe = pefile.get_parsed_pe();
+    if (!pe)
+        return;
+
     // Read PE header fields
-    metadata_.machine = pasered_pe->peHeader.nt.FileHeader.Machine;
+    metadata_.machine = pe->peHeader.nt.FileHeader.Machine;
     ctx.machine = metadata_.machine;
-    metadata_.magic = pasered_pe->peHeader.nt.OptionalMagic;
+    metadata_.magic = pe->peHeader.nt.OptionalMagic;
     ctx.magic = metadata_.magic;
-    metadata_.subsystem = pasered_pe->peHeader.nt.OptionalHeader.Subsystem;
+    metadata_.subsystem = pe->peHeader.nt.OptionalHeader.Subsystem;
     ctx.subsystem = metadata_.subsystem;
-    metadata_.timestamp = pasered_pe->peHeader.nt.FileHeader.TimeDateStamp;
+    metadata_.timestamp = pe->peHeader.nt.FileHeader.TimeDateStamp;
     ctx.timestamp = metadata_.timestamp;
 
     // Architecture
     ctx.arch = (metadata_.machine == 0x8664) ? 64 : 32;  // IMAGE_FILE_MACHINE_AMD64
 
     // Image base and size
-    ctx.image_base = pasered_pe->peHeader.nt.OptionalHeader.ImageBase;
-    ctx.image_size = pasered_pe->peHeader.nt.OptionalHeader.SizeOfImage;
-    ctx.section_align = pasered_pe->peHeader.nt.OptionalHeader.SectionAlignment;
+    ctx.image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
+    ctx.image_size = pe->peHeader.nt.OptionalHeader.SizeOfImage;
+    ctx.section_align = pe->peHeader.nt.OptionalHeader.SectionAlignment;
 
     // Entry point
     peparse::VA ep_va;
-    if (peparse::GetEntryPoint(pasered_pe, ep_va)) {
+    if (peparse::GetEntryPoint(pe, ep_va)) {
         ctx.ep = static_cast<uint64_t>(ep_va);
     }
 
     // Iterate sections
-    peparse::IterSec(pasered_pe, sec_cb, &ctx);
+    peparse::IterSec(pe, sec_cb, &ctx);
     sections_ = ctx.sections;
 
     // Iterate imports
-    peparse::IterImpVAString(pasered_pe, imp_cb, &ctx);
+    peparse::IterImpVAString(pe, imp_cb, &ctx);
     imports_ = ctx.imports;
 
     // Iterate exports (use IterExpFull for full info including ordinal)
-    peparse::IterExpFull(pasered_pe, exp_cb, &ctx);
+    peparse::IterExpFull(pe, exp_cb, &ctx);
     exports_ = ctx.exports;
 
     // Iterate resources
-    peparse::IterRsrc(pasered_pe, rsrc_cb, &ctx);
+    peparse::IterRsrc(pe, rsrc_cb, &ctx);
     metadata_.resources = ctx.resources;
 
     // TLS callbacks — parse TLS directory
-    auto tls_dir = pasered_pe->peHeader.nt.OptionalHeader.DataDirectory[9];
+    auto tls_dir = pe->peHeader.nt.OptionalHeader.DataDirectory[9];
     if (tls_dir.VirtualAddress != 0) {
         uint64_t callbacks_rva = 0;
         int ptr_size = (ctx.arch == 64) ? 8 : 4;
+        tls_directory_rva_ = tls_dir.VirtualAddress;
 
         // Read TLS directory: StartAddressOfRawData (ptr), EndAddressOfRawData (ptr),
         // AddressOfIndex (ptr), AddressOfCallBacks (ptr), ...
         // AddressOfCallBacks is at offset 3*ptr_size within TLS dir
-        auto tls_data = read_bytes_at_va(pasered_pe, tls_dir.VirtualAddress,
+        auto tls_data = read_bytes_at_va(pe, tls_dir.VirtualAddress,
                                          4 * ptr_size + ptr_size);
         if (tls_data.size() >= 4 * ptr_size) {
             // AddressOfCallBacks at offset 3*ptr_size
@@ -226,7 +235,7 @@ void PeLoader::parse_pe() {
         // Read callback pointers until null
         if (callbacks_rva != 0) {
             for (int i = 0; i < 100; ++i) {
-                auto ptr_data = read_bytes_at_va(pasered_pe, callbacks_rva + i * ptr_size, ptr_size);
+                auto ptr_data = read_bytes_at_va(pe, callbacks_rva + i * ptr_size, ptr_size);
                 if (ptr_data.size() < (size_t)ptr_size) break;
                 uint64_t ptr = 0;
                 for (int j = 0; j < ptr_size; ++j)
@@ -242,14 +251,17 @@ void PeLoader::parse_pe() {
 std::shared_ptr<LoadedImage> PeLoader::make_image() {
     auto img = std::make_shared<LoadedImage>();
 
-    parse_pe();
     auto* pe = pefile.get_parsed_pe();
+    if (!pe)
+        return img;
+
+    parse_pe();
 
     if (base_override_ && (base_override_ != pefile.base)) {
         pefile.rebase(base_override_);
     }
 
-    std::string module_type = "exe";
+    img->module_type = "exe";
     if(pefile.is_driver())
         img->module_type = "driver";
     else if(pefile.is_dll())
@@ -259,11 +271,11 @@ std::shared_ptr<LoadedImage> PeLoader::make_image() {
 
     uint64_t image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
     uint64_t image_size = pe->peHeader.nt.OptionalHeader.SizeOfImage;
-    uint32_t section_align = pe->peHeader.nt.OptionalHeader.SectionAlignment;
-    uint32_t file_align = pe->peHeader.nt.OptionalHeader.FileAlignment;
+    //uint32_t section_align = pe->peHeader.nt.OptionalHeader.SectionAlignment;
+    //uint32_t file_align = pe->peHeader.nt.OptionalHeader.FileAlignment;
 
     // Copy PE headers
-    uint32_t header_size = pe->peHeader.nt.OptionalHeader.SizeOfHeaders;
+    //uint32_t header_size = pe->peHeader.nt.OptionalHeader.SizeOfHeaders;
     //img->mapped_image.assign(data_.begin(),
     //                        data_.begin() + std::min(header_size, static_cast<uint32_t>(data_.size())));
 
@@ -321,7 +333,7 @@ std::shared_ptr<LoadedImage> PeLoader::make_image() {
 
     MemoryRegion region;
     region.base = image_base;
-    region.data = data_;
+    region.data = pefile.mapped_image;
     region.name = "pe_image";
     region.perms = 0x16;  // PERM_MEM_RWX
     img->regions.push_back(region);
@@ -348,6 +360,8 @@ std::shared_ptr<LoadedImage> PeLoader::make_image() {
     img->exports = exports_;
     img->sections = sections_;
     img->tls_callbacks = tls_callbacks_;
+    img->tls_directory_va = tls_directory_rva_ + image_base;
+    img->loader = this;
 
     return img;
 }
@@ -405,9 +419,9 @@ std::string RuntimeModule::get_base_name() const {
 
 const std::vector<ExportEntry>& RuntimeModule::get_exports() const { return exports_; }
 
-const ExportEntry* RuntimeModule::get_export_by_name(const std::string& name) const {
+const ExportEntry* RuntimeModule::get_export_by_name(const std::string& exp_name) const {
     for (const auto& exp : exports_) {
-        if (exp.name == name) return &exp;
+        if (exp.name == exp_name) return &exp;
     }
     return nullptr;
 }

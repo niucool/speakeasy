@@ -1,5 +1,6 @@
 // common.cpp — Windows emulation common utilities
 #include "common.h"
+#include "struct.h"
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
@@ -42,11 +43,9 @@ static int pefile_imp_cb(void* cbd, const peparse::VA& iat_addr,
                          const std::string& sym_name) {
     auto* ctx = static_cast<PeImportCtx*>(cbd);
     std::string dll = mod_name;
-    auto dot = dll.rfind(".dll");
-    if (dot != std::string::npos) dll.erase(dot);
-    if (dot == std::string::npos) {
-        dot = dll.rfind(".DLL");
-        if (dot != std::string::npos) dll.erase(dot);
+    auto dot = dll.rfind('.');
+    if (dot != std::string::npos) {
+        dll = dll.substr(0, dot);
     }
     std::string func = sym_name.empty() ? ("ordinal_unknown") : sym_name;
     ctx->imports[iat_addr] = {dll, func};
@@ -102,7 +101,12 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
     : imp_id(imp_id), imp_step(imp_step), file_size(0), base(0),
       image_size(0), is_mapped(true), ep(0), stack_commit(0),
       path(path), emu_path(emu_path), parsed_pe(nullptr) {
+
     (void)fast_load;
+
+    if(path.empty () && data.empty())
+        return;
+
     // Load PE data
     if (!data.empty()) {
         raw_pe_data = data;
@@ -149,7 +153,11 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
         // Mapped image
         mapped_image = get_memory_mapped_image(0xF0000000);
         is_mapped = true;
-        
+
+        if (parsed_pe->peHeader.nt.OptionalHeader.ImageBase == 0) {
+            relocate_image(DEFAULT_LOAD_ADDR);
+        }
+
         // Patch imports
         _patch_imports();
     } catch (...) {
@@ -168,7 +176,45 @@ PeFile::~PeFile() {
 }
 
 std::vector<uint64_t> PeFile::get_tls_callbacks() {
-    return {}; // TLS via pe-parse callback deferred
+    if (!parsed_pe) return {};
+
+    std::vector<uint64_t> callbacks;
+    auto tls_dir = parsed_pe->peHeader.nt.OptionalHeader.DataDirectory[9]; // IMAGE_DIRECTORY_ENTRY_TLS
+    if (tls_dir.VirtualAddress != 0) {
+        uint64_t callbacks_rva = 0;
+
+        auto read_bytes_at_va = [&](uint64_t addr, size_t size) -> std::vector<uint8_t> {
+            std::vector<uint8_t> data;
+            for (size_t i = 0; i < size; ++i) {
+                uint8_t b = 0;
+                if (peparse::ReadByteAtVA(parsed_pe, peparse::VA(addr + i), b))
+                    data.push_back(b);
+                else
+                    break;
+            }
+            return data;
+        };
+
+        auto tls_data = read_bytes_at_va(tls_dir.VirtualAddress, 4 * ptr_size + ptr_size);
+        if (tls_data.size() >= 4 * ptr_size) {
+            for (int j = 3 * ptr_size; j < 4 * ptr_size && j + ptr_size <= (int)tls_data.size(); ++j) {
+                callbacks_rva |= static_cast<uint64_t>(tls_data[j]) << ((j - 3 * ptr_size) * 8);
+            }
+        }
+
+        if (callbacks_rva != 0) {
+            for (int i = 0; i < 100; ++i) {
+                auto ptr_data = read_bytes_at_va(callbacks_rva + i * ptr_size, ptr_size);
+                if (ptr_data.size() < (size_t)ptr_size) break;
+                uint64_t ptr = 0;
+                for (int j = 0; j < ptr_size; ++j)
+                    ptr |= static_cast<uint64_t>(ptr_data[j]) << (j * 8);
+                if (ptr == 0) break;
+                callbacks.push_back(ptr);
+            }
+        }
+    }
+    return callbacks;
 }
 
 uint32_t PeFile::get_resource_dir_rva() {
@@ -224,7 +270,7 @@ std::vector<ExportEntry> PeFile::_get_pe_exports() {
 std::vector<PeSection> PeFile::_get_pe_sections() {
     if (!parsed_pe) return {};
     PeSectionCtx ctx;
-    ctx.image_base = base;
+    ctx.image_base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
     peparse::IterSec(parsed_pe, pefile_sec_cb, &ctx);
     return ctx.sections;
 }
@@ -310,6 +356,11 @@ bool PeFile::is_dll() {
 }
 
 bool PeFile::is_driver() {
+    if (parsed_pe) {
+        if (parsed_pe->peHeader.nt.OptionalHeader.Subsystem == 1) { // IMAGE_SUBSYSTEM_NATIVE
+            return true;
+        }
+    }
     if (!imports.empty()) {
         static const std::vector<std::string> sys_dlls = {
             "ntoskrnl", "hal", "ndis", "bootvid", "kdcom", "win32k"};
@@ -335,14 +386,96 @@ bool PeFile::is_dotnet() {
 }
 
 bool PeFile::has_reloc_table() {
-    // pe-parse exposes base relocation callback
-    return false; // defer to pe-parse IterRelocs
+    if (!parsed_pe) return false;
+    auto num_dirs = parsed_pe->peHeader.nt.OptionalHeader.NumberOfRvaAndSizes;
+    if (num_dirs >= 6) {
+        return parsed_pe->peHeader.nt.OptionalHeader.DataDirectory[5].Size > 0;
+    }
+    return false;
+}
+
+void PeFile::relocate_image(uint64_t new_base) {
+    if (!parsed_pe) return;
+
+    auto num_dirs = parsed_pe->peHeader.nt.OptionalHeader.NumberOfRvaAndSizes;
+    if (num_dirs < 6) return;
+
+    auto reloc_dir = parsed_pe->peHeader.nt.OptionalHeader.DataDirectory[5];
+    if (reloc_dir.Size == 0 || reloc_dir.VirtualAddress == 0) {
+        return; // No relocations
+    }
+
+    uint64_t reloc_rva = reloc_dir.VirtualAddress;
+    uint64_t reloc_size = reloc_dir.Size;
+
+    uint64_t preferred_base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+    uint64_t delta = new_base - preferred_base;
+    if (delta == 0) {
+        return; // No change in base address, no relocations needed
+    }
+
+    uint64_t bytes_processed = 0;
+    while (bytes_processed + 8 <= reloc_size) {
+        uint64_t block_rva_offset = reloc_rva + bytes_processed;
+        if (block_rva_offset + 8 > mapped_image.size()) {
+            break;
+        }
+
+        uint32_t page_rva = static_cast<uint32_t>(speakeasy::read_le(mapped_image, block_rva_offset, 4));
+        uint32_t block_size = static_cast<uint32_t>(speakeasy::read_le(mapped_image, block_rva_offset + 4, 4));
+
+        if (block_size < 8 || bytes_processed + block_size > reloc_size) {
+            break;
+        }
+
+        uint32_t num_entries = (block_size - 8) / 2;
+        for (uint32_t i = 0; i < num_entries; ++i) {
+            uint64_t entry_offset = block_rva_offset + 8 + i * 2;
+            if (entry_offset + 2 > mapped_image.size()) {
+                break;
+            }
+
+            uint16_t descriptor = static_cast<uint16_t>(speakeasy::read_le(mapped_image, entry_offset, 2));
+            uint16_t type = descriptor >> 12;
+            uint16_t offset = descriptor & 0x0FFF;
+
+            if (type == 0) { // IMAGE_REL_BASED_ABSOLUTE
+                continue;
+            }
+
+            uint64_t target_rva = static_cast<uint64_t>(page_rva) + offset;
+
+            if (type == 3) { // IMAGE_REL_BASED_HIGHLOW (32-bit absolute address)
+                if (target_rva + 4 <= mapped_image.size()) {
+                    uint32_t val = static_cast<uint32_t>(speakeasy::read_le(mapped_image, target_rva, 4));
+                    val += static_cast<uint32_t>(delta);
+                    speakeasy::write_le(mapped_image, target_rva, val, 4);
+                }
+            } else if (type == 10) { // IMAGE_REL_BASED_DIR64 (64-bit absolute address)
+                if (target_rva + 8 <= mapped_image.size()) {
+                    uint64_t val = speakeasy::read_le(mapped_image, target_rva, 8);
+                    val += delta;
+                    speakeasy::write_le(mapped_image, target_rva, val, 8);
+                }
+            }
+        }
+
+        bytes_processed += block_size;
+    }
 }
 
 void PeFile::rebase(uint64_t to) {
-    // pe-parse doesn't support relocation rewrite
     base = to;
-    ep = 0; // re-read from PE if needed
+    if (parsed_pe) {
+        ep = parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
+    }
+    mapped_image = get_memory_mapped_image(0xF0000000);
+    relocate_image(to);
+    pe_sections = _get_pe_sections();
+    imports = _get_pe_imports();
+    exports = _get_pe_exports();
+    import_table.clear();
+    _patch_imports();
 }
 
 std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_address, uint64_t base_addr) {
@@ -522,6 +655,21 @@ void JitPeFile::update() {
     peparse::IterSec(pe, pefile_sec_cb, &ctx);
     peparse::DestructParsedPE(pe);
     sections = ctx.sections;
+}
+
+void JitPeFile::update_image_size() {
+    if (basepe_data.size() < 0x40) return;
+    uint32_t e_lfanew = 0;
+    std::memcpy(&e_lfanew, &basepe_data[0x3C], sizeof(e_lfanew));
+    if (basepe_data.size() < e_lfanew + 84) return;
+
+    PeFile temp_pe("", basepe_data, 0, 4, "", true);
+    auto mapped = temp_pe.get_memory_mapped_image(0xF0000000);
+    uint32_t size_of_image = static_cast<uint32_t>(mapped.size()) + 0x1000;
+
+    std::memcpy(&basepe_data[e_lfanew + 80], &size_of_image, sizeof(size_of_image));
+    
+    update();
 }
 
 void JitPeFile::add_section(const std::string& name, const std::vector<uint8_t>& data) {

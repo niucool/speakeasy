@@ -199,6 +199,7 @@ public:
     bool is_driver();
     bool is_dotnet();
     bool has_reloc_table();
+    void relocate_image(uint64_t new_base);
     void rebase(uint64_t to);
 };
 

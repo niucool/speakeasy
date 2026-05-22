@@ -7,18 +7,45 @@
 
 ### 2026-05-22
 
+#### Added
+
+- **secpp**: 实现 PE 基址重定位处理 `PeFile::relocate_image(uint64_t new_base)`（对齐 Python `pefile::relocate_image` 逻辑）。
+  - 支持解析 Page RVA 块、Block Size 以及 16-bit descriptor。
+  - 支持 32 位 `IMAGE_REL_BASED_HIGHLOW` (type 3) 和 64 位 `IMAGE_REL_BASED_DIR64` (type 10) 的绝对地址重定位修正。
+  - 在 `PeFile::rebase(uint64_t to)` 中自动调用 `relocate_image` 修正映射映像，在 `PeFile` 构造函数对于 ImageBase 为 `0` 的特殊 PE 初始重定位至 `DEFAULT_LOAD_ADDR`。
+  - 在 `tests/test_porting.cpp` 中新增 `PeFileMemoryMappedImageTest.RelocateImage` 单元测试，加载 `antidbg.exe` 验证重定位前后 32 位/64 位绝对地址修正在 RVA 映像中的正确性。
+- **secpp**: 实现 `PeFile::get_memory_mapped_image` 和 `DecoyModule::get_memory_mapped_image` (对齐 Python `pefile` 实现)。
+  - 对齐了 Python 端的 `adjust_PointerToRawData`、`adjust_SectionAlignment`、`get_PointerToRawData_adj` 及 `get_VirtualAddress_adj` 等边界与对齐逻辑。
+  - 在 `PeFile` 中新增了 `raw_pe_data` 原始字节存储，并完美处理了空区填充、多节对齐等细节。
+  - 在 `tests/test_porting.cpp` 中新增了 `PeFileMemoryMappedImageTest.GetMemoryMappedImage` 单元测试，加载 `tests/bins/antidbg.exe` 验证内存加载映像的正确性。
+  - 新增 `PeFileMemoryMappedImageTest.GetTlsCallbacksAndReloc` 单元测试，专门验证 TLS 回调指针的读取和 Reloc Table 是否存在逻辑。
+
 #### Changed
 
+- **secpp**: 进一步深度对齐 `PeFile` / `JitPeFile` 及其辅助函数与 Python 端的实现逻辑：
+  - **PeFile::get_tls_callbacks()**: 摆脱之前的空占位，完美实现了基于 `IMAGE_DIRECTORY_ENTRY_TLS` 的 TLS 回调指针解析，通过解析数据目录内的 `AddressOfCallBacks` VA 指针并在 RVA 空间上循环读取，实现与 Python `_PeParser` 100% 对等的 TLS 回调收集功能。
+  - **PeFile::has_reloc_table()**: 替换了 defer 占位符，直接通过检查 PE 可选头的 `DataDirectory[5]` (IMAGE_DIRECTORY_ENTRY_BASERELOC) 的 `Size` 属性判定 relocation 目录的存在性，完美对齐 Python `has_reloc_table`。
+  - **pefile_imp_cb**: 修改了导入模块解析的后缀去除逻辑，改用与 Python `os.path.splitext` 对等的 `.rfind('.')` 后缀名剥离，完美解决非 `.dll` 模块（如 `.sys`）的前缀提取错误。
+  - **JitPeFile::update_image_size()**: 实现了此前声明但缺失定义的 `JitPeFile::update_image_size()` 方法，通过安全解析 `e_lfanew` 计算并向 OptionalHeader 的 SizeOfImage offset 处回写正确的 Image 映射大小，并重新触发 `update()` 刷新。
 - **secpp**: 将 Thread 指针生命周期管理重构为 `std::shared_ptr<Thread>`，避免多处内存泄漏并现代化线程生命周期管理。
   - **objman.h/cpp**: 将 Process 类中的 `std::vector<Thread> threads` 修改为 `std::vector<std::shared_ptr<Thread>> threads`，`Thread curr_thread` 修改为 `std::shared_ptr<Thread> curr_thread`。
   - **winemu.h/cpp**: 将 emulator 的 `curr_thread` 重构为 `std::shared_ptr<Thread>`，并将 `init_teb`、`init_tls`、`get_thread_context`、`load_thread_context`、`resume_thread` 等 API/辅助签名中的 `void* thread` 或 `Thread*` 统一更新为 `std::shared_ptr<Thread>`，添加 `find_thread` 和 `find_thread_by_ptr` 线程安全检索辅助函数。
   - **win32.cpp**: 更新 `run_module` 和 `run_shellcode` 中线程对象的创建方式，由 `new Thread` 重构为 `std::make_shared<Thread>` 并正确归入 Process 的线程向量中，解决了裸指针内存泄漏。
-  - **kernel32.cpp**: 将 `CreateProcessA`、`CreateThread`、`CreateRemoteThread` 等函数中对 `Thread*` / `void* thread` 的检索和传递转换为 `std::shared_ptr<Thread>` 并在需要裸指针时获取 `.get()` 或 `->get_id()`，更新 Snapshot 线程存储。
+  - **kernel32.cpp**: 将 `CreateProcessA`、`CreateThread`、`CreateRemoteThread` 等函数中对 `Thread*` / `void* thread` 的检索 and 传递转换为 `std::shared_ptr<Thread>` 并在需要裸指针时获取 `.get()` 或 `->get_id()`，更新 Snapshot 线程存储。
   - **ntdll.cpp**: 重构线程相关的 `NtCreateThread`、`NtOpenThread`、`NtGetContextThread` 函数，使用 `wemu->find_thread` 等方法实现安全的线程转换与生命周期控制。
   - **msvcrt.cpp**: 更新 `_beginthreadex` 和 `_beginthread` 以接收 `std::shared_ptr<Thread>` 并返回 `thread.get()`，完成 C++ 线程智能指针管理的全面现代化。
+- **secpp**: 深度对齐 `secpp/windows/common.cpp` 和 `loaders.cpp` 中的 PE 处理与映像加载逻辑到 Python 端的 `_PeParser` 与 `loaders.py`：
+  - **PeFile::is_driver()**: 增加对可选头中 Subsystem 字段的判定（`IMAGE_SUBSYSTEM_NATIVE` 为 1 时归为驱动），全面对齐 Python 端的驱动类型推导。
+  - **PeFile::rebase(uint64_t to)**: 实现了完整的内存映像重建逻辑（更新 entry point、重新生成 mapped_image 映像、重解析 sections/imports/exports，并使用 `_patch_imports()` 重写导入表指针），解决了在进行重定位时内存映像与实际基址脱节的隐患。
+  - **PeLoader::make_image()**: 修复了此前在 C++ `PeLoader` 中将原始磁盘文件数据直接映射进模拟器内存的严重移植缺陷。现在正确使用 `pefile.mapped_image`（经对齐与零填充的内存映像）作为 MemoryRegion 的初始化数据。
 
 #### Fixed
 
+- **secpp/windows/common.cpp**: 修复重定位过程中的 RVA 偏移和区段解析错误：
+  - 修复 `PeFile::_get_pe_sections()` 重定位时的 Bug。此前 `_get_pe_sections()` 在解析 section descriptors 时使用动态 `base`（即当前的虚拟加载地址）初始化 `ctx.image_base`，导致重定位（rebase）后计算出的 section RVA 大小与实际头部大小不一致而产生下溢/上溢错乱。现已修正为严格基于 PE 首部固有的 preferred `ImageBase` 来计算，使得 `mapped_image` 始终具备稳定的 RVA 对齐映射。
+  - 修复 `tests/test_porting.cpp` 中 `RelocateImage` 单元测试使用 `pe.get_memory_mapped_image` 重新从磁盘文件构造导致未带上重定位修改的 Bug，修正为直接读取 `pe.mapped_image`。
+- **secpp/windows/common.h & common.cpp**: 修复并消除所有 MSVC 编译警告（包含变量重名遮蔽 C4458、隐式类型转换截断 C4244、未引用形参 C4100 等），实现 100% warning-free 安全编译。
+- **secpp/windows/loaders.cpp & loaders.h**: 修复并消除了所有的 MSVC 编译警告（包含变量重名遮蔽 C4458、未引用形参 C4100、局部变量未引用 C4189、未引用函数 C4505 等），确保加载器实现完全无警告编译。
 - **loaders.cpp**: 修复了 `PeLoader::make_image` 从 Python 移植到 C++ 时的若干移植错误：
   - 修复了 PE 入口点 (entry point) 相对虚拟地址 (RVA) 的获取错误（此前被错误地写为硬编码的 `(sections_.empty()) ? 0 : 0` 导致始终返回 `0` 从而使得仿真环境起始执行在无效的 PE 头部），现在可以正确读取并获取 PE 的 `AddressOfEntryPoint`。
   - 实现了 `rsrc_cb` 资源文件解析回调函数，将 PE 中的资源条目 (Resource Entry) 提取并正确填充到 `metadata_.resources` 中，与 Python 端逻辑完全对齐。

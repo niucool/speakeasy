@@ -1163,7 +1163,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
 
     // ── Initialize API handler (Python 1019-1022) ──
     if (!api) {
-        api = new WindowsApi(reinterpret_cast<Emulator*>(this));
+        api = std::make_shared<WindowsApi>(reinterpret_cast<Emulator*>(this));
     }
 
     advance_bootstrap_phase(BootstrapPhase::ENGINE_API_READY);
@@ -2199,8 +2199,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
     void* func_ptr = nullptr;
 
     if (api) {
-        auto* wapi = static_cast<WindowsApi*>(api);
-        std::tie(handler_mod, func_ptr) = wapi->get_export_func_handler(dll_norm, name);
+        std::tie(handler_mod, func_ptr) = api->get_export_func_handler(dll_norm, name);
     }
 
     // ── Normalization fallback ──
@@ -2208,8 +2207,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         auto [alt_dll, alt_name] = normalize_import_miss(dll, name);
         if (alt_dll != dll_norm || alt_name != name) {
             if (api) {
-                auto* wapi = static_cast<WindowsApi*>(api);
-                std::tie(handler_mod, func_ptr) = wapi->get_export_func_handler(alt_dll, alt_name);
+                std::tie(handler_mod, func_ptr) = api->get_export_func_handler(alt_dll, alt_name);
                 if (func_ptr) imp_api = alt_dll + "." + alt_name;
             }
         }
@@ -2231,11 +2229,10 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 
         if (api) {
             try {
-                auto* wapi = static_cast<WindowsApi*>(api);
                 std::vector<void*> vptr_argv;
                 for (auto a : argv)
                     vptr_argv.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(a)));
-                wapi->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
+                api->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
 
                 uint64_t rv = 0;  // handlers set ret via registers
                 uint64_t ret = get_ret_address();
@@ -2269,15 +2266,14 @@ void WindowsEmulator::handle_import_data(const std::string& mod, const std::stri
     // Python reference: winemu.py lines 1372-1387
     if (!api) return;
 
-    auto* wapi = static_cast<WindowsApi*>(api);
     // Try data export handler first
-    auto [data_mod, data_func] = wapi->get_data_export_handler(mod, sym);
+    auto [data_mod, data_func] = api->get_data_export_handler(mod, sym);
     if (data_func) {
-        wapi->call_data_func(data_mod, data_func, data_ptr);
+        api->call_data_func(data_mod, data_func, data_ptr);
         return;
     }
     // Fallback: try func export handler (returns a procedure address)
-    auto [func_mod, func_ptr] = wapi->get_export_func_handler(mod, sym);
+    auto [func_mod, func_ptr] = api->get_export_func_handler(mod, sym);
     if (func_ptr) {
         // Get procedure address (sentinel) for this module+function
         get_proc(mod, sym);

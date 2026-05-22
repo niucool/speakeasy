@@ -222,7 +222,7 @@ public:
     // Python binemu.py:657-685 doc: "Read a string from emulated memory"
     std::string read_mem_string(uint64_t address, int width = 1, int max_chars = 0);
     // Python binemu.py:687-698 doc: "Get the length of a string from emulated memory"
-    int mem_string_len(uint64_t address, int width = 1);
+    size_t mem_string_len(uint64_t address, int width = 1);
     // Python binemu.py:700-717 doc: "Get all ansi strings from a supplied memory blob"
     std::vector<std::tuple<int, std::string>> get_ansi_strings(const std::vector<uint8_t>& data, int min_len = 4);
     // Python binemu.py:719-736 doc: "Get all unicode strings from a supplied memory blob"
