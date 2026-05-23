@@ -1105,7 +1105,7 @@ uint64_t Ntdll::NtQueryInformationProcess(void* emu, const std::string&, int,
             if (proc && info_ptr) {
                 write_ptr(emu, info_ptr, static_cast<uint64_t>(proc->get_pid()));
                 write_ptr(emu, info_ptr + psz, 0); // InheritedFrom
-                uint64_t peb_addr = reinterpret_cast<uint64_t>(proc->get_peb());
+                uint64_t peb_addr = (proc && proc->get_peb()) ? proc->get_peb()->get_address() : 0;
                 write_ptr(emu, info_ptr + psz * 2, peb_addr);
             }
             if (ret_len_ptr) write_u32(emu, ret_len_ptr, psz * 3);

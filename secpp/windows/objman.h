@@ -122,6 +122,8 @@ public:
     int get_handle();
     virtual std::string get_obj_name() const { return name; }
     void* get_object() const { return object; }
+    uint64_t get_address() const { return address; }
+    void set_address(uint64_t addr) { address = addr; }
 };
 
 /**
@@ -200,6 +202,63 @@ public:
 };
 
 class Process;  // Forward declaration for circular dependency with Thread
+class TEB;
+class PEB;
+class PebLdrData;
+class LdrDataTableEntry;
+
+/**
+ * Public KernelObject subclasses for ported NT structures
+ */
+class PEB : public KernelObject {
+public:
+    PEB(void* emu, uint64_t address = 0);
+    PEB() : KernelObject(nullptr) {}
+};
+
+class TEB : public KernelObject {
+public:
+    TEB(void* emu, uint64_t address = 0);
+    TEB() : KernelObject(nullptr) {}
+};
+
+class PebLdrData : public KernelObject {
+public:
+    PebLdrData(void* emu);
+    PebLdrData() : KernelObject(nullptr) {}
+};
+
+class LdrDataTableEntry : public KernelObject {
+public:
+    LdrDataTableEntry(void* emu, const std::string& dllname, const std::string& tag = "");
+    LdrDataTableEntry() : KernelObject(nullptr) {}
+};
+
+class RTL_USER_PROCESS_PARAMETERS : public KernelObject {
+public:
+    RTL_USER_PROCESS_PARAMETERS(void* emu, Process* proc);
+    RTL_USER_PROCESS_PARAMETERS() : KernelObject(nullptr) {}
+};
+
+class IDT : public KernelObject {
+public:
+    IDT(void* emu);
+    IDT() : KernelObject(nullptr) {}
+    void init_descriptors();
+};
+
+class Event : public KernelObject {
+public:
+    Event(void* emu);
+    Event() : KernelObject(nullptr) {}
+};
+
+class Mutant : public KernelObject {
+public:
+    Mutant(void* emu);
+    Mutant() : KernelObject(nullptr) {}
+};
+
 /**
  * Represents a Windows ETHREAD object that describes an OS level thread
  */
@@ -207,7 +266,7 @@ class Thread : public KernelObject {
 private:
     void* ctx;
     bool modified_pc;
-    void* teb;
+    std::shared_ptr<TEB> teb;
     SEH seh;
     std::vector<void*> tls;
     std::vector<void*> message_queue;
@@ -230,7 +289,7 @@ public:
     std::shared_ptr<Process> get_process() { return process; }
     void set_process(std::shared_ptr<Process> proc) { process = proc; } 
     void init_teb(int teb_addr, int peb_addr);
-    void* get_teb();
+    std::shared_ptr<TEB> get_teb() { return teb; }
     void set_last_error(int code);
     int get_last_error();
     std::vector<void*> get_tls();
@@ -269,8 +328,9 @@ public:
     int stdin_handle;
     int stdout_handle;
     int stderr_handle;
-    void* peb;
-    void* peb_ldr_data;
+    std::shared_ptr<PEB> peb;
+    std::shared_ptr<PebLdrData> peb_ldr_data;
+    std::vector<std::shared_ptr<LdrDataTableEntry>> ldr_entries_list;
     bool is_peb_active;
     std::string path;
     std::string image;
@@ -284,10 +344,10 @@ public:
             const std::string& name = "", const std::string& path = "",
             const std::string& cmdline = "", uint64_t base = 0, int session = 0);
 
-    void* get_peb();
+    std::shared_ptr<PEB> get_peb();
     void set_peb_ldr_address(int addr);
     void set_process_parameters(void* emu);
-    void* get_peb_ldr();
+    std::shared_ptr<PebLdrData> get_peb_ldr();
     void alloc_console();
     std::string get_desktop_name();
     void* get_token();

@@ -4,6 +4,7 @@
 #include <cstring>
 #include <sstream>
 #include "../config.h"
+#include "../winenv/defs/nt/ntoskrnl.h"
 
 // Python win32.py:34
 // def __init__(self, config, argv=None, debug=False, exit_event=None, gdb_port=None):
@@ -335,38 +336,27 @@ void Win32Emulator::alloc_peb(std::shared_ptr<Process> proc) {
     if (!proc) return;
     if (proc->is_peb_active) return;
 
-    // Map PEB memory (0x1000 bytes)
-    uint64_t peb_addr_val = mem_map(0x1000, 0, PERM_MEM_RW, "emu.struct.PEB");
-    proc->peb = reinterpret_cast<void*>(peb_addr_val);
-    this->peb_addr = peb_addr_val;
+    size_t size = proc->get_peb_ldr()->sizeof_obj();
+    uint64_t res = 0;
+    uint64_t actual_size = 0;
+    std::tie(res, actual_size) = get_valid_ranges(size);
+    mem_reserve(actual_size, res, PERM_MEM_RW, "emu.struct.PEB_LDR_DATA");
+    proc->set_peb_ldr_address(static_cast<int>(res));
 
+    auto peb = proc->get_peb();
     proc->is_peb_active = true;
 
-    // Write PEB structure fields
-    int psz = get_ptr_size();
-    if (psz == 0) psz = (ptr_size == 4) ? 4 : 8;
+    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    peb_struct->ImageBaseAddress = proc->base;
+    peb_struct->OSMajorVersion = config.os_ver.major;
+    peb_struct->OSMinorVersion = config.os_ver.minor;
+    peb_struct->OSBuildNumber = config.os_ver.build;
+    peb->write_back();
 
-    // +0x002: BeingDebug = 0 (1 byte)
-    std::vector<uint8_t> debug_byte = {0x00};
-    mem_write(peb_addr_val + 0x002, debug_byte);
-
-    // +0x00C: Ldr = proc->peb_ldr_data (pointer)
-    uint64_t ldr_ptr = reinterpret_cast<uint64_t>(proc->peb_ldr_data);
-    size_t ptr_sz = (psz == 4) ? 4 : 8;
-    std::vector<uint8_t> ldr_bytes(ptr_sz);
-    for (size_t i = 0; i < ptr_sz; i++) {
-        ldr_bytes[i] = static_cast<uint8_t>((ldr_ptr >> (i * 8)) & 0xFF);
-    }
-    mem_write(peb_addr_val + 0x00C, ldr_bytes);
-
-    // +0x010 (x86) or +0x020 (x64): ProcessParameters (set to 0 for now)
-    uint64_t pp_offset = (psz == 4) ? 0x010 : 0x020;
-    std::vector<uint8_t> pp_bytes(ptr_sz, 0);
-    mem_write(peb_addr_val + pp_offset, pp_bytes);
-
-    // +0x018: SessionId = 1 (4 bytes, int32)
-    std::vector<uint8_t> sid_bytes = {0x01, 0x00, 0x00, 0x00};
-    mem_write(peb_addr_val + 0x018, sid_bytes);
+    _ensure_core_dlls_loaded();
+    mem_map_reserve(proc->get_peb_ldr()->get_address());
+    auto mods = _ordered_peb_modules();
+    init_peb(mods, proc);
 }
 
 // Python win32.py:529
@@ -489,7 +479,7 @@ bool Win32Emulator::_hook_mem_unmapped(void* emu, int access, uint64_t address,
     if (access == INVALID_MEM_READ) {
         std::shared_ptr<Process> proc = get_current_process();
         if (proc && proc->peb_ldr_data) {
-            uint64_t pld_addr = reinterpret_cast<uint64_t>(proc->peb_ldr_data);
+            uint64_t pld_addr = proc->peb_ldr_data->get_address();
             // PEB_LDR_DATA struct size varies by arch (~45 bytes x86, ~81 x64)
             // Use a page-based range check for safety
             if (address > pld_addr && address < pld_addr + page_size) {

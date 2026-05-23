@@ -1075,9 +1075,18 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::get_peb_
 void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& user_mods, std::shared_ptr<Process> proc) {
     std::shared_ptr<Process> process = proc ? proc : curr_process;
     if (!process) return;
-    uint64_t peb_addr = mem_map(0x1000, 0, PERM_MEM_RW, "PEB");
-    process->peb = reinterpret_cast<void*>(peb_addr);
-    // Use the provided user_mods if non-null, otherwise use our module list
+
+    if (process->get_peb()) {
+        uint64_t peb_val = process->get_peb()->get_address();
+        std::vector<uint8_t> peb_bytes;
+        int ptr_sz = get_ptr_size();
+        for (int i = 0; i < ptr_sz; ++i) {
+            peb_bytes.push_back(static_cast<uint8_t>((peb_val >> (i * 8)) & 0xFF));
+        }
+        uint64_t peb_pointer_addr = (ptr_sz == 4) ? fs_addr + 0x30 : gs_addr + 0x60;
+        mem_write(peb_pointer_addr, peb_bytes);
+    }
+
     if (!user_mods.empty()) {
         process->init_peb(user_mods);
     } else {
@@ -1093,11 +1102,11 @@ void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeMod
 void WindowsEmulator::init_teb(std::shared_ptr<Thread> thread, void* peb) {
     if (!thread) return;
     auto* peb_obj = static_cast<Process*>(peb);
-    uint64_t peb_addr = peb_obj ? reinterpret_cast<uint64_t>(peb_obj->peb) : 0;
+    uint64_t peb_addr_val = (peb_obj && peb_obj->get_peb()) ? peb_obj->get_peb()->get_address() : 0;
     if (ptr_size == 4) {
-        thread->init_teb(static_cast<int>(fs_addr), static_cast<int>(peb_addr));
+        thread->init_teb(static_cast<int>(fs_addr), static_cast<int>(peb_addr_val));
     } else {
-        thread->init_teb(static_cast<int>(gs_addr), static_cast<int>(peb_addr));
+        thread->init_teb(static_cast<int>(gs_addr), static_cast<int>(peb_addr_val));
     }
 }
 
@@ -2829,8 +2838,8 @@ std::shared_ptr<Thread> WindowsEmulator::find_thread_by_ptr(void* thread_ptr) {
 //     """Get the PEB for a given process."""
 void* WindowsEmulator::get_process_peb(void* process) {
     auto proc_sp = process ? find_process(process) : curr_process;
-    if (proc_sp) {
-        return proc_sp->peb;
+    if (proc_sp && proc_sp->get_peb()) {
+        return reinterpret_cast<void*>(static_cast<uintptr_t>(proc_sp->get_peb()->get_address()));
     }
     return nullptr;
 }

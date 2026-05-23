@@ -30,10 +30,14 @@
 
 using namespace speakeasy;
 
-// ── Helper: get BinaryEmulator from void* ─────────────────────
+// ── Helper: get BinaryEmulator / WindowsEmulator from void* ──
 
 static inline BinaryEmulator* BE(void* raw) {
     return static_cast<BinaryEmulator*>(raw);
+}
+
+static inline WindowsEmulator* WE(void* raw) {
+    return static_cast<WindowsEmulator*>(raw);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -540,23 +544,16 @@ void Thread::set_context(void* ctx) {
 }
 
 void Thread::init_teb(int teb_addr, int peb_addr) {
-    // Python: if not teb: teb = TEB(emu=emu, address=teb_addr)
-    // teb.object.NtTib.StackBase = stack_base
-    // teb.object.NtTib.Self = teb_addr
-    // teb.object.NtTib.StackLimit = stack_commit
-    // teb.object.ProcessEnvironmentBlock = peb_addr
-    // teb.write_back()
-    //
-    // TEB struct is not yet ported. For now, just store the address.
     if (!this->teb) {
-        this->teb = reinterpret_cast<void*>(static_cast<uintptr_t>(teb_addr));
+        this->teb = std::make_shared<TEB>(emu, teb_addr);
     }
-}
 
-void* Thread::get_teb() {
-    // Python: return self.teb.read_back()
-    // Without a typed TEB, just return the raw pointer.
-    return this->teb;
+    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb->get_object());
+    teb_struct->NtTib.StackBase = this->stack_base;
+    teb_struct->NtTib.Self = teb_addr;
+    teb_struct->NtTib.StackLimit = this->stack_commit;
+    teb_struct->ProcessEnvironmentBlock = peb_addr;
+    this->teb->write_back();
 }
 
 void Thread::set_last_error(int code) {
@@ -588,12 +585,7 @@ void* Thread::get_token() {
 }
 
 void Thread::init_tls(int tls_dir, const std::string& modname) {
-    // Python: ptrsz = emu.get_ptr_size()
-    // tls_dirp = emu.mem_map(ptrsz, tag=...)
-    // emu.mem_write(tls_dirp, tls_dir)
-    // teb.object.ThreadLocalStoragePointer = tls_dirp
-    // teb.write_back()
-    if (!emu) return;
+    if (!emu || !this->teb) return;
 
     int ptrsz = BE(emu)->get_ptr_size();
     uint64_t tls_dirp = BE(emu)->mem_map(ptrsz, 0, 4, "emu.tls." + modname);
@@ -603,6 +595,10 @@ void Thread::init_tls(int tls_dir, const std::string& modname) {
         tls_data[i] = static_cast<uint8_t>((static_cast<unsigned int>(tls_dir) >> (i * 8)) & 0xFF);
     }
     BE(emu)->mem_write(tls_dirp, tls_data);
+
+    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb->get_object());
+    teb_struct->ThreadLocalStoragePointer = tls_dirp;
+    this->teb->write_back();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -611,8 +607,216 @@ void Thread::init_tls(int tls_dir, const std::string& modname) {
 
 Token::Token(void* emu)
     : KernelObject(emu) {
-    // Python: no additional initialization
     object = new EmuStruct();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PEB
+// ═══════════════════════════════════════════════════════════════
+PEB::PEB(void* emu, uint64_t addr)
+    : KernelObject(emu) {
+    int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
+    object = new speakeasy::defs::nt::PEB(ptr_sz);
+    if (!addr) {
+        address = static_cast<int>(
+            BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+        );
+    } else {
+        address = static_cast<int>(addr);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TEB
+// ═══════════════════════════════════════════════════════════════
+TEB::TEB(void* emu, uint64_t addr)
+    : KernelObject(emu) {
+    int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
+    object = new speakeasy::defs::nt::TEB(ptr_sz);
+    if (addr) {
+        address = static_cast<int>(addr);
+    } else {
+        address = static_cast<int>(
+            BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+        );
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PebLdrData
+// ═══════════════════════════════════════════════════════════════
+PebLdrData::PebLdrData(void* emu)
+    : KernelObject(emu) {
+    int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
+    object = new speakeasy::defs::nt::PEB_LDR_DATA(ptr_sz);
+    address = 0;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LdrDataTableEntry
+// ═══════════════════════════════════════════════════════════════
+LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, const std::string& tag)
+    : KernelObject(emu) {
+    int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
+    object = new speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY(ptr_sz);
+
+    int size = static_cast<int>(sizeof_obj());
+    size += static_cast<int>((dllname.length() + 1) * 2);
+
+    std::string tag_str = tag.empty() ? get_mem_tag() : tag;
+    address = static_cast<int>(
+        BE(emu)->mem_map(size, 0, 4, tag_str)
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RTL_USER_PROCESS_PARAMETERS
+// ═══════════════════════════════════════════════════════════════
+RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* proc)
+    : KernelObject(emu) {
+    int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
+    object = new speakeasy::defs::nt::RTL_USER_PROCESS_PARAMETERS(ptr_sz);
+
+    std::string proc_path = proc->path + '\0';
+    std::string proc_cmdline = proc->cmdline + '\0';
+
+    std::string cur_dir = "";
+    size_t idx = proc->path.rfind('\\');
+    if (idx != std::string::npos) {
+        cur_dir = proc->path.substr(0, idx + 1);
+    }
+    if (cur_dir.empty() || cur_dir.back() != '\\') {
+        cur_dir += '\\';
+    }
+    cur_dir += '\0';
+
+    std::string desktop_name = "WinSta0\\Default";
+    desktop_name += '\0';
+
+    std::vector<uint8_t> path_utf16((proc_path.length()) * 2, 0);
+    speakeasy::write_string(path_utf16, 0, proc_path.substr(0, proc_path.length() - 1), true);
+
+    std::vector<uint8_t> cmd_utf16((proc_cmdline.length()) * 2, 0);
+    speakeasy::write_string(cmd_utf16, 0, proc_cmdline.substr(0, proc_cmdline.length() - 1), true);
+
+    std::vector<uint8_t> dir_utf16((cur_dir.length()) * 2, 0);
+    speakeasy::write_string(dir_utf16, 0, cur_dir.substr(0, cur_dir.length() - 1), true);
+
+    std::vector<uint8_t> desk_utf16((desktop_name.length()) * 2, 0);
+    speakeasy::write_string(desk_utf16, 0, desktop_name.substr(0, desktop_name.length() - 1), true);
+
+    int string_data_size = static_cast<int>(path_utf16.size() + cmd_utf16.size() + dir_utf16.size() + desk_utf16.size());
+    int size = static_cast<int>(sizeof_obj()) + string_data_size;
+
+    address = static_cast<int>(
+        BE(emu)->mem_map(size, 0, 4, proc->get_mem_tag() + ".ProcessParameters")
+    );
+
+    uint64_t offset = static_cast<uint64_t>(address) + sizeof_obj();
+    BE(emu)->mem_write(offset, path_utf16);
+    uint64_t path_addr = offset;
+    offset += path_utf16.size();
+
+    BE(emu)->mem_write(offset, cmd_utf16);
+    uint64_t cmdline_addr = offset;
+    offset += cmd_utf16.size();
+
+    BE(emu)->mem_write(offset, dir_utf16);
+    uint64_t cur_dir_addr = offset;
+    offset += dir_utf16.size();
+
+    BE(emu)->mem_write(offset, desk_utf16);
+    uint64_t desktop_addr = offset;
+
+    auto* param = static_cast<speakeasy::defs::nt::RTL_USER_PROCESS_PARAMETERS*>(object);
+    param->MaximumLength = size;
+    param->Length = size;
+    param->Flags = 1;
+
+    param->StandardInput = proc->stdin_handle;
+    param->StandardOutput = proc->stdout_handle;
+    param->StandardError = proc->stderr_handle;
+
+    param->CurrentDirectory.DosPath.Length = static_cast<uint16_t>(dir_utf16.size() - 2);
+    param->CurrentDirectory.DosPath.MaximumLength = static_cast<uint16_t>(dir_utf16.size());
+    param->CurrentDirectory.DosPath.Buffer = cur_dir_addr;
+
+    param->ImagePathName.Length = static_cast<uint16_t>(path_utf16.size() - 2);
+    param->ImagePathName.MaximumLength = static_cast<uint16_t>(path_utf16.size());
+    param->ImagePathName.Buffer = path_addr;
+
+    param->CommandLine.Length = static_cast<uint16_t>(cmd_utf16.size() - 2);
+    param->CommandLine.MaximumLength = static_cast<uint16_t>(cmd_utf16.size());
+    param->CommandLine.Buffer = cmdline_addr;
+
+    param->DesktopInfo.Length = static_cast<uint16_t>(desk_utf16.size() - 2);
+    param->DesktopInfo.MaximumLength = static_cast<uint16_t>(desk_utf16.size());
+    param->DesktopInfo.Buffer = desktop_addr;
+
+    write_back();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IDT
+// ═══════════════════════════════════════════════════════════════
+IDT::IDT(void* emu)
+    : KernelObject(emu) {
+    int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
+    object = new speakeasy::defs::nt::IDT(ptr_sz);
+    address = static_cast<int>(
+        BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+    );
+}
+
+void IDT::init_descriptors() {
+    int ptr_sz = BE(emu)->get_ptr_size();
+    speakeasy::defs::nt::DESCRIPTOR_TABLE tbl(ptr_sz);
+
+    auto km = WE(emu)->get_mod_by_name("ntoskrnl");
+    uint64_t kbase = km ? km->base : 0x80000000;
+
+    uint64_t descs = BE(emu)->mem_map(tbl.sizeof_obj(), 0, 4, get_mem_tag() + ".idt_entries");
+    auto* idt_obj = static_cast<speakeasy::defs::nt::IDT*>(object);
+    idt_obj->Limit = 0xFFF;
+    idt_obj->Descriptors = descs;
+
+    if (ptr_sz == 4) {
+        for (int i = 0; i < 256; ++i) {
+            tbl.table_32[i].OffsetLow = 0 + (4 * i);
+            tbl.table_32[i].Base = static_cast<uint32_t>(kbase);
+        }
+    } else {
+        for (int i = 0; i < 256; ++i) {
+            tbl.table_64[i].OffsetLow = kbase & 0xFFFF;
+            tbl.table_64[i].OffsetMiddle = (kbase & 0xFFFF0000) >> 16;
+            tbl.table_64[i].OffsetHigh = (kbase & 0xFFFFFFFF00000000) >> 32;
+        }
+    }
+
+    BE(emu)->mem_write(descs, tbl.get_bytes());
+    write_back();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Event
+// ═══════════════════════════════════════════════════════════════
+Event::Event(void* emu)
+    : KernelObject(emu) {
+    object = new speakeasy::defs::nt::KEVENT();
+    address = static_cast<int>(
+        BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Mutant
+// ═══════════════════════════════════════════════════════════════
+Mutant::Mutant(void* emu)
+    : KernelObject(emu) {
+    object = new speakeasy::defs::nt::MUTANT();
+    address = static_cast<int>(
+        BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -633,11 +837,8 @@ Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
       peb(nullptr), peb_ldr_data(nullptr), is_peb_active(false),
       path(path), base(basel) {
 
-    // Python: object = EPROCESS(ptr_size)
-    // address = emu.mem_map(sizeof(), tag=..., perms=1, base=0xE0000000)
     object = new EmuStruct();
 
-    // Allocate EPROCESS at the preferred address
     if (emu) {
         int sz = sizeof_obj();
         if (sz > 0) {
@@ -646,8 +847,6 @@ Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
             );
         }
 
-        // Python: write list_entry self-pointer (active process link)
-        // On x86: list_entry offset 0x88; on AMD64: offset 0x188
         int arch = BE(emu)->get_arch();
         uint64_t list_entry_addr = 0;
         if (arch == speakeasy::arch::ARCH_X86) {
@@ -665,238 +864,46 @@ Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
             BE(emu)->mem_write(list_entry_addr + ptr_sz, le_data);
         }
 
-        // Python: emu.add_object(self.token)
-        // Token object tracking deferred to ObjectManager.
-
-        // Python: std handles
         stdin_handle = 0xF000 + 1;
         stdout_handle = 0xF000 + 2;
         stderr_handle = 0xF000 + 3;
+
+        peb = std::make_shared<PEB>(emu);
+        peb_ldr_data = std::make_shared<PebLdrData>(emu);
+        set_process_parameters(emu);
     }
 }
 
-void* Process::get_peb() {
+std::shared_ptr<PEB> Process::get_peb() {
     return this->peb;
 }
 
 void Process::set_peb_ldr_address(int addr) {
-    // Python: set PEB.Ldr to addr
-    this->peb_ldr_data = reinterpret_cast<void*>(static_cast<uintptr_t>(addr));
+    if (!peb || !peb_ldr_data) return;
+    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    peb_struct->Ldr = addr;
+    peb->write_back();
+
+    peb_ldr_data->set_address(addr);
 }
 
 void Process::set_process_parameters(void* emu) {
-    // Python: creates RTL_USER_PROCESS_PARAMETERS, sets PEB.ProcessParameters
-    // Python objman.py:527-530
-    //   process_parameters = RTL_USER_PROCESS_PARAMETERS(emu=emu, proc=self)
-    //   self.peb.object.ProcessParameters = process_parameters.address
-    //   self.peb.write_back()
     if (!emu || !this->peb) return;
-
-    auto* be = BE(emu);
-    int ptr_size = be->get_ptr_size();
-    int arch = be->get_arch();
-
-    // Build UTF-16LE string data
-    auto to_utf16le = [](const std::string& s) -> std::vector<uint8_t> {
-        std::vector<uint8_t> out;
-        for (size_t i = 0; i < s.size(); ++i) {
-            out.push_back(static_cast<uint8_t>(s[i] & 0xFF));
-            out.push_back(static_cast<uint8_t>((s[i] >> 8) & 0xFF));
-        }
-        out.push_back(0); out.push_back(0); // null terminator
-        return out;
-    };
-
-    // RTL_USER_PROCESS_PARAMETERS layout (simplified, based on Python ntoskrnl.py:637-667)
-    // Fields we need to compute struct size:
-    // MaximumLength(4) + Length(4) + Flags(4) + DebugFlags(4) +
-    // ConsoleHandle(ps) + ConsoleFlags(4) +
-    // [4 pad on x64] +
-    // StandardInput(ps) + StandardOutput(ps) + StandardError(ps) +
-    // CurrentDirectory(UNICODE_STRING + Ptr) +
-    // DllPath(UNICODE_STRING) + ImagePathName(UNICODE_STRING) + CommandLine(UNICODE_STRING) +
-    // Environment(ps) +
-    // StartingX(4)+StartingY(4)+CountX(4)+CountY(4)+CountCharsX(4)+CountCharsY(4)+
-    // FillAttribute(4)+WindowFlags(4)+ShowWindowFlags(4) +
-    // WindowTitle(UNICODE_STRING) + DesktopInfo(UNICODE_STRING) +
-    // ShellInfo(UNICODE_STRING) + RuntimeData(UNICODE_STRING)
-
-    // UNICODE_STRING = USHORT(2) + USHORT(2) + PWSTR(ps) = 4+ps
-    // On x64, PWSTR at offset 8 due to 4-byte alignment padding → 16 bytes
-    int us_size = (arch == speakeasy::arch::ARCH_AMD64) ? 16 : (4 + ptr_size);
-    // CURDIR = UNICODE_STRING + Ptr(ps)
-    int curdir_size = us_size + ptr_size;
-
-    // Calculate struct size
-    // Header fields
-    int offset = 0;
-    offset += 4 + 4 + 4 + 4;               // MaximumLength..DebugFlags
-    offset += ptr_size;                      // ConsoleHandle
-    offset += 4;                             // ConsoleFlags
-    if (arch == speakeasy::arch::ARCH_AMD64 && offset % 8) offset += 4; // align
-    offset += ptr_size;                      // StandardInput
-    offset += ptr_size;                      // StandardOutput
-    offset += ptr_size;                      // StandardError
-    offset += curdir_size;                   // CurrentDirectory
-    offset += us_size;                       // DllPath
-    offset += us_size;                       // ImagePathName
-    offset += us_size;                       // CommandLine
-    offset += ptr_size;                      // Environment
-    offset += 4+4+4+4+4+4+4+4+4;            // StartingX..ShowWindowFlags
-    offset += us_size;                       // WindowTitle
-    offset += us_size;                       // DesktopInfo
-    offset += us_size;                       // ShellInfo
-    offset += us_size;                       // RuntimeData
-    int struct_size = offset;
-
-    // Build string data (UTF-16LE)
-    auto proc_path_utf16 = to_utf16le(this->path.empty() ? "C:\\Windows\\System32\\unknown.exe" : this->path);
-    std::string cmdline_with_null = this->cmdline + '\0';
-    auto proc_cmdline_utf16 = to_utf16le(cmdline_with_null);
-    std::string cur_dir = this->path;
-    size_t last_slash = cur_dir.find_last_of("\\/");
-    if (last_slash != std::string::npos) cur_dir = cur_dir.substr(0, last_slash);
-    if (!cur_dir.empty() && cur_dir.back() != '\\') cur_dir += '\\';
-    auto cur_dir_utf16 = to_utf16le(cur_dir);
-    std::string desktop_name = "WinSta0\\Default";
-    auto desktop_utf16 = to_utf16le(desktop_name);
-
-    size_t string_data_size = proc_path_utf16.size() + proc_cmdline_utf16.size() +
-                              cur_dir_utf16.size() + desktop_utf16.size();
-
-    // Allocate memory for the struct + string data
-    uint64_t base = be->mem_map(struct_size + string_data_size, 0,
-                                PERM_MEM_RW, "emu.struct.ProcessParameters");
-    uint64_t str_offset = base + struct_size;
-
-    // Write string data
-    be->mem_write(str_offset, proc_path_utf16);
-    uint64_t path_addr = str_offset;
-    str_offset += proc_path_utf16.size();
-
-    be->mem_write(str_offset, proc_cmdline_utf16);
-    uint64_t cmdline_addr = str_offset;
-    str_offset += proc_cmdline_utf16.size();
-
-    be->mem_write(str_offset, cur_dir_utf16);
-    uint64_t cur_dir_addr = str_offset;
-    str_offset += cur_dir_utf16.size();
-
-    be->mem_write(str_offset, desktop_utf16);
-    uint64_t desktop_addr = str_offset;
-
-    // Helper: write pointer value at offset
-    auto write_ptr = [&](uint64_t struct_base, int off, uint64_t val) {
-        std::vector<uint8_t> ptr_bytes;
-        for (int i = 0; i < ptr_size; ++i) {
-            ptr_bytes.push_back(static_cast<uint8_t>((val >> (i * 8)) & 0xFF));
-        }
-        be->mem_write(struct_base + off, ptr_bytes);
-    };
-    // Helper: write uint16 at offset
-    auto write_u16 = [&](uint64_t struct_base, int off, uint16_t val) {
-        std::vector<uint8_t> bytes = {static_cast<uint8_t>(val & 0xFF),
-                                       static_cast<uint8_t>((val >> 8) & 0xFF)};
-        be->mem_write(struct_base + off, bytes);
-    };
-    // Helper: write uint32 at offset
-    auto write_u32 = [&](uint64_t struct_base, int off, uint32_t val) {
-        std::vector<uint8_t> bytes(4);
-        bytes[0] = static_cast<uint8_t>(val & 0xFF);
-        bytes[1] = static_cast<uint8_t>((val >> 8) & 0xFF);
-        bytes[2] = static_cast<uint8_t>((val >> 16) & 0xFF);
-        bytes[3] = static_cast<uint8_t>((val >> 24) & 0xFF);
-        be->mem_write(struct_base + off, bytes);
-    };
-    // Helper: write UNICODE_STRING at offset
-    auto write_unicode_string = [&](uint64_t struct_base, int off, uint16_t len_bytes,
-                                    uint16_t max_len_bytes, uint64_t buf_addr) {
-        int us_off = off;
-        write_u16(struct_base, us_off, len_bytes);     // Length
-        write_u16(struct_base, us_off + 2, max_len_bytes); // MaximumLength
-        // Buffer pointer: at offset 4 for x86, offset 8 for x64
-        int buf_off = (arch == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
-        write_ptr(struct_base, us_off + buf_off, buf_addr);
-    };
-
-    // Now write the struct fields
-    int o = 0;
-    write_u32(base, o, struct_size); o += 4; // MaximumLength
-    write_u32(base, o, struct_size); o += 4; // Length
-    write_u32(base, o, 1);          o += 4; // Flags = 1 (STARTF_USESHOWWINDOW)
-    write_u32(base, o, 0);          o += 4; // DebugFlags
-    write_ptr(base, o, 0);          o += ptr_size; // ConsoleHandle
-    write_u32(base, o, 0);          o += 4; // ConsoleFlags
-    if (arch == speakeasy::arch::ARCH_AMD64 && o % 8) o += 4; // align
-    write_ptr(base, o, this->stdin_handle);  o += ptr_size; // StandardInput
-    write_ptr(base, o, this->stdout_handle); o += ptr_size; // StandardOutput
-    write_ptr(base, o, this->stderr_handle); o += ptr_size; // StandardError
-
-    // CurrentDirectory
-    write_unicode_string(base, o,
-        static_cast<uint16_t>(cur_dir_utf16.size() - 2),  // Length (without null)
-        static_cast<uint16_t>(cur_dir_utf16.size()),       // MaximumLength
-        cur_dir_addr);
-    o += us_size;
-    write_ptr(base, o, 0); o += ptr_size; // CurrentDirectory.Handle
-    // DllPath (empty)
-    write_unicode_string(base, o, 0, 0, 0);
-    o += us_size;
-    // ImagePathName
-    write_unicode_string(base, o,
-        static_cast<uint16_t>(proc_path_utf16.size() - 2),
-        static_cast<uint16_t>(proc_path_utf16.size()),
-        path_addr);
-    o += us_size;
-    // CommandLine
-    write_unicode_string(base, o,
-        static_cast<uint16_t>(proc_cmdline_utf16.size() - 2),
-        static_cast<uint16_t>(proc_cmdline_utf16.size()),
-        cmdline_addr);
-    o += us_size;
-    // Environment
-    write_ptr(base, o, 0); o += ptr_size;
-    // Window position (zeros)
-    for (int i = 0; i < 9; ++i) { write_u32(base, o, 0); o += 4; }
-    // WindowTitle (empty)
-    write_unicode_string(base, o, 0, 0, 0);
-    o += us_size;
-    // DesktopInfo
-    write_unicode_string(base, o,
-        static_cast<uint16_t>(desktop_utf16.size() - 2),
-        static_cast<uint16_t>(desktop_utf16.size()),
-        desktop_addr);
-    o += us_size;
-    // ShellInfo (empty)
-    write_unicode_string(base, o, 0, 0, 0);
-    o += us_size;
-    // RuntimeData (empty)
-    write_unicode_string(base, o, 0, 0, 0);
-    (void)o; // suppress unused warning
-
-    // Write ProcessParameters pointer into PEB
-    // PEB layout (Windows offsets):
-    //   x86: ProcessParameters at PEB+0x10
-    //   x64: ProcessParameters at PEB+0x20
-    uint64_t peb_addr = reinterpret_cast<uint64_t>(this->peb);
-    if (arch == speakeasy::arch::ARCH_X86) {
-        write_ptr(peb_addr, 0x10, base);
-    } else if (arch == speakeasy::arch::ARCH_AMD64) {
-        write_ptr(peb_addr, 0x20, base);
-    }
+    auto params = std::make_shared<RTL_USER_PROCESS_PARAMETERS>(emu, this);
+    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    peb_struct->ProcessParameters = params->get_address();
+    peb->write_back();
 }
 
-void* Process::get_peb_ldr() {
+std::shared_ptr<PebLdrData> Process::get_peb_ldr() {
     return this->peb_ldr_data;
 }
 
 void Process::alloc_console() {
-    // Python: self.console = Console()
     this->console = Console();
 }
 
 std::string Process::get_desktop_name() {
-    // Python: return "WinSta0\\Default" or similar
     return "WinSta0\\Default";
 }
 
@@ -924,7 +931,6 @@ std::shared_ptr<speakeasy::RuntimeModule> Process::get_module() {
 }
 
 void* Process::get_ep() {
-    // Python: return pe.base + pe.ep  (entry point of the PE)
     if (pe) {
         auto img = pe;
         return reinterpret_cast<void*>(static_cast<uintptr_t>(img->base + img->ep));
@@ -957,16 +963,123 @@ void Process::set_user_modules(std::vector<std::shared_ptr<speakeasy::RuntimeMod
 }
 
 void Process::new_thread() {
-    // Python: create a Thread, add it to threads list
     auto t = std::make_shared<Thread>(emu);
     threads.push_back(t);
 }
 
 void Process::add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module) {
-    // Python: add module to PEB LDR linked list
-    // Requires PEB / LdrDataTableEntry types.
-    // For now, just track the module pointer.
-    (void)module;
+    if (!emu || !peb_ldr_data || !peb) return;
+
+    auto* be = BE(emu);
+    int ptr_sz = be->get_ptr_size();
+
+    speakeasy::defs::nt::LIST_ENTRY list_type(ptr_sz);
+    size_t list_sz = list_type.sizeof_obj();
+
+    auto ldte = std::make_shared<LdrDataTableEntry>(emu, module->emu_path);
+    auto* ldte_struct = static_cast<speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY*>(ldte->get_object());
+
+    std::shared_ptr<LdrDataTableEntry> prev;
+    if (ldr_entries_list.empty()) {
+        prev = ldte;
+    } else {
+        prev = ldr_entries_list.back();
+    }
+
+    ldr_entries_list.push_back(ldte);
+    auto first = ldr_entries_list.front();
+    auto* first_struct = static_cast<speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY*>(first->get_object());
+
+    ldte_struct->InLoadOrderLinks.Flink = first->get_address();
+    ldte_struct->InMemoryOrderLinks.Flink = first->get_address() + list_sz;
+    ldte_struct->InInitializationOrderLinks.Flink = first->get_address() + list_sz * 2;
+
+    ldte_struct->DllBase = module->base;
+    ldte_struct->EntryPoint = module->base + module->ep;
+    ldte_struct->SizeOfImage = module->image_size;
+
+    std::vector<uint8_t> dllname_bytes;
+    std::string emu_path_with_null = module->emu_path + '\0';
+    for (size_t i = 0; i < emu_path_with_null.size(); ++i) {
+        dllname_bytes.push_back(static_cast<uint8_t>(emu_path_with_null[i] & 0xFF));
+        dllname_bytes.push_back(static_cast<uint8_t>((emu_path_with_null[i] >> 8) & 0xFF));
+    }
+
+    uint64_t name_addr = ldte->get_address() + ldte->sizeof_obj();
+    be->mem_write(name_addr, dllname_bytes);
+
+    ldte_struct->FullDllName.Length = static_cast<uint16_t>(dllname_bytes.size() - 2);
+    ldte_struct->FullDllName.MaximumLength = static_cast<uint16_t>(dllname_bytes.size());
+    ldte_struct->FullDllName.Buffer = name_addr;
+
+    std::string base_name = module->emu_path;
+    size_t last_slash = base_name.find_last_of("\\/");
+    if (last_slash != std::string::npos) {
+        base_name = base_name.substr(last_slash + 1);
+    }
+    std::vector<uint8_t> basename_bytes;
+    std::string basename_with_null = base_name + '\0';
+    for (size_t i = 0; i < basename_with_null.size(); ++i) {
+        basename_bytes.push_back(static_cast<uint8_t>(basename_with_null[i] & 0xFF));
+        basename_bytes.push_back(static_cast<uint8_t>((basename_with_null[i] >> 8) & 0xFF));
+    }
+
+    ldte_struct->BaseDllName.Length = static_cast<uint16_t>(basename_bytes.size() - 2);
+    ldte_struct->BaseDllName.MaximumLength = static_cast<uint16_t>(basename_bytes.size());
+    ldte_struct->BaseDllName.Buffer = name_addr + (ldte_struct->FullDllName.MaximumLength - basename_bytes.size());
+
+    ldte->write_back();
+
+    auto* prev_struct = static_cast<speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY*>(prev->get_object());
+    prev_struct->InLoadOrderLinks.Flink = ldte->get_address();
+    prev_struct->InMemoryOrderLinks.Flink = ldte->get_address() + list_sz;
+
+    if (first == ldte) {
+        prev_struct->InInitializationOrderLinks.Flink = 0;
+    } else {
+        uint64_t imol = prev_struct->InMemoryOrderLinks.Flink;
+        prev_struct->InInitializationOrderLinks.Flink = imol + list_sz;
+    }
+
+    ldte_struct->InLoadOrderLinks.Blink = prev->get_address();
+    ldte_struct->InMemoryOrderLinks.Blink = prev->get_address() + list_sz;
+
+    if (first == ldte) {
+        ldte_struct->InInitializationOrderLinks.Blink = 0;
+    } else {
+        uint64_t imol = ldte_struct->InMemoryOrderLinks.Blink;
+        ldte_struct->InInitializationOrderLinks.Blink = imol + list_sz;
+    }
+
+    prev->write_back();
+    ldte->write_back();
+
+    first_struct->InLoadOrderLinks.Blink = ldte->get_address();
+    first_struct->InMemoryOrderLinks.Blink = ldte->get_address() + list_sz;
+    if (first != ldte) {
+        first_struct->InInitializationOrderLinks.Blink = ldte->get_address() + list_sz * 2;
+    }
+    first->write_back();
+
+    auto* pld_struct = static_cast<speakeasy::defs::nt::PEB_LDR_DATA*>(peb_ldr_data->get_object());
+    pld_struct->InLoadOrderModuleList.Flink = first->get_address();
+    pld_struct->InMemoryOrderModuleList.Flink = pld_struct->InLoadOrderModuleList.Flink + list_sz;
+
+    uint64_t head = pld_struct->InMemoryOrderModuleList.Flink;
+    std::vector<uint8_t> le_data = be->mem_read(head, list_sz);
+    speakeasy::defs::nt::LIST_ENTRY le(ptr_sz);
+    le.from_bytes(le_data);
+
+    pld_struct->InInitializationOrderModuleList.Flink = le.Flink + list_sz;
+    pld_struct->InLoadOrderModuleList.Blink = ldte->get_address();
+    pld_struct->InMemoryOrderModuleList.Blink = ldte->get_address() + list_sz;
+    pld_struct->InInitializationOrderModuleList.Blink = ldte->get_address() + list_sz * 2;
+
+    peb_ldr_data->write_back();
+
+    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    peb_struct->Ldr = peb_ldr_data->get_address();
+    peb->write_back();
 }
 
 void Process::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& modules) {
