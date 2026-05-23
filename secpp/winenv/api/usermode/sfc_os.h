@@ -3,7 +3,7 @@
 #define SPEAKEASY_SFC_OS_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api {
 
@@ -12,7 +12,7 @@ class Sfc_os : public ApiHandler {
     API_ENTRY(SfcIsFileProtected, 2)    API_ENTRY(SfcTerminateWatcherThread, 0)
     API_LIST_END
 public:
-    Sfc_os();
+    Sfc_os(void* emu);
     std::string get_name() const override { return "sfc_os"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

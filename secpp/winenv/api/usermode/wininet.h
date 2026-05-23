@@ -3,7 +3,7 @@
 #define SPEAKEASY_WININET_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api {
 
@@ -26,7 +26,7 @@ class Wininet : public ApiHandler {
     API_LIST_END
 
 public:
-    Wininet();
+    Wininet(void* emu);
     std::string get_name() const override { return "wininet"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

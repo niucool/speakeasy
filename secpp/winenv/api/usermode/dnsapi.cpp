@@ -117,7 +117,7 @@ uint64_t DnsApi::DnsQuery_(void* e, const std::string&, int, const std::vector<u
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-DnsApi::DnsApi() {
+DnsApi::DnsApi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(DnsApi)
     REG(DnsApi, DnsQuery_, 6)
     END_API_TABLE

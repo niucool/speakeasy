@@ -22,7 +22,7 @@ uint64_t Lz32::LZSeek(void* e, const std::string&, int, const std::vector<uint64
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Lz32::Lz32() {
+Lz32::Lz32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Lz32)
     REG(Lz32, LZSeek, 3)
     END_API_TABLE

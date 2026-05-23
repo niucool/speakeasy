@@ -66,7 +66,7 @@ uint64_t Secur32::EncryptMessage(void* e, const std::string&, int, const std::ve
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Secur32::Secur32() {
+Secur32::Secur32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Secur32)
     REG(Secur32, GetUserNameEx, 3)
     REG(Secur32, EncryptMessage, 4)

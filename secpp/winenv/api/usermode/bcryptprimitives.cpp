@@ -33,7 +33,7 @@ uint64_t Bcryptprimitives::ProcessPrng(void* e, const std::string&, int, const s
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Bcryptprimitives::Bcryptprimitives() {
+Bcryptprimitives::Bcryptprimitives(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Bcryptprimitives)
     REG(Bcryptprimitives, ProcessPrng, 2)
     END_API_TABLE

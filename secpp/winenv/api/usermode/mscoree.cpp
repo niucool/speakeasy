@@ -22,7 +22,7 @@ uint64_t Mscoree::CorExitProcess(void* e, const std::string&, int, const std::ve
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Mscoree::Mscoree() {
+Mscoree::Mscoree(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Mscoree)
     REG(Mscoree, CorExitProcess, 1)
     END_API_TABLE

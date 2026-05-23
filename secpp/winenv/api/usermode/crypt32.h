@@ -3,10 +3,10 @@
 #define SPEAKEASY_CRYPT32_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 namespace speakeasy { namespace api {
 class Crypt32 : public ApiHandler {
-public: Crypt32(); std::string get_name() const override {return "crypt32";}
+public: Crypt32(void* emu); std::string get_name() const override {return "crypt32";}
 const std::vector<ApiEntry>& get_apis() const override {return apis_;}
 private: std::vector<ApiEntry> apis_;
 static uint64_t CryptStringToBinaryA(void*,const std::string&,int,const std::vector<uint64_t>&);

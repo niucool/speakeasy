@@ -64,63 +64,60 @@ void register_all_api_handlers() {
     auto reg = [](const std::string& name, std::function<::ApiHandler*(void*)> factory) {
         ApiHandlerRegistry::register_handler(name, [factory](void* emu) {
             auto* handler = factory(emu);
-            if (handler) {
-                handler->set_emu(emu);
-            }
             return handler;
         });
     };
 
     // ── Usermode Handlers ────────────────────────────────────
-    reg("advapi32", [](void*) { return new Advapi32(); });
-    reg("advpack", [](void*) { return new Advpack(); });
-    reg("bcrypt", [](void*) { return new Bcrypt(); });
-    reg("bcryptprimitives", [](void*) { return new Bcryptprimitives(); });
-    reg("com_api", [](void*) { return new ComApi(); });
-    reg("comctl32", [](void*) { return new Comctl32(); });
-    reg("crypt32", [](void*) { return new Crypt32(); });
-    reg("dnsapi", [](void*) { return new DnsApi(); });
-    reg("gdi32", [](void*) { return new GDI32(); });
-    reg("iphlpapi", [](void*) { return new Iphlpapi(); });
-    reg("kernel32", [](void*) { return new Kernel32(); });
-    reg("lz32", [](void*) { return new Lz32(); });
-    reg("mpr", [](void*) { return new Mpr(); });
-    reg("mscoree", [](void*) { return new Mscoree(); });
-    reg("msi32", [](void*) { return new Msi32(); });
-    reg("msimg32", [](void*) { return new Msimg32(); });
-    reg("msvcrt", [](void*) { return new Msvcrt(); });
-    reg("msvfw32", [](void*) { return new Msvfw32(); });
-    reg("ncrypt", [](void*) { return new Ncrypt(); });
-    reg("netapi32", [](void*) { return new NetApi32(); });
-    reg("netutils", [](void*) { return new NetUtils(); });
-    reg("ntdll", [](void*) { return new Ntdll(); });
-    reg("ole32", [](void*) { return new Ole32(); });
-    reg("oleaut32", [](void*) { return new Oleaut32(); });
-    reg("psapi", [](void*) { return new Psapi(); });
-    reg("rpcrt4", [](void*) { return new Rpcrt4(); });
-    reg("secur32", [](void*) { return new Secur32(); });
-    reg("sfc", [](void*) { return new Sfc(); });
-    reg("sfc_os", [](void*) { return new Sfc_os(); });
-    reg("shell32", [](void*) { return new Shell32(); });
-    reg("shlwapi", [](void*) { return new Shlwapi(); });
-    reg("urlmon", [](void*) { return new Urlmon(); });
-    reg("user32", [](void*) { return new User32(); });
-    reg("winhttp", [](void*) { return new WinHttp(); });
-    reg("wininet", [](void*) { return new Wininet(); });
-    reg("winmm", [](void*) { return new Winmm(); });
-    reg("wkscli", [](void*) { return new Wkscli(); });
-    reg("ws2_32", [](void*) { return new Ws2_32(); });
-    reg("wtsapi32", [](void*) { return new Wtsapi32(); });
+    reg("advapi32", [](void* emu) { return new Advapi32(emu); });
+    reg("advpack", [](void* emu) { return new Advpack(emu); });
+    reg("bcrypt", [](void* emu) { return new Bcrypt(emu); });
+    reg("bcryptprimitives", [](void* emu) { return new Bcryptprimitives(emu); });
+    reg("com_api", [](void* emu) { return new ComApi(emu); });
+    reg("comctl32", [](void* emu) { return new Comctl32(emu); });
+    reg("crypt32", [](void* emu) { return new Crypt32(emu); });
+    reg("dnsapi", [](void* emu) { return new DnsApi(emu); });
+    reg("gdi32", [](void* emu) { return new GDI32(emu); });
+    reg("iphlpapi", [](void* emu) { return new Iphlpapi(emu); });
+    reg("kernel32", [](void* emu) { return new Kernel32(emu); });
+    reg("lz32", [](void* emu) { return new Lz32(emu); });
+    reg("mpr", [](void* emu) { return new Mpr(emu); });
+    reg("mscoree", [](void* emu) { return new Mscoree(emu); });
+    reg("msi32", [](void* emu) { return new Msi32(emu); });
+    reg("msimg32", [](void* emu) { return new Msimg32(emu); });
+    reg("msvcrt", [](void* emu) { return new Msvcrt(emu); });
+    reg("msvfw32", [](void* emu) { return new Msvfw32(emu); });
+    reg("ncrypt", [](void* emu) { return new Ncrypt(emu); });
+    reg("netapi32", [](void* emu) { return new NetApi32(emu); });
+    reg("netutils", [](void* emu) { return new NetUtils(emu); });
+    reg("ntdll", [](void* emu) { return new Ntdll(emu); });
+    reg("ole32", [](void* emu) { return new Ole32(emu); });
+    reg("oleaut32", [](void* emu) { return new Oleaut32(emu); });
+    reg("psapi", [](void* emu) { return new Psapi(emu); });
+    reg("rpcrt4", [](void* emu) { return new Rpcrt4(emu); });
+    reg("secur32", [](void* emu) { return new Secur32(emu); });
+    reg("sfc", [](void* emu) { return new Sfc(emu); });
+    reg("sfc_os", [](void* emu) { return new Sfc_os(emu); });
+    reg("shell32", [](void* emu) { return new Shell32(emu); });
+    reg("shlwapi", [](void* emu) { return new Shlwapi(emu); });
+    reg("urlmon", [](void* emu) { return new Urlmon(emu); });
+    reg("user32", [](void* emu) { return new User32(emu); });
+    reg("winhttp", [](void* emu) { return new WinHttp(emu); });
+    reg("wininet", [](void* emu) { return new Wininet(emu); });
+    reg("winmm", [](void* emu) { return new Winmm(emu); });
+    reg("wkscli", [](void* emu) { return new Wkscli(emu); });
+    reg("ws2_32", [](void* emu) { return new Ws2_32(emu); });
+    reg("wtsapi32", [](void* emu) { return new Wtsapi32(emu); });
 
     // ── Kernelmode Handlers ──────────────────────────────────
-    reg("fwpkclnt", [](void*) { return new Fwpkclnt(); });
-    reg("hal", [](void*) { return new Hal(); });
-    reg("ndis", [](void*) { return new Ndis(); });
-    reg("netio", [](void*) { return new Netio(); });
-    reg("ntoskrnl", [](void*) { return new Ntoskrnl(); });
-    reg("usbd", [](void*) { return new Usbd(); });
-    reg("wdfldr", [](void*) { return new Wdfldr(); });
-    reg("wsk", [](void*) { return new Wsk(); });
+    reg("fwpkclnt", [](void* emu) { return new Fwpkclnt(emu); });
+    reg("hal", [](void* emu) { return new Hal(emu); });
+    reg("ndis", [](void* emu) { return new Ndis(emu); });
+    reg("netio", [](void* emu) { return new Netio(emu); });
+    reg("ntoskrnl", [](void* emu) { return new Ntoskrnl(emu); });
+    reg("usbd", [](void* emu) { return new Usbd(emu); });
+    reg("wdfldr", [](void* emu) { return new Wdfldr(emu); });
+    reg("wsk", [](void* emu) { return new Wsk(emu); });
 }
 
 } // namespace api

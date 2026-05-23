@@ -3,7 +3,7 @@
 #define SPEAKEASY_WINHTTP_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api {
 
@@ -25,7 +25,7 @@ class WinHttp : public ApiHandler {
     API_LIST_END
 
 public:
-    WinHttp();
+    WinHttp(void* emu);
     std::string get_name() const override { return "winhttp"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

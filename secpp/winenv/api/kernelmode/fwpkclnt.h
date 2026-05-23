@@ -3,7 +3,7 @@
 #define SPEAKEASY_KERNELMODE_FWPKCLNT_H
 #include <string>
 #include <vector>
-#include "../usermode/api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
@@ -23,7 +23,7 @@ class Fwpkclnt : public ApiHandler {
     API_ENTRY(FwpsInjectionHandleDestroy0, 1)
     API_LIST_END
 public:
-    Fwpkclnt();
+    Fwpkclnt(void* emu);
     std::string get_name() const override { return "fwpkclnt"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

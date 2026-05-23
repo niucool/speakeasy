@@ -47,7 +47,7 @@ uint64_t Msvfw32::ICClose(void* e, const std::string&, int, const std::vector<ui
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Msvfw32::Msvfw32() {
+Msvfw32::Msvfw32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Msvfw32)
     REG(Msvfw32, ICOpen, 3)
     REG(Msvfw32, ICSendMessage, 4)

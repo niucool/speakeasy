@@ -34,7 +34,7 @@ static std::map<uint64_t, WindowHook>& window_hooks() {
 }
 
 // ── Constructor ──────────────────────────────────────────────
-User32::User32() {
+User32::User32(void* emu) : ApiHandler(emu) {
     apis_.push_back({"MessageBoxA",4,MessageBoxA});
     apis_.push_back({"MessageBoxW",4,MessageBoxW});
     apis_.push_back({"GetMessageA",4,GetMessageA});

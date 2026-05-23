@@ -187,7 +187,7 @@ uint64_t Bcrypt::BCryptDestroyKey(void* e, const std::string&, int, const std::v
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Bcrypt::Bcrypt() {
+Bcrypt::Bcrypt(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Bcrypt)
     REG(Bcrypt, BCryptOpenAlgorithmProvider, 4)
     REG(Bcrypt, BCryptImportKeyPair, 7)

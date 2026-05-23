@@ -27,7 +27,7 @@ static constexpr uint32_t URLMON_S_OK = 0;
 static constexpr uint32_t URLMON_ERROR_SUCCESS = 0;
 static constexpr uint32_t URLMON_ERROR_INSUFFICIENT_BUFFER = 122;
 
-Urlmon::Urlmon() {
+Urlmon::Urlmon(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Urlmon)
     REG(Urlmon, URLDownloadToFile, 5)
     REG(Urlmon, URLDownloadToCacheFile, 6)

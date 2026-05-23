@@ -30,7 +30,7 @@ uint64_t Comctl32::InitCommonControls(void* e, const std::string&, int, const st
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Comctl32::Comctl32() {
+Comctl32::Comctl32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Comctl32)
     REG(Comctl32, InitCommonControlsEx, 1)
     REG(Comctl32, InitCommonControls, 0)

@@ -3,7 +3,7 @@
 #define SPEAKEASY_WTSAPI32_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api {
 
@@ -13,7 +13,7 @@ class Wtsapi32 : public ApiHandler {
     API_LIST_END
 
 public:
-    Wtsapi32();
+    Wtsapi32(void* emu);
     std::string get_name() const override { return "wtsapi32"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

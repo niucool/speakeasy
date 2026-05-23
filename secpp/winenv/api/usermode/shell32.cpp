@@ -72,7 +72,7 @@ static std::string resolve_csidl_path(void* e, uint32_t csidl) {
 
 // ── Constructor ───────────────────────────────────────────────
 
-Shell32::Shell32() {
+Shell32::Shell32(void* emu) : ApiHandler(emu) {
     apis_ = {
         {"ShellExecuteA", 6, ShellExecuteA},
         {"ShellExecuteW", 6, ShellExecuteW},

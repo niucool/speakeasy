@@ -3,11 +3,11 @@
 #define SPEAKEASY_WS2_32_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 namespace speakeasy { namespace api {
 class Ws2_32 : public ApiHandler {
 public:
-    Ws2_32();
+    Ws2_32(void* emu);
     std::string get_name() const override { return "ws2_32"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 private:

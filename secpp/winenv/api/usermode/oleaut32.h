@@ -3,7 +3,7 @@
 #define SPEAKEASY_OLEAUT32_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api {
 
@@ -16,7 +16,7 @@ class Oleaut32 : public ApiHandler {
     API_LIST_END
 
 public:
-    Oleaut32();
+    Oleaut32(void* emu);
     std::string get_name() const override { return "oleaut32"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

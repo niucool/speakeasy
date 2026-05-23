@@ -152,7 +152,7 @@ uint64_t Ncrypt::NCryptFreeObject(void* e, const std::string&, int, const std::v
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Ncrypt::Ncrypt() {
+Ncrypt::Ncrypt(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Ncrypt)
     REG(Ncrypt, NCryptOpenStorageProvider, 3)
     REG(Ncrypt, NCryptImportKey, 8)

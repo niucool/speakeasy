@@ -23,7 +23,7 @@ uint64_t NetUtils::NetApiBufferFree(void* e, const std::string&, int, const std:
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-NetUtils::NetUtils() {
+NetUtils::NetUtils(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(NetUtils)
     REG(NetUtils, NetApiBufferFree, 1)
     END_API_TABLE

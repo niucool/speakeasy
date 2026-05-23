@@ -23,14 +23,14 @@
 
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy {
 namespace api {
 
 class Ntdll : public ApiHandler {
 public:
-    Ntdll();
+    Ntdll(void* emu);
     std::string get_name() const override { return "ntdll"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 

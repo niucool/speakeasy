@@ -3,7 +3,7 @@
 #define SPEAKEASY_KERNEL32_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api {
 
@@ -98,7 +98,7 @@ class Kernel32 : public ApiHandler {
     API_LIST_END
 
 public:
-    Kernel32();
+    Kernel32(void* emu);
     std::string get_name() const override { return "kernel32"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

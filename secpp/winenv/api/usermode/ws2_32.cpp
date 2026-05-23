@@ -253,7 +253,7 @@ uint64_t Ws2_32::stub(void* e, const std::string&, int, const std::vector<uint64
     (void)e; (void)a; return 1;
 }
 
-Ws2_32::Ws2_32() {
+Ws2_32::Ws2_32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Ws2_32)
     REG(Ws2_32, WSAStartup, 2)
     REG(Ws2_32, WSASocketA, 6)

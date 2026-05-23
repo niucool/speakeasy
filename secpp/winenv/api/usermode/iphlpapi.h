@@ -3,7 +3,7 @@
 #define SPEAKEASY_IPHLPAPI_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api {
 
@@ -58,7 +58,7 @@ class Iphlpapi : public ApiHandler {
     API_LIST_END
 
 public:
-    Iphlpapi();
+    Iphlpapi(void* emu);
     std::string get_name() const override { return "iphlpapi"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

@@ -93,7 +93,7 @@ uint64_t Rpcrt4::UuidToStringA(void* e, const std::string&, int, const std::vect
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Rpcrt4::Rpcrt4() {
+Rpcrt4::Rpcrt4(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Rpcrt4)
     REG(Rpcrt4, UuidCreate, 1)
     REG(Rpcrt4, UuidToStringA, 2)

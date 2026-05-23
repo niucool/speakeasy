@@ -29,7 +29,7 @@ static inline int ptr_sz(void* e) { return (be(e)->get_arch() == speakeasy::arch
 
 namespace mpr_defs = speakeasy::defs::windows;
 
-Mpr::Mpr() {
+Mpr::Mpr(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Mpr)
     REG(Mpr, WNetOpenEnum, 5)
     REG(Mpr, WNetEnumResource, 4)

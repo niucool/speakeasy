@@ -129,7 +129,7 @@ static uint64_t g_next_handle = 0x1800;
 static uint64_t g_next_snap_handle = 0x2000;
 
 // ── Constructor ───────────────────────────────────────────────
-Kernel32::Kernel32() {
+Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Kernel32)
     REG(Kernel32, CreateFileA, 7)    REG(Kernel32, CreateFileW, 7)
     REG(Kernel32, ReadFile, 5)       REG(Kernel32, WriteFile, 5)

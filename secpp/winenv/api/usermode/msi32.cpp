@@ -22,7 +22,7 @@ uint64_t Msi32::MsiDatabaseMergeA(void* e, const std::string&, int, const std::v
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Msi32::Msi32() {
+Msi32::Msi32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Msi32)
     REG(Msi32, MsiDatabaseMergeA, 3)
     END_API_TABLE

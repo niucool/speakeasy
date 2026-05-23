@@ -550,7 +550,7 @@ uint64_t Wininet::InternetOpenUrl(void* e, const std::string&, int, const std::v
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Wininet::Wininet() {
+Wininet::Wininet(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Wininet)
     REG(Wininet, InternetOpen, 5)
     REG(Wininet, InternetConnect, 8)

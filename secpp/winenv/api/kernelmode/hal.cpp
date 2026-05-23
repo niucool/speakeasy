@@ -19,7 +19,7 @@ static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
 
-Hal::Hal() {
+Hal::Hal(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Hal)
     REG(Hal, KeGetCurrentIrql, 0)
     REG(Hal, ExAcquireFastMutex, 1)

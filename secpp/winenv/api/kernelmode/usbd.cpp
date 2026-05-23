@@ -19,7 +19,7 @@ static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
 
-Usbd::Usbd() {
+Usbd::Usbd(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Usbd)
     REG(Usbd, USBD_ValidateConfigurationDescriptor, 5)
     END_API_TABLE

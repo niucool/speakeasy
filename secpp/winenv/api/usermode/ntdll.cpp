@@ -178,7 +178,7 @@ static inline std::vector<uint8_t> utf8_to_utf16(const std::string& s) {
 // Constructor — register all API entries
 // ═══════════════════════════════════════════════════════════════
 
-Ntdll::Ntdll() {
+Ntdll::Ntdll(void* emu) : ApiHandler(emu) {
     apis_ = {
         // Heap
         {"RtlAllocateHeap",         3, RtlAllocateHeap},

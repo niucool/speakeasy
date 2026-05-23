@@ -30,7 +30,7 @@ uint64_t Sfc::SfcTerminateWatcherThread(void* e, const std::string&, int, const 
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Sfc::Sfc() {
+Sfc::Sfc(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Sfc)
     REG(Sfc, SfcIsFileProtected, 2)
     REG(Sfc, SfcTerminateWatcherThread, 0)

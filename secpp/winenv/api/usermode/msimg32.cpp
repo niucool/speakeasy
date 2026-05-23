@@ -22,7 +22,7 @@ uint64_t Msimg32::TransparentBlt(void* e, const std::string&, int, const std::ve
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Msimg32::Msimg32() {
+Msimg32::Msimg32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Msimg32)
     REG(Msimg32, TransparentBlt, 11)
     END_API_TABLE

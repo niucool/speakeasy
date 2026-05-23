@@ -36,7 +36,7 @@ static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
 // ── Constructor ───────────────────────────────────────────────
-ComApi::ComApi() {
+ComApi::ComApi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(ComApi)
     REG(ComApi, IUnknown_QueryInterface, 3)
     REG(ComApi, IUnknown_AddRef, 1)

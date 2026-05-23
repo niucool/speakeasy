@@ -30,7 +30,7 @@ static uint64_t gdi_next_handle() {
 
 // ── Constructor ───────────────────────────────────────────────
 
-GDI32::GDI32() {
+GDI32::GDI32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(GDI32)
     REG(GDI32, CreateBitmap, 5)          REG(GDI32, MoveToEx, 1)
     REG(GDI32, LineTo, 1)                REG(GDI32, GetStockObject, 1)

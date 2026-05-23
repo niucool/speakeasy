@@ -3,11 +3,11 @@
 #define SPEAKEASY_ADVAPI32_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 namespace speakeasy { namespace api {
 class Advapi32 : public ApiHandler {
 public: 
-    Advapi32(); 
+    Advapi32(void* emu); 
     std::string get_name() const override {return "advapi32";}
     const std::vector<ApiEntry>& get_apis() const override {return apis_;}
 

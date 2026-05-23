@@ -20,7 +20,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
 static inline int ptr_sz(void* e) { return we(e)->get_ptr_size(); }
 
-Ndis::Ndis() {
+Ndis::Ndis(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Ndis)
     REG(Ndis, NdisGetVersion, 0)
     REG(Ndis, NdisGetRoutineAddress, 1)

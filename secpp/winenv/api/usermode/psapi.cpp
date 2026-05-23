@@ -17,7 +17,7 @@ static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline int ptr_sz(void* e) { return (be(e)->get_arch() == speakeasy::arch::ARCH_AMD64) ? 8 : 4; }
 
-Psapi::Psapi() {
+Psapi::Psapi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Psapi)
     REG(Psapi, EnumProcesses, 3)        REG(Psapi, EnumProcessModules, 4)
     REG(Psapi, GetModuleBaseName, 4)    REG(Psapi, GetModuleBaseNameA, 4)

@@ -245,7 +245,7 @@ uint64_t Advapi32::stub(void* e, const std::string&, int, const std::vector<uint
     (void)e; (void)a; return 1;
 }
 
-Advapi32::Advapi32() {
+Advapi32::Advapi32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Advapi32)
     REG(Advapi32, RegOpenKeyExA, 5)
     REG(Advapi32, RegQueryValueExA, 6)

@@ -7,7 +7,7 @@
 
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api {
 
@@ -21,7 +21,7 @@ class Bcrypt : public ApiHandler {
     API_LIST_END
 
 public:
-    Bcrypt();
+    Bcrypt(void* emu);
     std::string get_name() const override { return "bcrypt"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

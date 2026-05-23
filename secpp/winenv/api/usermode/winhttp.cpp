@@ -356,7 +356,7 @@ uint64_t WinHttp::WinHttpCloseHandle(void* e, const std::string&, int, const std
     return 1; // TRUE
 }
 
-WinHttp::WinHttp() {
+WinHttp::WinHttp(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(WinHttp)
     REG(WinHttp, WinHttpOpen, 5)
     REG(WinHttp, WinHttpConnect, 4)

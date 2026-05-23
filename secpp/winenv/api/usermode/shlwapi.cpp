@@ -151,7 +151,7 @@ static std::vector<uint64_t> shlwapi_read_va_args(void* e, uint64_t va_list_ptr,
 }
 
 // ── Constructor ───────────────────────────────────────────────
-Shlwapi::Shlwapi() {
+Shlwapi::Shlwapi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Shlwapi)
     REG(Shlwapi, PathIsRelative, 1)      REG(Shlwapi, StrStr, 2)
     REG(Shlwapi, StrStrI, 2)             REG(Shlwapi, PathFindExtension, 1)

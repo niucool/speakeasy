@@ -28,7 +28,7 @@ uint64_t Advpack::IsNTAdmin(void* e, const std::string&, int, const std::vector<
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Advpack::Advpack() {
+Advpack::Advpack(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Advpack)
     REG(Advpack, IsNTAdmin, 2)
     END_API_TABLE

@@ -20,7 +20,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
 static inline int ptr_sz(void* e) { return we(e)->get_ptr_size(); }
 
-Wsk::Wsk() {
+Wsk::Wsk(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Wsk)
     REG(Wsk, WskRegister, 2)
     REG(Wsk, WskCaptureProviderNPI, 3)

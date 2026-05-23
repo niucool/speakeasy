@@ -77,7 +77,7 @@ static std::vector<uint8_t> base64_decode(const std::string& input) {
 
 // ── Constructor ───────────────────────────────────────────────
 
-Crypt32::Crypt32() {
+Crypt32::Crypt32(void* emu) : ApiHandler(emu) {
     apis_ = {
         {"CryptStringToBinaryA", 7, CryptStringToBinaryA},
         {"CryptBinaryToStringA", 6, CryptBinaryToStringA},

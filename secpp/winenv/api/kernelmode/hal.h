@@ -3,7 +3,7 @@
 #define SPEAKEASY_KERNELMODE_HAL_H
 #include <string>
 #include <vector>
-#include "../usermode/api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
@@ -14,7 +14,7 @@ class Hal : public ApiHandler {
     API_ENTRY(ExReleaseFastMutex, 1)
     API_LIST_END
 public:
-    Hal();
+    Hal(void* emu);
     std::string get_name() const override { return "hal"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

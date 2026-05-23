@@ -3,7 +3,7 @@
 #define SPEAKEASY_KERNELMODE_WSK_H
 #include <string>
 #include <vector>
-#include "../usermode/api_handler_base.h"
+#include "../api.h"
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
@@ -28,7 +28,7 @@ class Wsk : public ApiHandler {
     API_ENTRY(WskGetLocalAddress, 2)
     API_LIST_END
 public:
-    Wsk();
+    Wsk(void* emu);
     std::string get_name() const override { return "wsk"; }
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 };

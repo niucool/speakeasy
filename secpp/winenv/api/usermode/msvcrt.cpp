@@ -36,7 +36,7 @@ static std::map<uint64_t, int> msvc_file_streams; // stream_addr -> file_handle
 //  CONSTRUCTOR
 // ─────────────────────────────────────────────────────────────
 
-Msvcrt::Msvcrt() {
+Msvcrt::Msvcrt(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Msvcrt)
     // Startup / init
     REG(Msvcrt, __p__acmdln, 0)            REG(Msvcrt, _onexit, 1)

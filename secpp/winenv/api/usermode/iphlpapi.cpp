@@ -729,7 +729,7 @@ uint64_t Iphlpapi::DeleteIPAddress(void* e, const std::string&, int, const std::
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Iphlpapi::Iphlpapi() {
+Iphlpapi::Iphlpapi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Iphlpapi)
     REG(Iphlpapi, GetAdaptersInfo, 2)
     REG(Iphlpapi, GetAdaptersAddresses, 5)

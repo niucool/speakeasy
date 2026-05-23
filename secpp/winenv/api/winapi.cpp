@@ -2,7 +2,6 @@
 #include "winapi.h"
 #include "api.h"
 #include "api_handler_registry.h"
-#include "usermode/api_handler_base.h"
 #include "../../winenv/arch.h"
 #include "../../errors.h"
 #include "../../windows/winemu.h"  // BinaryEmulator::get_arch
@@ -44,11 +43,8 @@ ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {
     // Try to create handler via registry (looks up exact name match)
     ApiHandler* handler = ApiHandlerRegistry::create_handler(lower_name, emu);
     if (handler) {
-        auto* v2 = dynamic_cast<speakeasy::api::ApiHandler*>(handler);
-        if (v2) {
-            for (const auto& entry : v2->get_apis()) {
-                handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
-            }
+        for (const auto& entry : handler->get_apis()) {
+            handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
         }
         mods[lower_name] = handler;
         return handler;
@@ -62,11 +58,8 @@ ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {
         if (reg_name == lower_name) {
             handler = factory(emu);
             if (handler) {
-                auto* v2 = dynamic_cast<speakeasy::api::ApiHandler*>(handler);
-                if (v2) {
-                    for (const auto& entry : v2->get_apis()) {
-                        handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
-                    }
+                for (const auto& entry : handler->get_apis()) {
+                    handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
                 }
                 mods[lower_name] = handler;
             }
@@ -147,9 +140,8 @@ void* WindowsApi::call_api_func(ApiHandler* mod, void* func, const std::vector<v
         return nullptr;
     }
 
-    // Check if mod is a v2 handler
-    auto* v2 = dynamic_cast<speakeasy::api::ApiHandler*>(mod);
-    if (v2) {
+    // Check if mod is a valid handler
+    if (mod) {
         std::string exp_name;
         for (const auto& [k, v] : func_cache_) {
             if (reinterpret_cast<const void*>(&v) == func) {
@@ -163,7 +155,7 @@ void* WindowsApi::call_api_func(ApiHandler* mod, void* func, const std::vector<v
             }
         }
         if (!exp_name.empty()) {
-            const auto* entry = v2->find_api(exp_name);
+            const auto* entry = mod->find_api(exp_name);
             if (entry) {
                 std::vector<uint64_t> u64_argv;
                 for (void* arg : argv) {

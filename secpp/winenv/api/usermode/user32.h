@@ -3,10 +3,10 @@
 #define SPEAKEASY_USER32_H
 #include <string>
 #include <vector>
-#include "api_handler_base.h"
+#include "../api.h"
 namespace speakeasy { namespace api {
 class User32 : public ApiHandler {
-public: User32(); std::string get_name() const override {return "user32";}
+public: User32(void* emu); std::string get_name() const override {return "user32";}
 const std::vector<ApiEntry>& get_apis() const override {return apis_;}
 private: std::vector<ApiEntry> apis_;
 static uint64_t MessageBoxA(void*,const std::string&,int,const std::vector<uint64_t>&);

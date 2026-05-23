@@ -27,7 +27,7 @@ static inline int ptr_sz(void* e) {
 
 // ── Constructor ───────────────────────────────────────────────
 
-Oleaut32::Oleaut32() {
+Oleaut32::Oleaut32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Oleaut32)
     REG(Oleaut32, SysAllocString, 1)
     REG(Oleaut32, SysAllocStringLen, 2)

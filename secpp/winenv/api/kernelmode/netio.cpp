@@ -19,7 +19,7 @@ static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
 
-Netio::Netio() {
+Netio::Netio(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Netio)
     REG(Netio, NsiEnumerateObjectsAllParametersEx, 0)
     END_API_TABLE

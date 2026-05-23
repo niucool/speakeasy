@@ -32,6 +32,15 @@ struct DataHookInfo {
     std::function<void()> func;
 };
 
+using ApiFunc = std::function<uint64_t(void* emu, const std::string& api_name,
+                                        int argc, const std::vector<uint64_t>& argv)>;
+
+struct ApiEntry {
+    std::string name;
+    int argc;
+    ApiFunc handler;
+};
+
 // Base class for handling exported functions
 class ApiHandler {
 protected:
@@ -42,8 +51,6 @@ protected:
     int ptr_size;
 
 public:
-    // Default constructor for v2 subclasses
-    ApiHandler() : emu(nullptr), ptr_size(4) {}
     void set_emu(void* e);
     void add_hook(const std::string& name, std::function<void()> func, int argc, int conv, int ordinal = 0);
     void add_data(const std::string& name, std::function<void()> func);
@@ -56,6 +63,16 @@ public:
 
     // Constructor
     ApiHandler(void* emu);
+
+    // Pure virtual methods to be implemented by subclass handlers
+    virtual std::string get_name() const = 0;
+    virtual const std::vector<ApiEntry>& get_apis() const = 0;
+
+    const ApiEntry* find_api(const std::string& name) const {
+        for (auto& e : get_apis())
+            if (e.name == name) return &e;
+        return nullptr;
+    }
     
     // Static methods for decorators
     static std::function<std::function<void()>(std::function<void()>)> 
@@ -174,5 +191,55 @@ public:
                         const std::vector<uint64_t>& caller_argv = {});
     std::string do_str_format(const std::string& string, const std::vector<uint64_t>& argv);
 };
+
+// ── Registration macros ─────────────────────────────────────
+//
+// Usage in handler class:
+//   class Foo : public ApiHandler {
+//       API_LIST_BEGIN
+//       API_ENTRY(CreateFileA, 7)
+//       API_ENTRY(ReadFile, 5)
+//       API_ENTRY(CloseHandle, 1)
+//       API_LIST_END
+//   public:
+//       Foo(void* emu);
+//   };
+
+#define API_LIST_BEGIN \
+private: \
+    std::vector<ApiEntry> apis_; \
+    static uint64_t _stub(void* e, const std::string&, int, const std::vector<uint64_t>& a) { (void)e; (void)a; return 1; }
+
+/// Declare an API handler method + register it in the table.
+/// Each API_ENTRY declares `static uint64_t name(...)` and adds it to the list.
+#define API_ENTRY(name, argc) \
+    static uint64_t name(void* emu, const std::string&, int, const std::vector<uint64_t>& argv);
+
+#define API_LIST_END
+
+/// Initialize the API table in the constructor.
+/// Usage: INIT_API_TABLE(Kernel32)
+#define INIT_API_TABLE(klass) \
+    apis_ = {
+
+/// Register one API entry. Usage: REG(klass, CreateFileA, 7)
+#define REG(klass, name, argc) \
+    {#name, argc, klass::name},
+
+/// End the API table initialization.
+#define END_API_TABLE \
+    };
+
+/// Generate a stub implementation for an API (returns 1, for usermode).
+#define STUB(klass, name) \
+    uint64_t klass::name(void* e, const std::string&, int, const std::vector<uint64_t>& a) { \
+        (void)e; (void)a; return 1; \
+    }
+
+/// Generate a stub implementation for a kernel-mode API (returns 0 = STATUS_SUCCESS).
+#define KERNEL_STUB(klass, name) \
+    uint64_t klass::name(void* e, const std::string&, int, const std::vector<uint64_t>& a) { \
+        (void)e; (void)a; return 0; \
+    }
 
 #endif // API_H

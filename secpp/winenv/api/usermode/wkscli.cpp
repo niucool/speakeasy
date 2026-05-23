@@ -57,7 +57,7 @@ uint64_t Wkscli::NetGetJoinInformation(void* e, const std::string&, int, const s
 }
 
 // ── Constructor ─────────────────────────────────────────────────
-Wkscli::Wkscli() {
+Wkscli::Wkscli(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Wkscli)
     REG(Wkscli, NetGetJoinInformation, 3)
     END_API_TABLE

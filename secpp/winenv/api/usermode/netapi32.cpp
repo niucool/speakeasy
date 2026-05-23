@@ -40,7 +40,7 @@ static constexpr uint32_t NET_ERROR_INSUFFICIENT_BUFFER = 122;
 
 
 // ── Constructor ───────────────────────────────────────────────
-NetApi32::NetApi32() {
+NetApi32::NetApi32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(NetApi32)
     // Domain / workstation
     REG(NetApi32, NetGetJoinInformation, 3)

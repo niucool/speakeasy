@@ -27,7 +27,7 @@ static constexpr uint32_t KERN_FWP_LAYER_NOT_FOUND      = 0x80320004;
 static constexpr uint32_t KERN_FWP_SUBLAYER_NOT_FOUND   = 0x80320007;
 static constexpr uint32_t KERN_FWP_NOT_FOUND             = 0x80320008;
 
-Fwpkclnt::Fwpkclnt() {
+Fwpkclnt::Fwpkclnt(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Fwpkclnt)
     REG(Fwpkclnt, FwpmEngineOpen0, 5)
     REG(Fwpkclnt, FwpmEngineClose0, 1)

@@ -68,7 +68,7 @@ elseif(UNIX)
     add_definitions(-DPLATFORM_LINUX)
 endif()
 
-# ── Source Files (re-evaluating on modification) ──────────────
+# ── Source Files (re-evaluating for ApiHandler2) ──────────────
 file(GLOB_RECURSE SPEAKEASY_SOURCES
     "secpp/*.h"
     "secpp/*.cpp"

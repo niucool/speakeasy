@@ -21,7 +21,7 @@ static inline int ptr_sz(void* e) { return (be(e)->get_arch() == speakeasy::arch
 static constexpr uint32_t WTS_CURRENT_SERVER = 0;
 static constexpr uint32_t WTSActive = 0;
 
-Wtsapi32::Wtsapi32() {
+Wtsapi32::Wtsapi32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Wtsapi32)
     REG(Wtsapi32, WTSEnumerateSessions, 5)
     REG(Wtsapi32, WTSFreeMemory, 1)

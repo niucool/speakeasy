@@ -70,7 +70,7 @@ static constexpr int KERN_SYSTEM_KERNEL_DEBUGGER_INFORMATION  = 0x23;
 static constexpr int KERN_SYSTEM_CODEINTEGRITY_INFORMATION    = 0x5B;
 static constexpr int KERN_SYSTEM_PROCESS_INFORMATION          = 0x05;
 
-Ntoskrnl::Ntoskrnl() {
+Ntoskrnl::Ntoskrnl(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Ntoskrnl)
     // Object/Reference
     REG(Ntoskrnl, ObfDereferenceObject, 1)        REG(Ntoskrnl, ObfReferenceObject, 1)

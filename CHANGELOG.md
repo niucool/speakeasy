@@ -5,6 +5,31 @@
 
 ## [Unreleased]
 
+### 2026-05-23
+
+#### Added
+
+- **secpp**: 实现 `winapi.py` 的 `autoload_api_handlers` 和 `API_HANDLERS` 注册表移植。
+  - 新增了中央预注册实现文件 [winapi_registration.cpp](file:///d:/Projects/github/speakeasy/secpp/winenv/api/winapi_registration.cpp)，显示注册了所有 39 个用户态 DLL 和 8 个内核态驱动处理类，保证静态链接不被编译器剪裁（linker pruning）。
+  - 在 `WindowsApi::load_api_handler` 中实现了 v2 style 处理器的按需加载、导出钩子自动绑定与路由分发逻辑。
+  - 补充实现了 `WinHttp` (在 `winhttp.cpp`) 和 `Ws2_32` (在 `ws2_32.cpp`) 的默认构造函数，使用 `INIT_API_TABLE` / `REG` 初始化 API 注册表映射。
+
+#### Changed
+
+- **secpp**: 重构了 v1/v2 `ApiHandler` 的命名和包含路径以消除层级混淆：
+  - 将 `api_handler_base.h` 从 `secpp/winenv/api/usermode/api_handler_base.h` 移动到中央的 `secpp/winenv/api/api_handler_base.h`。
+  - 将 v2 宏驱动的子类从 `speakeasy::api::ApiHandler` 重命名为 `speakeasy::api::ApiHandler2`，基类依然为全局命名空间的 `::ApiHandler`。
+  - 将 `ApiHandler2` 的构造函数重构为统一的单构造函数签名：`ApiHandler2(void* emu = nullptr)`，保持与 47 个子类声明的向后兼容。
+  - 自动批量更新了所有 47 个 usermode DLL 和 kernelmode 驱动的头文件，使之包含 `../api_handler_base.h` 并继承自 `ApiHandler2`。
+  - 更新了 `winapi.cpp`，改用 `speakeasy::api::ApiHandler2` 进行多态下转型 (`dynamic_cast`) 判定。
+  - 重命名 `ApiHandler::get_ptr_size` 成员函数为 `get_pointer_size`，以防和 `ntdll.cpp` 中全局/静态辅助函数冲突导致变量或函数遮蔽。
+
+#### Fixed
+
+- **secpp**: 修正了若干编译警告和处理器继承冲突：
+  - 修复 `iphlpapi.cpp` 中 `write_string` 隐式调用基类同名重载导致的 C2660 编译错误，显式指定 `speakeasy::write_string` 命名空间。
+  - 修正了 `sfc_os.cpp` 构造函数的显式基类初始化，使之正确调用 `ApiHandler2()`。
+
 ### 2026-05-22
 
 #### Added

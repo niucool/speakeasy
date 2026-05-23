@@ -18,7 +18,7 @@ static constexpr uint32_t TIMERR_NOERROR = 0;
 // Reference time point for timeGetTime
 static const std::chrono::steady_clock::time_point winmm_start = std::chrono::steady_clock::now();
 
-Winmm::Winmm() {
+Winmm::Winmm(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Winmm)
     REG(Winmm, timeBeginPeriod, 1)
     REG(Winmm, timeEndPeriod, 1)

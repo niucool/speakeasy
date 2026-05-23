@@ -29,7 +29,7 @@ static inline uint32_t wdf_new_handle() {
     return h;
 }
 
-Wdfldr::Wdfldr() {
+Wdfldr::Wdfldr(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Wdfldr)
     REG(Wdfldr, WdfVersionBind, 4)
     REG(Wdfldr, WdfDriverCreate, 6)

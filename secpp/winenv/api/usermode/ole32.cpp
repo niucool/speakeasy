@@ -65,7 +65,7 @@ static _OLEGUID read_guid(void* e, uint64_t addr) {
 
 // ── Constructor ───────────────────────────────────────────────
 
-Ole32::Ole32() {
+Ole32::Ole32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Ole32)
     REG(Ole32, CoInitialize, 1)         REG(Ole32, CoUninitialize, 0)
     REG(Ole32, CoCreateInstance, 5)     REG(Ole32, CoGetClassObject, 4)
