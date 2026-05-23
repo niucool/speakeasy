@@ -142,44 +142,16 @@ std::string emulate_binary(const std::string& target_path,
                            bool verbose, size_t entry_point) {
     try {
         // ── 1. Build config (Python: get_default_config_dict + merge + apply volumes) ──
-        speakeasy::SpeakeasyConfig validated;
-        nlohmann::json cfg;
-        {
-            // Start with default config
-            // Start with default config
-            cfg = nlohmann::json::object();
-            cfg["timeout"] = 60;
-            cfg["max_api_count"] = 10000;
-            cfg["os_ver"] = {{"major", 6}, {"minor", 1}, {"build", 7601}};
-            cfg["analysis"] = {{"memory_tracing", false}, {"strings", true}, {"coverage", false}};
+        speakeasy::SpeakeasyConfig config;
 
-            // Merge user config file if provided (Python: load + merge_config_dicts)
-            if (!config_path.empty()) {
-                std::ifstream f(config_path);
-                if (!f.is_open())
-                    throw std::runtime_error("Config file not found: " + config_path);
-                nlohmann::json user_cfg;
-                f >> user_cfg;
-                cfg.merge_patch(user_cfg);
-            }
-
-            // Apply volumes (Python: apply_volumes)
-            for (const auto& spec : volumes) {
-                auto [host, guest] = parse_volume_spec(spec);
-                nlohmann::json entry;
-                entry["mode"] = "full_path";
-                entry["emu_path"] = guest;
-                entry["path"] = host.string();
-                cfg["filesystem"]["files"].push_back(entry);
-            }
-
-            // Validate (Python: SpeakeasyConfig.model_validate)
-            validated = cfg;
-            validate_config(validated);
+        // Merge user config file if provided (Python: load + merge_config_dicts)
+        if (!config_path.empty()) {
+            config.load_config(config_path);
+            config.validate_config();
         }
 
         // ── 3. Initialise Speakeasy ──
-        Speakeasy se(validated, nullptr, extra_argv, false, nullptr);
+        Speakeasy se(config, nullptr, extra_argv, false, nullptr);
         std::string report;
 
         if (is_raw) {

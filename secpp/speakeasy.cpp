@@ -21,7 +21,7 @@ Speakeasy::Speakeasy(const speakeasy::SpeakeasyConfig& cfg, void* logger,
     : logger(logger), config(cfg), emu(nullptr), argv(argv), exit_event(exit_event), 
       debug(debug) {
     try {
-        validate_config(this->config);
+        this->config.validate_config();
     } catch (const std::exception& err) {
         throw ConfigError("Invalid config: " + std::string(err.what()));
     }

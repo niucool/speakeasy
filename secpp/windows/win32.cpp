@@ -126,7 +126,11 @@ void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& p
         
         // p->name set via Process constructor
         if (proc.pid) p->id = proc.pid;
-        p->base = proc.base;
+        if (!proc.base.empty()) {
+            p->base = std::stoull(proc.base, nullptr, 16);
+        } else {
+            p->base = 0;
+        }
         p->path = proc.path;
         p->session = proc.session ? proc.session : 0;
         auto pos = proc.path.find_last_of("/\\");
@@ -433,7 +437,10 @@ void* Win32Emulator::init_container_process() {
         if (p.is_main_exe) {
             std::string name = p.name.empty() ? "" : p.name;
             std::string emu_path = p.path.empty() ? "" : p.path;
-            uint64_t base = p.base;
+            uint64_t base = 0;
+            if (!p.base.empty()) {
+                base = std::stoull(p.base, nullptr, 16);
+            }
             std::string cmd_line = p.command_line.empty() ? "" : p.command_line;
             
             auto proc = std::make_shared<Process>((void *)this, nullptr,

@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <memory>
 #include <cstdint>
 #include <nlohmann/json.hpp>
 
@@ -142,7 +143,7 @@ struct NetworkConfig {
 
 struct ProcessEntry {
     std::string name;
-    uint64_t base;
+    std::string base;
     int pid = 0;
     std::string path;
     std::string command_line;
@@ -192,6 +193,7 @@ struct SpeakeasyConfig {
 
     AnalysisConfig analysis;
     bool keep_memory_on_free = false;
+    bool snapshot_memory_regions = false;
     ExceptionsConfig exceptions;
     OsVersion os_ver;
     std::string current_dir = "C:\\Windows\\system32";
@@ -209,28 +211,36 @@ struct SpeakeasyConfig {
     NetworkConfig network;
     std::vector<ProcessEntry> processes;
     ModulesConfig modules;
+
+    SpeakeasyConfig();
+
+    // ── Validation ───────────────────────────────────────────────
+
+    /**
+     * Validate an emulation configuration and throw on invalid values.
+     */
+    void validate_config();
+
+    /**
+     * Load and validate configuration from a JSON file path.
+     * Throws std::runtime_error on invalid or missing config.
+     */
+    bool load_config(const std::string& path);
+
+private:
+    bool load_config_from_json(const nlohmann::json& j);
+
 };
 
 // ── Serialization (nlohmann_json) ───────────────────────────
 
-void to_json(nlohmann::json& j, const OsVersion& v);
-void from_json(const nlohmann::json& j, OsVersion& v);
+//void to_json(nlohmann::json& j, const OsVersion& v);
+//void from_json(const nlohmann::json& j, OsVersion& v);
+//
+//void to_json(nlohmann::json& j, const SpeakeasyConfig& cfg);
+//void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg);
 
-void to_json(nlohmann::json& j, const SpeakeasyConfig& cfg);
-void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg);
 
-// ── Validation ───────────────────────────────────────────────
-
-/**
- * Validate an emulation configuration and throw on invalid values.
- */
-void validate_config(const SpeakeasyConfig& cfg);
-
-/**
- * Load and validate configuration from a JSON file path.
- * Throws std::runtime_error on invalid or missing config.
- */
-SpeakeasyConfig load_config(const std::string& path);
 
 /**
  * Build the default configuration (equivalent to configs/default.json).
