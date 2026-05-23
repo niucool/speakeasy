@@ -1,4 +1,4 @@
-// binemu.cpp
+ // binemu.cpp
 #include "binemu.h"
 #include <iostream>
 #include <sstream>
@@ -367,7 +367,7 @@ std::tuple<std::string, std::string, std::string> BinaryEmulator::get_disasm(uin
     return _cs_disasm(mem, addr, fast);
 }
 
-// ── Stack operations ─────────────────────────────────────────
+// Stack operations 
 
 // Python binemu.py:440-450 doc: "Put a value on the stack and adjust the stack pointer"
 uint64_t BinaryEmulator::push_stack(uint64_t val) {
@@ -431,7 +431,7 @@ void BinaryEmulator::set_ret_address(uint64_t addr) {
     mem_write(sp, bytes);
 }
 
-// ── Stack trace ─────────────────────────────────────────────
+// Stack trace
 
 // Python binemu.py:517-540 doc: "Get the current stack state"
 std::vector<std::string> BinaryEmulator::get_stack_trace(int num_ptrs) {
@@ -461,7 +461,7 @@ std::vector<std::string> BinaryEmulator::get_stack_trace(int num_ptrs) {
     return trace;
 }
 
-// ── Stack formatting ────────────────────────────────────────
+// Stack formatting 
 
 // Python binemu.py:483-498 doc: "Get the stack and format it for display"
 std::vector<std::tuple<uint64_t, uint64_t, std::string>> BinaryEmulator::format_stack(int num_ptrs) {
@@ -504,10 +504,10 @@ static bool hook_fnmatch(const std::string& pattern, const std::string& value) {
     return pi == pattern.size();
 }
 
-// ── Hook management (deferred: Hook classes need Speakeasy*, not BinaryEmulator*) ─
+// Hook management (deferred: Hook classes need Speakeasy*, not BinaryEmulator*) 
 
 
-// ── Dynamic code hook dispatch ───────────────────────────────────
+//  Dynamic code hook dispatch 
 
 void BinaryEmulator::_fire_dyn_code_hooks(uint64_t addr) {
     // Python binemu.py:921-929 doc: "Fire all dynamic code hooks and record profiler event"
@@ -541,7 +541,7 @@ void BinaryEmulator::_set_dyn_code_hook(uint64_t addr, size_t size, std::map<std
     if (size > MAX_HOOK_SIZE) size = MAX_HOOK_SIZE;
 
     // Create a self-disabling hook that fires _fire_dyn_code_hooks on first hit
-    // Wrap in std::function<void()> — add_code_hook expects zero-arg callback
+    // Wrap in std::function<void()> add_code_hook expects zero-arg callback
     add_code_hook(std::function<void()>([this, addr]() {
         this->_fire_dyn_code_hooks(addr);
     }), addr, addr + size);
@@ -559,7 +559,7 @@ void BinaryEmulator::eval_emu_var() {
 
 std::shared_ptr<speakeasy::Module> BinaryEmulator::get_module_from_addr(uint64_t addr) {
     // Python binemu.py:811-820 doc: "If the supplied address belongs to a module, return it"
-    // TODO: 'modules' is a WindowsEmulator member, not BinaryEmulator — move this to WindowsEmulator
+    // TODO: 'modules' is a WindowsEmulator member, not BinaryEmulator move this to WindowsEmulator
     for (auto& mod : modules) {
         if (addr >= mod->base && addr <= mod->base + mod->image_size) {
             return mod;
@@ -686,7 +686,7 @@ InvalidMemHook BinaryEmulator::add_mem_invalid_hook(std::function<void()> cb, Bi
     if (!emu) emu = this;
     auto* hook = new InvalidMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, false);
     auto& hl = hooks_[HOOK_MEM_INVALID];
-    // Dispatch hook injection is deferred — InvalidMemHook only accepts std::function<bool()>.
+    // Dispatch hook injection is deferred : InvalidMemHook only accepts std::function<bool()>.
     // The dispatch wrapper (_hook_mem_invalid_dispatch) would need a 4-arg callback signature,
     // but the current Hook/infrastructure passes only bool(). For now, user hooks are added
     // directly without the dispatch wrapper. When the hook system is extended to support
@@ -706,7 +706,7 @@ InterruptHook BinaryEmulator::add_interrupt_hook(std::function<void()> cb,
     return *h;
 }
 
-// ── Stack arguments ─────────────────────────────────────────
+//  Stack arguments 
 
 void BinaryEmulator::set_func_args(uint64_t stack_addr, uint64_t ret_addr,
                                     const std::vector<uint64_t>& args, bool home_space) {
@@ -810,7 +810,7 @@ void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_va
     }
 }
 
-// ── Architecture ────────────────────────────────────────────
+//  Architecture 
 
 int BinaryEmulator::get_arch() {
     // Python binemu.py:632-636 doc: "Get the current emulated architecture"
@@ -837,7 +837,7 @@ int BinaryEmulator::get_ptr_size() {
     return ptr_size_;  // set by subclass constructor
 }
 
-// ── String utilities ────────────────────────────────────────
+//  String utilities 
 
 std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max_chars) {
     // Python binemu.py:657-685 doc: "Read a string from emulated memory"
@@ -858,7 +858,7 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
         for (size_t i = 0; i + 1 < raw.size(); i += 2) {
             uint16_t ch = static_cast<uint16_t>(raw[i]) | (static_cast<uint16_t>(raw[i+1]) << 8);
             if (ch == 0) break;
-            // Python binemu.py:681-684 — .decode('utf-16le', 'ignore') — best-effort
+            // Python binemu.py:681-684 : .decode('utf-16le', 'ignore') : best-effort
             if (ch >= 0x20 && ch <= 0x7e) {
                 result += static_cast<char>(ch);
             } else if (ch >= 0x80) {
@@ -914,7 +914,7 @@ BinaryEmulator::get_mem_strings() {
             if (tag.compare(0, strlen(prefix), prefix) == 0) { match = true; break; }
         }
         if (!match) continue;
-        // Python: also excludes input_mem_tag — we can't check input here
+        // Python: also excludes input_mem_tag : we can't check input here
         uint64_t base = mm->get_base();
         uint64_t size = mm->get_size();
         if (size < 2) continue;
@@ -977,7 +977,7 @@ void BinaryEmulator::write_mem_string(const std::string& str, uint64_t address, 
                     cp = c; // fallback
                 }
                 if (cp > 0xFFFF) {
-                    // Surrogate pair (BMP only for simplicity — matches Python 'utf-16le' encoder)
+                    // Surrogate pair (BMP only for simplicity : matches Python 'utf-16le' encoder)
                     cp -= 0x10000;
                     encoded.push_back(static_cast<uint8_t>(0xD800 | (cp >> 10)));
                     encoded.push_back(static_cast<uint8_t>(((0xD800 | (cp >> 10)) >> 8) & 0xFF));
@@ -1016,7 +1016,7 @@ void BinaryEmulator::write_ptr(uint64_t address, uint64_t val) {
     mem_write(address, bytes);
 }
 
-// ── Stack management ────────────────────────────────────────
+//  Stack management 
 
 std::tuple<uint64_t, uint64_t> BinaryEmulator::reset_stack(uint64_t base) {
     // Python binemu.py:577-593 doc: "Reset stack to the supplied base address"
@@ -1066,7 +1066,7 @@ void BinaryEmulator::clean_stack_args(int argc) {
     // C++ uses linear scan (iterative) -- functionally equivalent
 std::vector<std::tuple<int, std::string>> BinaryEmulator::get_ansi_strings(
     const std::vector<uint8_t>& data, int min_len) {
-    // Python binemu.py:700-717 — regex-based printable ASCII string extraction
+    // Python binemu.py:700-717 : regex-based printable ASCII string extraction
     std::vector<std::tuple<int, std::string>> result;
     std::string s(reinterpret_cast<const char*>(data.data()), data.size());
     std::string pattern = "[\\x20-\\x7e]{" + std::to_string(min_len) + ",}";
@@ -1088,9 +1088,9 @@ std::vector<std::tuple<int, std::string>> BinaryEmulator::get_ansi_strings(
 // Python binemu.py:719-736 doc: "Get all unicode strings from a supplied memory blob"
 std::vector<std::tuple<int, std::string>> BinaryEmulator::get_unicode_strings(
     const std::vector<uint8_t>& data, int min_len) {
-    // Python binemu.py:719-736 — regex-based UTF-16LE printable ASCII string extraction
+    // Python binemu.py:719-736 : regex-based UTF-16LE printable ASCII string extraction
     std::vector<std::tuple<int, std::string>> result;
-    // Build pattern: (?:[ -~] ){min_len,}
+    // Build pattern: (?:[ -~]){min_len,}
     std::string pattern = "(?:[\\x20-\\x7e]\\x00){" + std::to_string(min_len) + ",}";
     try {
         std::regex re(pattern);

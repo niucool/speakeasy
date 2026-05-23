@@ -1346,8 +1346,8 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     modules.push_back(mod);
 
     // ── Allocate stack for primary image (Python 1128-1130) ──
-    if (is_primary && stack_base == 0 && img->image_size > 0) {
-        size_t stack_size = img->image_size;  // use image_size as default (stack_size field not on C++ LoadedImage)
+    if (is_primary && stack_base == 0 && img->stack_size > 0) {
+        size_t stack_size = img->stack_size;  // use image_size as default (stack_size field not on C++ LoadedImage)
         auto [sb, sp] = alloc_stack(stack_size);
         stack_base = sb;
     }

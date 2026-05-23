@@ -354,6 +354,7 @@ std::shared_ptr<LoadedImage> PeLoader::make_image() {
     img->image_size = image_size;
     img->base = image_base;
     img->ep = pe ? pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint : 0;
+    img->stack_size = pe ? pe->peHeader.nt.OptionalHeader.SizeOfStackReserve : 0x12000;
     img->arch = (metadata_.machine == 0x8664) ? 64 : 32;
     img->metadata = metadata_;
     img->imports = imports_;
