@@ -51,6 +51,9 @@ protected:
     int ptr_size;
 
 public:
+    const std::map<std::string, ApiHookInfo>& get_hook_funcs() const { return funcs; }
+    const std::map<std::string, DataHookInfo>& get_hook_data() const { return data; }
+
     void set_emu(void* e);
     void add_hook(const std::string& name, std::function<void()> func, int argc, int conv, int ordinal = 0);
     void add_data(const std::string& name, std::function<void()> func);

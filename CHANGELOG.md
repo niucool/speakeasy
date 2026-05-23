@@ -16,6 +16,14 @@
 
 #### Changed
 
+- **secpp**: 合并全局基类 `::ApiHandler` (v1) 与 `ApiHandler2` (v2) 为单一的统一 `::ApiHandler` 类：
+  - 完全删除了冗余的继承中间层 `api_handler_base.h`。
+  - 将所有 API Table 注册宏、`ApiFunc`/`ApiEntry` 结构体、虚函数接口及辅助函数等直接统一至全局基类 `::ApiHandler` 中。
+  - 强制所有 47 个子类（用户态 DLL 和内核态驱动）的构造函数签名接收 `void* emu`，并显式且必须传递给 `ApiHandler(emu)` 基类构造函数，删除了所有默认实参 `emu = nullptr` 以增强强类型安全性。
+  - 批量重构更新了所有 47 个 DLL/驱动类的头文件与源文件实现（如 `advapi32.h` / `advapi32.cpp`、`ntoskrnl.h` / `ntoskrnl.cpp` 等），使其继承直接指向 `::ApiHandler`。
+  - 更新了 `winapi_registration.cpp` 中的工厂注册函数，自动捕获并传入 `emu` 指针。
+  - 优化了 `WindowsApi::call_api_func` 与 `WindowsApi::load_api_handler`，省去了不必要的下转型 `dynamic_cast`，直接通过统一的 `ApiHandler` 派发多态方法。
+
 - **secpp**: 重构了 v1/v2 `ApiHandler` 的命名和包含路径以消除层级混淆：
   - 将 `api_handler_base.h` 从 `secpp/winenv/api/usermode/api_handler_base.h` 移动到中央的 `secpp/winenv/api/api_handler_base.h`。
   - 将 v2 宏驱动的子类从 `speakeasy::api::ApiHandler` 重命名为 `speakeasy::api::ApiHandler2`，基类依然为全局命名空间的 `::ApiHandler`。

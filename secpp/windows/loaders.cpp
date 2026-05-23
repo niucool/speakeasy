@@ -1,6 +1,7 @@
 // loaders.cpp — PE file loader implementation using pe-parse callback API
 
 #include "loaders.h"
+#include "../winenv/api/api.h"
 #include <fstream>
 #include <cstring>
 #include <stdexcept>
@@ -484,19 +485,161 @@ ApiModuleLoader::ApiModuleLoader(const std::string& name, void* api,
     : name_(name), api_(api), arch_(arch), base_(base), emu_path_(emu_path) {}
 
 std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
-    // Full implementation requires JitPeFile from common.cpp (synthetic PE generation).
-    // Porting note: Python version uses speakeasy/windows/common.py JitPeFile class
-    // to create minimal PE headers with export table stubs.
-    // For now, return a minimal LoadedImage stub.
+    std::fprintf(stderr, "[DEBUG] Entering ApiModuleLoader::make_image for %s\n", name_.c_str());
+    std::vector<std::string> all_exports;
+    
+    auto* handler = static_cast<ApiHandler*>(api_);
+    if (handler) {
+        std::fprintf(stderr, "[DEBUG] Handler is non-null. Gathering hooks...\n");
+        const auto& hook_funcs = handler->get_hook_funcs();
+        const auto& hook_data = handler->get_hook_data();
+        
+        std::vector<std::pair<int, std::string>> new_funcs;
+        for (const auto& [k, f] : hook_funcs) {
+            new_funcs.push_back({f.ordinal, f.name});
+        }
+        
+        std::vector<std::string> data_exports;
+        for (const auto& [k, d] : hook_data) {
+            data_exports.push_back(d.name);
+        }
+        
+        // Prefix / Suffix Expansion matching Python logic
+        std::vector<std::pair<int, std::string>> expanded = new_funcs;
+        if (name_ == "ntdll" || name_ == "ntoskrnl") {
+            for (const auto& f : new_funcs) {
+                std::string fn = f.second;
+                if (fn.rfind("Nt", 0) == 0) { // startswith "Nt"
+                    expanded.push_back({0, "Zw" + fn.substr(2)});
+                } else if (fn.rfind("Zw", 0) == 0) { // startswith "Zw"
+                    expanded.push_back({0, "Nt" + fn.substr(2)});
+                }
+            }
+        } else {
+            for (const auto& f : new_funcs) {
+                std::string fn = f.second;
+                expanded.push_back({0, fn + "A"});
+                expanded.push_back({0, fn + "W"});
+            }
+        }
+        
+        std::vector<std::string> func_names;
+        for (const auto& f : expanded) {
+            func_names.push_back(f.second);
+        }
+        std::sort(func_names.begin(), func_names.end());
+        func_names.erase(std::unique(func_names.begin(), func_names.end()), func_names.end());
+        
+        std::vector<int> ords;
+        for (const auto& f : new_funcs) {
+            if (f.first > 0) {
+                ords.push_back(f.first);
+            }
+        }
+        
+        if (!ords.empty()) {
+            int max_ord = *std::max_element(ords.begin(), ords.end());
+            int num_exports = max_ord + 1;
+            all_exports.resize(num_exports);
+            for (int i = 0; i < num_exports; ++i) {
+                all_exports[i] = "ordinal_" + std::to_string(i + 1);
+            }
+            for (const auto& f : new_funcs) {
+                if (f.first > 0) {
+                    all_exports[f.first - 1] = f.second;
+                }
+            }
+            for (const auto& fn : func_names) {
+                if (std::find(all_exports.begin(), all_exports.end(), fn) == all_exports.end()) {
+                    all_exports.push_back(fn);
+                }
+            }
+        }
+        
+        if (all_exports.empty()) {
+            all_exports = func_names;
+        }
+        
+        // Append data exports
+        all_exports.insert(all_exports.end(), data_exports.begin(), data_exports.end());
+    }
+    
+    std::fprintf(stderr, "[DEBUG] Total exports gathered: %d. Instantiating JitPeFile...\n", (int)all_exports.size());
+    // Construct dynamic PE using C++ JitPeFile
+    JitPeFile jit(arch_, base_);
+    std::fprintf(stderr, "[DEBUG] JitPeFile instantiated. Generating raw decoy PE image...\n");
+    std::vector<uint8_t> raw_pe = jit.get_decoy_pe_image(name_, all_exports);
+    std::fprintf(stderr, "[DEBUG] get_decoy_pe_image completed. raw_pe size: %d. Parsing with PeFile...\n", (int)raw_pe.size());
+    
+    // Parse using PeFile to map and resolve section and header details
+    std::shared_ptr<PeFile> pe;
+    try {
+        pe = std::make_shared<PeFile>("", raw_pe, 0xFEEDFACE, 4, emu_path_, true);
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[DEBUG] Exception parsing PeFile: %s\n", e.what());
+        return nullptr;
+    } catch (...) {
+        std::fprintf(stderr, "[DEBUG] Unknown exception parsing PeFile\n");
+        return nullptr;
+    }
+    std::fprintf(stderr, "[DEBUG] PeFile parsed successfully. image_size: %d, mapped_image size: %d\n", (int)pe->get_image_size(), (int)pe->mapped_image.size());
+    
     auto img = std::make_shared<LoadedImage>();
     img->arch = arch_;
+    img->module_type = "dll";
     img->name = name_;
     img->emu_path = emu_path_;
     img->base = base_;
-    img->image_size = 0x10000;  // default 64K
-    img->ep = 0;
+    img->image_size = pe->get_image_size();
     img->is_dll = true;
-    img->metadata.subsystem = 2;  // IMAGE_SUBSYSTEM_WINDOWS_GUI
+    img->visible_in_peb = true;
+    img->loader = this;
+    
+    // Create memory region from mapped PE image
+    MemoryRegion region;
+    region.base = base_;
+    region.data = pe->mapped_image;
+    region.name = "api_module";
+    region.perms = 0x16; // PERM_MEM_RWX
+    img->regions.push_back(region);
+    
+    // Create export table stub entries
+    size_t stub_size = (arch_ == 32) ? 17 : 16;
+    uint32_t text_va = 0x1000; // text section RVA is always 0x1000 in dynamic JIT PEs
+    
+    std::fprintf(stderr, "[DEBUG] Generating %d exports...\n", (int)all_exports.size());
+    for (size_t i = 0; i < all_exports.size(); ++i) {
+        ExportEntry exp;
+        exp.name = all_exports[i];
+        exp.address = base_ + text_va + i * stub_size;
+        exp.ordinal = static_cast<uint32_t>(i + 1);
+        exp.execution_mode = "intercepted";
+        img->exports.push_back(exp);
+    }
+    
+    // Add section entries
+    std::fprintf(stderr, "[DEBUG] Adding sections...\n");
+    for (const auto& s : pe->get_sections()) {
+        SectionEntry sect;
+        sect.name = s.name;
+        sect.virtual_address = s.virtual_address;
+        sect.virtual_size = s.virtual_size;
+        sect.perms = 0x16; // RWX
+        img->sections.push_back(sect);
+    }
+    
+    // Populate metadata
+    std::fprintf(stderr, "[DEBUG] Populating metadata...\n");
+    PeMetadata meta;
+    if (pe->get_parsed_pe()) {
+        meta.subsystem = pe->get_parsed_pe()->peHeader.nt.OptionalHeader.Subsystem;
+        meta.timestamp = pe->get_parsed_pe()->peHeader.nt.FileHeader.TimeDateStamp;
+        meta.machine = pe->get_parsed_pe()->peHeader.nt.FileHeader.Machine;
+        meta.magic = pe->get_parsed_pe()->peHeader.nt.OptionalMagic;
+    }
+    img->metadata = meta;
+    
+    std::fprintf(stderr, "[DEBUG] Exiting ApiModuleLoader::make_image successfully\n");
     return img;
 }
 

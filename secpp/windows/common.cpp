@@ -619,9 +619,79 @@ std::vector<uint8_t> DecoyModule::get_memory_mapped_image(uint64_t max_virtual_a
 
 // ── JitPeFile implementation ──────────────────────────────
 
-JitPeFile::JitPeFile(int arch)
-    : pattern_size(arch == 32 ? 4 : 8), arch(arch) {
-    basepe_data = (arch == 32) ? EMPTY_PE_32 : EMPTY_PE_64;
+// Exported stub template definitions
+static const std::vector<uint8_t> X86_EXPORTED_FUNCTION = {
+    0x8B, 0xFF,                    // mov edi, edi
+    0x55,                          // push ebp
+    0x8B, 0xEC,                    // mov ebp, esp
+    0xB8, 0x00, 0x00, 0x00, 0x00,  // mov eax, 0
+    0x8B, 0xE5,                    // mov esp, ebp
+    0x5D,                          // pop ebp
+    0xC3,                          // ret
+    0xCC,                          // int3
+    0xCC,                          // int3
+    0xCC                           // int3
+};
+
+static const std::vector<uint8_t> X64_EXPORTED_FUNCTION = {
+    0x48, 0x89, 0xFF,              // mov rdi, rdi
+    0x90,                          // nop
+    0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00, // mov rax, 0
+    0xC3,                          // ret
+    0xCC,                          // int3
+    0xCC,                          // int3
+    0xCC,                          // int3
+    0xCC                           // int3
+};
+
+// Little-endian writing helpers
+static inline void write_u16(std::vector<uint8_t>& buf, size_t offset, uint16_t val) {
+    if (offset + 2 > buf.size()) buf.resize(offset + 2, 0);
+    std::memcpy(&buf[offset], &val, 2);
+}
+
+static inline void write_u32(std::vector<uint8_t>& buf, size_t offset, uint32_t val) {
+    if (offset + 4 > buf.size()) buf.resize(offset + 4, 0);
+    std::memcpy(&buf[offset], &val, 4);
+}
+
+static inline uint32_t align_up(uint32_t val, uint32_t align) {
+    if (align == 0) return val;
+    return (val + align - 1) & ~(align - 1);
+}
+
+static void write_section_header(std::vector<uint8_t>& buf, size_t sect_table_offset, int sect_idx,
+                                 const std::string& name, uint32_t v_size, uint32_t v_addr,
+                                 uint32_t raw_size, uint32_t raw_ptr, uint32_t chars) {
+    size_t offset = sect_table_offset + sect_idx * 40;
+    if (offset + 40 > buf.size()) buf.resize(offset + 40, 0);
+    
+    // Name (up to 8 bytes, null-padded)
+    uint8_t name_bytes[8] = {0};
+    std::memcpy(name_bytes, name.c_str(), std::min(name.length(), (size_t)8));
+    std::memcpy(&buf[offset], name_bytes, 8);
+    
+    write_u32(buf, offset + 8, v_size);
+    write_u32(buf, offset + 12, v_addr);
+    write_u32(buf, offset + 16, raw_size);
+    write_u32(buf, offset + 20, raw_ptr);
+    write_u32(buf, offset + 24, 0); // PointerToRelocations
+    write_u32(buf, offset + 28, 0); // PointerToLinenumbers
+    write_u16(buf, offset + 32, 0); // NumberOfRelocations
+    write_u16(buf, offset + 34, 0); // NumberOfLinenumbers
+    write_u32(buf, offset + 36, chars);
+}
+
+JitPeFile::JitPeFile(int arch, uint64_t base)
+    : pattern_size(arch == 32 ? 4 : 8), arch(arch), base(base) {
+    // Correctly prepend DOS_HEADER and append trailing zeroes to match python EMPTY_PE_32/64
+    basepe_data = DOS_HEADER;
+    if (basepe_data.size() > 0xB0) {
+        basepe_data.resize(0xB0);
+    }
+    auto& empty = (arch == 32) ? EMPTY_PE_32 : EMPTY_PE_64;
+    basepe_data.insert(basepe_data.end(), empty.begin(), empty.end());
+    basepe_data.insert(basepe_data.end(), 131, 0);
     update();
 }
 
@@ -673,12 +743,8 @@ void JitPeFile::update_image_size() {
 }
 
 void JitPeFile::add_section(const std::string& name, const std::vector<uint8_t>& data) {
-    // Append section data to the raw PE buffer
     basepe_data.insert(basepe_data.end(), data.begin(), data.end());
-    // Re-parse to refresh PE headers and section list
     update();
-    // Ensure the new section appears in our list even if raw PE parsing
-    // doesn't capture it immediately — add fallback entry
     bool found = false;
     for (auto& s : sections) {
         if (s.name == name) { found = true; break; }
@@ -691,4 +757,166 @@ void JitPeFile::add_section(const std::string& name, const std::vector<uint8_t>&
         sec.raw_size = static_cast<uint32_t>(data.size());
         sections.push_back(sec);
     }
+}
+
+int JitPeFile::get_current_offset() {
+    return static_cast<int>(basepe_data.size());
+}
+
+void JitPeFile::append_data(const std::vector<uint8_t>& data) {
+    basepe_data.insert(basepe_data.end(), data.begin(), data.end());
+}
+
+int JitPeFile::get_exports_size(const std::string& name, const std::vector<std::string>& exports) {
+    // export dir structure = 40 bytes
+    size_t size = 40;
+    size += name.length() + 1;
+    for (const auto& exp : exports) {
+        size += exp.length() + 1;
+        size += 10; // funcs (4) + names (4) + ordinals (2)
+    }
+    return static_cast<int>(size);
+}
+
+void JitPeFile::init_export_section(const std::string& name, const std::vector<std::string>& exports) {
+    (void)name; (void)exports;
+}
+
+void JitPeFile::init_text_section(const std::vector<std::string>& names) {
+    (void)names;
+}
+
+void* JitPeFile::cast_section(int offset) {
+    (void)offset;
+    return nullptr;
+}
+
+std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
+                                                const std::vector<std::string>& exports) {
+    uint32_t text_rva = 0x1000;
+    uint32_t text_ptr = 0x200; // aligned file header offset
+    
+    // 1. Build .text pattern data (stub functions)
+    std::vector<uint8_t> pattern;
+    std::vector<std::pair<uint32_t, std::string>> exports_info;
+    auto& stub_template = (arch == 32) ? X86_EXPORTED_FUNCTION : X64_EXPORTED_FUNCTION;
+    size_t val_offset = (arch == 32) ? 6 : 7;
+    
+    for (size_t i = 0; i < exports.size(); ++i) {
+        uint32_t func_rva = text_rva + static_cast<uint32_t>(pattern.size());
+        exports_info.push_back({func_rva, exports[i]});
+        
+        std::vector<uint8_t> stub = stub_template;
+        uint32_t ret_val = static_cast<uint32_t>(i + 1);
+        std::memcpy(&stub[val_offset], &ret_val, 4);
+        
+        pattern.insert(pattern.end(), stub.begin(), stub.end());
+    }
+    
+    uint32_t text_raw_size = align_up(static_cast<uint32_t>(pattern.size()), 0x200);
+    
+    // Resize basepe_data and copy .text raw data
+    basepe_data.resize(text_ptr + text_raw_size, 0);
+    if(pattern.size())
+        std::memcpy(&basepe_data[text_ptr], pattern.data(), pattern.size());
+    
+    // 2. Build .edata section data (Export Directory)
+    uint32_t edata_rva = text_rva + align_up(static_cast<uint32_t>(pattern.size()), 0x1000);
+    uint32_t edata_ptr = text_ptr + text_raw_size;
+    
+    size_t num_funcs = exports.size();
+    size_t funcs_offset = 40;
+    size_t names_offset = funcs_offset + 4 * num_funcs;
+    size_t ords_offset = names_offset + 4 * num_funcs;
+    size_t dll_name_offset = ords_offset + 2 * num_funcs;
+    size_t strings_offset = dll_name_offset + mod_name.length() + 1;
+    
+    size_t string_table_size = 0;
+    for (const auto& exp_name : exports) {
+        string_table_size += exp_name.length() + 1;
+    }
+    
+    std::vector<uint8_t> edata_data(strings_offset + string_table_size, 0);
+    
+    // Initialize IMAGE_EXPORT_DIRECTORY structure
+    write_u32(edata_data, 0, 0); // Characteristics
+    write_u32(edata_data, 4, 0xD1234567); // TimeDateStamp
+    write_u16(edata_data, 8, 0); // Major
+    write_u16(edata_data, 10, 0); // Minor
+    write_u32(edata_data, 12, edata_rva + dll_name_offset); // DLL Name string RVA
+    write_u32(edata_data, 16, 1); // Base ordinal = 1
+    write_u32(edata_data, 20, static_cast<uint32_t>(num_funcs)); // NumberOfFunctions
+    write_u32(edata_data, 24, static_cast<uint32_t>(num_funcs)); // NumberOfNames
+    write_u32(edata_data, 28, edata_rva + funcs_offset); // AddressOfFunctions RVA
+    write_u32(edata_data, 32, edata_rva + names_offset); // AddressOfNames RVA
+    write_u32(edata_data, 36, edata_rva + ords_offset); // AddressOfNameOrdinals RVA
+    
+    // Write DLL name
+    std::memcpy(&edata_data[dll_name_offset], mod_name.c_str(), mod_name.length() + 1);
+    
+    // Write functions table, names table, ordinals table, and string table
+    size_t curr_str_offset = strings_offset;
+    for (size_t i = 0; i < num_funcs; ++i) {
+        uint32_t func_rva = exports_info[i].first;
+        std::string func_name = exports_info[i].second;
+        
+        write_u32(edata_data, funcs_offset + i * 4, func_rva);
+        write_u16(edata_data, ords_offset + i * 2, static_cast<uint16_t>(i));
+        write_u32(edata_data, names_offset + i * 4, edata_rva + curr_str_offset);
+        
+        std::memcpy(&edata_data[curr_str_offset], func_name.c_str(), func_name.length() + 1);
+        curr_str_offset += func_name.length() + 1;
+    }
+    
+    uint32_t edata_raw_size = align_up(static_cast<uint32_t>(edata_data.size()), 0x200);
+    basepe_data.resize(edata_ptr + edata_raw_size, 0);
+    std::memcpy(&basepe_data[edata_ptr], edata_data.data(), edata_data.size());
+    
+    // 3. Write PE header metadata and section tables
+    size_t pe_sig_offset = 0xB0;
+    size_t coff_offset = pe_sig_offset + 4; // 0xB4
+    size_t opt_offset = coff_offset + 20;   // 0xC8
+    
+    size_t num_sections_offset = coff_offset + 2; // 0xB6
+    size_t ep_offset = opt_offset + 16; // 0xD8
+    
+    size_t image_base_offset = (arch == 32) ? opt_offset + 28 : opt_offset + 24;
+    size_t size_of_image_offset = (arch == 32) ? opt_offset + 56 : opt_offset + 56;
+    size_t size_of_headers_offset = (arch == 32) ? opt_offset + 60 : opt_offset + 60;
+    size_t export_dir_offset = (arch == 32) ? opt_offset + 96 : opt_offset + 112;
+    
+    size_t opt_header_size = (arch == 32) ? 0xE0 : 0xF0;
+    size_t section_table_offset = opt_offset + opt_header_size;
+    
+    // Update ImageBase
+    if (base > 0) {
+        if (arch == 32) {
+            write_u32(basepe_data, image_base_offset, static_cast<uint32_t>(base));
+        } else {
+            std::memcpy(&basepe_data[image_base_offset], &base, 8);
+        }
+    }
+    
+    // Update NumberOfSections = 2
+    write_u16(basepe_data, num_sections_offset, 2);
+    
+    // Update AddressOfEntryPoint = text_rva
+    write_u32(basepe_data, ep_offset, text_rva);
+    
+    // Update SizeOfHeaders = text_ptr
+    write_u32(basepe_data, size_of_headers_offset, text_ptr);
+    
+    // Update SizeOfImage = edata_rva + edata aligned virtual size
+    write_u32(basepe_data, size_of_image_offset, edata_rva + align_up(static_cast<uint32_t>(edata_data.size()), 0x1000));
+    
+    // Update Export Directory RVA and size
+    write_u32(basepe_data, export_dir_offset, edata_rva);
+    write_u32(basepe_data, export_dir_offset + 4, static_cast<uint32_t>(edata_data.size()));
+    
+    // Write Section Table headers
+    write_section_header(basepe_data, section_table_offset, 0, ".text", static_cast<uint32_t>(pattern.size()), text_rva, text_raw_size, text_ptr, 0x60000020);
+    write_section_header(basepe_data, section_table_offset, 1, ".edata", static_cast<uint32_t>(edata_data.size()), edata_rva, edata_raw_size, edata_ptr, 0x40000040);
+    
+    update();
+    return basepe_data;
 }

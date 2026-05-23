@@ -235,10 +235,11 @@ private:
     std::vector<uint8_t> basepe_data;
     int arch;
     std::vector<PeSection> sections;
+    uint64_t base;
 
 public:
     // Constructor
-    JitPeFile(int arch);
+    JitPeFile(int arch, uint64_t base = 0);
     
     // Methods
     PeSection* get_section_by_name(const std::string& sec_name);
