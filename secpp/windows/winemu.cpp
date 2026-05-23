@@ -2241,9 +2241,8 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
                 std::vector<void*> vptr_argv;
                 for (auto a : argv)
                     vptr_argv.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(a)));
-                api->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
-
-                uint64_t rv = 0;  // handlers set ret via registers
+                void* rv_ptr = api->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
+                uint64_t rv = reinterpret_cast<uintptr_t>(rv_ptr);
                 uint64_t ret = get_ret_address();
                 uint64_t pc = get_pc();
 

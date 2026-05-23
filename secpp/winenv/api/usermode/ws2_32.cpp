@@ -253,4 +253,24 @@ uint64_t Ws2_32::stub(void* e, const std::string&, int, const std::vector<uint64
     (void)e; (void)a; return 1;
 }
 
+Ws2_32::Ws2_32() {
+    INIT_API_TABLE(Ws2_32)
+    REG(Ws2_32, WSAStartup, 2)
+    REG(Ws2_32, WSASocketA, 6)
+    REG(Ws2_32, connect, 3)
+    REG(Ws2_32, send, 4)
+    REG(Ws2_32, recv, 4)
+    REG(Ws2_32, closesocket, 1)
+    REG(Ws2_32, bind, 3)
+    REG(Ws2_32, listen, 2)
+    REG(Ws2_32, accept, 3)
+    REG(Ws2_32, gethostbyname, 1)
+    REG(Ws2_32, WSAGetLastError, 0)
+    REG(Ws2_32, inet_addr, 1)
+    REG(Ws2_32, htons, 1)
+    REG(Ws2_32, select, 5)
+    REG(Ws2_32, stub, 0)
+    END_API_TABLE
+}
+
 }} // namespaces

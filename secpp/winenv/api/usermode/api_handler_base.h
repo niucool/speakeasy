@@ -19,6 +19,7 @@
 #include <vector>
 #include <functional>
 #include <cstdint>
+#include "../api.h"
 
 namespace speakeasy {
 namespace api {
@@ -33,8 +34,9 @@ struct ApiEntry {
 };
 
 /// Base class for all DLL-specific API handlers
-class ApiHandler {
+class ApiHandler : public ::ApiHandler {
 public:
+    ApiHandler(void* emu) : ::ApiHandler(emu) {}
     virtual ~ApiHandler() = default;
     virtual std::string get_name() const = 0;
     virtual const std::vector<ApiEntry>& get_apis() const = 0;

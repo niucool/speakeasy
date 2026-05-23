@@ -2,6 +2,7 @@
 #include "winapi.h"
 #include "api.h"
 #include "api_handler_registry.h"
+#include "usermode/api_handler_base.h"
 #include "../../winenv/arch.h"
 #include "../../errors.h"
 #include "../../windows/winemu.h"  // BinaryEmulator::get_arch
@@ -11,6 +12,9 @@
 
 // Constructor
 WindowsApi::WindowsApi(Emulator* emu) : emu(emu) {
+    // Register all API handlers
+    speakeasy::api::register_all_api_handlers();
+
     // Detect pointer size from architecture
     auto* bemu = reinterpret_cast<BinaryEmulator*>(emu);
     if (bemu) {
@@ -40,6 +44,12 @@ ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {
     // Try to create handler via registry (looks up exact name match)
     ApiHandler* handler = ApiHandlerRegistry::create_handler(lower_name, emu);
     if (handler) {
+        auto* v2 = dynamic_cast<speakeasy::api::ApiHandler*>(handler);
+        if (v2) {
+            for (const auto& entry : v2->get_apis()) {
+                handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
+            }
+        }
         mods[lower_name] = handler;
         return handler;
     }
@@ -52,6 +62,12 @@ ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {
         if (reg_name == lower_name) {
             handler = factory(emu);
             if (handler) {
+                auto* v2 = dynamic_cast<speakeasy::api::ApiHandler*>(handler);
+                if (v2) {
+                    for (const auto& entry : v2->get_apis()) {
+                        handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
+                    }
+                }
                 mods[lower_name] = handler;
             }
             return handler;
@@ -125,22 +141,41 @@ std::tuple<ApiHandler*, void*> WindowsApi::get_export_func_handler(const std::st
 }
 
 void* WindowsApi::call_api_func(ApiHandler* mod, void* func, const std::vector<void*>& argv, void* ctx) {
-    /**
-     * Call the handler to implement the imported API
-     *
-     * In C++, the handler functions are stored as std::function<void()> which
-     * capture all context at registration time (via the macro system).
-     * The func pointer is a cached std::function<void()> stored in func_cache_.
-     */
-    (void)mod;
-    (void)argv;
     (void)ctx;
 
     if (func == nullptr) {
         return nullptr;
     }
 
-    // Cast void* back to std::function<void()>* and invoke
+    // Check if mod is a v2 handler
+    auto* v2 = dynamic_cast<speakeasy::api::ApiHandler*>(mod);
+    if (v2) {
+        std::string exp_name;
+        for (const auto& [k, v] : func_cache_) {
+            if (reinterpret_cast<const void*>(&v) == func) {
+                // Key format: "mod_name:exp_name:func"
+                size_t first = k.find(':');
+                size_t second = k.find(':', first + 1);
+                if (first != std::string::npos && second != std::string::npos) {
+                    exp_name = k.substr(first + 1, second - first - 1);
+                }
+                break;
+            }
+        }
+        if (!exp_name.empty()) {
+            const auto* entry = v2->find_api(exp_name);
+            if (entry) {
+                std::vector<uint64_t> u64_argv;
+                for (void* arg : argv) {
+                    u64_argv.push_back(reinterpret_cast<uintptr_t>(arg));
+                }
+                uint64_t rv = entry->handler(emu, entry->name, entry->argc, u64_argv);
+                return reinterpret_cast<void*>(static_cast<uintptr_t>(rv));
+            }
+        }
+    }
+
+    // Fallback: Cast void* back to std::function<void()>* and invoke
     auto* handler_func = reinterpret_cast<std::function<void()>*>(func);
     if (handler_func && *handler_func) {
         (*handler_func)();

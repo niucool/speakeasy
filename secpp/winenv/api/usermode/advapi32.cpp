@@ -245,4 +245,22 @@ uint64_t Advapi32::stub(void* e, const std::string&, int, const std::vector<uint
     (void)e; (void)a; return 1;
 }
 
+Advapi32::Advapi32() {
+    INIT_API_TABLE(Advapi32)
+    REG(Advapi32, RegOpenKeyExA, 5)
+    REG(Advapi32, RegQueryValueExA, 6)
+    REG(Advapi32, RegCloseKey, 1)
+    REG(Advapi32, RegCreateKeyExA, 9)
+    REG(Advapi32, RegSetValueExA, 6)
+    REG(Advapi32, RegDeleteKeyA, 1)
+    REG(Advapi32, OpenProcessToken, 3)
+    REG(Advapi32, LookupPrivilegeValueA, 3)
+    REG(Advapi32, AdjustTokenPrivileges, 6)
+    REG(Advapi32, CryptAcquireContextA, 5)
+    REG(Advapi32, CryptGenRandom, 3)
+    REG(Advapi32, CreateServiceA, 13)
+    REG(Advapi32, StartServiceA, 3)
+    END_API_TABLE
+}
+
 }} // namespaces

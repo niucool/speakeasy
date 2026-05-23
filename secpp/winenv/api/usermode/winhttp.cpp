@@ -353,8 +353,25 @@ uint64_t WinHttp::WinHttpCloseHandle(void* e, const std::string&, int, const std
     if (a.size() < 1) return 0;
     uint64_t hnd = a[0];
     requests().erase(hnd);
-    (void)e;
     return 1; // TRUE
+}
+
+WinHttp::WinHttp() {
+    INIT_API_TABLE(WinHttp)
+    REG(WinHttp, WinHttpOpen, 5)
+    REG(WinHttp, WinHttpConnect, 4)
+    REG(WinHttp, WinHttpOpenRequest, 7)
+    REG(WinHttp, WinHttpGetIEProxyConfigForCurrentUser, 1)
+    REG(WinHttp, WinHttpGetProxyForUrl, 4)
+    REG(WinHttp, WinHttpSetOption, 4)
+    REG(WinHttp, WinHttpSendRequest, 7)
+    REG(WinHttp, WinHttpReceiveResponse, 2)
+    REG(WinHttp, WinHttpReadData, 4)
+    REG(WinHttp, WinHttpCrackUrl, 4)
+    REG(WinHttp, WinHttpAddRequestHeaders, 4)
+    REG(WinHttp, WinHttpQueryHeaders, 6)
+    REG(WinHttp, WinHttpCloseHandle, 1)
+    END_API_TABLE
 }
 
 }} // namespaces

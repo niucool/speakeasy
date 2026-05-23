@@ -66,8 +66,8 @@ uint64_t Iphlpapi::GetAdaptersInfo(void* e, const std::string&, int, const std::
     }
 
     std::vector<uint8_t> buf(struct_size, 0);
-    write_string(buf, static_cast<size_t>(ps), "{DEFAULT-ADAPTER}", false);
-    write_string(buf, static_cast<size_t>(ps) + 260, "Emulated Ethernet Adapter", false);
+    speakeasy::write_string(buf, static_cast<size_t>(ps), "{DEFAULT-ADAPTER}", false);
+    speakeasy::write_string(buf, static_cast<size_t>(ps) + 260, "Emulated Ethernet Adapter", false);
     write_le(buf, static_cast<size_t>(ps) + 260 + 132, 6, 4); // AddressLength
     auto mac = default_mac();
     for (size_t i = 0; i < mac.size() && i < 8; i++)
@@ -81,19 +81,19 @@ uint64_t Iphlpapi::GetAdaptersInfo(void* e, const std::string&, int, const std::
     ias_off += 260 + 132 + 4 + 8;  // after Name, Desc, AddrLen, Addr
     ias_off += 4 + 4 + static_cast<size_t>(ps); // Index, Type, CurrentIpAddress
     write_le(buf, ias_off, 0, ps);
-    write_string(buf, ias_off + static_cast<size_t>(ps), "192.168.1.100", false);
-    write_string(buf, ias_off + static_cast<size_t>(ps) + 16, "255.255.255.0", false);
+    speakeasy::write_string(buf, ias_off + static_cast<size_t>(ps), "192.168.1.100", false);
+    speakeasy::write_string(buf, ias_off + static_cast<size_t>(ps) + 16, "255.255.255.0", false);
 
     // GatewayList
     size_t gw_off = ias_off + ias_size;
     write_le(buf, gw_off, 0, ps);
-    write_string(buf, gw_off + static_cast<size_t>(ps), "192.168.1.1", false);
-    write_string(buf, gw_off + static_cast<size_t>(ps) + 16, "0.0.0.0", false);
+    speakeasy::write_string(buf, gw_off + static_cast<size_t>(ps), "192.168.1.1", false);
+    speakeasy::write_string(buf, gw_off + static_cast<size_t>(ps) + 16, "0.0.0.0", false);
 
     size_t dhcp_off = gw_off + ias_size;
     write_le(buf, dhcp_off, 0, ps);
-    write_string(buf, dhcp_off + static_cast<size_t>(ps), "192.168.1.1", false);
-    write_string(buf, dhcp_off + static_cast<size_t>(ps) + 16, "0.0.0.0", false);
+    speakeasy::write_string(buf, dhcp_off + static_cast<size_t>(ps), "192.168.1.1", false);
+    speakeasy::write_string(buf, dhcp_off + static_cast<size_t>(ps) + 16, "0.0.0.0", false);
 
     we(e)->mem_write(pAdapterInfo, buf);
 
@@ -157,8 +157,8 @@ uint64_t Iphlpapi::GetNetworkParams(void* e, const std::string&, int, const std:
     }
 
     std::vector<uint8_t> buf(struct_size, 0);
-    write_string(buf, 0, "DESKTOP-EMULATED", false);
-    write_string(buf, 132, "workgroup.local", false);
+    speakeasy::write_string(buf, 0, "DESKTOP-EMULATED", false);
+    speakeasy::write_string(buf, 132, "workgroup.local", false);
     we(e)->mem_write(pFixedInfo, buf);
 
     std::vector<uint8_t> sz(4, 0);

@@ -68,7 +68,7 @@ elseif(UNIX)
     add_definitions(-DPLATFORM_LINUX)
 endif()
 
-# ── Source Files ──────────────────────────────────────────────
+# ── Source Files (re-evaluating on modification) ──────────────
 file(GLOB_RECURSE SPEAKEASY_SOURCES
     "secpp/*.h"
     "secpp/*.cpp"

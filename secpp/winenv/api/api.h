@@ -42,8 +42,17 @@ protected:
     int ptr_size;
 
 public:
+    // Default constructor for v2 subclasses
+    ApiHandler() : emu(nullptr), ptr_size(4) {}
+    void set_emu(void* e);
+    void add_hook(const std::string& name, std::function<void()> func, int argc, int conv, int ordinal = 0);
+    void add_data(const std::string& name, std::function<void()> func);
+
     // Static member for class name
     static std::string name;
+
+    // Destructor
+    virtual ~ApiHandler() = default;
 
     // Constructor
     ApiHandler(void* emu);
@@ -61,7 +70,7 @@ public:
     void __get_hook_attrs__(ApiHandler* obj);
     std::function<void()> get_data_handler(const std::string& exp_name);
     std::tuple<std::string, std::function<void()>, int, int, int> get_func_handler(const std::string& exp_name);
-    int get_ptr_size();
+    int get_pointer_size();
     
     // Memory management methods
     size_t sizeof_obj(speakeasy::EmuStruct* obj);

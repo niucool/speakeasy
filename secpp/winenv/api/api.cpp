@@ -65,6 +65,33 @@ ApiHandler::ApiHandler(void* emu) : emu(emu) {
     // they still use the old registration path.
 }
 
+void ApiHandler::set_emu(void* e) {
+    emu = e;
+    int arch = binemu(emu)->get_arch();
+    if (arch == speakeasy::arch::ARCH_X86) {
+        ptr_size = 4;
+    } else if (arch == speakeasy::arch::ARCH_AMD64) {
+        ptr_size = 8;
+    }
+}
+
+void ApiHandler::add_hook(const std::string& name, std::function<void()> func, int argc, int conv, int ordinal) {
+    ApiHookInfo info;
+    info.name = name;
+    info.func = func;
+    info.argc = argc;
+    info.conv = conv;
+    info.ordinal = ordinal;
+    funcs[name] = info;
+}
+
+void ApiHandler::add_data(const std::string& name, std::function<void()> func) {
+    DataHookInfo info;
+    info.name = name;
+    info.func = func;
+    data[name] = info;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // API Registration / Lookup (v1 — superseded by v2 macro system)
 // ═══════════════════════════════════════════════════════════════
@@ -130,7 +157,7 @@ ApiHandler::get_func_handler(const std::string& exp_name) {
     return std::make_tuple("", nullptr, 0, 0, 0);
 }
 
-int ApiHandler::get_ptr_size() {
+int ApiHandler::get_pointer_size() {
     return ptr_size;
 }
 

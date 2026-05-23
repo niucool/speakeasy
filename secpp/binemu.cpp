@@ -802,9 +802,7 @@ std::vector<uint64_t> BinaryEmulator::get_func_argv(int callconv, int argc) {
 void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_value, int conv) {
     // Python binemu.py:383-418 doc: "Set the emulation state after a call has completed"
     (void)argc; (void)conv;
-    if (ret_value != 0) {
-        reg_write(get_arch() == 64 ? 0 : 0, ret_value);  // rax/eax
-    }
+    reg_write(get_arch() == 64 ? 0 : 0, ret_value);  // rax/eax
     if (ret_addr != 0) {
         set_pc(ret_addr);
     }

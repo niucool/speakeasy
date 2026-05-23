@@ -66,6 +66,12 @@ public:
     int get_ptr_size() const { return ptr_size; }
 };
 
+namespace speakeasy {
+namespace api {
+void register_all_api_handlers();
+}
+}
+
 /**
  * Autoload API handlers
  */
