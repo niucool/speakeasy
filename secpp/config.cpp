@@ -4,8 +4,10 @@
 
 #include "config.h"
 #include "errors.h"
+#include "struct.h"
 #include <fstream>
 #include <stdexcept>
+#include <iostream>
 
 namespace speakeasy {
 
@@ -164,7 +166,9 @@ void from_json(const nlohmann::json& j, OsVersion& v) {
 }
 
 SpeakeasyConfig::SpeakeasyConfig() {
+    std::cout << "[DEBUG] Starting SpeakeasyConfig constructor" << std::endl;
     nlohmann::json j = nlohmann::json::parse(DEFAULT_CONFIG_DATA);
+    std::cout << "[DEBUG] Parsed DEFAULT_CONFIG_DATA successfully" << std::endl;
     load_config_from_json(j);
 }
 
@@ -180,7 +184,7 @@ SpeakeasyConfig::SpeakeasyConfig() {
 
 // ── Validation ───────────────────────────────────────────────
 
-void SpeakeasyConfig::validate_config() {
+void SpeakeasyConfig::validate_config() const {
     if (emu_engine != "unicorn") {
         throw ConfigError("Unsupported emulation engine: " + emu_engine);
     }
@@ -353,7 +357,7 @@ bool SpeakeasyConfig::load_config_from_json(const nlohmann::json& j) {
         }
         if (net.contains("http")) {
             auto& http_cfg = net.at("http");
-            if (http_cfg.contains("responses") && http_cfg.at("http").contains("responses") && http_cfg.at("responses").is_array()) {
+            if (http_cfg.contains("responses") && http_cfg.at("responses").is_array()) {
                 for (auto& resp_item : http_cfg.at("responses")) {
                     HttpResponse resp;
                     if (resp_item.contains("verb")) resp_item.at("verb").get_to(resp.verb);
@@ -462,5 +466,229 @@ bool SpeakeasyConfig::load_config_from_json(const nlohmann::json& j) {
 
     return true;
 }
+
+void to_json(nlohmann::json& j, const SpeakeasyConfig& cfg) {
+    j = nlohmann::json{
+        {"config_version", cfg.config_version},
+        {"description", cfg.description},
+        {"emu_engine", cfg.emu_engine},
+        {"timeout", cfg.timeout},
+        {"max_api_count", cfg.max_api_count},
+        {"stack_size", cfg.stack_size},
+        {"system", cfg.system},
+        {"keep_memory_on_free", cfg.keep_memory_on_free},
+        {"snapshot_memory_regions", cfg.snapshot_memory_regions},
+        {"current_dir", cfg.current_dir},
+        {"command_line", cfg.command_line},
+        {"domain", cfg.domain},
+        {"hostname", cfg.hostname},
+        {"env", cfg.env}
+    };
+
+    // os_ver
+    nlohmann::json os_j;
+    to_json(os_j, cfg.os_ver);
+    j["os_ver"] = os_j;
+
+    // user
+    j["user"] = nlohmann::json{
+        {"name", cfg.user.name},
+        {"is_admin", cfg.user.is_admin},
+        {"sid", cfg.user.sid}
+    };
+
+    // analysis
+    j["analysis"] = nlohmann::json{
+        {"memory_tracing", cfg.analysis.memory_tracing},
+        {"strings", cfg.analysis.strings},
+        {"coverage", cfg.analysis.coverage}
+    };
+
+    // exceptions
+    j["exceptions"] = nlohmann::json{
+        {"dispatch_handlers", cfg.exceptions.dispatch_handlers}
+    };
+
+    // api_hammering
+    j["api_hammering"] = nlohmann::json{
+        {"enabled", cfg.api_hammering.enabled},
+        {"threshold", cfg.api_hammering.threshold},
+        {"allow_list", cfg.api_hammering.allow_list}
+    };
+
+    // symlinks
+    nlohmann::json syms = nlohmann::json::array();
+    for (const auto& sym : cfg.symlinks) {
+        syms.push_back(nlohmann::json{{"name", sym.name}, {"target", sym.target}});
+    }
+    j["symlinks"] = syms;
+
+    // drives
+    nlohmann::json drvs = nlohmann::json::array();
+    for (const auto& drv : cfg.drives) {
+        drvs.push_back(nlohmann::json{
+            {"root_path", drv.root_path},
+            {"drive_type", drv.drive_type},
+            {"volume_guid_path", drv.volume_guid_path}
+        });
+    }
+    j["drives"] = drvs;
+
+    // filesystem
+    nlohmann::json files = nlohmann::json::array();
+    for (const auto& f : cfg.filesystem.files) {
+        nlohmann::json f_j = nlohmann::json{
+            {"mode", f.mode},
+            {"emu_path", f.emu_path},
+            {"path", f.path},
+            {"ext", f.ext}
+        };
+        if (f.byte_fill.size > 0) {
+            f_j["byte_fill"] = nlohmann::json{
+                {"byte", f.byte_fill.byte_val},
+                {"size", f.byte_fill.size}
+            };
+        }
+        files.push_back(f_j);
+    }
+    j["filesystem"] = nlohmann::json{{"files", files}};
+
+    // registry
+    nlohmann::json keys = nlohmann::json::array();
+    for (const auto& key : cfg.registry.keys) {
+        nlohmann::json vals = nlohmann::json::array();
+        for (const auto& val : key.values) {
+            vals.push_back(nlohmann::json{
+                {"name", val.name},
+                {"type", val.type},
+                {"data", val.data}
+            });
+        }
+        keys.push_back(nlohmann::json{
+            {"path", key.path},
+            {"values", vals}
+        });
+    }
+    j["registry"] = nlohmann::json{{"keys", keys}};
+
+    // network
+    nlohmann::json dns_names = nlohmann::json::object();
+    for (const auto& entry : cfg.network.dns.names) {
+        dns_names[entry.name] = entry.ip;
+    }
+    nlohmann::json dns_txt = nlohmann::json::array();
+    for (const auto& entry : cfg.network.dns.txt) {
+        dns_txt.push_back(nlohmann::json{{"name", entry.name}, {"path", entry.path}});
+    }
+
+    nlohmann::json http_resps = nlohmann::json::array();
+    for (const auto& resp : cfg.network.http.responses) {
+        nlohmann::json resp_files = nlohmann::json::array();
+        for (const auto& f : resp.files) {
+            resp_files.push_back(nlohmann::json{
+                {"mode", f.mode},
+                {"path", f.path},
+                {"ext", f.ext}
+            });
+        }
+        http_resps.push_back(nlohmann::json{
+            {"verb", resp.verb},
+            {"files", resp_files}
+        });
+    }
+
+    nlohmann::json ws_resps = nlohmann::json::array();
+    for (const auto& resp : cfg.network.winsock.responses) {
+        nlohmann::json resp_j = nlohmann::json::object();
+        for (const auto& [k, v] : resp) {
+            resp_j[k] = v;
+        }
+        ws_resps.push_back(resp_j);
+    }
+
+    nlohmann::json adapters = nlohmann::json::array();
+    for (const auto& ad : cfg.network.adapters) {
+        adapters.push_back(nlohmann::json{
+            {"name", ad.name},
+            {"description", ad.description},
+            {"mac_address", ad.mac_address},
+            {"type", ad.type},
+            {"ip_address", ad.ip_address},
+            {"subnet_mask", ad.subnet_mask},
+            {"dhcp_enabled", ad.dhcp_enabled}
+        });
+    }
+
+    j["network"] = nlohmann::json{
+        {"dns", nlohmann::json{{"names", dns_names}, {"txt", dns_txt}}},
+        {"http", nlohmann::json{{"responses", http_resps}}},
+        {"winsock", nlohmann::json{{"responses", ws_resps}}},
+        {"adapters", adapters}
+    };
+
+    // processes
+    nlohmann::json procs = nlohmann::json::array();
+    for (const auto& proc : cfg.processes) {
+        procs.push_back(nlohmann::json{
+            {"name", proc.name},
+            {"base_addr", proc.base},
+            {"pid", proc.pid},
+            {"path", proc.path},
+            {"command_line", proc.command_line},
+            {"is_main_exe", proc.is_main_exe},
+            {"session", proc.session}
+        });
+    }
+    j["processes"] = procs;
+
+    // modules
+    nlohmann::json sys_mods = nlohmann::json::array();
+    for (const auto& mod : cfg.modules.system_modules) {
+        nlohmann::json mod_j = nlohmann::json{
+            {"name", mod->name},
+            {"base_addr", hex_str(mod->base)},
+            {"path", mod->path}
+        };
+        auto sys_mod = std::dynamic_pointer_cast<SystemModule>(mod);
+        if (sys_mod && !sys_mod->driver.name.empty()) {
+            nlohmann::json devs = nlohmann::json::array();
+            for (const auto& dev : sys_mod->driver.devices) {
+                nlohmann::json dev_j = nlohmann::json::object();
+                for (const auto& [k, v] : dev) {
+                    dev_j[k] = v;
+                }
+                devs.push_back(dev_j);
+            }
+            mod_j["driver"] = nlohmann::json{
+                {"name", sys_mod->driver.name},
+                {"devices", devs}
+            };
+        }
+        sys_mods.push_back(mod_j);
+    }
+
+    nlohmann::json usr_mods = nlohmann::json::array();
+    for (const auto& mod : cfg.modules.user_modules) {
+        usr_mods.push_back(nlohmann::json{
+            {"name", mod->name},
+            {"base_addr", hex_str(mod->base)},
+            {"path", mod->path}
+        });
+    }
+
+    j["modules"] = nlohmann::json{
+        {"modules_always_exist", cfg.modules.modules_always_exist},
+        {"functions_always_exist", cfg.modules.functions_always_exist},
+        {"module_directory_x86", cfg.modules.module_directory_x86},
+        {"module_directory_x64", cfg.modules.module_directory_x64},
+        {"system_modules", sys_mods},
+        {"user_modules", usr_mods}
+    };
+}
+
+void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg) {
+    cfg.load_config_from_json(j);
+}
+
 
 } // namespace speakeasy

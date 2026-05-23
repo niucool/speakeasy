@@ -107,12 +107,12 @@ TEST(StructLayoutTest, WriteLeUint32) {
 // ══════════════════════════════════════════════════════════════════
 
 TEST(ConfigTest, DefaultConfigValidates) {
-    SpeakeasyConfig cfg = default_config();
-    EXPECT_NO_THROW(validate_config(cfg));
+    SpeakeasyConfig cfg;
+    EXPECT_NO_THROW(cfg.validate_config());
 }
 
 TEST(ConfigTest, DefaultHasExpectedValues) {
-    SpeakeasyConfig cfg = default_config();
+    SpeakeasyConfig cfg;
     EXPECT_EQ(cfg.timeout, 60);
     EXPECT_EQ(cfg.max_api_count, 10000);
     EXPECT_EQ(cfg.os_ver.major, 6);
@@ -120,7 +120,7 @@ TEST(ConfigTest, DefaultHasExpectedValues) {
 }
 
 TEST(ConfigTest, JsonRoundTrip) {
-    SpeakeasyConfig cfg = default_config();
+    SpeakeasyConfig cfg;
     cfg.timeout = 90;
     cfg.analysis.coverage = true;
     nlohmann::json j = cfg;
@@ -144,7 +144,7 @@ TEST(ConfigTest, RejectsInvalidEngine) {
     nlohmann::json j;
     j["emu_engine"] = "alternate_engine";
     SpeakeasyConfig cfg = j;
-    EXPECT_THROW(validate_config(cfg), ConfigError);
+    EXPECT_THROW(cfg.validate_config(), ConfigError);
 }
 
 // Legacy capture_memory_dumps alias (← test_config_memory_dumps.py)
@@ -529,7 +529,7 @@ TEST(PeFileMemoryMappedImageTest, RelocateImage) {
 // ══════════════════════════════════════════════════════════════════
 
 TEST(ObjmanPortingTest, PebTebLinkedlistValidation) {
-    SpeakeasyConfig cfg = default_config();
+    SpeakeasyConfig cfg;
     Win32Emulator emu(cfg);
     emu.setup();
 

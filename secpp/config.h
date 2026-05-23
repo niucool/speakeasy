@@ -219,7 +219,7 @@ struct SpeakeasyConfig {
     /**
      * Validate an emulation configuration and throw on invalid values.
      */
-    void validate_config();
+    void validate_config() const;
 
     /**
      * Load and validate configuration from a JSON file path.
@@ -230,22 +230,17 @@ struct SpeakeasyConfig {
 private:
     bool load_config_from_json(const nlohmann::json& j);
 
+    friend void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg);
 };
 
 // ── Serialization (nlohmann_json) ───────────────────────────
 
-//void to_json(nlohmann::json& j, const OsVersion& v);
-//void from_json(const nlohmann::json& j, OsVersion& v);
-//
-//void to_json(nlohmann::json& j, const SpeakeasyConfig& cfg);
-//void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg);
+void to_json(nlohmann::json& j, const OsVersion& v);
+void from_json(const nlohmann::json& j, OsVersion& v);
 
+void to_json(nlohmann::json& j, const SpeakeasyConfig& cfg);
+void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg);
 
-
-/**
- * Build the default configuration (equivalent to configs/default.json).
- */
-SpeakeasyConfig default_config();
 
 } // namespace speakeasy
 
