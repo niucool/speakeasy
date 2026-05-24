@@ -1103,7 +1103,8 @@ std::shared_ptr<T> ObjectManager::new_object() {
     // Python: T obj = T(emu); obj.set_id(new_id()); return add_object(obj)
     std::shared_ptr<T> obj = std::make_shared<T>(emu);
     obj->set_id(new_id());
-    return add_object(obj);
+    add_object(obj);
+    return obj;
 }
 // Explicit instantiation for common types
 template std::shared_ptr<KernelObject> ObjectManager::new_object<KernelObject>();
