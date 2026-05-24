@@ -431,6 +431,75 @@ TEST(LoaderModuleClassificationTest, ApiModuleLoaderClassification) {
 // ══════════════════════════════════════════════════════════════════
 // PE File Memory Mapped Image Tests
 // ══════════════════════════════════════════════════════════════════
+// JitPeFile Modular Porting Tests
+// ══════════════════════════════════════════════════════════════════
+
+TEST(JitPeFileTest, BasicAssembly) {
+    // Test 64-bit JitPeFile initialization
+    JitPeFile jit(64, 0x180000000);
+    
+    // Initial PE state should have 0 sections before we add them
+    EXPECT_EQ(jit.get_section_count(), 0);
+    EXPECT_GT(jit.get_current_offset(), 0);
+}
+
+TEST(JitPeFileTest, AddSectionsAndPadding) {
+    // Test 32-bit JitPeFile modular additions
+    JitPeFile jit(32, 0x400000);
+    
+    jit.add_section(".text", 0x60000020);
+    jit.add_section(".edata", 0x40000040);
+    
+    EXPECT_EQ(jit.get_section_count(), 2);
+    
+    auto* s_text = jit.get_section_by_name(".text");
+    ASSERT_NE(s_text, nullptr);
+    EXPECT_EQ(s_text->name, ".text");
+    
+    auto* s_edata = jit.get_section_by_name(".edata");
+    ASSERT_NE(s_edata, nullptr);
+    EXPECT_EQ(s_edata->name, ".edata");
+    
+    // Test padding alignment
+    jit.pad_file();
+    int offset = jit.get_current_offset();
+    EXPECT_EQ(offset % 0x200, 0);
+}
+
+TEST(JitPeFileTest, FullDecoyAssembly) {
+    // Test full dynamic assembly and subsequent parsing using PeFile
+    JitPeFile jit(64, 0x180000000);
+    
+    std::string mod_name = "test_module.dll";
+    std::vector<std::string> exports = {"FunctionA", "FunctionB", "FunctionC"};
+    
+    std::vector<uint8_t> raw_pe = jit.get_decoy_pe_image(mod_name, exports);
+    ASSERT_FALSE(raw_pe.empty());
+    
+    // Load dynamic PE using PeFile to verify correctness
+    PeFile pe("", raw_pe, 0xFEEDFACE, 4, "C:\\test_module.dll", true);
+    
+    EXPECT_EQ(pe.arch, 64);
+    EXPECT_TRUE(pe.is_dll());
+    EXPECT_FALSE(pe.is_driver());
+    
+    // Verify parsed exports
+    auto parsed_exports = pe.get_exports();
+    ASSERT_EQ(parsed_exports.size(), 3);
+    EXPECT_EQ(parsed_exports[0].name, "FunctionA");
+    EXPECT_EQ(parsed_exports[1].name, "FunctionB");
+    EXPECT_EQ(parsed_exports[2].name, "FunctionC");
+    
+    // Verify addresses are structured within the `.text` section (starts at 0x1000)
+    for (size_t i = 0; i < parsed_exports.size(); ++i) {
+        EXPECT_EQ(parsed_exports[i].address, 0x180000000 + 0x1000 + i * 16);
+        EXPECT_EQ(parsed_exports[i].ordinal, i + 1);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PE File Memory Mapped Image Tests
+// ══════════════════════════════════════════════════════════════════
 
 TEST(PeFileMemoryMappedImageTest, GetMemoryMappedImage) {
     std::string test_pe_path = "tests/bins/antidbg.exe";

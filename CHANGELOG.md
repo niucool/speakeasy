@@ -5,6 +5,20 @@
 
 ## [Unreleased]
 
+### 2026-05-24
+
+#### Changed
+
+- **secpp**: 重构内核对象管理模型，全面现代化为智能指针生命周期托管：
+  - 将 `ObjectManager` 内持有的对象映射以及 `WindowsEmulator` 内的活动进程列表重构为智能指针 `std::shared_ptr<KernelObject>` 与 `std::shared_ptr<Process>`，取代原先的 `void*` 裸指针，消除了潜在的内存泄漏与野指针隐患。
+  - 重构了 `ObjectManager` (在 `objman.h` / `objman.cpp`)、`WindowsEmulator` (在 `winemu.h` / `winemu.cpp`)、`ApiHandler` (在 `api.h` / `api.cpp`) 中的对象创建与检索接口签名（如 `get_object_from_handle`、`get_object_from_id`、`create_event`、`create_mutant` 等），统一返回智能指针。
+  - 批量重构并同步更新了 `ntdll.cpp`、`kernel32.cpp`、`psapi.cpp` 等多态 API 处理程序中的对象生命周期控制流，全面与智能指针接口对齐。
+
+#### Fixed
+
+- **secpp**: 修复了 `ObjectManager::new_object<T>()` 模板方法在实例化时的编译错误：
+  - 解决了由于 `add_object(obj)` 返回基类指针 `std::shared_ptr<KernelObject>` 导致 `new_object` 返回派生类（如 `Event`、`Mutant`）时发生的下转型（downcast）隐式转换失败编译错误（C2440）。修正为先执行 `add_object` 注册，再直接返回已带有子类强类型的 `std::shared_ptr<T> obj`。
+
 ### 2026-05-23
 
 #### Added
