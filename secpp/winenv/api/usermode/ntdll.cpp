@@ -639,7 +639,8 @@ uint64_t Ntdll::NtCreateFile(void* emu, const std::string&, int,
     // file_open returns a File* (from winemu.h: void* file_open)
     // File handles are managed internally by FileManager.
     // Let's use the object manager to get/assign a handle
-    uint32_t file_handle = wemu->get_object_handle(file_obj);
+    //TODO:
+    uint32_t file_handle = 0; // wemu->get_object_handle(file_obj);
     if (file_handle == 0) {
         // Assign a new handle
         // For now, just use a dummy handle
@@ -905,11 +906,7 @@ uint64_t Ntdll::NtCreateThread(void* emu, const std::string&, int,
     }
 
     // Get the process object
-    void* proc_obj = wemu->get_object_from_handle(static_cast<int>(proc_handle));
-    std::shared_ptr<Process> proc_sp;
-    if (proc_obj) {
-        proc_sp = wemu->find_process(proc_obj);
-    }
+    auto proc_sp = std::dynamic_pointer_cast<Process>(wemu->get_object_from_handle(proc_handle));
     if (!proc_sp) {
         proc_sp = wemu->get_current_process();
     }
@@ -921,7 +918,7 @@ uint64_t Ntdll::NtCreateThread(void* emu, const std::string&, int,
 
     // Write the thread handle
     if (thread_handle_ptr != 0) {
-        int thread_handle = wemu->get_object_handle(thread_obj.get());
+        int thread_handle = wemu->get_object_handle(thread_obj);
         if (thread_handle == 0) {
             thread_handle = reinterpret_cast<uintptr_t>(thread_obj.get()) & 0xFFFF;
         }
@@ -966,7 +963,7 @@ uint64_t Ntdll::NtOpenThread(void* emu, const std::string&, int,
     // Fallback: return the current thread
     auto curr_thread = wemu->get_current_thread();
     if (curr_thread && thread_handle_ptr != 0) {
-        int h = wemu->get_object_handle(curr_thread.get());
+        int h = wemu->get_object_handle(curr_thread);
         if (h == 0) h = reinterpret_cast<uintptr_t>(curr_thread.get()) & 0xFFFF;
         write_ptr(emu, thread_handle_ptr, static_cast<uint64_t>(h));
         return NT_SUCCESS;
@@ -991,7 +988,7 @@ uint64_t Ntdll::NtTerminateProcess(void* emu, const std::string&, int,
         return NT_SUCCESS;
     }
 
-    void* proc_obj = wemu->get_object_from_handle(static_cast<int>(proc_handle));
+    auto proc_obj = std::dynamic_pointer_cast<Process>(wemu->get_object_from_handle(proc_handle));
     if (proc_obj) {
         wemu->kill_process(proc_obj);
         return NT_SUCCESS;
@@ -1088,11 +1085,8 @@ uint64_t Ntdll::NtQueryInformationProcess(void* emu, const std::string&, int,
 
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
 
-    std::shared_ptr<Process> proc;
-    void* proc_obj = wemu->get_object_from_handle(static_cast<int>(proc_handle));
-    if (proc_obj) {
-        proc = wemu->find_process(proc_obj);
-    } else {
+    std::shared_ptr<Process> proc = std::dynamic_pointer_cast<Process>(wemu->get_object_from_handle(proc_handle));
+    if (!proc) {
         proc = wemu->get_current_process();
     }
 
@@ -1203,10 +1197,12 @@ uint64_t Ntdll::NtCreateKey(void* emu, const std::string&, int,
     if (!hkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
     // Get or create a handle
-    int handle = wemu->get_object_handle(hkey);
-    if (handle == 0) {
-        handle = reinterpret_cast<uintptr_t>(hkey) & 0x7FFFFFFF;
-    }
+    //TODO
+    //int handle = wemu->get_object_handle(hkey);
+    int handle = (int)hkey;
+    //if (handle == 0) {
+    //    handle = reinterpret_cast<uintptr_t>(hkey) & 0x7FFFFFFF;
+    //}
 
     if (key_handle_ptr != 0) {
         write_ptr(emu, key_handle_ptr, static_cast<uint64_t>(handle));
@@ -1252,14 +1248,15 @@ uint64_t Ntdll::NtOpenKey(void* emu, const std::string&, int,
     void* hkey = wemu->reg_open_key(full_path, false);
     if (!hkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    int handle = wemu->get_object_handle(hkey);
-    if (handle == 0) {
-        handle = reinterpret_cast<uintptr_t>(hkey) & 0x7FFFFFFF;
-    }
+    //TODO:
+    //int handle = wemu->get_object_handle(hkey);
+    //if (handle == 0) {
+    //    handle = reinterpret_cast<uintptr_t>(hkey) & 0x7FFFFFFF;
+    //}
 
-    if (key_handle_ptr != 0) {
-        write_ptr(emu, key_handle_ptr, static_cast<uint64_t>(handle));
-    }
+    //if (key_handle_ptr != 0) {
+    //    write_ptr(emu, key_handle_ptr, static_cast<uint64_t>(handle));
+    //}
 
     return NT_SUCCESS;
 }
@@ -1286,13 +1283,14 @@ uint64_t Ntdll::NtQueryValueKey(void* emu, const std::string&, int,
     }
 
     // Get the registry key from handle
-    void* key_obj = wemu->get_object_from_handle(static_cast<int>(key_handle));
+    auto key_obj = wemu->get_object_from_handle(key_handle);
     if (!key_obj) {
         if (result_len_ptr != 0) write_u32(emu, result_len_ptr, 0);
         return STATUS_OBJECT_NAME_NOT_FOUND;
     }
 
-    auto* regkey = static_cast<RegKey*>(key_obj);
+    //TODO: we should check if the object is actually a RegKey
+    auto regkey = std::dynamic_pointer_cast<RegKey>(key_obj);
     auto val = regkey->get_value(value_name);
     if (!val) {
         if (result_len_ptr != 0) write_u32(emu, result_len_ptr, 0);
@@ -1391,10 +1389,8 @@ uint64_t Ntdll::NtSetValueKey(void* emu, const std::string&, int,
         value_name = read_unicode_string_content(emu, value_name_ptr);
     }
 
-    void* key_obj = wemu->get_object_from_handle(static_cast<int>(key_handle));
+    auto key_obj = wemu->get_object_from_handle(key_handle);
     if (!key_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
-
-    auto* regkey = static_cast<RegKey*>(key_obj);
 
     // Read data from emulated memory
     std::string data_str;
@@ -1402,8 +1398,9 @@ uint64_t Ntdll::NtSetValueKey(void* emu, const std::string&, int,
         auto raw_data = mm->mem_read(data_ptr, data_size);
         data_str.assign(reinterpret_cast<const char*>(raw_data.data()), raw_data.size());
     }
-
-    regkey->create_value(value_name, static_cast<int>(val_type), data_str);
+    //TODO
+    //auto* regkey = static_cast<RegKey*>(key_obj);
+    //regkey->create_value(value_name, static_cast<int>(val_type), data_str);
     return STATUS_SUCCESS;
 }
 
@@ -1414,12 +1411,13 @@ uint64_t Ntdll::NtDeleteKey(void* emu, const std::string&, int,
 
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
 
-    void* key_obj = wemu->get_object_from_handle(static_cast<int>(key_handle));
-    if (!key_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
+    //TODO:
+    //void* key_obj = wemu->get_object_from_handle(static_cast<int>(key_handle));
+    //if (!key_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    // Note: The registry manager doesn't expose a delete_key method directly,
-    // but we can return success since the emulated registry is ephemeral
-    (void)key_obj;
+    //// Note: The registry manager doesn't expose a delete_key method directly,
+    //// but we can return success since the emulated registry is ephemeral
+    //(void)key_obj;
     return STATUS_SUCCESS;
 }
 
@@ -1436,12 +1434,13 @@ uint64_t Ntdll::NtDeleteValueKey(void* emu, const std::string&, int,
         value_name = read_unicode_string_content(emu, value_name_ptr);
     }
 
-    void* key_obj = wemu->get_object_from_handle(static_cast<int>(key_handle));
-    if (!key_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
+    //TODO:
+    //void* key_obj = wemu->get_object_from_handle(static_cast<int>(key_handle));
+    //if (!key_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    // The registry manager's RegKey doesn't expose delete_value,
-    // but we can return success since the emulated registry is ephemeral
-    (void)key_obj; (void)value_name;
+    //// The registry manager's RegKey doesn't expose delete_value,
+    //// but we can return success since the emulated registry is ephemeral
+    //(void)key_obj; (void)value_name;
     return STATUS_SUCCESS;
 }
 
@@ -1620,12 +1619,13 @@ uint64_t Ntdll::NtOpenEvent(void* emu, const std::string&, int,
 
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
 
-    void* event_obj = wemu->get_object_from_name(event_name);
+    auto event_obj = wemu->get_object_from_name(event_name);
     if (!event_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
 
     if (event_handle_ptr != 0) {
         int h = wemu->get_object_handle(event_obj);
-        if (h == 0) h = reinterpret_cast<uintptr_t>(event_obj) & 0xFFFF;
+        if (h == 0) 
+            h = reinterpret_cast<uintptr_t>(event_obj.get()) & 0xFFFF;
         write_ptr(emu, event_handle_ptr, static_cast<uint64_t>(h));
     }
 
@@ -1674,12 +1674,13 @@ uint64_t Ntdll::NtOpenMutant(void* emu, const std::string&, int,
 
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
 
-    void* mutant_obj = wemu->get_object_from_name(mutant_name);
+    auto mutant_obj = wemu->get_object_from_name(mutant_name);
     if (!mutant_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
 
     if (mutant_handle_ptr != 0) {
         int h = wemu->get_object_handle(mutant_obj);
-        if (h == 0) h = reinterpret_cast<uintptr_t>(mutant_obj) & 0xFFFF;
+        if (h == 0) 
+            h = reinterpret_cast<uintptr_t>(mutant_obj.get()) & 0xFFFF;
         write_ptr(emu, mutant_handle_ptr, static_cast<uint64_t>(h));
     }
 
@@ -2288,7 +2289,7 @@ uint64_t Ntdll::NtQueryObject(void* emu, const std::string&, int,
     // ObjectNameInformation (1): returns OBJECT_NAME_INFORMATION (UNICODE_STRING)
     // ObjectTypeInformation (2): returns OBJECT_TYPE_INFORMATION
 
-    void* obj = wemu->get_object_from_handle(static_cast<int>(obj_handle));
+    auto obj = wemu->get_object_from_handle(obj_handle);
     if (!obj) {
         if (ret_len_ptr != 0) write_u32(emu, ret_len_ptr, 0);
         return STATUS_INVALID_HANDLE;

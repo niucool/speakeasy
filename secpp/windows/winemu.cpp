@@ -614,19 +614,24 @@ void* WindowsEmulator::reg_create_key(const std::string& path) {
 // Python winemu.py:2713
 // def create_event(self, name=""):
 //     """Create a kernel event object"""
-std::tuple<int, void*> WindowsEmulator::create_event(const std::string& name) {
+std::tuple<int, std::shared_ptr<Event>> WindowsEmulator::create_event(const std::string& name) {
     validate_object_services("event creation");
-    (void)name;
-    return {0, nullptr};
+    std::shared_ptr<Event> evt = new_object<Event>();
+    evt->set_obj_name(name);
+    uint64_t hnd = om->get_handle(evt);
+    return { hnd, evt };
 }
 
 // Python winemu.py:2730
 // def create_mutant(self, name=""):
 //     """Create a kernel mutant object"""
-std::tuple<int, void*> WindowsEmulator::create_mutant(const std::string& name) {
+std::tuple<int, std::shared_ptr<Mutant>> WindowsEmulator::create_mutant(const std::string& name) {
     validate_object_services("mutant creation");
-    (void)name;
-    return {0, nullptr};
+
+    std::shared_ptr<Mutant> mtx = new_object<Mutant>();
+    mtx->set_obj_name(name);
+    uint64_t hnd = om->get_handle(mtx);
+    return { hnd, mtx };
 }
 
 // Python winemu.py:392
@@ -811,13 +816,8 @@ std::vector<std::shared_ptr<File>> WindowsEmulator::get_dropped_files() {
 
 // ── Process / thread ─────────────────────────────────────────
 // Python winemu.py:635
-std::vector<void*> WindowsEmulator::get_processes() {
-    std::vector<void*> result;
-    result.reserve(processes.size());
-    for (const auto& proc : processes) {
-        result.push_back(proc.get());
-    }
-    return result;
+std::vector<std::shared_ptr<Process>>& WindowsEmulator::get_processes() {
+    return processes;
 }
 
 std::shared_ptr<Process> WindowsEmulator::find_process(void* proc_ptr) {
@@ -837,11 +837,10 @@ std::shared_ptr<Process> WindowsEmulator::find_process(void* proc_ptr) {
 // Python winemu.py:643
 // def kill_process(self, proc):
 //     """Terminate a process (i.e. remove it from the known process list)"""
-void WindowsEmulator::kill_process(void* proc) {
+void WindowsEmulator::kill_process(std::shared_ptr<Process> proc) {
     if (proc) {
-        auto* process = static_cast<Process*>(proc);
-        process->modules.clear();
-        process->threads.clear();
+        proc->modules.clear();
+        proc->threads.clear();
     }
     run_complete = true;
 }
@@ -916,52 +915,47 @@ std::string WindowsEmulator::search_path(const std::string& file_name) {
 // def get_object_from_addr(self, addr):
 //     """Get an object from its memory address."""
 
-void* WindowsEmulator::get_object_from_addr(uint64_t addr) {
+std::shared_ptr<KernelObject> WindowsEmulator::get_object_from_addr(uint64_t addr) {
     validate_object_services("object lookup by address");
-    if (!om) return nullptr;
-    KernelObject ko = om->get_object_from_addr(static_cast<int>(addr));
-    return ko.get_object();
+    return om->get_object_from_addr(addr);
 }
 
 // Python winemu.py:1186
 // def get_object_from_id(self, id):
 //     """Get an object from its unique id."""
 
-void* WindowsEmulator::get_object_from_id(int id) {
+std::shared_ptr<KernelObject> WindowsEmulator::get_object_from_id(int id) {
     validate_object_services("object lookup by id");
     if (!om) return nullptr;
-    KernelObject ko = om->get_object_from_id(id);
-    return ko.get_object();
+    return om->get_object_from_id(id);
 }
 
 // Python winemu.py:1190
 // def get_object_from_name(self, name):
 //     """Get an object from its name."""
 
-void* WindowsEmulator::get_object_from_name(const std::string& name) {
+std::shared_ptr<KernelObject> WindowsEmulator::get_object_from_name(const std::string& name) {
     validate_object_services("object lookup by name");
     if (!om) return nullptr;
-    KernelObject ko = om->get_object_from_name(name);
-    return ko.get_object();
+    return om->get_object_from_name(name);
 }
 
 // Python winemu.py:1194
 // def get_object_from_handle(self, handle):
 //     """Get an object from its handle."""
 
-void* WindowsEmulator::get_object_from_handle(int handle) {
+std::shared_ptr<KernelObject> WindowsEmulator::get_object_from_handle(uint64_t handle) {
     validate_object_services("object lookup by handle");
     // Try ObjectManager first
-    if (om) {
-        KernelObject ko = om->get_object_from_handle(handle);
-        if (ko.get_object() != nullptr) {
-            return ko.get_object();
-        }
+    auto ko = om->get_object_from_handle(handle);
+    if (ko) {
+        return ko;
     }
+    // TODO:
     // Fallback to FileManager
-    if (fileman) {
-        return fileman->get_object_from_handle(static_cast<uint32_t>(handle));
-    }
+    //if (fileman) {
+    //    return fileman->get_object_from_handle(static_cast<uint32_t>(handle));
+    //}
     return nullptr;
 }
 
@@ -969,34 +963,33 @@ void* WindowsEmulator::get_object_from_handle(int handle) {
 // def get_object_handle(self, obj):
 //     """Get the handle for a given object."""
 
-int WindowsEmulator::get_object_handle(void* obj) {
+int WindowsEmulator::get_object_handle(std::shared_ptr<KernelObject> obj) {
     validate_object_services("object handle lookup");
     if (!om || !obj) return 0;
     // obj is a KernelObject* (or subclass) — cast and delegate
-    return om->get_handle(*static_cast<KernelObject*>(obj));
+    return om->get_handle(obj);
 }
 
 // Python winemu.py:1209
 // def add_object(self, obj):
 //     """Register an object with the ObjectManager."""
 
-void WindowsEmulator::add_object(void* obj) {
+void WindowsEmulator::add_object(std::shared_ptr<KernelObject> obj) {
     validate_object_services("object registration");
     if (!om || !obj) return;
     // obj is a KernelObject* (or subclass) — cast and delegate
-    om->add_object(*static_cast<KernelObject*>(obj));
+    om->add_object(obj);
 }
 
 // Python winemu.py:1222
 // def new_object(self, otype):
 //     """Create a new object of the given type."""
 
-void* WindowsEmulator::new_object(void* otype) {
+template<typename T> std::shared_ptr<T> WindowsEmulator::new_object() {
     validate_object_services("object creation");
-    (void)otype;
     if (!om) return nullptr;
     // Use the explicitly instantiated template for KernelObject
-    return om->new_object<KernelObject>().get_object();
+    return om->new_object<T>();
 }
 
 // ── PE / module helpers ──────────────────────────────────────
@@ -1151,8 +1144,8 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     // Python reference: winemu.py lines 993-1137
     if (!img) return nullptr;
 
-    if (img->regions.empty())
-        return nullptr;
+    //if (img->regions.empty())
+    //    return nullptr;
 
     bool valid_arch = (img->arch == 32 || img->arch == 64);
     // ── Determine architecture (Python 998-1004) ──
@@ -1523,7 +1516,7 @@ void WindowsEmulator::set_current_thread(std::shared_ptr<Thread> thread) { curr_
 // Python winemu.py:1226
 // def create_process(self, path=None, cmdline=None, image=None, child=False):
 //     """Create a process object that will exist in the emulator"""
-void* WindowsEmulator::create_process(const std::string& path,
+std::shared_ptr<Process> WindowsEmulator::create_process(const std::string& path,
                                        const std::string& cmdline,
     std::shared_ptr<speakeasy::RuntimeModule> image, bool child) {
     validate_object_services("process creation");
@@ -1575,7 +1568,7 @@ void* WindowsEmulator::create_process(const std::string& path,
         processes.push_back(p);
     }
 
-    return p.get();
+    return p;
 }
 
 // Python winemu.py:1293
@@ -2797,14 +2790,14 @@ void WindowsEmulator::resume_thread(std::shared_ptr<Thread> thread) {
 std::shared_ptr<Thread> WindowsEmulator::find_thread(int handle_or_id) {
     for (const auto& proc : processes) {
         for (const auto& t : proc->threads) {
-            if (t->get_id() == handle_or_id || get_object_handle(t.get()) == handle_or_id) {
+            if (t->get_id() == handle_or_id || get_object_handle(t) == handle_or_id) {
                 return t;
             }
         }
     }
     for (const auto& proc : child_processes) {
         for (const auto& t : proc->threads) {
-            if (t->get_id() == handle_or_id || get_object_handle(t.get()) == handle_or_id) {
+            if (t->get_id() == handle_or_id || get_object_handle(t) == handle_or_id) {
                 return t;
             }
         }

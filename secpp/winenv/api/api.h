@@ -176,11 +176,11 @@ public:
                         const std::string& thread_type = "thread", bool is_suspended = false);
     
     // Object management methods
-    void* get_object_from_id(int id);
-    void* get_object_from_addr(uint64_t addr);
-    int get_object_handle(void* obj);
-    void* get_object_from_handle(int hnd);
-    void* get_object_from_name(const std::string& name);
+    std::shared_ptr<KernelObject> get_object_from_id(int id);
+    std::shared_ptr<KernelObject> get_object_from_addr(uint64_t addr);
+    int get_object_handle(std::shared_ptr<KernelObject> obj);
+    std::shared_ptr<KernelObject> get_object_from_handle(int hnd);
+    std::shared_ptr<KernelObject> get_object_from_name(const std::string& name);
     
     // OS methods
     std::map<std::string, std::string> get_os_version();

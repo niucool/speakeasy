@@ -1099,76 +1099,78 @@ void ObjectManager::add_symlink(const std::string& link, const std::string& dev)
 }
 
 template<typename T>
-T ObjectManager::new_object() {
+std::shared_ptr<T> ObjectManager::new_object() {
     // Python: T obj = T(emu); obj.set_id(new_id()); return add_object(obj)
-    T obj(emu);
-    obj.set_id(new_id());
+    std::shared_ptr<T> obj = std::make_shared<T>(emu);
+    obj->set_id(new_id());
     return add_object(obj);
 }
 // Explicit instantiation for common types
-template KernelObject ObjectManager::new_object<KernelObject>();
+template std::shared_ptr<KernelObject> ObjectManager::new_object<KernelObject>();
+template std::shared_ptr<Event> ObjectManager::new_object<Event>();
+template std::shared_ptr<Mutant> ObjectManager::new_object<Mutant>();
 
-KernelObject ObjectManager::add_object(KernelObject obj) {
+std::shared_ptr<KernelObject> ObjectManager::add_object(std::shared_ptr<KernelObject> obj) {
     // Python: self.objects[obj.id] = obj; return obj
-    objects[obj.get_id()] = obj;
+    objects[obj->get_id()] = obj;
     return obj;
 }
 
-void ObjectManager::remove_object(KernelObject obj) {
+void ObjectManager::remove_object(std::shared_ptr<KernelObject> obj) {
     // Python: del self.objects[obj.id]
-    auto it = objects.find(obj.get_id());
+    auto it = objects.find(obj->get_id());
     if (it != objects.end()) {
         objects.erase(it);
     }
 }
 
-int ObjectManager::dec_ref(KernelObject obj) {
-    if (obj.ref_cnt > 0) {
-        obj.ref_cnt--;
-        if (obj.ref_cnt <= 0) {
+int ObjectManager::dec_ref(std::shared_ptr<KernelObject> obj) {
+    if (obj->ref_cnt > 0) {
+        obj->ref_cnt--;
+        if (obj->ref_cnt <= 0) {
             remove_object(obj);
         }
     }
-    return obj.ref_cnt;
+    return obj->ref_cnt;
 }
 
-int ObjectManager::get_handle(KernelObject obj) {
-    int tmp = KernelObject::curr_handle;
+uint64_t ObjectManager::get_handle(std::shared_ptr<KernelObject> obj) {
+    uint64_t tmp = KernelObject::curr_handle;
     KernelObject::curr_handle += 4;
-    obj.handles.push_back(tmp);
+    obj->handles.push_back(tmp);
     return tmp;
 }
 
-int ObjectManager::new_id() {
-    int tmp = KernelObject::curr_id;
+uint64_t ObjectManager::new_id() {
+    uint64_t tmp = KernelObject::curr_id;
     KernelObject::curr_id += 4;
     return tmp;
 }
 
-KernelObject ObjectManager::get_object_from_addr(int addr) {
+std::shared_ptr<KernelObject> ObjectManager::get_object_from_addr(uint64_t addr) {
     // Python: iterate objects, return one whose address matches
     for (auto& [id, obj] : objects) {
         (void)id;
-        if (obj.get_id() == addr) {  // fallback: match by id
+        if (obj->get_id() == addr) {  // fallback: match by id
             return obj;
         }
     }
-    return KernelObject(nullptr);
+    return nullptr;
 }
 
-KernelObject ObjectManager::get_object_from_id(int id) {
+std::shared_ptr<KernelObject> ObjectManager::get_object_from_id(uint64_t id) {
     auto it = objects.find(id);
     if (it != objects.end()) {
         return it->second;
     }
-    return KernelObject(nullptr);
+    return nullptr;
 }
 
-KernelObject ObjectManager::get_object_from_name(const std::string& name, bool check_symlinks) {
+std::shared_ptr<KernelObject> ObjectManager::get_object_from_name(const std::string& name, bool check_symlinks) {
     // Python: iterate objects, return one with matching name
     for (auto& [id, obj] : objects) {
         (void)id;
-        std::string obj_name = obj.get_obj_name();
+        std::string obj_name = obj->get_obj_name();
         if (!obj_name.empty()) {
             // Case-insensitive comparison
             std::string lname = name;
@@ -1191,18 +1193,18 @@ KernelObject ObjectManager::get_object_from_name(const std::string& name, bool c
             }
         }
     }
-    return KernelObject(nullptr);
+    return nullptr;
 }
 
-KernelObject ObjectManager::get_object_from_handle(int handle) {
+std::shared_ptr<KernelObject> ObjectManager::get_object_from_handle(uint64_t handle) {
     // Python: iterate objects, return one with matching handle in handles list
     for (auto& [id, obj] : objects) {
         (void)id;
-        for (int h : obj.handles) {
+        for (int h : obj->handles) {
             if (h == handle) {
                 return obj;
             }
         }
     }
-    return KernelObject(nullptr);
+    return nullptr;
 }

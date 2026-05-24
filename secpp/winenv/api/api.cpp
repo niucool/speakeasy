@@ -472,23 +472,23 @@ void* ApiHandler::create_thread(uint64_t addr, void* ctx, void* hproc,
     return thread.get();
 }
 
-void* ApiHandler::get_object_from_id(int id) {
+std::shared_ptr<KernelObject> ApiHandler::get_object_from_id(int id) {
     return winemu(emu)->get_object_from_id(id);
 }
 
-void* ApiHandler::get_object_from_addr(uint64_t addr) {
+std::shared_ptr<KernelObject> ApiHandler::get_object_from_addr(uint64_t addr) {
     return winemu(emu)->get_object_from_addr(addr);
 }
 
-int ApiHandler::get_object_handle(void* obj) {
+int ApiHandler::get_object_handle(std::shared_ptr<KernelObject> obj) {
     return winemu(emu)->get_object_handle(obj);
 }
 
-void* ApiHandler::get_object_from_handle(int hnd) {
+std::shared_ptr<KernelObject> ApiHandler::get_object_from_handle(int hnd) {
     return winemu(emu)->get_object_from_handle(hnd);
 }
 
-void* ApiHandler::get_object_from_name(const std::string& in_name) {
+std::shared_ptr<KernelObject> ApiHandler::get_object_from_name(const std::string& in_name) {
     return winemu(emu)->get_object_from_name(in_name);
 }
 

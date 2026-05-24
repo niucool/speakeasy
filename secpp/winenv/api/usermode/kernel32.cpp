@@ -260,9 +260,11 @@ uint64_t Kernel32::CreateFileA(void* emu, const std::string&, int,
     }
 
     if (!fobj) return K32_INVALID_HANDLE;
-    int h = we(emu)->get_object_handle(fobj);
-    if (h == 0) return K32_INVALID_HANDLE;
-    return static_cast<uint64_t>(h);
+    //TODO:
+    //int h = we(emu)->get_object_handle(fobj);
+    //if (h == 0) return K32_INVALID_HANDLE;
+    //return static_cast<uint64_t>(h);
+    return K32_INVALID_HANDLE;
 }
 
 uint64_t Kernel32::CreateFileW(void* emu, const std::string&, int,
@@ -310,7 +312,8 @@ uint64_t Kernel32::CreateFileW(void* emu, const std::string&, int,
     }
 
     if (!fobj) return K32_INVALID_HANDLE;
-    int h = we(emu)->get_object_handle(fobj);
+    //TODO
+    int h = 0;  // we(emu)->get_object_handle(fobj);
     return (h == 0) ? K32_INVALID_HANDLE : static_cast<uint64_t>(h);
 }
 
@@ -1118,24 +1121,23 @@ uint64_t Kernel32::CreateProcessA(void* emu, const std::string&, int,
     std::string cmd_str;
     if (app_ptr) app_str = be(emu)->read_mem_string(app_ptr, 1);
     if (cmd_ptr) cmd_str = be(emu)->read_mem_string(cmd_ptr, 1);
-    void* proc = we(emu)->create_process(app_str, cmd_str, nullptr, true);
+    std::shared_ptr<Process> proc = we(emu)->create_process(app_str, cmd_str, nullptr, true);
     if (!proc) {
         w32(emu)->set_last_error(K32_ERR_FILE_NOT_FOUND);
         return 0;
     }
-    auto p = we(emu)->find_process(proc);
-    auto* threads = p ? &p->threads : nullptr;
+    auto& threads = proc->threads;
     int proc_handle = we(emu)->get_object_handle(proc);
     int thread_handle = 0;
-    if (threads && !threads->empty()) {
-        thread_handle = we(emu)->get_object_handle((*threads)[0].get());
+    if (!threads.empty()) {
+        thread_handle = we(emu)->get_object_handle(threads[0]);
     }
-    if (pi_ptr && p) {
+    if (pi_ptr) {
         std::vector<uint8_t> pi_buf(static_cast<size_t>(ptr_sz(emu) == 8 ? 24 : 16), 0);
         write_le(pi_buf, 0, static_cast<uint64_t>(proc_handle), static_cast<size_t>(ptr_sz(emu)));
         write_le(pi_buf, static_cast<size_t>(ptr_sz(emu)), static_cast<uint64_t>(thread_handle), static_cast<size_t>(ptr_sz(emu)));
-        write_le(pi_buf, static_cast<size_t>(ptr_sz(emu) * 2), static_cast<uint64_t>(p->get_pid()), 4);
-        int tid = (threads && !threads->empty()) ? (*threads)[0]->get_id() : 0;
+        write_le(pi_buf, static_cast<size_t>(ptr_sz(emu) * 2), static_cast<uint64_t>(proc->get_pid()), 4);
+        int tid = (!threads.empty()) ? threads[0]->get_id() : 0;
         write_le(pi_buf, static_cast<size_t>(ptr_sz(emu) * 2 + 4), static_cast<uint64_t>(tid), 4);
         mm(emu)->mem_write(pi_ptr, pi_buf);
     }
@@ -1149,14 +1151,14 @@ uint64_t Kernel32::OpenProcess(void* emu, const std::string&, int,
     uint32_t inherit = static_cast<uint32_t>(argv[1]);
     uint32_t pid = static_cast<uint32_t>(argv[2]);
     (void)access; (void)inherit;
-    auto procs = we(emu)->get_processes();
-    for (auto p : procs) {
-        auto proc = we(emu)->find_process(p);
+    auto& procs = we(emu)->get_processes();
+    for (auto& proc : procs) {
+        //auto proc = we(emu)->find_process(p);
         if (proc && static_cast<uint32_t>(proc->get_pid()) == pid) {
-            int h = we(emu)->get_object_handle(p);
+            int h = we(emu)->get_object_handle(proc);
             if (h == 0) {
-                we(emu)->add_object(p);
-                h = we(emu)->get_object_handle(p);
+                we(emu)->add_object(proc);
+                h = we(emu)->get_object_handle(proc);
             }
             if (h) {
                 w32(emu)->set_last_error(K32_ERR_SUCCESS);
@@ -1212,7 +1214,7 @@ uint64_t Kernel32::CreateThread(void* emu, const std::string&, int,
     bool suspended = (flags & 0x00000004) != 0;
     auto thread = we(emu)->create_thread(start_addr, reinterpret_cast<void*>(param), proc, "thread", suspended);
     if (!thread) return 0;
-    int h = we(emu)->get_object_handle(thread.get());
+    int h = we(emu)->get_object_handle(thread);
     if (tid_ptr) {
         int tid = thread->get_id();
         std::vector<uint8_t> tid_buf(4);
@@ -1237,7 +1239,7 @@ uint64_t Kernel32::CreateRemoteThread(void* emu, const std::string&, int,
     bool suspended = (flags & 0x00000004) != 0;
     auto thread = we(emu)->create_thread(start_addr, reinterpret_cast<void*>(param), proc, "injected_thread", suspended);
     if (!thread) return 0;
-    int h = we(emu)->get_object_handle(thread.get());
+    int h = we(emu)->get_object_handle(thread);
     if (tid_ptr) {
         int tid = thread->get_id();
         std::vector<uint8_t> tid_buf(4);
@@ -1270,7 +1272,7 @@ uint64_t Kernel32::GetCurrentThread(void* emu, const std::string&, int,
                                      const std::vector<uint64_t>&) {
     auto thread = we(emu)->get_current_thread();
     if (thread) {
-        int h = we(emu)->get_object_handle(thread.get());
+        int h = we(emu)->get_object_handle(thread);
         if (h) return static_cast<uint64_t>(h);
     }
     return static_cast<uint64_t>(-2);
@@ -1411,9 +1413,8 @@ uint64_t Kernel32::CreateEventA(void* emu, const std::string&, int,
     (void)attrs; (void)manual_reset; (void)initial_state;
     std::string name;
     if (name_ptr) name = be(emu)->read_mem_string(name_ptr, 1);
-    int h = 0;
-    void* evt = nullptr;
-    std::tie(h, evt) = we(emu)->create_event(name);
+
+    auto[h, evt] = we(emu)->create_event(name);
     if (h == 0) {
         w32(emu)->set_last_error(K32_ERR_ALREADY_EXISTS);
     } else {
@@ -1430,9 +1431,8 @@ uint64_t Kernel32::CreateMutexA(void* emu, const std::string&, int,
     (void)attrs; (void)initial_owner;
     std::string name;
     if (name_ptr) name = be(emu)->read_mem_string(name_ptr, 1);
-    int h = 0;
-    void* mut = nullptr;
-    std::tie(h, mut) = we(emu)->create_mutant(name);
+
+    auto [h, mut] = we(emu)->create_mutant(name);
     if (h == 0) {
         w32(emu)->set_last_error(K32_ERR_ALREADY_EXISTS);
     } else {
@@ -1449,7 +1449,7 @@ uint64_t Kernel32::OpenMutexA(void* emu, const std::string&, int,
     (void)access; (void)inherit;
     if (!name_ptr) return 0;
     std::string name = be(emu)->read_mem_string(name_ptr, 1);
-    void* obj = we(emu)->get_object_from_name(name);
+    auto obj = we(emu)->get_object_from_name(name);
     if (!obj) {
         w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
         return 0;
@@ -2068,12 +2068,12 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, const std::string&, int,
         entries[K32_TH32CS_SNAPPROCESS] = se;
     }
     if (flags & K32_TH32CS_SNAPTHREAD) {
-        void* proc_obj = nullptr;
+        std::shared_ptr<Process> proc_obj = nullptr;
         auto procs = we(emu)->get_processes();
-        for (auto p : procs) {
-            auto proc = we(emu)->find_process(p);
+        for (auto proc : procs) {
+            //auto proc = we(emu)->find_process(p);
             if (proc && (pid == 0 || proc->get_pid() == static_cast<int>(pid))) {
-                proc_obj = p;
+                proc_obj = proc;
                 break;
             }
         }
@@ -2082,12 +2082,10 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, const std::string&, int,
         se.items.clear();
         se.pid = static_cast<int>(pid);
         if (proc_obj) {
-            auto p = we(emu)->find_process(proc_obj);
-            if (p) {
-                for (auto& t : p->threads) {
+            //auto p = we(emu)->find_process(proc_obj);
+                for (auto& t : proc_obj->threads) {
                     se.items.push_back(t.get());
                 }
-            }
         }
         entries[K32_TH32CS_SNAPTHREAD] = se;
     }

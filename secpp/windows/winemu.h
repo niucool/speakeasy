@@ -443,11 +443,11 @@ public:
     // Python winemu.py:635
     // def get_processes(self):
     //     """Get the current processes that exist in the emulation space"""
-    std::vector<void*> get_processes();
+    std::vector<std::shared_ptr<Process>>& get_processes();
     // Python winemu.py:643
     // def kill_process(self, proc):
     //     """Terminate a process (i.e. remove it from the known process list)"""
-    void kill_process(void* proc);
+    void kill_process(std::shared_ptr<Process> proc);
     // Python winemu.py:652
     // def get_current_thread(self):
     //     """Get the current thread that is emulating"""
@@ -504,31 +504,31 @@ public:
     // Python winemu.py:1182
     // def get_object_from_addr(self, addr):
     //     """Get an object from its memory address."""
-    void* get_object_from_addr(uint64_t addr);
+    std::shared_ptr<KernelObject> get_object_from_addr(uint64_t addr);
     // Python winemu.py:1186
     // def get_object_from_id(self, id):
     //     """Get an object from its unique id."""
-    void* get_object_from_id(int id);
+    std::shared_ptr<KernelObject> get_object_from_id(int id);
     // Python winemu.py:1190
     // def get_object_from_name(self, name):
     //     """Get an object from its name."""
-    void* get_object_from_name(const std::string& name);
+    std::shared_ptr<KernelObject> get_object_from_name(const std::string& name);
     // Python winemu.py:1194
     // def get_object_from_handle(self, handle):
     //     """Get an object from its handle."""
-    void* get_object_from_handle(int handle);
+    std::shared_ptr<KernelObject> get_object_from_handle(uint64_t handle);
     // Python winemu.py:1203
     // def get_object_handle(self, obj):
     //     """Get the handle for a given object."""
-    int get_object_handle(void* obj);
+    int get_object_handle(std::shared_ptr<KernelObject> obj);
     // Python winemu.py:1209
     // def add_object(self, obj):
     //     """Register an object with the ObjectManager."""
-    void add_object(void* obj);
+    void add_object(std::shared_ptr<KernelObject> obj);
     // Python winemu.py:1222
     // def new_object(self, otype):
     //     """Create a new object of the given type."""
-    void* new_object(void* otype);
+    template<typename T> std::shared_ptr<T> new_object();
 
     // ── PE / module helpers ────────────────────────────────────
     // Python winemu.py:847
@@ -757,7 +757,7 @@ public:
     // Python winemu.py:2713
     // def create_event(self, name=""):
     //     """Create a kernel event object"""
-    std::tuple<int, void*> create_event(const std::string& name = "");
+    std::tuple<int, std::shared_ptr<Event>> create_event(const std::string& name = "");
     // Python winemu.py:2723
     // def dec_ref(self, obj):
     //     """Dereference an object"""
@@ -765,7 +765,7 @@ public:
     // Python winemu.py:2730
     // def create_mutant(self, name=""):
     //     """Create a kernel mutant object"""
-    std::tuple<int, void*> create_mutant(const std::string& name = "");
+    std::tuple<int, std::shared_ptr<Mutant>> create_mutant(const std::string& name = "");
     // Python winemu.py:333
     // def dev_ioctl(self, arch, dev, ioctl, inbuf):
     //     """Dispatch a device I/O control request to the I/O manager."""
@@ -777,7 +777,7 @@ public:
     // def create_process(self, path=None, cmdline=None, image=None, child=False):
     //     """Create a process object that will exist in the emulator.
     //     NOT YET PORTED — stub only."""
-    void* create_process(const std::string& path = "", const std::string& cmdline = "",
+    std::shared_ptr<Process> create_process(const std::string& path = "", const std::string& cmdline = "",
         std::shared_ptr<speakeasy::RuntimeModule> image = nullptr, bool child = false);
     // Python winemu.py:1293
     // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):

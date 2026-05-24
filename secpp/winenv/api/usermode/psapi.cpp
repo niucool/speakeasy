@@ -102,7 +102,7 @@ uint64_t Psapi::EnumProcesses(void* e, const std::string&, int, const std::vecto
     uint32_t max_write = static_cast<uint32_t>(std::min(cb / 4, static_cast<uint64_t>(count)));
     uint64_t cursor = lpidProcess;
     for (uint32_t i = 0; i < max_write; i++) {
-        auto proc = we(e)->find_process(processes[i]);
+        auto proc = processes[i];
         uint32_t pid = proc ? static_cast<uint32_t>(proc->get_pid()) : 0;
         std::vector<uint8_t> pid_buf(4, 0);
         speakeasy::write_le(pid_buf, 0, static_cast<uint64_t>(pid), 4);
@@ -122,7 +122,7 @@ uint64_t Psapi::EnumProcessModules(void* e, const std::string&, int, const std::
     uint64_t cb = a[2];
     uint64_t lpcbNeeded = a[3];
 
-    auto proc = we(e)->find_process(we(e)->get_object_from_handle(static_cast<int>(hProcess)));
+    auto proc = std::dynamic_pointer_cast<Process>(we(e)->get_object_from_handle(hProcess));
     if (!proc) return 0;
 
     auto bases = get_process_module_bases(e, proc);
@@ -161,7 +161,7 @@ uint64_t Psapi::GetModuleBaseName(void* e, const std::string&, int, const std::v
 
     if (!lpBaseName || nSize == 0) return 0;
 
-    auto proc = we(e)->find_process(we(e)->get_object_from_handle(static_cast<int>(hProcess)));
+    auto proc = std::dynamic_pointer_cast<Process>(we(e)->get_object_from_handle(hProcess));
     if (!proc) return 0;
 
     std::string name = get_module_base_name(e, proc, hModule);
@@ -185,7 +185,7 @@ uint64_t Psapi::GetModuleBaseNameW(void* e, const std::string& n, int c, const s
 
     if (!lpBaseName || nSize == 0) return 0;
 
-    auto proc = we(e)->find_process(we(e)->get_object_from_handle(static_cast<int>(hProcess)));
+    auto proc = std::dynamic_pointer_cast<Process>(we(e)->get_object_from_handle(hProcess));
     if (!proc) return 0;
 
     std::string name = get_module_base_name(e, proc, hModule);
@@ -208,7 +208,7 @@ uint64_t Psapi::GetModuleFileNameEx(void* e, const std::string&, int, const std:
 
     if (!lpFilename || nSize == 0) return 0;
 
-    auto proc = we(e)->find_process(we(e)->get_object_from_handle(static_cast<int>(hProcess)));
+    auto proc = std::dynamic_pointer_cast<Process>(we(e)->get_object_from_handle(hProcess));
     if (!proc) return 0;
 
     std::string name = get_module_file_name(e, proc, hModule);
@@ -232,7 +232,7 @@ uint64_t Psapi::GetModuleFileNameExW(void* e, const std::string& n, int c, const
 
     if (!lpFilename || nSize == 0) return 0;
 
-    auto proc = we(e)->find_process(we(e)->get_object_from_handle(static_cast<int>(hProcess)));
+    auto proc = std::dynamic_pointer_cast<Process>(we(e)->get_object_from_handle(hProcess));
     if (!proc) return 0;
 
     std::string name = get_module_file_name(e, proc, hModule);

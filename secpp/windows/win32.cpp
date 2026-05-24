@@ -122,7 +122,7 @@ void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& p
     // Python win32.py:140-160 — initialize configured processes from emulator config
     for (const auto& proc : processes) {
         auto p = std::make_shared<Process>(reinterpret_cast<void*>(this));
-        add_object(p.get());
+        add_object(p);
         
         // p->name set via Process constructor
         if (proc.pid) p->id = proc.pid;

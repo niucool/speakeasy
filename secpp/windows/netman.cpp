@@ -446,7 +446,11 @@ std::vector<uint8_t> NetworkManager::get_dns_txt(const std::string& domain) {
 }
 
 std::string NetworkManager::ip_lookup(const std::string& ip) {
-    //TODO: Implement reverse IP lookup if needed
+    for (auto& item : dns.names) {
+        if (item.ip == ip) {
+            return item.name;
+        }
+    }
     return "";
 }
 

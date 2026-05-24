@@ -121,6 +121,7 @@ public:
     std::string get_mem_tag();
     int get_handle();
     virtual std::string get_obj_name() const { return name; }
+    virtual void set_obj_name(const std::string namel) { name = namel; }
     void* get_object() const { return object; }
     uint64_t get_address() const { return address; }
     void set_address(uint64_t addr) { address = addr; }
@@ -372,7 +373,7 @@ public:
 class ObjectManager {
 private:
     void* emu;
-    std::map<int, KernelObject> objects;
+    std::map<uint64_t, std::shared_ptr<KernelObject>> objects;
     std::vector<std::pair<std::string, std::string>> symlinks;
 
 public:
@@ -380,16 +381,16 @@ public:
 
     void add_symlink(const std::string& link, const std::string& dev);
     template<typename T>
-    T new_object();
-    KernelObject add_object(KernelObject obj);
-    void remove_object(KernelObject obj);
-    int dec_ref(KernelObject obj);
-    int get_handle(KernelObject obj);
-    int new_id();
-    KernelObject get_object_from_addr(int addr);
-    KernelObject get_object_from_id(int id);
-    KernelObject get_object_from_name(const std::string& name, bool check_symlinks = true);
-    KernelObject get_object_from_handle(int handle);
+    std::shared_ptr<T> new_object();
+    std::shared_ptr<KernelObject> add_object(std::shared_ptr<KernelObject> obj);
+    void remove_object(std::shared_ptr<KernelObject> obj);
+    int dec_ref(std::shared_ptr<KernelObject> obj);
+    uint64_t get_handle(std::shared_ptr<KernelObject> obj);
+    uint64_t new_id();
+    std::shared_ptr<KernelObject> get_object_from_addr(uint64_t addr);
+    std::shared_ptr<KernelObject> get_object_from_id(uint64_t id);
+    std::shared_ptr<KernelObject> get_object_from_name(const std::string& name, bool check_symlinks = true);
+    std::shared_ptr<KernelObject> get_object_from_handle(uint64_t handle);
 };
 
 #endif // OBJMAN_H

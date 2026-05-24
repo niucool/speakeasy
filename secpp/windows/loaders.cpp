@@ -485,12 +485,10 @@ ApiModuleLoader::ApiModuleLoader(const std::string& name, void* api,
     : name_(name), api_(api), arch_(arch), base_(base), emu_path_(emu_path) {}
 
 std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
-    std::fprintf(stderr, "[DEBUG] Entering ApiModuleLoader::make_image for %s\n", name_.c_str());
     std::vector<std::string> all_exports;
     
     auto* handler = static_cast<ApiHandler*>(api_);
     if (handler) {
-        std::fprintf(stderr, "[DEBUG] Handler is non-null. Gathering hooks...\n");
         const auto& hook_funcs = handler->get_hook_funcs();
         const auto& hook_data = handler->get_hook_data();
         
@@ -564,25 +562,19 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
         all_exports.insert(all_exports.end(), data_exports.begin(), data_exports.end());
     }
     
-    std::fprintf(stderr, "[DEBUG] Total exports gathered: %d. Instantiating JitPeFile...\n", (int)all_exports.size());
     // Construct dynamic PE using C++ JitPeFile
     JitPeFile jit(arch_, base_);
-    std::fprintf(stderr, "[DEBUG] JitPeFile instantiated. Generating raw decoy PE image...\n");
     std::vector<uint8_t> raw_pe = jit.get_decoy_pe_image(name_, all_exports);
-    std::fprintf(stderr, "[DEBUG] get_decoy_pe_image completed. raw_pe size: %d. Parsing with PeFile...\n", (int)raw_pe.size());
     
     // Parse using PeFile to map and resolve section and header details
     std::shared_ptr<PeFile> pe;
     try {
         pe = std::make_shared<PeFile>("", raw_pe, 0xFEEDFACE, 4, emu_path_, true);
     } catch (const std::exception& e) {
-        std::fprintf(stderr, "[DEBUG] Exception parsing PeFile: %s\n", e.what());
         return nullptr;
     } catch (...) {
-        std::fprintf(stderr, "[DEBUG] Unknown exception parsing PeFile\n");
         return nullptr;
     }
-    std::fprintf(stderr, "[DEBUG] PeFile parsed successfully. image_size: %d, mapped_image size: %d\n", (int)pe->get_image_size(), (int)pe->mapped_image.size());
     
     auto img = std::make_shared<LoadedImage>();
     img->arch = arch_;
@@ -607,7 +599,6 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     size_t stub_size = (arch_ == 32) ? 17 : 16;
     uint32_t text_va = 0x1000; // text section RVA is always 0x1000 in dynamic JIT PEs
     
-    std::fprintf(stderr, "[DEBUG] Generating %d exports...\n", (int)all_exports.size());
     for (size_t i = 0; i < all_exports.size(); ++i) {
         ExportEntry exp;
         exp.name = all_exports[i];
@@ -618,7 +609,6 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     }
     
     // Add section entries
-    std::fprintf(stderr, "[DEBUG] Adding sections...\n");
     for (const auto& s : pe->get_sections()) {
         SectionEntry sect;
         sect.name = s.name;
@@ -629,7 +619,6 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     }
     
     // Populate metadata
-    std::fprintf(stderr, "[DEBUG] Populating metadata...\n");
     PeMetadata meta;
     if (pe->get_parsed_pe()) {
         meta.subsystem = pe->get_parsed_pe()->peHeader.nt.OptionalHeader.Subsystem;
@@ -639,7 +628,6 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     }
     img->metadata = meta;
     
-    std::fprintf(stderr, "[DEBUG] Exiting ApiModuleLoader::make_image successfully\n");
     return img;
 }
 
@@ -652,6 +640,7 @@ DecoyLoader::DecoyLoader(const std::string& name, uint64_t base,
 std::shared_ptr<LoadedImage> DecoyLoader::make_image() {
     auto img = std::make_shared<LoadedImage>();
     img->arch = 0;
+    img->module_type = "decoy";
     img->name = name_;
     img->emu_path = emu_path_;
     img->base = base_;
