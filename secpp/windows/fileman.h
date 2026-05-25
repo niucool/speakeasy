@@ -38,7 +38,6 @@ public:
 // Represents a memory mapped file
 class FileMap : public KernelObject {
 private:
-    static uint32_t curr_handle;
     std::string name;
     void* backed_file;
     std::map<uint64_t, std::shared_ptr<MapView>> views;
@@ -50,7 +49,6 @@ public:
     FileMap(void* emu, const std::string& name, size_t size, int prot, void* backed_file = nullptr);
     
     // Methods
-    uint32_t get_handle();
     std::string get_name();
     int get_prot();
     void* get_backed_file();
@@ -61,7 +59,6 @@ public:
 // Base class for an emulated file
 class File : public KernelObject {
 protected:
-    static uint32_t curr_handle;
     std::string path;
     std::shared_ptr<std::stringstream> data;
     size_t bytes_written;
@@ -76,7 +73,6 @@ public:
     
     // Methods
     std::shared_ptr<File> duplicate();
-    virtual uint32_t get_handle();
     std::string get_path();
     std::string get_hash();
     size_t get_size();
@@ -104,8 +100,6 @@ public:
     Pipe(void* emu, const std::string& name, const std::string& mode, int num_instances, 
          size_t out_size, size_t in_size, const std::map<std::string, std::string>& config = {});
     
-    // Methods
-    uint32_t get_handle() override;
 };
 
 // Manages file system activity during emulation

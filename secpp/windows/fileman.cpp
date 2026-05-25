@@ -82,17 +82,11 @@ MapView::MapView(uint64_t base, uint64_t offset, size_t size, int protect, void*
 }
 
 // FileMap implementation
-uint32_t FileMap::curr_handle = 0x280;
+//int FileMap::curr_handle = 0x280;
 
 FileMap::FileMap(void* emu, const std::string& name, size_t size, int prot, void* backed_file)
     : KernelObject(emu), name(name), backed_file(backed_file), size(size), prot(prot) {
     // Constructor
-}
-
-uint32_t FileMap::get_handle() {
-    uint32_t hmap = FileMap::curr_handle;
-    FileMap::curr_handle += 4;
-    return hmap;
 }
 
 std::string FileMap::get_name() {
@@ -113,7 +107,7 @@ void FileMap::add_view(uint64_t base, uint64_t offset, size_t size, int protect)
 }
 
 // File implementation
-uint32_t File::curr_handle = 0x80;
+//int File::curr_handle = 0x80;
 
 File::File(void* emu, const std::string& path, const std::map<std::string, std::string>& config, 
            const std::vector<uint8_t>& data)
@@ -134,12 +128,6 @@ std::shared_ptr<File> File::duplicate() {
     std::shared_ptr<File> new_file = std::make_shared<File>(emu, path, config, file_data);
     new_file->is_dir = is_dir;
     return new_file;
-}
-
-uint32_t File::get_handle() {
-    uint32_t hfile = File::curr_handle;
-    File::curr_handle += 4;
-    return hfile;
 }
 
 std::string File::get_path() {
@@ -268,19 +256,13 @@ std::shared_ptr<std::stringstream> File::handle_file_data() {
 }
 
 // Pipe implementation
-uint32_t Pipe::curr_handle = 0x400;
+//uint32_t Pipe::curr_handle = 0x400;
 
 Pipe::Pipe(void* emu, const std::string& name, const std::string& mode, int num_instances, 
            size_t out_size, size_t in_size, const std::map<std::string, std::string>& config)
     : File(emu, name, config), name(name), mode(mode), num_instances(num_instances), 
       out_size(out_size), in_size(in_size) {
     
-}
-
-uint32_t Pipe::get_handle() {
-    uint32_t hpipe = Pipe::curr_handle;
-    Pipe::curr_handle += 4;
-    return hpipe;
 }
 
 // FileManager implementation

@@ -259,12 +259,7 @@ uint64_t Kernel32::CreateFileA(void* emu, const std::string&, int,
         }
     }
 
-    if (!fobj) return K32_INVALID_HANDLE;
-    //TODO:
-    //int h = we(emu)->get_object_handle(fobj);
-    //if (h == 0) return K32_INVALID_HANDLE;
-    //return static_cast<uint64_t>(h);
-    return K32_INVALID_HANDLE;
+    return reinterpret_cast<uint64_t>(fobj);
 }
 
 uint64_t Kernel32::CreateFileW(void* emu, const std::string&, int,
@@ -311,10 +306,7 @@ uint64_t Kernel32::CreateFileW(void* emu, const std::string&, int,
         }
     }
 
-    if (!fobj) return K32_INVALID_HANDLE;
-    //TODO
-    int h = 0;  // we(emu)->get_object_handle(fobj);
-    return (h == 0) ? K32_INVALID_HANDLE : static_cast<uint64_t>(h);
+    return reinterpret_cast<uint64_t>(fobj);
 }
 
 uint64_t Kernel32::ReadFile(void* emu, const std::string&, int,
@@ -1017,16 +1009,14 @@ uint64_t Kernel32::GetModuleHandleA(void* emu, const std::string&, int,
     auto dot = name.rfind(".dll");
     if (dot != std::string::npos) name = name.substr(0, dot);
     auto mods = we(emu)->get_peb_modules();
-    for (auto m : mods) {
-        auto mod = m;
-        //TODO:
-        //std::string mname = mod->get_obj_name();
-        //for (auto& c : mname) c = static_cast<char>(std::tolower(c));
-        //auto mdot = mname.rfind(".dll");
-        //if (mdot != std::string::npos) mname = mname.substr(0, mdot);
-        //if (mname == name) {
-        //    return reinterpret_cast<uint64_t>(mod);
-        //}
+    for (auto& mod : mods) {
+        std::string mname = mod->get_base_name();
+        for (auto& c : mname) c = static_cast<char>(std::tolower(c));
+        auto mdot = mname.rfind(".dll");
+        if (mdot != std::string::npos) mname = mname.substr(0, mdot);
+        if (mname == name) {
+            return mod->base;
+        }
     }
     return 0;
 }
@@ -1049,14 +1039,13 @@ uint64_t Kernel32::GetModuleHandleW(void* emu, const std::string&, int,
     auto mods = we(emu)->get_peb_modules();
     for (auto m : mods) {
         auto mod = m;
-        //TODO:
-        //std::string mname = mod->get_obj_name();
-        //for (auto& c : mname) c = static_cast<char>(std::tolower(c));
-        //auto mdot = mname.rfind(".dll");
-        //if (mdot != std::string::npos) mname = mname.substr(0, mdot);
-        //if (mname == name) {
-        //    return reinterpret_cast<uint64_t>(mod);
-        //}
+        std::string mname = mod->get_base_name();
+        for (auto& c : mname) c = static_cast<char>(std::tolower(c));
+        auto mdot = mname.rfind(".dll");
+        if (mdot != std::string::npos) mname = mname.substr(0, mdot);
+        if (mname == name) {
+            return mod->base;
+        }
     }
     return 0;
 }
