@@ -10,6 +10,7 @@
 #include <sstream>
 
 #include "../config.h"
+#include "objman.h"
 
 // Forward declarations
 class MapView;
@@ -35,7 +36,7 @@ public:
 };
 
 // Represents a memory mapped file
-class FileMap {
+class FileMap : public KernelObject {
 private:
     static uint32_t curr_handle;
     std::string name;
@@ -46,7 +47,7 @@ private:
 
 public:
     // Constructor
-    FileMap(const std::string& name, size_t size, int prot, void* backed_file = nullptr);
+    FileMap(void* emu, const std::string& name, size_t size, int prot, void* backed_file = nullptr);
     
     // Methods
     uint32_t get_handle();
@@ -58,7 +59,7 @@ public:
 };
 
 // Base class for an emulated file
-class File {
+class File : public KernelObject {
 protected:
     static uint32_t curr_handle;
     std::string path;
@@ -70,7 +71,7 @@ protected:
 
 public:
     // Constructor
-    File(const std::string& path, const std::map<std::string, std::string>& config = {}, 
+    File(void* emu, const std::string& path, const std::map<std::string, std::string>& config = {}, 
          const std::vector<uint8_t>& data = {});
     
     // Methods
@@ -100,7 +101,7 @@ private:
 
 public:
     // Constructor
-    Pipe(const std::string& name, const std::string& mode, int num_instances, 
+    Pipe(void* emu, const std::string& name, const std::string& mode, int num_instances, 
          size_t out_size, size_t in_size, const std::map<std::string, std::string>& config = {});
     
     // Methods
@@ -120,6 +121,9 @@ private:
     std::string emulated_binname;
     std::vector<std::shared_ptr<File>> files;
 
+    // Cache to store generated configurations for emulated files
+    std::map<std::string, std::map<std::string, std::string>> emu_file_configs;
+
 public:
     // Constructor
     FileManager(const speakeasy::SpeakeasyConfig& config, void* emu);
@@ -127,7 +131,7 @@ public:
     // Methods
     uint32_t file_create_mapping(uint32_t hfile, const std::string& name, size_t size, int prot);
     
-    std::vector<std::map<std::string, std::string>>::iterator walk_files();
+    std::vector<std::string> walk_files();
     
     std::vector<std::shared_ptr<File>> get_dropped_files();
     std::shared_ptr<FileMap> get_mapping_from_handle(uint32_t handle);
@@ -148,7 +152,7 @@ public:
     uint32_t pipe_open(const std::string& path, const std::string& mode, int num_instances, 
                        size_t out_size, size_t in_size);
     bool does_file_exist(const std::string& path);
-    void* get_object_from_handle(uint32_t handle);
+    std::shared_ptr<KernelObject> get_object_from_handle(uint32_t handle);
     uint32_t file_open(const std::string& path, bool create = false, bool truncate = false, 
                        bool is_dir = false);
 };

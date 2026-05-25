@@ -951,11 +951,10 @@ std::shared_ptr<KernelObject> WindowsEmulator::get_object_from_handle(uint64_t h
     if (ko) {
         return ko;
     }
-    // TODO:
     // Fallback to FileManager
-    //if (fileman) {
-    //    return fileman->get_object_from_handle(static_cast<uint32_t>(handle));
-    //}
+    if (fileman) {
+        return fileman->get_object_from_handle(static_cast<uint32_t>(handle));
+    }
     return nullptr;
 }
 

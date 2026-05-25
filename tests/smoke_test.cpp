@@ -124,7 +124,7 @@ TEST(DdkTest, MajorFunctionCodes) {
 // ── File tests (standalone data classes) ─────────────────────
 
 TEST(FileTest, FileConstructor) {
-    File f("/tmp/test.txt", {}, {});
+    File f(nullptr, "/tmp/test.txt", {}, {});
     EXPECT_EQ(f.get_path(), "/tmp/test.txt");
     EXPECT_FALSE(f.is_directory());
     // get_hash() requires data; empty file data is fine
@@ -133,7 +133,7 @@ TEST(FileTest, FileConstructor) {
 
 TEST(FileTest, FileDataReadWrite) {
     std::vector<uint8_t> data = {'h', 'e', 'l', 'l', 'o'};
-    File f("/tmp/test.txt", {}, data);
+    File f(nullptr, "/tmp/test.txt", {}, data);
     EXPECT_EQ(f.get_size(), 5);
 
     auto read_data = f.get_data(-1, false);
@@ -143,7 +143,7 @@ TEST(FileTest, FileDataReadWrite) {
 
 TEST(FileTest, FileDuplicate) {
     std::vector<uint8_t> data = {'d', 'u', 'p', 'e'};
-    File f("/tmp/orig.txt", {}, data);
+    File f(nullptr, "/tmp/orig.txt", {}, data);
     auto dup = f.duplicate();
     EXPECT_EQ(dup->get_path(), "/tmp/orig.txt");
     EXPECT_EQ(dup->get_size(), 4);
@@ -151,7 +151,7 @@ TEST(FileTest, FileDuplicate) {
 
 TEST(FileTest, FileSeek) {
     std::vector<uint8_t> data = {'a', 'b', 'c', 'd', 'e'};
-    File f("/tmp/seek.txt", {}, data);
+    File f(nullptr, "/tmp/seek.txt", {}, data);
     EXPECT_EQ(f.tell(), 0);
     f.seek(2, 0);
     EXPECT_EQ(f.tell(), 2);
@@ -162,7 +162,7 @@ TEST(FileTest, FileSeek) {
 }
 
 TEST(FileTest, FileAddData) {
-    File f("/tmp/append.txt", {}, {});
+    File f(nullptr, "/tmp/append.txt", {}, {});
     EXPECT_EQ(f.get_size(), 0);
 
     f.add_data({'h', 'i'});
@@ -174,7 +174,7 @@ TEST(FileTest, FileAddData) {
 
 TEST(FileTest, FileRemoveData) {
     std::vector<uint8_t> data = {'t', 'o', 'g', 'o'};
-    File f("/tmp/remove.txt", {}, data);
+    File f(nullptr, "/tmp/remove.txt", {}, data);
     EXPECT_EQ(f.get_size(), 4);
 
     f.remove_data();
@@ -182,7 +182,7 @@ TEST(FileTest, FileRemoveData) {
 }
 
 TEST(FileTest, FileGetHandle) {
-    File f("/tmp/h1.txt", {}, {});
+    File f(nullptr, "/tmp/h1.txt", {}, {});
     uint32_t hf = f.get_handle();
     EXPECT_GT(hf, 0);
 }
@@ -195,7 +195,7 @@ TEST(FileTest, MapViewConstructor) {
 }
 
 TEST(FileTest, FileMapConstructor) {
-    FileMap fm("test_map", 4096, 3, nullptr);
+    FileMap fm(nullptr, "test_map", 4096, 3, nullptr);
     EXPECT_EQ(fm.get_name(), "test_map");
     EXPECT_EQ(fm.get_prot(), 3);
     EXPECT_EQ(fm.get_backed_file(), nullptr);
@@ -203,13 +203,13 @@ TEST(FileTest, FileMapConstructor) {
 }
 
 TEST(FileTest, FileMapAddView) {
-    FileMap fm("map_with_views", 8192, 3, nullptr);
+    FileMap fm(nullptr, "map_with_views", 8192, 3, nullptr);
     fm.add_view(0x1000, 0, 4096, 3);
     EXPECT_EQ(fm.get_views().size(), 1);
 }
 
 TEST(FileTest, PipeConstructor) {
-    Pipe p("test_pipe", "read", 1, 4096, 4096, {});
+    Pipe p(nullptr, "test_pipe", "read", 1, 4096, 4096, {});
     EXPECT_EQ(p.get_path(), "test_pipe");
     EXPECT_GT(p.get_handle(), 0);
 }

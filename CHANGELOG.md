@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+### 2026-05-25
+
+#### Changed
+
+- **secpp**: 重构文件系统管理模型 (FileManager)，深度现代化内核对象表示与 Python 行为对齐：
+  - 将 `File`、`Pipe`、`FileMap` 改为继承自 `KernelObject` 基类，实现统一的句柄安全生命周期与托管。
+  - 将 `FileManager::get_object_from_handle` 接口的返回类型由 bare `void*` 重构为 `std::shared_ptr<KernelObject>`，完全替换原先的裸指针类型转换，并在 `WindowsEmulator::get_object_from_handle` 中启用了文件句柄备用解析。
+  - 重构了 `File`、`Pipe`、`FileMap` 构造函数，支持传递 `emu` 参数以传递给 `KernelObject` 构造函数进行平台架构、属性管理链式传递，并更新了全部 `std::make_shared` 和测试用例中的调用。
+
+#### Added
+
+- **secpp**: 补全并同步了 `FileManager::get_emu_file` 的全部 Python 逻辑：
+  - 支持按需清理路径、相对路径转换（对齐 `config.current_dir`）和通配符匹配（实现了 case-insensitive `wildcard_match`）。
+  - 支持将需要仿真的用户/系统 DLL 转换为对应架构 `decoy_dir` 下的诱饵 PE。
+  - 完美支持了文件扩展名匹配 (`by_ext`) 和默认仿真回退 (`default`) 配置，并添加了 `emu_file_configs` 映射级缓存。
+  - 完美支持了仿真配置中 `byte_fill` 的提取、格式化与向后填充机制，并在 `File::handle_file_data` 和 `FileManager::handle_file_data` 中完全移植了对应字节填充数据生成功能。
+  - 实现了 `walk_files()` 接口，能够返回当前仿真环境的全部虚拟文件路径。
+
 ### 2026-05-24
 
 #### Changed
