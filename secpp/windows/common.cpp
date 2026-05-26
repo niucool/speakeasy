@@ -281,8 +281,7 @@ std::vector<PeSection> PeFile::get_sections() {
 }
 
 PeSection* PeFile::get_section_by_name(const std::string& sec_name) {
-    auto sects = get_sections();
-    for (auto& s : sects) {
+    for (auto& s : pe_sections) {
         if (s.name == sec_name) return &s;
     }
     return nullptr;
@@ -696,62 +695,113 @@ static void write_section_header(std::vector<uint8_t>& buf, size_t sect_table_of
     write_u32(buf, offset + 36, chars);
 }
 
-JitPeFile::JitPeFile(int arch, uint64_t base)
-    : pattern_size(arch == 32 ? 4 : 8), arch(arch), base(base) {
+JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const std::vector<std::string>& exports)
+    : PeFile("", {}, 0xFEEDFACE, 4, "", true),
+      pattern_size(arch == 32 ? 4 : 8) {
+    this->arch = arch;
+    this->base = base;
+    
     // Correctly prepend DOS_HEADER and append trailing zeroes to match python EMPTY_PE_32/64
-    basepe_data = DOS_HEADER;
-    if (basepe_data.size() > 0xB0) {
-        basepe_data.resize(0xB0);
-    }
-    auto& empty = (arch == 32) ? EMPTY_PE_32 : EMPTY_PE_64;
-    basepe_data.insert(basepe_data.end(), empty.begin(), empty.end());
-    basepe_data.insert(basepe_data.end(), 131, 0);
-    update();
-}
+    raw_pe_data = (arch == 32) ? EMPTY_PE_32 : EMPTY_PE_64;
 
-PeSection* JitPeFile::get_section_by_name(const std::string& sec_name) {
-    for (auto& s : sections) {
-        if (s.name == sec_name) return &s;
+    parsed_pe = peparse::ParsePEFromPointer(
+        const_cast<uint8_t*>(raw_pe_data.data()),
+        static_cast<uint32_t>(raw_pe_data.size()));
+
+    if(!parsed_pe) {
+        throw PeParseException("Failed to parse initial PE template");
     }
-    return nullptr;
+
+    if (arch == 32) {
+        parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint = 0;
+        parsed_pe->peHeader.nt.OptionalHeader.FileAlignment = 0x200;
+        parsed_pe->peHeader.nt.OptionalHeader.SectionAlignment = 0x1000;
+        if (base)
+            parsed_pe->peHeader.nt.OptionalHeader.ImageBase = base;
+    }
+    else {
+        parsed_pe->peHeader.nt.OptionalHeader64.AddressOfEntryPoint = 0;
+        parsed_pe->peHeader.nt.OptionalHeader64.FileAlignment = 0x200;
+        parsed_pe->peHeader.nt.OptionalHeader64.SectionAlignment = 0x1000;
+        if (base)
+            parsed_pe->peHeader.nt.OptionalHeader64.ImageBase = base;
+    }
+
+
+    if (!exports.empty()) {
+        _build_decoy_pe(mod_name, exports);
+    }
 }
 
 int JitPeFile::get_section_count() {
-    return static_cast<int>(sections.size());
-}
-
-std::vector<PeSection> JitPeFile::get_sections() {
-    return sections;
+    return static_cast<int>(pe_sections.size());
 }
 
 std::vector<uint8_t> JitPeFile::get_raw_pe() {
-    return basepe_data;
+    return raw_pe_data;
 }
 
 void JitPeFile::update() {
+    if (parsed_pe) {
+        peparse::DestructParsedPE(parsed_pe);
+        parsed_pe = nullptr;
+    }
     // Re-parse the PE data to refresh sections
-    auto* pe = peparse::ParsePEFromPointer(
-        const_cast<uint8_t*>(basepe_data.data()),
-        static_cast<uint32_t>(basepe_data.size()));
-    if (!pe) return;
-    PeSectionCtx ctx;
-    ctx.image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
-    peparse::IterSec(pe, pefile_sec_cb, &ctx);
-    peparse::DestructParsedPE(pe);
-    sections = ctx.sections;
+    parsed_pe = peparse::ParsePEFromPointer(
+        const_cast<uint8_t*>(raw_pe_data.data()),
+        static_cast<uint32_t>(raw_pe_data.size()));
+    if (!parsed_pe) {
+        std::fprintf(stderr, "[DEBUG] update: ParsePEFromPointer failed! raw_pe_data.size()=%d\n", (int)raw_pe_data.size());
+        return;
+    }
+    
+    base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+    if (base == 0) { base = DEFAULT_LOAD_ADDR; }
+    ep = parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
+    image_size = parsed_pe->peHeader.nt.OptionalHeader.SizeOfImage;
+    stack_commit = parsed_pe->peHeader.nt.OptionalHeader.SizeOfStackCommit;
+    ptr_size = (arch == 32) ? 4 : 8;
+    
+    pe_sections = _get_pe_sections();
+    exports = _get_pe_exports();
+    
+    if (!pe_sections.empty()) {
+        mapped_image = get_memory_mapped_image(0xF0000000);
+        is_mapped = true;
+    }
 }
 
 void JitPeFile::update_image_size() {
-    if (basepe_data.size() < 0x40) return;
+    if (raw_pe_data.size() < 0x40) return;
     uint32_t e_lfanew = 0;
-    std::memcpy(&e_lfanew, &basepe_data[0x3C], sizeof(e_lfanew));
-    if (basepe_data.size() < e_lfanew + 84) return;
+    std::memcpy(&e_lfanew, &raw_pe_data[0x3C], sizeof(e_lfanew));
+    if (raw_pe_data.size() < e_lfanew + 84) return;
 
-    PeFile temp_pe("", basepe_data, 0, 4, "", true);
-    auto mapped = temp_pe.get_memory_mapped_image(0xF0000000);
-    uint32_t size_of_image = static_cast<uint32_t>(mapped.size()) + 0x1000;
+    size_t pe_sig_offset = e_lfanew;
+    size_t coff_offset = pe_sig_offset + 4;
+    size_t opt_offset = coff_offset + 20;
+    size_t opt_header_size = (arch == 32) ? 0xE0 : 0xF0;
+    size_t section_table_offset = opt_offset + opt_header_size;
 
-    std::memcpy(&basepe_data[e_lfanew + 80], &size_of_image, sizeof(size_of_image));
+    uint16_t num_sections = read_u16(raw_pe_data, coff_offset + 2);
+    uint32_t max_vaddr = 0x1000; // default for headers
+
+    std::fprintf(stderr, "[DEBUG] update_image_size: num_sections=%d, raw_size=%d\n", (int)num_sections, (int)raw_pe_data.size());
+
+    for (uint16_t i = 0; i < num_sections; ++i) {
+        size_t sect_offset = section_table_offset + i * 40;
+        if (sect_offset + 40 > raw_pe_data.size()) break;
+        uint32_t v_size = read_u32(raw_pe_data, sect_offset + 8);
+        uint32_t v_addr = read_u32(raw_pe_data, sect_offset + 12);
+        uint32_t aligned_end = align_up(v_addr + v_size, 0x1000);
+        std::fprintf(stderr, "[DEBUG]   Section %d: v_addr=0x%X, v_size=0x%X, aligned_end=0x%X\n", (int)i, (int)v_addr, (int)v_size, (int)aligned_end);
+        if (aligned_end > max_vaddr) {
+            max_vaddr = aligned_end;
+        }
+    }
+
+    std::fprintf(stderr, "[DEBUG] update_image_size: writing SizeOfImage=0x%X at offset %d\n", (int)max_vaddr, (int)(e_lfanew + 80));
+    std::memcpy(&raw_pe_data[e_lfanew + 80], &max_vaddr, sizeof(max_vaddr));
     
     update();
 }
@@ -768,47 +818,47 @@ void JitPeFile::add_section(const std::string& name, uint32_t chars) {
     size_t opt_header_size = (arch == 32) ? 0xE0 : 0xF0;
     size_t section_table_offset = opt_offset + opt_header_size;
     
-    uint16_t num_sections = read_u16(basepe_data, num_sections_offset);
+    uint16_t num_sections = read_u16(raw_pe_data, num_sections_offset);
     int new_sect_idx = num_sections;
     
-    std::fprintf(stderr, "[DEBUG] add_section: '%s', num_sections: %d, opt_header_size: %d, section_table_offset: %d, basepe_data.size: %d\n",
-                 name.c_str(), (int)num_sections, (int)opt_header_size, (int)section_table_offset, (int)basepe_data.size());
+    std::fprintf(stderr, "[DEBUG] add_section: '%s', num_sections: %d, opt_header_size: %d, section_table_offset: %d, raw_pe_data.size: %d\n",
+                 name.c_str(), (int)num_sections, (int)opt_header_size, (int)section_table_offset, (int)raw_pe_data.size());
     
     // Increment NumberOfSections
-    write_u16(basepe_data, num_sections_offset, num_sections + 1);
+    write_u16(raw_pe_data, num_sections_offset, num_sections + 1);
     
     // Expand SizeOfHeaders and SizeOfImage by 40 bytes
-    uint32_t size_of_headers = read_u32(basepe_data, size_of_headers_offset);
-    uint32_t size_of_image = read_u32(basepe_data, size_of_image_offset);
+    uint32_t size_of_headers = read_u32(raw_pe_data, size_of_headers_offset);
+    uint32_t size_of_image = read_u32(raw_pe_data, size_of_image_offset);
     
     std::fprintf(stderr, "[DEBUG] add_section: size_of_headers was %d, size_of_image was %d\n", (int)size_of_headers, (int)size_of_image);
     
-    write_u32(basepe_data, size_of_headers_offset, size_of_headers + 40);
-    write_u32(basepe_data, size_of_image_offset, size_of_image + 40);
+    write_u32(raw_pe_data, size_of_headers_offset, size_of_headers + 40);
+    write_u32(raw_pe_data, size_of_image_offset, size_of_image + 40);
     
     // Write the new empty section header
-    write_section_header(basepe_data, section_table_offset, new_sect_idx, name, 0, 0, 0, 0, chars);
+    write_section_header(raw_pe_data, section_table_offset, new_sect_idx, name, 0, 0, 0, 0, chars);
     
-    std::fprintf(stderr, "[DEBUG] add_section: wrote header at offset %d, basepe_data.size: %d\n",
-                 (int)(section_table_offset + new_sect_idx * 40), (int)basepe_data.size());
+    std::fprintf(stderr, "[DEBUG] add_section: wrote header at offset %d, raw_pe_data.size: %d\n",
+                 (int)(section_table_offset + new_sect_idx * 40), (int)raw_pe_data.size());
     
     update();
 }
 
 void JitPeFile::pad_file() {
-    size_t cur_offset = basepe_data.size();
+    size_t cur_offset = raw_pe_data.size();
     size_t aligned_offset = align_up(static_cast<uint32_t>(cur_offset), 0x200);
     if (aligned_offset > cur_offset) {
-        basepe_data.resize(aligned_offset, 0);
+        raw_pe_data.resize(aligned_offset, 0);
     }
 }
 
 int JitPeFile::get_current_offset() {
-    return static_cast<int>(basepe_data.size());
+    return static_cast<int>(raw_pe_data.size());
 }
 
 void JitPeFile::append_data(const std::vector<uint8_t>& data) {
-    basepe_data.insert(basepe_data.end(), data.begin(), data.end());
+    raw_pe_data.insert(raw_pe_data.end(), data.begin(), data.end());
 }
 
 int JitPeFile::get_exports_size(const std::string& name, const std::vector<std::pair<uint32_t, std::string>>& exports_info) {
@@ -837,11 +887,11 @@ void JitPeFile::init_export_section(const std::string& name, const std::vector<s
     // Find .edata and .text section headers
     int edata_sect_idx = -1;
     int text_sect_idx = -1;
-    uint16_t num_sections = read_u16(basepe_data, coff_offset + 2);
+    uint16_t num_sections = read_u16(raw_pe_data, coff_offset + 2);
     for (int i = 0; i < num_sections; ++i) {
         size_t offset = section_table_offset + i * 40;
         char sect_name[9] = {0};
-        std::memcpy(sect_name, &basepe_data[offset], 8);
+        std::memcpy(sect_name, &raw_pe_data[offset], 8);
         if (std::string(sect_name) == ".edata") {
             edata_sect_idx = i;
         } else if (std::string(sect_name) == ".text") {
@@ -853,29 +903,29 @@ void JitPeFile::init_export_section(const std::string& name, const std::vector<s
     
     // Read text section virtual size and virtual address
     size_t text_off = section_table_offset + text_sect_idx * 40;
-    uint32_t text_v_size = read_u32(basepe_data, text_off + 8);
-    uint32_t text_v_addr = read_u32(basepe_data, text_off + 12);
+    uint32_t text_v_size = read_u32(raw_pe_data, text_off + 8);
+    uint32_t text_v_addr = read_u32(raw_pe_data, text_off + 12);
     
     uint32_t sa = 0x1000; // SectionAlignment
     uint32_t text_aligned_size = align_up(text_v_size, sa);
     uint32_t sec_rva = text_v_addr + text_aligned_size;
     
     int exports_size = get_exports_size(name, exports_info);
-    size_t cur_offset = basepe_data.size();
+    size_t cur_offset = raw_pe_data.size();
     
     // Update .edata section header
-    write_section_header(basepe_data, section_table_offset, edata_sect_idx, ".edata",
+    write_section_header(raw_pe_data, section_table_offset, edata_sect_idx, ".edata",
                          static_cast<uint32_t>(exports_size), sec_rva,
                          align_up(static_cast<uint32_t>(exports_size), 0x200),
                          static_cast<uint32_t>(cur_offset), 0x40000040);
     
     // Update SizeOfInitializedData
-    uint32_t size_of_init_data = read_u32(basepe_data, size_of_init_data_offset);
-    write_u32(basepe_data, size_of_init_data_offset, size_of_init_data + exports_size);
+    uint32_t size_of_init_data = read_u32(raw_pe_data, size_of_init_data_offset);
+    write_u32(raw_pe_data, size_of_init_data_offset, size_of_init_data + exports_size);
     
     // Update Export Directory RVA and Size
-    write_u32(basepe_data, export_dir_offset, sec_rva);
-    write_u32(basepe_data, export_dir_offset + 4, static_cast<uint32_t>(exports_size));
+    write_u32(raw_pe_data, export_dir_offset, sec_rva);
+    write_u32(raw_pe_data, export_dir_offset + 4, static_cast<uint32_t>(exports_size));
     
     // Generate edata_data containing IMAGE_EXPORT_DIRECTORY and tables
     std::vector<uint8_t> edata_data(exports_size, 0);
@@ -917,8 +967,8 @@ void JitPeFile::init_export_section(const std::string& name, const std::vector<s
         curr_str_offset += func_name.length() + 1;
     }
     
-    // Append edata_data to basepe_data
-    basepe_data.insert(basepe_data.end(), edata_data.begin(), edata_data.end());
+    // Append edata_data to raw_pe_data
+    raw_pe_data.insert(raw_pe_data.end(), edata_data.begin(), edata_data.end());
     
     update();
 }
@@ -936,11 +986,11 @@ std::vector<std::pair<uint32_t, std::string>> JitPeFile::init_text_section(const
     
     // Find .text section header in sections
     int text_sect_idx = -1;
-    uint16_t num_sections = read_u16(basepe_data, coff_offset + 2);
+    uint16_t num_sections = read_u16(raw_pe_data, coff_offset + 2);
     for (int i = 0; i < num_sections; ++i) {
         size_t offset = section_table_offset + i * 40;
         char sect_name[9] = {0};
-        std::memcpy(sect_name, &basepe_data[offset], 8);
+        std::memcpy(sect_name, &raw_pe_data[offset], 8);
         if (std::string(sect_name) == ".text") {
             text_sect_idx = i;
             break;
@@ -949,7 +999,7 @@ std::vector<std::pair<uint32_t, std::string>> JitPeFile::init_text_section(const
     
     if (text_sect_idx == -1) return exports_info;
     
-    size_t cur_offset = basepe_data.size();
+    size_t cur_offset = raw_pe_data.size();
     uint32_t sec_rva = align_up(static_cast<uint32_t>(cur_offset), 0x1000);
     if (sec_rva == 0) sec_rva = 0x1000;
     
@@ -968,21 +1018,21 @@ std::vector<std::pair<uint32_t, std::string>> JitPeFile::init_text_section(const
     }
     
     // Update section header
-    write_section_header(basepe_data, section_table_offset, text_sect_idx, ".text",
+    write_section_header(raw_pe_data, section_table_offset, text_sect_idx, ".text",
                          static_cast<uint32_t>(pattern.size()), sec_rva,
                          align_up(static_cast<uint32_t>(pattern.size()), 0x200),
                          static_cast<uint32_t>(cur_offset), 0x60000020);
     
     // Update AddressOfEntryPoint
-    write_u32(basepe_data, ep_offset, sec_rva);
+    write_u32(raw_pe_data, ep_offset, sec_rva);
     
     // Update SizeOfHeaders to aligned headers size
     size_t size_of_headers_offset = opt_offset + 60;
-    write_u32(basepe_data, size_of_headers_offset, static_cast<uint32_t>(cur_offset));
+    write_u32(raw_pe_data, size_of_headers_offset, static_cast<uint32_t>(cur_offset));
     
     if (!pattern.empty()) {
         // Append pattern data
-        basepe_data.insert(basepe_data.end(), pattern.begin(), pattern.end());
+        raw_pe_data.insert(raw_pe_data.end(), pattern.begin(), pattern.end());
     }
     
     update();
@@ -994,7 +1044,7 @@ void* JitPeFile::cast_section(int offset) {
     return nullptr;
 }
 
-std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
+std::vector<uint8_t> JitPeFile::_build_decoy_pe(const std::string& mod_name,
                                                 const std::vector<std::string>& exports) {
     add_section(".text", 0x60000020);
     add_section(".edata", 0x40000040);
@@ -1006,5 +1056,5 @@ std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
     init_export_section(mod_name, exports_info);
     update_image_size();
     
-    return basepe_data;
+    return raw_pe_data;
 }

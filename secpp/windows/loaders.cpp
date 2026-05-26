@@ -563,18 +563,18 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     }
     
     // Construct dynamic PE using C++ JitPeFile
-    JitPeFile jit(arch_, base_);
-    std::vector<uint8_t> raw_pe = jit.get_decoy_pe_image(name_, all_exports);
+    std::shared_ptr<JitPeFile> pe = std::make_shared<JitPeFile>(arch_, base_, name_, all_exports);
+    //std::vector<uint8_t> raw_pe = jit.get_decoy_pe_image(name_, all_exports);
     
     // Parse using PeFile to map and resolve section and header details
-    std::shared_ptr<PeFile> pe;
-    try {
-        pe = std::make_shared<PeFile>("", raw_pe, 0xFEEDFACE, 4, emu_path_, true);
-    } catch (const std::exception& e) {
-        return nullptr;
-    } catch (...) {
-        return nullptr;
-    }
+    //std::shared_ptr<PeFile> pe;
+    //try {
+    //    pe = std::make_shared<PeFile>("", raw_pe, 0xFEEDFACE, 4, emu_path_, true);
+    //} catch (const std::exception& e) {
+    //    return nullptr;
+    //} catch (...) {
+    //    return nullptr;
+    //}
     
     auto img = std::make_shared<LoadedImage>();
     img->arch = arch_;
