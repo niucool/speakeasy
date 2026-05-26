@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Inject local overlay ports directory for pe-parse modifications
-set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_SOURCE_DIR}/ports" CACHE PATH "Overlay ports")
+# set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_SOURCE_DIR}/ports" CACHE PATH "Overlay ports")
 
 project(speakeasy
     VERSION 1.6.1
