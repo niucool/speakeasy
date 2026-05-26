@@ -2887,7 +2887,7 @@ bool parsed_pe::AddSection(const std::string &name, std::uint32_t characteristic
   section new_sec;
   new_sec.sectionName = name;
   std::memset(new_sec.sec.Name, 0, NT_SHORT_NAME_LEN);
-  std::memcpy(new_sec.sec.Name, name.c_str(), std::min(name.length(), (size_t)NT_SHORT_NAME_LEN));
+  std::memcpy(new_sec.sec.Name, name.c_str(), std::min(name.length(),  static_cast<size_t>(NT_SHORT_NAME_LEN)));
   new_sec.sec.Characteristics = characteristics;
   new_sec.sec.Misc.VirtualSize = 0;
   new_sec.sec.SizeOfRawData = 0;

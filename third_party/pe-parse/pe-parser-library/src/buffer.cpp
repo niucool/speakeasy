@@ -229,7 +229,9 @@ bounded_buffer *readFileToFileBuffer(const char *filePath) {
     return nullptr;
   }
 
-  memset(p, 0, sizeof(bounded_buffer));
+  // memset(p, 0, sizeof(bounded_buffer));
+  *p = {};
+
   buffer_detail *d = new (std::nothrow) buffer_detail();
 
   if (d == nullptr) {
