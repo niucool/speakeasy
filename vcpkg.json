@@ -1,0 +1,12 @@
+{
+  "name": "speakeasy",
+  "version-string": "1.6.1",
+  "dependencies": [
+    "nlohmann-json",
+    "plog",
+    "unicorn",
+    "cxxopts",
+    "miniz",
+    "pe-parse"
+  ]
+}

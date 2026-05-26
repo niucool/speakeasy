@@ -34,6 +34,28 @@ std::string normalize_dll_name(const std::string& name) {
     return ret;
 }
 
+static void sync_optional_header(peparse::parsed_pe* parsed_pe) {
+    if (!parsed_pe) return;
+    if (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) { // NT_OPTIONAL_64_MAGIC
+        auto& oh64 = parsed_pe->peHeader.nt.OptionalHeader64;
+        auto& oh32 = parsed_pe->peHeader.nt.OptionalHeader;
+        
+        oh32.ImageBase = static_cast<uint32_t>(oh64.ImageBase & 0xFFFFFFFF);
+        oh32.AddressOfEntryPoint = oh64.AddressOfEntryPoint;
+        oh32.SectionAlignment = oh64.SectionAlignment;
+        oh32.FileAlignment = oh64.FileAlignment;
+        oh32.SizeOfImage = oh64.SizeOfImage;
+        oh32.SizeOfStackCommit = static_cast<uint32_t>(oh64.SizeOfStackCommit);
+        oh32.Subsystem = oh64.Subsystem;
+        oh32.NumberOfRvaAndSizes = oh64.NumberOfRvaAndSizes;
+        
+        // Copy DataDirectory
+        for (size_t i = 0; i < 16; ++i) {
+            oh32.DataDirectory[i] = oh64.DataDirectory[i];
+        }
+    }
+}
+
 // ── Import callback ──────────────────────────────────────
 struct PeImportCtx {
     std::map<uint64_t, std::tuple<std::string, std::string>> imports;
@@ -127,11 +149,17 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
             static_cast<uint32_t>(raw_pe_data.size()));
         if (!parsed_pe) throw PeParseException("Failed to parse PE");
         
+        sync_optional_header(parsed_pe);
+        
         // Compute hash
         hash = _hash_pe(path, raw_pe_data);
         
         // Header fields
-        base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+        if (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) {
+            base = parsed_pe->peHeader.nt.OptionalHeader64.ImageBase;
+        } else {
+            base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+        }
         if (base == 0) { base = DEFAULT_LOAD_ADDR; }
         ep = parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
         image_size = parsed_pe->peHeader.nt.OptionalHeader.SizeOfImage;
@@ -154,7 +182,8 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
         mapped_image = get_memory_mapped_image(0xF0000000);
         is_mapped = true;
 
-        if (parsed_pe->peHeader.nt.OptionalHeader.ImageBase == 0) {
+        uint64_t orig_image_base = (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) ? parsed_pe->peHeader.nt.OptionalHeader64.ImageBase : parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+        if (orig_image_base == 0) {
             relocate_image(DEFAULT_LOAD_ADDR);
         }
 
@@ -270,7 +299,7 @@ std::vector<ExportEntry> PeFile::_get_pe_exports() {
 std::vector<PeSection> PeFile::_get_pe_sections() {
     if (!parsed_pe) return {};
     PeSectionCtx ctx;
-    ctx.image_base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+    ctx.image_base = (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) ? parsed_pe->peHeader.nt.OptionalHeader64.ImageBase : parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
     peparse::IterSec(parsed_pe, pefile_sec_cb, &ctx);
     return ctx.sections;
 }
@@ -407,7 +436,7 @@ void PeFile::relocate_image(uint64_t new_base) {
     uint64_t reloc_rva = reloc_dir.VirtualAddress;
     uint64_t reloc_size = reloc_dir.Size;
 
-    uint64_t preferred_base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+    uint64_t preferred_base = (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) ? parsed_pe->peHeader.nt.OptionalHeader64.ImageBase : parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
     uint64_t delta = new_base - preferred_base;
     if (delta == 0) {
         return; // No change in base address, no relocations needed
@@ -718,6 +747,15 @@ JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const
         parsed_pe->peHeader.nt.OptionalHeader.SectionAlignment = 0x1000;
         if (base)
             parsed_pe->peHeader.nt.OptionalHeader.ImageBase = base;
+
+        size_t pe_sig_offset = 0xB0;
+        size_t coff_offset = pe_sig_offset + 4;
+        size_t opt_offset = coff_offset + 20;
+        write_u32(raw_pe_data, opt_offset + 16, 0);
+        write_u32(raw_pe_data, opt_offset + 36, 0x200);
+        write_u32(raw_pe_data, opt_offset + 32, 0x1000);
+        if (base)
+            write_u32(raw_pe_data, opt_offset + 28, static_cast<uint32_t>(base));
     }
     else {
         parsed_pe->peHeader.nt.OptionalHeader64.AddressOfEntryPoint = 0;
@@ -725,11 +763,23 @@ JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const
         parsed_pe->peHeader.nt.OptionalHeader64.SectionAlignment = 0x1000;
         if (base)
             parsed_pe->peHeader.nt.OptionalHeader64.ImageBase = base;
+
+        size_t pe_sig_offset = 0xB0;
+        size_t coff_offset = pe_sig_offset + 4;
+        size_t opt_offset = coff_offset + 20;
+        write_u32(raw_pe_data, opt_offset + 16, 0);
+        write_u32(raw_pe_data, opt_offset + 36, 0x200);
+        write_u32(raw_pe_data, opt_offset + 32, 0x1000);
+        if (base) {
+            write_u32(raw_pe_data, opt_offset + 24, static_cast<uint32_t>(base & 0xFFFFFFFF));
+            write_u32(raw_pe_data, opt_offset + 28, static_cast<uint32_t>(base >> 32));
+        }
     }
 
+    update();
 
     if (!exports.empty()) {
-        _build_decoy_pe(mod_name, exports);
+        get_decoy_pe_image(mod_name, exports);
     }
 }
 
@@ -755,7 +805,13 @@ void JitPeFile::update() {
         return;
     }
     
-    base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+    sync_optional_header(parsed_pe);
+    
+    if (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) {
+        base = parsed_pe->peHeader.nt.OptionalHeader64.ImageBase;
+    } else {
+        base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+    }
     if (base == 0) { base = DEFAULT_LOAD_ADDR; }
     ep = parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
     image_size = parsed_pe->peHeader.nt.OptionalHeader.SizeOfImage;
@@ -1044,7 +1100,7 @@ void* JitPeFile::cast_section(int offset) {
     return nullptr;
 }
 
-std::vector<uint8_t> JitPeFile::_build_decoy_pe(const std::string& mod_name,
+std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
                                                 const std::vector<std::string>& exports) {
     add_section(".text", 0x60000020);
     add_section(".edata", 0x40000040);

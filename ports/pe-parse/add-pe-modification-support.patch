@@ -1,0 +1,190 @@
+diff --git a/pe-parser-library/include/pe-parse/parse.h b/pe-parser-library/include/pe-parse/parse.h
+index 63d29b3..8200b3f 100644
+--- a/pe-parser-library/include/pe-parse/parse.h
++++ b/pe-parser-library/include/pe-parse/parse.h
+@@ -179,6 +179,9 @@ typedef struct _pe_header {
+ typedef struct _parsed_pe {
+   bounded_buffer *fileBuffer;
+   parsed_pe_internal *internal;
+   pe_header peHeader;
++
++  bool AddSection(const std::string &name, std::uint32_t characteristics);
++  bool Write(std::vector<std::uint8_t> &outBuf);
+ } parsed_pe;
+ 
+ // Resolve a Rich header product id / build number pair to a known
+diff --git a/pe-parser-library/src/parse.cpp b/pe-parser-library/src/parse.cpp
+index 738a0bc..739b1cd 100644
+--- a/pe-parser-library/src/parse.cpp
++++ b/pe-parser-library/src/parse.cpp
+@@ -28,6 +28,8 @@
+ #include <sstream>
+ #include <algorithm>
+ #include <map>
++#include <cstring>
+ 
+ #define READ_WORD(b, o, inst, member)                                          \
+   if (!readWord(b,                                                             \
+@@ -2863,4 +2865,116 @@ bool GetDataDirectoryEntry(parsed_pe *pe,
+   return true;
+ }
+ 
++bool parsed_pe::AddSection(const std::string &name, std::uint32_t characteristics) {
++  if (!internal) return false;
++
++  section new_sec;
++  new_sec.sectionName = name;
++  std::memset(new_sec.sec.Name, 0, NT_SHORT_NAME_LEN);
++  std::memcpy(new_sec.sec.Name, name.c_str(), std::min(name.length(), (size_t)NT_SHORT_NAME_LEN));
++  new_sec.sec.Characteristics = characteristics;
++  new_sec.sec.Misc.VirtualSize = 0;
++  new_sec.sec.SizeOfRawData = 0;
++  new_sec.sec.PointerToRelocations = 0;
++  new_sec.sec.PointerToLinenumbers = 0;
++  new_sec.sec.NumberOfRelocations = 0;
++  new_sec.sec.NumberOfLinenumbers = 0;
++
++  std::uint32_t sec_align = 0x1000;
++  std::uint32_t file_align = 0x200;
++
++  if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
++    sec_align = peHeader.nt.OptionalHeader.SectionAlignment;
++    file_align = peHeader.nt.OptionalHeader.FileAlignment;
++  } else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
++    sec_align = peHeader.nt.OptionalHeader64.SectionAlignment;
++    file_align = peHeader.nt.OptionalHeader64.FileAlignment;
++  }
++
++  auto align_up = [](std::uint32_t val, std::uint32_t align) {
++    return align == 0 ? val : (val + align - 1) & ~(align - 1);
++  };
++
++  std::uint32_t last_v_addr = 0x1000;
++  std::uint32_t last_raw_ptr = 0x200;
++
++  for (const auto &s : internal->secs) {
++    std::uint32_t v_end = s.sec.VirtualAddress + align_up(s.sec.Misc.VirtualSize, sec_align);
++    if (v_end > last_v_addr) {
++      last_v_addr = v_end;
++    }
++    std::uint32_t r_end = s.sec.PointerToRawData + align_up(s.sec.SizeOfRawData, file_align);
++    if (r_end > last_raw_ptr) {
++      last_raw_ptr = r_end;
++    }
++  }
++
++  new_sec.sec.VirtualAddress = last_v_addr;
++  new_sec.sec.PointerToRawData = last_raw_ptr;
++
++  if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
++    new_sec.sectionBase = peHeader.nt.OptionalHeader.ImageBase + last_v_addr;
++  } else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
++    new_sec.sectionBase = peHeader.nt.OptionalHeader64.ImageBase + last_v_addr;
++  }
++
++  new_sec.sectionData = new bounded_buffer();
++  new_sec.sectionData->buf = nullptr;
++  new_sec.sectionData->bufLen = 0;
++  new_sec.sectionData->copy = false;
++  new_sec.sectionData->swapBytes = false;
++  new_sec.sectionData->detail = nullptr;
++
++  internal->secs.push_back(new_sec);
++  peHeader.nt.FileHeader.NumberOfSections++;
++
++  if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
++    peHeader.nt.OptionalHeader.SizeOfHeaders += sizeof(image_section_header);
++    peHeader.nt.OptionalHeader.SizeOfImage = new_sec.sec.VirtualAddress + sec_align;
++  } else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
++    peHeader.nt.OptionalHeader64.SizeOfHeaders += sizeof(image_section_header);
++    peHeader.nt.OptionalHeader64.SizeOfImage = new_sec.sec.VirtualAddress + sec_align;
++  }
++
++  return true;
++}
++
++bool parsed_pe::Write(std::vector<std::uint8_t> &outBuf) {
++  if (!fileBuffer || !internal) return false;
++
++  std::uint32_t e_lfanew = 0;
++  if (fileBuffer->bufLen >= 0x3C + 4) {
++    std::memcpy(&e_lfanew, &fileBuffer->buf[0x3C], 4);
++  } else {
++    return false;
++  }
++
++  std::uint32_t file_align = 0x200;
++  std::uint16_t size_of_opt = 0;
++  if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
++    file_align = peHeader.nt.OptionalHeader.FileAlignment;
++    size_of_opt = peHeader.nt.FileHeader.SizeOfOptionalHeader;
++  } else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
++    file_align = peHeader.nt.OptionalHeader64.FileAlignment;
++    size_of_opt = peHeader.nt.FileHeader.SizeOfOptionalHeader;
++  }
++
++  auto align_up = [](std::uint32_t val, std::uint32_t align) {
++    return align == 0 ? val : (val + align - 1) & ~(align - 1);
++  };
++
++  std::uint32_t first_raw_ptr = file_align;
++  if (!internal->secs.empty()) {
++    first_raw_ptr = internal->secs[0].sec.PointerToRawData;
++    for (const auto &s : internal->secs) {
++      if (s.sec.PointerToRawData > 0 && s.sec.PointerToRawData < first_raw_ptr) {
++        first_raw_ptr = s.sec.PointerToRawData;
++      }
++    }
++  }
++
++  std::uint32_t orig_header_size = std::min(first_raw_ptr, fileBuffer->bufLen);
++  outBuf.assign(fileBuffer->buf, fileBuffer->buf + orig_header_size);
++
++  std::uint16_t num_secs = peHeader.nt.FileHeader.NumberOfSections;
++  std::memcpy(&outBuf[e_lfanew + 4 + 2], &num_secs, 2);
++
++  std::uint32_t size_of_headers = 0;
++  std::uint32_t size_of_image = 0;
++  if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
++    size_of_headers = peHeader.nt.OptionalHeader.SizeOfHeaders;
++    size_of_image = peHeader.nt.OptionalHeader.SizeOfImage;
++  } else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
++    size_of_headers = peHeader.nt.OptionalHeader64.SizeOfHeaders;
++    size_of_image = peHeader.nt.OptionalHeader64.SizeOfImage;
++  }
++  std::memcpy(&outBuf[e_lfanew + 4 + 20 + 60], &size_of_headers, 4);
++  std::memcpy(&outBuf[e_lfanew + 4 + 20 + 56], &size_of_image, 4);
++
++  std::uint32_t section_table_offset = e_lfanew + 4 + 20 + size_of_opt;
++  if (section_table_offset + num_secs * 40 > outBuf.size()) {
++    outBuf.resize(section_table_offset + num_secs * 40, 0);
++  }
++
++  for (size_t i = 0; i < num_secs; ++i) {
++    const auto &s = internal->secs[i];
++    std::uint32_t offset = section_table_offset + i * 40;
++    std::memcpy(&outBuf[offset], &s.sec, 40);
++  }
++
++  std::uint32_t aligned_headers_size = align_up(outBuf.size(), file_align);
++  if (aligned_headers_size > outBuf.size()) {
++    outBuf.resize(aligned_headers_size, 0);
++  }
++
++  for (size_t i = 0; i < num_secs; ++i) {
++    const auto &s = internal->secs[i];
++    if (s.sec.PointerToRawData == 0 || s.sec.SizeOfRawData == 0) continue;
++
++    if (s.sec.PointerToRawData + s.sec.SizeOfRawData > outBuf.size()) {
++      outBuf.resize(s.sec.PointerToRawData + s.sec.SizeOfRawData, 0);
++    }
++
++    if (s.sectionData && s.sectionData->buf && s.sectionData->bufLen > 0) {
++      std::memcpy(&outBuf[s.sec.PointerToRawData], s.sectionData->buf, std::min(s.sec.SizeOfRawData, s.sectionData->bufLen));
++    }
++  }
++
++  return true;
++}
++
+ } // namespace peparse
