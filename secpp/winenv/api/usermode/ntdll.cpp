@@ -1199,7 +1199,7 @@ uint64_t Ntdll::NtCreateKey(void* emu, const std::string&, int,
     // Get or create a handle
     //TODO
     //int handle = wemu->get_object_handle(hkey);
-    int handle = (int)hkey;
+    uint64_t handle = (uint64_t)hkey;
     //if (handle == 0) {
     //    handle = reinterpret_cast<uintptr_t>(hkey) & 0x7FFFFFFF;
     //}

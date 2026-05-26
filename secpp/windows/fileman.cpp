@@ -6,7 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <picosha2.h>
+#include "picosha2.h"
 
 // Helper function to normalize response path
 std::string normalize_response_path(const std::string& path) {

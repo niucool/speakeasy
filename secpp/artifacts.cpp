@@ -14,7 +14,7 @@
 #include <algorithm>
 
 // PicoSHA2: header-only SHA-256 (via vcpkg)
-#include <picosha2.h>
+#include "picosha2.h"
 
 // miniz: zlib-compatible compression (via vcpkg)
 #include <miniz.h>

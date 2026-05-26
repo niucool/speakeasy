@@ -6,7 +6,7 @@
 #include "profiler.h"
 #include "windows/fileman.h"
 #include <nlohmann/json.hpp>
-#include <picosha2.h>
+#include "picosha2.h"
 #include <cmath>
 #include <cctype>
 

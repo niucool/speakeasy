@@ -6,10 +6,11 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
+#include <cstring>
 #include <pe-parse/parse.h>
 #include <pe-parse/nt-headers.h>
 
-#include <picosha2.h>
+#include "picosha2.h"
 
 static std::string to_lower(const std::string& s) {
     std::string r = s;
