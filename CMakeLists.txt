@@ -25,10 +25,24 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 #   unicorn         – CPU emulation engine
 #   pe-parse        – PE file parser
 
+# ── Local Dependencies via FetchContent ───────────────────────
+include(FetchContent)
+set(BUILD_COMMAND_LINE_TOOLS OFF CACHE BOOL "Build Command Line Tools" FORCE)
+set(PEPARSE_ENABLE_EXAMPLES OFF CACHE BOOL "Enable building examples" FORCE)
+set(PEPARSE_ENABLE_TESTING OFF CACHE BOOL "Enable building tests" FORCE)
+
+FetchContent_Declare(
+    pe-parse
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pe-parse"
+)
+
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
+
+FetchContent_MakeAvailable(pe-parse)
+
 # ── Dependencies ──────────────────────────────────────────────
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(plog CONFIG REQUIRED)
-find_package(pe-parse CONFIG REQUIRED)
 find_package(cxxopts CONFIG REQUIRED)
 find_package(miniz CONFIG REQUIRED)
 

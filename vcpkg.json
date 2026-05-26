@@ -6,7 +6,6 @@
     "plog",
     "unicorn",
     "cxxopts",
-    "miniz",
-    "pe-parse"
+    "miniz"
   ]
 }
