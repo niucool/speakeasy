@@ -1,4 +1,4 @@
-// com.h — COM interface type definitions
+// com.h  COM interface type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/com.py
 //
@@ -15,7 +15,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── HRESULT constants ─────────────────────────────────────────
+//  HRESULT constants 
 // Protect against Windows SDK macro pollution
 #ifdef _WIN32
 #pragma push_macro("S_OK")
@@ -56,7 +56,7 @@ constexpr int32_t E_INVALIDARG              = 0x80070057;
 #pragma pop_macro("S_OK")
 #endif
 
-// ── RPC authentication level constants ────────────────────────
+//  RPC authentication level constants 
 
 constexpr uint32_t RPC_C_AUTHN_LEVEL_DEFAULT         = 0;
 constexpr uint32_t RPC_C_AUTHN_LEVEL_NONE            = 1;
@@ -66,7 +66,7 @@ constexpr uint32_t RPC_C_AUTHN_LEVEL_PKT             = 4;
 constexpr uint32_t RPC_C_AUTHN_LEVEL_PKT_INTEGRITY   = 5;
 constexpr uint32_t RPC_C_AUTHN_LEVEL_PKT_PRIVACY     = 6;
 
-// ── RPC impersonation level constants ─────────────────────────
+//  RPC impersonation level constants 
 
 constexpr uint32_t RPC_C_IMP_LEVEL_DEFAULT     = 0;
 constexpr uint32_t RPC_C_IMP_LEVEL_ANONYMOUS   = 1;
@@ -74,7 +74,7 @@ constexpr uint32_t RPC_C_IMP_LEVEL_IDENTIFY    = 2;
 constexpr uint32_t RPC_C_IMP_LEVEL_IMPERSONATE = 3;
 constexpr uint32_t RPC_C_IMP_LEVEL_DELEGATE    = 4;
 
-// ── CLSID / IID constants ─────────────────────────────────────
+//  CLSID / IID constants 
 
 // CLSID_WbemLocator = "{4590F811-1D3A-11D0-891F-00AA004B2E24}"
 #ifdef _WIN32
@@ -116,7 +116,7 @@ const GUID IID_IWbemContext = {
     {0xA0, 0x7C, 0x00, 0xC0, 0x4F, 0xB6, 0x88, 0x20}
 };
 
-// ── COM interface vtable structures ───────────────────────────
+//  COM interface vtable structures 
 
 // All COM interface vtables are arrays of function pointers (uint64_t on x64,
 // uint32_t on x86).  We model them as structures whose fields are pointer-sized.
@@ -288,7 +288,7 @@ struct IWbemContextVtbl : speakeasy::EmuStruct {
     }
 };
 
-// ── COM interface wrapper ─────────────────────────────────────
+//  COM interface wrapper 
 
 struct ComInterface : speakeasy::EmuStruct {
     uint64_t vtable = 0;  // Ptr to vtable in emulated memory

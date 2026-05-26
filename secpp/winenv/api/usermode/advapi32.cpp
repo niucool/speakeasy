@@ -1,4 +1,4 @@
-// advapi32.cpp — advapi32.dll handler — real implementations
+// advapi32.cpp  advapi32.dll handler  real implementations
 #include "advapi32.h"
 #include <cstdint>
 #include <cstdlib>
@@ -16,7 +16,7 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ── In-memory registry store ────────────────────────────────
+//  In-memory registry store 
 struct RegVal { std::string name; int type; std::vector<uint8_t> data; };
 struct RegNode {
     std::string path;
@@ -104,11 +104,11 @@ static uint32_t open_rk(const std::string& path, bool create) {
     uint32_t hnd = next_rh(); reg_handles()[hnd] = node->path; return hnd;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // API implementations
-// ═══════════════════════════════════════════════════════════════
+// 
 
-// ── RegOpenKeyExA ────────────────────────────────────────────
+//  RegOpenKeyExA 
 uint64_t Advapi32::RegOpenKeyExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 5) return 0xFFFFFFFF;
     uint64_t hKey = a[0], lpSubKey = a[1], phkResult = a[4];
@@ -124,7 +124,7 @@ uint64_t Advapi32::RegOpenKeyExA(void* e, const std::string&, int, const std::ve
     return 0;
 }
 
-// ── RegQueryValueExA ─────────────────────────────────────────
+//  RegQueryValueExA 
 uint64_t Advapi32::RegQueryValueExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 6) return 0xFFFFFFFF;
     uint64_t hKey=a[0], lpValueName=a[1], lpType=a[3], lpData=a[4], lpcbData=a[5];
@@ -153,13 +153,13 @@ uint64_t Advapi32::RegQueryValueExA(void* e, const std::string&, int, const std:
     return 0;
 }
 
-// ── RegCloseKey ──────────────────────────────────────────────
+//  RegCloseKey 
 uint64_t Advapi32::RegCloseKey(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; if (a.size()<1) return 0xFFFFFFFF;
     return resolve_hk(a[0]).empty() ? 6 : 0;
 }
 
-// ── RegCreateKeyExA ──────────────────────────────────────────
+//  RegCreateKeyExA 
 uint64_t Advapi32::RegCreateKeyExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<9) return 0xFFFFFFFF;
     uint64_t hKey=a[0], lpSubKey=a[1], phkResult=a[7], lpdwDisposition=a[8];
@@ -175,7 +175,7 @@ uint64_t Advapi32::RegCreateKeyExA(void* e, const std::string&, int, const std::
     return 0;
 }
 
-// ── RegSetValueExA ───────────────────────────────────────────
+//  RegSetValueExA 
 uint64_t Advapi32::RegSetValueExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<6) return 0xFFFFFFFF;
     uint64_t hKey=a[0], lpValueName=a[1], dwType=a[3], lpData=a[4], cbData=a[5];
@@ -190,12 +190,12 @@ uint64_t Advapi32::RegSetValueExA(void* e, const std::string&, int, const std::v
     return 0;
 }
 
-// ── RegDeleteKeyA ────────────────────────────────────────────
+//  RegDeleteKeyA 
 uint64_t Advapi32::RegDeleteKeyA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 0;
 }
 
-// ── OpenProcessToken ─────────────────────────────────────────
+//  OpenProcessToken 
 uint64_t Advapi32::OpenProcessToken(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<3||!a[2]) return 0;
     static uint64_t nt=0x2800; nt+=4;
@@ -203,19 +203,19 @@ uint64_t Advapi32::OpenProcessToken(void* e, const std::string&, int, const std:
     write_le(buf,0,nt,ps); we(e)->mem_write(a[2],buf); return 1;
 }
 
-// ── LookupPrivilegeValueA ────────────────────────────────────
+//  LookupPrivilegeValueA 
 uint64_t Advapi32::LookupPrivilegeValueA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<3||!a[2]) return 0;
     std::vector<uint8_t> buf(8,0); write_le(buf,0,0x20,4); write_le(buf,4,0,4);
     we(e)->mem_write(a[2],buf); return 1;
 }
 
-// ── AdjustTokenPrivileges ────────────────────────────────────
+//  AdjustTokenPrivileges 
 uint64_t Advapi32::AdjustTokenPrivileges(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 1;
 }
 
-// ── CryptAcquireContextA ─────────────────────────────────────
+//  CryptAcquireContextA 
 uint64_t Advapi32::CryptAcquireContextA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<5||!a[0]) return 0;
     static uint64_t nc=0x2900; nc+=4;
@@ -223,7 +223,7 @@ uint64_t Advapi32::CryptAcquireContextA(void* e, const std::string&, int, const 
     write_le(buf,0,nc,ps); we(e)->mem_write(a[0],buf); return 1;
 }
 
-// ── CryptGenRandom ───────────────────────────────────────────
+//  CryptGenRandom 
 uint64_t Advapi32::CryptGenRandom(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<3||!a[2]||!a[1]) return 0;
     uint64_t len=a[1]; std::vector<uint8_t> buf((size_t)len);
@@ -231,12 +231,12 @@ uint64_t Advapi32::CryptGenRandom(void* e, const std::string&, int, const std::v
     we(e)->mem_write(a[2],buf); return 1;
 }
 
-// ── CreateServiceA ───────────────────────────────────────────
+//  CreateServiceA 
 uint64_t Advapi32::CreateServiceA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; static uint64_t ns=0x3000; ns+=4; return ns;
 }
 
-// ── StartServiceA ────────────────────────────────────────────
+//  StartServiceA 
 uint64_t Advapi32::StartServiceA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 1;
 }

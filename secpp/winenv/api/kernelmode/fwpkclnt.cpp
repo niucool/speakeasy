@@ -1,4 +1,4 @@
-// fwpkclnt.cpp — Windows Filtering Platform handler (implemented)
+// fwpkclnt.cpp  Windows Filtering Platform handler (implemented)
 #include "fwpkclnt.h"
 
 #include <cstdint>
@@ -14,7 +14,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
@@ -44,7 +44,7 @@ Fwpkclnt::Fwpkclnt(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── Internal helpers ──────────────────────────────────────────
+//  Internal helpers 
 static uint32_t fwp_next_handle = 4;
 static inline uint32_t fwp_new_id() {
     uint32_t h = fwp_next_handle;
@@ -52,7 +52,7 @@ static inline uint32_t fwp_new_id() {
     return h;
 }
 
-// ── Implementations ───────────────────────────────────────────
+//  Implementations 
 
 uint64_t Fwpkclnt::FwpmEngineOpen0(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // DWORD FwpmEngineOpen0(serverName, authnService, authIdentity, session, engineHandle)

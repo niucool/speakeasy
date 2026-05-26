@@ -1,4 +1,4 @@
-// winmm.h — winmm.dll API handler (v2 — macro-based registration)
+// winmm.h  winmm.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_WINMM_H
 #define SPEAKEASY_WINMM_H
 #include <string>

@@ -1,4 +1,4 @@
-// sfc_os.h — sfc_os.dll API handler (same APIs as sfc, separate module name)
+// sfc_os.h  sfc_os.dll API handler (same APIs as sfc, separate module name)
 #ifndef SPEAKEASY_SFC_OS_H
 #define SPEAKEASY_SFC_OS_H
 #include <string>

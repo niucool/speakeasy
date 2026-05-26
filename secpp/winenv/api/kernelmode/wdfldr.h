@@ -1,4 +1,4 @@
-// wdfldr.h — Windows Driver Framework Loader API handler (STUB)
+// wdfldr.h  Windows Driver Framework Loader API handler (STUB)
 #ifndef SPEAKEASY_KERNELMODE_WDFLDR_H
 #define SPEAKEASY_KERNELMODE_WDFLDR_H
 #include <string>

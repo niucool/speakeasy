@@ -1,4 +1,4 @@
-// ole32.h — ole32.dll API handler (v2 — macro-based registration)
+// ole32.h  ole32.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_OLE32_H
 #define SPEAKEASY_OLE32_H
 #include <string>

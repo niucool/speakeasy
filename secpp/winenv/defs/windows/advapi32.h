@@ -1,4 +1,4 @@
-// advapi32.h — Windows Advanced Services (AdvAPI32) type definitions
+// advapi32.h  Windows Advanced Services (AdvAPI32) type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/advapi32.py
 //
@@ -14,7 +14,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── Constants ─────────────────────────────────────────────────
+//  Constants 
 
 constexpr uint32_t NTE_BAD_ALGID    = 0x80090008;
 
@@ -24,7 +24,7 @@ constexpr uint32_t SERVICE_ACTIVE    = 0x1;
 constexpr uint32_t SERVICE_INACTIVE  = 0x2;
 constexpr uint32_t SERVICE_STATE_ALL = 0x3;
 
-// ── Structures ────────────────────────────────────────────────
+//  Structures 
 
 struct SERVICE_TABLE_ENTRY : speakeasy::EmuStruct {
     uint64_t lpServiceName = 0;

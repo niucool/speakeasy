@@ -1,4 +1,4 @@
-// bcrypt.h — bcrypt.dll API handler (v2 — macro-based registration)
+// bcrypt.h  bcrypt.dll API handler (v2  macro-based registration)
 //
 // Maps to: speakeasy/winenv/api/usermode/bcrypt.py
 

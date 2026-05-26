@@ -1,4 +1,4 @@
-// wsk.cpp — Winsock Kernel handler (implemented)
+// wsk.cpp  Winsock Kernel handler (implemented)
 #include "wsk.h"
 
 #include <cstdint>
@@ -14,7 +14,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
@@ -42,10 +42,10 @@ Wsk::Wsk(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── Internal helpers ──────────────────────────────────────────
+//  Internal helpers 
 static constexpr int WSK_SUCCESS = 0;
 
-// ── Implementations ───────────────────────────────────────────
+//  Implementations 
 
 uint64_t Wsk::WskRegister(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS WskRegister(WSK_CLIENT_NPI *ClientNpi, WSK_REGISTRATION *WskRegistration)
@@ -57,7 +57,7 @@ uint64_t Wsk::WskCaptureProviderNPI(void* e, const std::string&, int, const std:
     // NTSTATUS WskCaptureProviderNPI(WSK_REGISTRATION *WskRegistration, ULONG WaitTimeout, WSK_PROVIDER_NPI *WskProviderNpi)
     uint64_t wsk_provider = a[2];
     if (wsk_provider) {
-        // Allocate a WSK_PROVIDER_NPI structure — just write a dummy dispatch table pointer
+        // Allocate a WSK_PROVIDER_NPI structure  just write a dummy dispatch table pointer
         size_t psz = static_cast<size_t>(ptr_sz(e));
         auto data = std::vector<uint8_t>(psz, 0);
         // Write a dummy dispatch pointer

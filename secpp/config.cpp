@@ -1,4 +1,4 @@
-// config.cpp — Emulation configuration implementation
+// config.cpp  Emulation configuration implementation
 //
 // Maps to: speakeasy/config.py
 
@@ -172,7 +172,7 @@ SpeakeasyConfig::SpeakeasyConfig() {
     load_config_from_json(j);
 }
 
-// ── Macro helpers for struct serialization ───────────────────
+//  Macro helpers for struct serialization 
 #define JSON_GET_OPTIONAL_STRING(j, key, field) \
     if (j.contains(key)) j.at(key).get_to(field);
 
@@ -182,7 +182,7 @@ SpeakeasyConfig::SpeakeasyConfig() {
 #define JSON_GET_OPTIONAL_BOOL(j, key, field) \
     if (j.contains(key)) field = j.at(key).get<bool>();
 
-// ── Validation ───────────────────────────────────────────────
+//  Validation 
 
 void SpeakeasyConfig::validate_config() const {
     if (emu_engine != "unicorn") {
@@ -208,7 +208,7 @@ void SpeakeasyConfig::validate_config() const {
     }
 }
 
-// ── Config loading ───────────────────────────────────────────
+//  Config loading 
 
 bool SpeakeasyConfig::load_config(const std::string& path) {
     std::ifstream ifs(path);

@@ -1,4 +1,4 @@
-// ntdll.h — ntdll.dll API handler
+// ntdll.h  ntdll.dll API handler
 //
 // Maps to: speakeasy/winenv/api/usermode/ntdll.py
 //

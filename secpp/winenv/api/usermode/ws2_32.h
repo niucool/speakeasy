@@ -1,4 +1,4 @@
-// ws2_32.h — ws2_32.dll (Winsock) API handler
+// ws2_32.h  ws2_32.dll (Winsock) API handler
 #ifndef SPEAKEASY_WS2_32_H
 #define SPEAKEASY_WS2_32_H
 #include <string>

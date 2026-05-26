@@ -1,4 +1,4 @@
-// profiler_events.h — Event type constants and structures for the Speakeasy profiler
+// profiler_events.h  Event type constants and structures for the Speakeasy profiler
 //
 // Maps to: speakeasy/profiler_events.py
 //
@@ -17,7 +17,7 @@
 namespace speakeasy {
 namespace events {
 
-// ── Event type discriminator constants ───────────────────────
+//  Event type discriminator constants 
 
 // Process events
 inline const std::string PROC_CREATE   = "process_create";
@@ -54,7 +54,7 @@ inline const std::string EXCEPTION = "exception";
 // API events
 inline const std::string API = "api";
 
-// ── Execution position ───────────────────────────────────────
+//  Execution position 
 
 struct TracePosition {
     int tick = 0;           // instruction-count tick
@@ -72,7 +72,7 @@ struct TracePosition {
     }
 };
 
-// ── Base event ───────────────────────────────────────────────
+//  Base event 
 
 struct Event {
     TracePosition pos;
@@ -87,7 +87,7 @@ struct Event {
     }
 };
 
-// ── Concrete event types ─────────────────────────────────────
+//  Concrete event types 
 
 struct ApiEvent : Event {
     std::string api_name;
@@ -441,7 +441,7 @@ struct ExceptionEvent : Event {
     }
 };
 
-// ── Event factory ───────────────────────────────────────────
+//  Event factory 
 
 /**
  * Create the appropriate event struct based on the event type string.

@@ -1,4 +1,4 @@
-// netio.h — Network I/O API handler (STUB)
+// netio.h  Network I/O API handler (STUB)
 #ifndef SPEAKEASY_KERNELMODE_NETIO_H
 #define SPEAKEASY_KERNELMODE_NETIO_H
 #include <string>

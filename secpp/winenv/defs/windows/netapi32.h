@@ -1,4 +1,4 @@
-// netapi32.h — Network Management API type definitions
+// netapi32.h  Network Management API type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/netapi32.py
 //
@@ -15,7 +15,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── Constants ──────────────────────────────────────────────────
+//  Constants 
 
 constexpr uint32_t NERR_Success = 0;
 
@@ -25,7 +25,7 @@ constexpr uint32_t NetSetupUnjoined         = 1;
 constexpr uint32_t NetSetupWorkgroupName   = 2;
 constexpr uint32_t NetSetupDomainName      = 3;
 
-// ── WKSTA_INFO_100 ─────────────────────────────────────────────
+//  WKSTA_INFO_100 
 
 struct WKSTA_INFO_100 : speakeasy::EmuStruct {
     uint64_t wki_platform_id  = 0;  // wchar_t*
@@ -53,7 +53,7 @@ struct WKSTA_INFO_100 : speakeasy::EmuStruct {
     }
 };
 
-// ── WKSTA_INFO_101 ─────────────────────────────────────────────
+//  WKSTA_INFO_101 
 
 struct WKSTA_INFO_101 : speakeasy::EmuStruct {
     uint64_t wki_platform_id  = 0;  // wchar_t*
@@ -85,7 +85,7 @@ struct WKSTA_INFO_101 : speakeasy::EmuStruct {
     }
 };
 
-// ── WKSTA_INFO_102 ─────────────────────────────────────────────
+//  WKSTA_INFO_102 
 
 struct WKSTA_INFO_102 : speakeasy::EmuStruct {
     uint64_t wki_platform_id     = 0;  // wchar_t*
@@ -121,7 +121,7 @@ struct WKSTA_INFO_102 : speakeasy::EmuStruct {
     }
 };
 
-// ── SERVER_INFO_101 (common) ──────────────────────────────────
+//  SERVER_INFO_101 (common) 
 
 struct SERVER_INFO_101 : speakeasy::EmuStruct {
     uint32_t sv101_platform_id   = 0;

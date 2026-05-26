@@ -1,5 +1,5 @@
 /**
- * test_config.cpp — Unit tests for configuration module
+ * test_config.cpp  Unit tests for configuration module
  */
 
 #include <gtest/gtest.h>
@@ -11,7 +11,7 @@
 
 using namespace speakeasy;
 
-// ── Config tests ─────────────────────────────────────────────
+//  Config tests 
 
 TEST(ConfigTest, DefaultConfig) {
     SpeakeasyConfig cfg;
@@ -36,7 +36,7 @@ TEST(ConfigTest, InvalidEngine) {
     EXPECT_THROW(cfg.validate_config(), ConfigError);
 }
 
-// ── Report tests ─────────────────────────────────────────────
+//  Report tests 
 
 TEST(ReportTest, DataArtifactJson) {
     DataArtifact art;
@@ -64,7 +64,7 @@ TEST(ReportTest, EmuReportJson) {
     EXPECT_EQ(j["arch"], "x86");
 }
 
-// ── Volumes tests ────────────────────────────────────────────
+//  Volumes tests 
 
 TEST(VolumesTest, ParseVolumeSpec) {
     auto [host, guest] = parse_volume_spec("/tmp/samples:C:\\guest");
@@ -85,7 +85,7 @@ TEST(VolumesTest, ParseMissingColon) {
     EXPECT_THROW(parse_volume_spec("foo"), std::invalid_argument);
 }
 
-// ── Struct tests ─────────────────────────────────────────────
+//  Struct tests 
 
 TEST(StructTest, HexFormat) {
     EXPECT_EQ(hex_str(0x7c000000), "0x7C000000");

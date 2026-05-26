@@ -9,7 +9,7 @@
 // Static member initialization
 uint32_t RegKey::curr_handle = 0x180;
 
-// ── Simple base64 encoder (for REG_BINARY normalization) ──────────
+//  Simple base64 encoder (for REG_BINARY normalization) 
 namespace {
 
 static const char b64_table[] =

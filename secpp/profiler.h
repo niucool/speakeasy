@@ -1,4 +1,4 @@
-// profiler.h — Execution profiler and report generation
+// profiler.h  Execution profiler and report generation
 // Ported from: speakeasy/profiler.py (796 lines)
 // Porting status: 23/23 methods declared | 21 full impl + 2 stubs
 //   - record_dropped_files_event: stub (needs FileData C++ class)
@@ -79,21 +79,21 @@ class Run; class Profiler;
 //     def __init__(self):
 class Run {
 public:
-    uint64_t instr_cnt = 0;            // Python:99 — self.instr_cnt: int = 0
-    void* ret_val = nullptr;           // Python:100 — self.ret_val: int | None = None
+    uint64_t instr_cnt = 0;            // Python:99  self.instr_cnt: int = 0
+    void* ret_val = nullptr;           // Python:100  self.ret_val: int | None = None
     // TODO: migrate events to vector<events::Event*> for Python parity (Python:101)
     std::vector<std::map<std::string,std::string>> apis;           // Python:101
     std::map<std::string,MemAccess> sym_access;                    // Python:102
     std::vector<std::map<std::string,std::string>> dropped_files;  // Python:103
     std::map<std::string,MemAccess> mem_access;                    // Python:104
-    // Python:105 — self.section_access: dict[tuple[int, int], MemAccess] = {} — NOT PORTED
+    // Python:105  self.section_access: dict[tuple[int, int], MemAccess] = {}  NOT PORTED
     std::map<std::string,std::vector<std::map<std::string,std::string>>> dyn_code; // Python:106
     std::set<uint64_t> base_addrs;                                 // Python:106
     std::shared_ptr<Process> process_context = nullptr;   // Python:107
     std::shared_ptr<Thread> thread = nullptr;            // Python:108
     std::vector<std::string> unique_apis;                          // Python:109
     std::string api_hash_data;         // Python:110 accumulated lowercase names (SHA-256)
-    // Python:111 — self.stack: MemAccess | None = None — stored externally
+    // Python:111  self.stack: MemAccess | None = None  stored externally
     std::deque<uint64_t> exec_cache{4};  // Python:113
     std::deque<uint64_t> read_cache{4};  // Python:114
     std::deque<uint64_t> write_cache{4}; // Python:115
@@ -137,15 +137,15 @@ public:
         return (it != strings_.end()) ? it->second : empty;
     }
 private:
-    double start_time = 0;             // Python:142 — self.start_time: float = 0
+    double start_time = 0;             // Python:142  self.start_time: float = 0
     std::map<std::string,std::vector<std::string>> strings_;       // Python:143
     std::map<std::string,std::vector<std::string>> decoded_strings_; // Python:144
-    std::vector<uint64_t> last_data;   // Python:145 — [base, size] for process merge tracking
-    // Python:146 — self.last_event: AnyEvent | dict[str, Any] = {} — only type tracked
+    std::vector<uint64_t> last_data;   // Python:145  [base, size] for process merge tracking
+    // Python:146  self.last_event: AnyEvent | dict[str, Any] = {}  only type tracked
     std::string last_event_type;       // Python:146 type name only (vs full Python AnyEvent)
-    double runtime = 0;                // Python:148 — self.runtime: float = 0
-    std::map<std::string,std::string> meta; // Python:149 — self.meta: dict[str, Any] = {}
-    std::vector<std::shared_ptr<Run>> runs; // Python:150 — self.runs: list[Run] = []
+    double runtime = 0;                // Python:148  self.runtime: float = 0
+    std::map<std::string,std::string> meta; // Python:149  self.meta: dict[str, Any] = {}
+    std::vector<std::shared_ptr<Run>> runs; // Python:150  self.runs: list[Run] = []
     speakeasy::ArtifactStore artifact_store; // Python:151
 public:
     Profiler();
@@ -176,7 +176,7 @@ public:
     // Python:208-212
     // """Log a top level emulator error for the emulation report."""
     void record_error_event(const speakeasy::ErrorInfo& error);
-    // Python:214-225 — log dropped files from an emulation run
+    // Python:214-225  log dropped files from an emulation run
     void log_dropped_files(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files);
     void record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files);
     // Python:227-259
@@ -217,12 +217,12 @@ public:
     void log_network(std::shared_ptr<Run> run, const std::string& server, int port,
                      const std::string& typ = "unknown", const std::string& proto = "unknown",
                      const std::vector<uint8_t>& data = {}, const std::string& method = "");
-    // Python:597-620 — TODO: full impl with ExceptionEvent typed events
+    // Python:597-620  TODO: full impl with ExceptionEvent typed events
     void log_exception(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info);
-    // Python:622-633 — TODO: full impl with ModuleLoadEvent typed events
+    // Python:622-633  TODO: full impl with ModuleLoadEvent typed events
     void log_module_load(std::shared_ptr<Run> run, const std::string& name, const std::string& path,
                          uint64_t base, uint64_t size);
-    // Python:635-796 — build full speakeasy::Report
+    // Python:635-796  build full speakeasy::Report
     speakeasy::Report get_report() const;
     nlohmann::json get_json_report() const;
     std::string get_json_report_string() const;

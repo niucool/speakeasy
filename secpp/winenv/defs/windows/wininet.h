@@ -1,4 +1,4 @@
-// wininet.h — Windows Internet (WinINet) API type definitions
+// wininet.h  Windows Internet (WinINet) API type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/wininet.py (future)
 //
@@ -15,20 +15,20 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── Access type constants ─────────────────────────────────────
+//  Access type constants 
 
 constexpr uint32_t INTERNET_OPEN_TYPE_PRECONFIG           = 0;
 constexpr uint32_t INTERNET_OPEN_TYPE_DIRECT              = 1;
 constexpr uint32_t INTERNET_OPEN_TYPE_PROXY               = 3;
 constexpr uint32_t INTERNET_OPEN_TYPE_PRECONFIG_WITH_NO_AUTOPROXY = 4;
 
-// ── Service type constants ────────────────────────────────────
+//  Service type constants 
 
 constexpr uint32_t INTERNET_SERVICE_FTP    = 1;
 constexpr uint32_t INTERNET_SERVICE_GOPHER = 2;
 constexpr uint32_t INTERNET_SERVICE_HTTP   = 3;
 
-// ── Connection flags ──────────────────────────────────────────
+//  Connection flags 
 
 constexpr uint32_t INTERNET_FLAG_RELOAD              = 0x80000000;
 constexpr uint32_t INTERNET_FLAG_RAW_DATA            = 0x40000000;
@@ -62,7 +62,7 @@ constexpr uint32_t INTERNET_FLAG_FROM_CACHE_ONLY           = 0x00000020;
 constexpr uint32_t INTERNET_FLAG_NEED_FILE                 = 0x00000010;
 constexpr uint32_t INTERNET_FLAG_MUST_CACHE_REQUEST        = 0x00000008;
 
-// ── HTTP request flags ────────────────────────────────────────
+//  HTTP request flags 
 
 constexpr uint32_t HTTP_QUERY_CONTENT_TYPE            = 1;
 constexpr uint32_t HTTP_QUERY_CONTENT_LENGTH          = 5;
@@ -84,7 +84,7 @@ constexpr uint32_t HTTP_QUERY_HEADER_MASK             = 0x0FFFFFFF;
 constexpr uint32_t HTTP_QUERY_FLAG_REQUEST_HEADERS    = 0x80000000;
 constexpr uint32_t HTTP_QUERY_FLAG_SYSTEMTIME         = 0x40000000;
 
-// ── HTTP status codes ────────────────────────────────────────
+//  HTTP status codes 
 
 constexpr uint32_t HTTP_STATUS_CONTINUE            = 100;
 constexpr uint32_t HTTP_STATUS_OK                  = 200;
@@ -102,7 +102,7 @@ constexpr uint32_t HTTP_STATUS_NOT_FOUND           = 404;
 constexpr uint32_t HTTP_STATUS_SERVER_ERROR        = 500;
 constexpr uint32_t HTTP_STATUS_NOT_SUPPORTED       = 501;
 
-// ── INTERNET_PROXY_INFO ───────────────────────────────────────
+//  INTERNET_PROXY_INFO 
 
 struct INTERNET_PROXY_INFO : speakeasy::EmuStruct {
     uint32_t dwAccessType    = 0;
@@ -128,7 +128,7 @@ struct INTERNET_PROXY_INFO : speakeasy::EmuStruct {
     }
 };
 
-// ── URL_COMPONENTS ────────────────────────────────────────────
+//  URL_COMPONENTS 
 
 struct URL_COMPONENTS : speakeasy::EmuStruct {
     uint32_t dwStructSize      = sizeof(URL_COMPONENTS);
@@ -187,7 +187,7 @@ struct URL_COMPONENTS : speakeasy::EmuStruct {
     }
 };
 
-// ── Internet scheme enum ──────────────────────────────────────
+//  Internet scheme enum 
 
 constexpr int32_t INTERNET_SCHEME_PARTIAL  = -2;
 constexpr int32_t INTERNET_SCHEME_UNKNOWN  = -1;
@@ -201,7 +201,7 @@ constexpr int32_t INTERNET_SCHEME_NEWS     = 6;
 constexpr int32_t INTERNET_SCHEME_MAILTO   = 7;
 constexpr int32_t INTERNET_SCHEME_SOCKS    = 8;
 
-// ── INTERNET_CERTIFICATE_INFO ──────────────────────────────────
+//  INTERNET_CERTIFICATE_INFO 
 
 struct INTERNET_CERTIFICATE_INFO : speakeasy::EmuStruct {
     uint32_t dwCertFlags         = 0;

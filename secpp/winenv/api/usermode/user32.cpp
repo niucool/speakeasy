@@ -1,4 +1,4 @@
-// user32.cpp — user32.dll handler — real implementations
+// user32.cpp  user32.dll handler  real implementations
 #include "user32.h"
 #include <cstdint>
 #include <cstring>
@@ -15,7 +15,7 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ── Handle management ────────────────────────────────────────
+//  Handle management 
 static uint64_t next_hwnd() {
     static uint64_t h = 0x10000;
     return ++h;
@@ -26,14 +26,14 @@ static uint64_t next_hhook() {
     return ++h;
 }
 
-// ── Window hooks store ───────────────────────────────────────
+//  Window hooks store 
 struct WindowHook { int idHook; uint64_t lpfn; uint64_t hmod; };
 static std::map<uint64_t, WindowHook>& window_hooks() {
     static std::map<uint64_t, WindowHook> h;
     return h;
 }
 
-// ── Constructor ──────────────────────────────────────────────
+//  Constructor 
 User32::User32(void* emu) : ApiHandler(emu) {
     apis_.push_back({"MessageBoxA",4,MessageBoxA});
     apis_.push_back({"MessageBoxW",4,MessageBoxW});
@@ -70,11 +70,11 @@ User32::User32(void* emu) : ApiHandler(emu) {
     apis_.push_back({"DestroyWindow",1,DestroyWindow});
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // API implementations
-// ═══════════════════════════════════════════════════════════════
+// 
 
-// ── MessageBoxA / MessageBoxW ──────────────────────────────
+//  MessageBoxA / MessageBoxW 
 uint64_t User32::MessageBoxA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<4) return 2;
     uint64_t lpText = a[1], lpCaption = a[2];
@@ -91,7 +91,7 @@ uint64_t User32::MessageBoxW(void* e, const std::string&, int, const std::vector
     return 2; // IDCANCEL
 }
 
-// ── GetMessageA ─────────────────────────────────────────────
+//  GetMessageA 
 uint64_t User32::GetMessageA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<1) return 0;
     uint64_t lpMsg = a[0];
@@ -105,12 +105,12 @@ uint64_t User32::GetMessageA(void* e, const std::string&, int, const std::vector
     return 0; // FALSE (WM_QUIT)
 }
 
-// ── PeekMessageA ───────────────────────────────────────────
+//  PeekMessageA 
 uint64_t User32::PeekMessageA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 0;
 }
 
-// ── FindWindowA ─────────────────────────────────────────────
+//  FindWindowA 
 uint64_t User32::FindWindowA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<2) return 0;
     uint64_t cn = a[0], wn = a[1];
@@ -119,12 +119,12 @@ uint64_t User32::FindWindowA(void* e, const std::string&, int, const std::vector
     return 0;
 }
 
-// ── SendMessageA ────────────────────────────────────────────
+//  SendMessageA 
 uint64_t User32::SendMessageA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 0;
 }
 
-// ── GetWindowTextA ──────────────────────────────────────────
+//  GetWindowTextA 
 uint64_t User32::GetWindowTextA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e;
     if (a.size()<3) return 0;
@@ -133,7 +133,7 @@ uint64_t User32::GetWindowTextA(void* e, const std::string&, int, const std::vec
     return 0;
 }
 
-// ── SetWindowTextA ──────────────────────────────────────────
+//  SetWindowTextA 
 uint64_t User32::SetWindowTextA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<2) return 0;
     uint64_t lp = a[1];
@@ -141,17 +141,17 @@ uint64_t User32::SetWindowTextA(void* e, const std::string&, int, const std::vec
     return 1;
 }
 
-// ── GetForegroundWindow ─────────────────────────────────────
+//  GetForegroundWindow 
 uint64_t User32::GetForegroundWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return next_hwnd();
 }
 
-// ── GetDesktopWindow ───────────────────────────────────────
+//  GetDesktopWindow 
 uint64_t User32::GetDesktopWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return next_hwnd();
 }
 
-// ── CreateWindowEx_hook ───────────────────────────────────────
+//  CreateWindowEx_hook 
 uint64_t User32::CreateWindowEx_hook(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<3) return 0;
     uint64_t cn = a[1], wn = a[2];
@@ -160,37 +160,37 @@ uint64_t User32::CreateWindowEx_hook(void* e, const std::string&, int, const std
     return next_hwnd();
 }
 
-// ── RegisterClassExA ────────────────────────────────────────
+//  RegisterClassExA 
 uint64_t User32::RegisterClassExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 1;
 }
 
-// ── ShowWindow ──────────────────────────────────────────────
+//  ShowWindow 
 uint64_t User32::ShowWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 1;
 }
 
-// ── UpdateWindow ────────────────────────────────────────────
+//  UpdateWindow 
 uint64_t User32::UpdateWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 1;
 }
 
-// ── GetDC ───────────────────────────────────────────────────
+//  GetDC 
 uint64_t User32::GetDC(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return next_hwnd();
 }
 
-// ── GetSystemMetrics ────────────────────────────────────────
+//  GetSystemMetrics 
 uint64_t User32::GetSystemMetrics(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 1;
 }
 
-// ── LoadCursorA ─────────────────────────────────────────────
+//  LoadCursorA 
 uint64_t User32::LoadCursorA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return next_hwnd();
 }
 
-// ── SetWindowsHookExA ───────────────────────────────────────
+//  SetWindowsHookExA 
 uint64_t User32::SetWindowsHookExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<4) return 0;
     uint64_t hnd = next_hhook();
@@ -200,17 +200,17 @@ uint64_t User32::SetWindowsHookExA(void* e, const std::string&, int, const std::
     return hnd;
 }
 
-// ── CallNextHookEx ──────────────────────────────────────────
+//  CallNextHookEx 
 uint64_t User32::CallNextHookEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 0;
 }
 
-// ── GetAsyncKeyState ────────────────────────────────────────
+//  GetAsyncKeyState 
 uint64_t User32::GetAsyncKeyState(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 0;
 }
 
-// ── GetKeyboardType ─────────────────────────────────────────
+//  GetKeyboardType 
 uint64_t User32::GetKeyboardType(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<1) return 0;
     uint64_t typ = a[0];
@@ -218,7 +218,7 @@ uint64_t User32::GetKeyboardType(void* e, const std::string&, int, const std::ve
     (void)e; return 0;
 }
 
-// ── wsprintfA ───────────────────────────────────────────────
+//  wsprintfA 
 uint64_t User32::wsprintfA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<2) return 0;
     uint64_t buf = a[0], fmt_ptr = a[1];
@@ -234,7 +234,7 @@ uint64_t User32::wsprintfA(void* e, const std::string&, int, const std::vector<u
     return 0;
 }
 
-// ── LoadStringA ─────────────────────────────────────────────
+//  LoadStringA 
 uint64_t User32::LoadStringA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size()<4) return 0;
     uint64_t bufp = a[2];
@@ -242,27 +242,27 @@ uint64_t User32::LoadStringA(void* e, const std::string&, int, const std::vector
     return 0;
 }
 
-// ── TranslateMessage ───────────────────────────────────────
+//  TranslateMessage 
 uint64_t User32::TranslateMessage(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 1;
 }
 
-// ── DispatchMessageA ────────────────────────────────────────
+//  DispatchMessageA 
 uint64_t User32::DispatchMessageA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 0;
 }
 
-// ── PostQuitMessage ─────────────────────────────────────────
+//  PostQuitMessage 
 uint64_t User32::PostQuitMessage(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 0;
 }
 
-// ── DefWindowProcA ──────────────────────────────────────────
+//  DefWindowProcA 
 uint64_t User32::DefWindowProcA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 0;
 }
 
-// ── DestroyWindow ───────────────────────────────────────────
+//  DestroyWindow 
 uint64_t User32::DestroyWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return 1;
 }

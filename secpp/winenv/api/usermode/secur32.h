@@ -1,4 +1,4 @@
-// secur32.h — secur32.dll API handler (v2 — macro-based registration)
+// secur32.h  secur32.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_SECUR32_H
 #define SPEAKEASY_SECUR32_H
 #include <string>

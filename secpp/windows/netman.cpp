@@ -21,7 +21,7 @@ bool is_empty(std::shared_ptr<std::stringstream> bio) {
 
 // Static member initialization
 uint32_t WininetComponent::curr_handle = 0x20;
-// Static config — starts as null JSON object
+// Static config  starts as null JSON object
 speakeasy::NetworkConfig WininetComponent::config;
 
 // Socket implementation

@@ -1,4 +1,4 @@
-// objman.cpp — Kernel object manager implementation
+// objman.cpp  Kernel object manager implementation
 //
 // Maps to: speakeasy/windows/objman.py
 //
@@ -22,7 +22,7 @@
 #include "../winenv/arch.h"
 #include "../winenv/defs/nt/ddk.h"
 #include "../winenv/defs/nt/ntoskrnl.h"
-#include "../binemu.h"      // BinaryEmulator (get_arch, mem_read, mem_write, …)
+#include "../binemu.h"      // BinaryEmulator (get_arch, mem_read, mem_write, )
 #include "../windows/winemu.h" // WindowsEmulator (get_thread_context)
 #include "../struct.h"      // EmuStruct
 #include "../windows/loaders.h"  // speakeasy::LoadedImage
@@ -30,7 +30,7 @@
 
 using namespace speakeasy;
 
-// ── Helper: get BinaryEmulator / WindowsEmulator from void* ──
+//  Helper: get BinaryEmulator / WindowsEmulator from void* 
 
 static inline BinaryEmulator* BE(void* raw) {
     return static_cast<BinaryEmulator*>(raw);
@@ -40,9 +40,9 @@ static inline WindowsEmulator* WE(void* raw) {
     return static_cast<WindowsEmulator*>(raw);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Console
-// ═══════════════════════════════════════════════════════════════
+// 
 
 int Console::curr_handle = 0x340;
 
@@ -62,9 +62,9 @@ int Console::get_window() {
     return this->window;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // SEH
-// ═══════════════════════════════════════════════════════════════
+// 
 
 SEH::ScopeRecord::ScopeRecord(void* rec)
     : record(rec), filter_called(false), handler_called(false) {}
@@ -102,7 +102,7 @@ void SEH::set_record(void* record, int address) {
 void SEH::set_current_frame(Frame frame) {
     // Replace the frames list with just this frame (or push it).
     // Python code does not have an explicit set_current_frame, but
-    // the method exists in the C++ API — push it onto the frame stack.
+    // the method exists in the C++ API  push it onto the frame stack.
     this->frames.push_back(frame);
 }
 
@@ -119,9 +119,9 @@ void SEH::add_frame(void* entry, void* scope_table, std::vector<void*> records) 
     this->frames.push_back(frame);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // KernelObject
-// ═══════════════════════════════════════════════════════════════
+// 
 
 int KernelObject::curr_handle = 0x220;
 int KernelObject::curr_id = 0x400;
@@ -153,7 +153,7 @@ void* KernelObject::get_bytes(void* obj) {
         auto* es = static_cast<EmuStruct*>(obj);
         auto bytes = es->get_bytes();
         // Return a copy; caller must know the size.
-        // This is a simplification — when typed, the Python version
+        // This is a simplification  when typed, the Python version
         // returns the struct's byte representation directly.
         auto* buf = new std::vector<uint8_t>(std::move(bytes));
         return buf;
@@ -219,9 +219,9 @@ int KernelObject::get_handle() {
     return tmp;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Driver
-// ═══════════════════════════════════════════════════════════════
+// 
 
 std::vector<void*> Driver::ldr_entries;
 
@@ -414,9 +414,9 @@ KernelObject Driver::read_back() {
     return *this;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Device
-// ═══════════════════════════════════════════════════════════════
+// 
 
 Device::Device(void* emu)
     : KernelObject(emu), file_object(nullptr), driver(nullptr) {
@@ -437,9 +437,9 @@ void Device::init_device(const std::string& name, uint32_t dev_type,
     this->driver = drv;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // FileObject
-// ═══════════════════════════════════════════════════════════════
+// 
 
 FileObject::FileObject(void* emu)
     : KernelObject(emu) {
@@ -448,9 +448,9 @@ FileObject::FileObject(void* emu)
     object = new EmuStruct();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // IoStackLocation
-// ═══════════════════════════════════════════════════════════════
+// 
 
 IoStackLocation::IoStackLocation(void* emu)
     : KernelObject(emu) {
@@ -459,9 +459,9 @@ IoStackLocation::IoStackLocation(void* emu)
     object = new EmuStruct();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Irp
-// ═══════════════════════════════════════════════════════════════
+// 
 
 Irp::Irp(void* emu)
     : KernelObject(emu) {
@@ -487,9 +487,9 @@ IoStackLocation Irp::get_curr_stack_loc() {
     return stack_locations[0];
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Thread
-// ═══════════════════════════════════════════════════════════════
+// 
 
 Thread::Thread(void* emu, int stack_base, int stack_commit)
     : KernelObject(emu),
@@ -601,18 +601,18 @@ void Thread::init_tls(int tls_dir, const std::string& modname) {
     this->teb->write_back();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Token
-// ═══════════════════════════════════════════════════════════════
+// 
 
 Token::Token(void* emu)
     : KernelObject(emu) {
     object = new EmuStruct();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // PEB
-// ═══════════════════════════════════════════════════════════════
+// 
 PEB::PEB(void* emu, uint64_t addr)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
@@ -626,9 +626,9 @@ PEB::PEB(void* emu, uint64_t addr)
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // TEB
-// ═══════════════════════════════════════════════════════════════
+// 
 TEB::TEB(void* emu, uint64_t addr)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
@@ -642,9 +642,9 @@ TEB::TEB(void* emu, uint64_t addr)
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // PebLdrData
-// ═══════════════════════════════════════════════════════════════
+// 
 PebLdrData::PebLdrData(void* emu)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
@@ -652,9 +652,9 @@ PebLdrData::PebLdrData(void* emu)
     address = 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // LdrDataTableEntry
-// ═══════════════════════════════════════════════════════════════
+// 
 LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, const std::string& tag)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
@@ -669,9 +669,9 @@ LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, cons
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // RTL_USER_PROCESS_PARAMETERS
-// ═══════════════════════════════════════════════════════════════
+// 
 RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* proc)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
@@ -756,9 +756,9 @@ RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* pro
     write_back();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // IDT
-// ═══════════════════════════════════════════════════════════════
+// 
 IDT::IDT(void* emu)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
@@ -797,9 +797,9 @@ void IDT::init_descriptors() {
     write_back();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Event
-// ═══════════════════════════════════════════════════════════════
+// 
 Event::Event(void* emu)
     : KernelObject(emu) {
     object = new speakeasy::defs::nt::KEVENT();
@@ -808,9 +808,9 @@ Event::Event(void* emu)
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Mutant
-// ═══════════════════════════════════════════════════════════════
+// 
 Mutant::Mutant(void* emu)
     : KernelObject(emu) {
     object = new speakeasy::defs::nt::MUTANT();
@@ -819,9 +819,9 @@ Mutant::Mutant(void* emu)
     );
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Process
-// ═══════════════════════════════════════════════════════════════
+// 
 
 std::vector<void*> Process::ldr_entries;
 
@@ -1088,9 +1088,9 @@ void Process::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& m
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // ObjectManager
-// ═══════════════════════════════════════════════════════════════
+// 
 
 ObjectManager::ObjectManager(void* emu) : emu(emu) {}
 

@@ -1,4 +1,4 @@
-// wtsapi32.cpp — wtsapi32.dll handler (real implementations)
+// wtsapi32.cpp  wtsapi32.dll handler (real implementations)
 #include "wtsapi32.h"
 #include <cstring>
 #include <cstdint>
@@ -28,9 +28,9 @@ Wtsapi32::Wtsapi32(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  WTSEnumerateSessions — enumerate terminal server sessions
-// ═══════════════════════════════════════════════════════════════
+// 
+//  WTSEnumerateSessions  enumerate terminal server sessions
+// 
 uint64_t Wtsapi32::WTSEnumerateSessions(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hServer = a[0];
     uint64_t Reserved = a[1];
@@ -102,9 +102,9 @@ uint64_t Wtsapi32::WTSEnumerateSessions(void* e, const std::string&, int, const 
     return 1; // TRUE
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  WTSFreeMemory — free memory allocated by WTS APIs
-// ═══════════════════════════════════════════════════════════════
+// 
+//  WTSFreeMemory  free memory allocated by WTS APIs
+// 
 uint64_t Wtsapi32::WTSFreeMemory(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pMemory = a[0];
 

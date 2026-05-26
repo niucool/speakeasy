@@ -1,4 +1,4 @@
-// ws2_32.cpp — ws2_32.dll (Winsock) API handler — real implementations
+// ws2_32.cpp  ws2_32.dll (Winsock) API handler  real implementations
 #include "ws2_32.h"
 #include <cstring>
 #include <cstdint>
@@ -15,13 +15,13 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ── Socket handle management ─────────────────────────────────
+//  Socket handle management 
 static int next_socket_handle() {
     static int h = 0x100;
     return ++h;
 }
 
-// ── WSAStartup ────────────────────────────────────────────────
+//  WSAStartup 
 // int WSAStartup(WORD wVersionRequired, LPWSADATA lpWSAData);
 uint64_t Ws2_32::WSAStartup(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 2) return -1;
@@ -43,7 +43,7 @@ uint64_t Ws2_32::WSAStartup(void* e, const std::string&, int, const std::vector<
     return 0; // ERROR_SUCCESS
 }
 
-// ── WSASocketA ────────────────────────────────────────────────
+//  WSASocketA 
 // SOCKET WSASocketA(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtocolInfo,
 //                    GROUP g, DWORD dwFlags);
 uint64_t Ws2_32::WSASocketA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
@@ -52,7 +52,7 @@ uint64_t Ws2_32::WSASocketA(void* e, const std::string&, int, const std::vector<
     return static_cast<uint64_t>(next_socket_handle());
 }
 
-// ── connect ──────────────────────────────────────────────────
+//  connect 
 // int connect(SOCKET s, const sockaddr* name, int namelen);
 uint64_t Ws2_32::connect(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return -1;
@@ -79,7 +79,7 @@ uint64_t Ws2_32::connect(void* e, const std::string&, int, const std::vector<uin
     return 0; // ERROR_SUCCESS
 }
 
-// ── send ──────────────────────────────────────────────────────
+//  send 
 // int send(SOCKET s, const char* buf, int len, int flags);
 uint64_t Ws2_32::send(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 4) return -1;
@@ -102,7 +102,7 @@ uint64_t Ws2_32::send(void* e, const std::string&, int, const std::vector<uint64
     return blen;
 }
 
-// ── recv ──────────────────────────────────────────────────────
+//  recv 
 // int recv(SOCKET s, char* buf, int len, int flags);
 uint64_t Ws2_32::recv(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 4) return -1;
@@ -113,11 +113,11 @@ uint64_t Ws2_32::recv(void* e, const std::string&, int, const std::vector<uint64
     (void)s; (void)flags;
     (void)buf; (void)blen;
 
-    // Return 0 (no data available) — keeps most malware running
+    // Return 0 (no data available)  keeps most malware running
     return 0;
 }
 
-// ── closesocket ──────────────────────────────────────────────
+//  closesocket 
 // int closesocket(SOCKET s);
 uint64_t Ws2_32::closesocket(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e;
@@ -125,7 +125,7 @@ uint64_t Ws2_32::closesocket(void* e, const std::string&, int, const std::vector
     return 0;
 }
 
-// ── bind ──────────────────────────────────────────────────────
+//  bind 
 // int bind(SOCKET s, const sockaddr* addr, int namelen);
 uint64_t Ws2_32::bind(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return -1;
@@ -149,7 +149,7 @@ uint64_t Ws2_32::bind(void* e, const std::string&, int, const std::vector<uint64
     return 0;
 }
 
-// ── listen ────────────────────────────────────────────────────
+//  listen 
 // int listen(SOCKET s, int backlog);
 uint64_t Ws2_32::listen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e;
@@ -157,7 +157,7 @@ uint64_t Ws2_32::listen(void* e, const std::string&, int, const std::vector<uint
     return 0;
 }
 
-// ── accept ────────────────────────────────────────────────────
+//  accept 
 // SOCKET accept(SOCKET s, sockaddr* addr, int* addrlen);
 uint64_t Ws2_32::accept(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return -1;
@@ -177,7 +177,7 @@ uint64_t Ws2_32::accept(void* e, const std::string&, int, const std::vector<uint
     return static_cast<uint64_t>(next_socket_handle());
 }
 
-// ── gethostbyname ────────────────────────────────────────────
+//  gethostbyname 
 // struct hostent* gethostbyname(const char* name);
 uint64_t Ws2_32::gethostbyname(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return 0;
@@ -196,18 +196,18 @@ uint64_t Ws2_32::gethostbyname(void* e, const std::string&, int, const std::vect
         }
     }
 
-    // Return 0 (failure) — the caller will handle it
+    // Return 0 (failure)  the caller will handle it
     return 0;
 }
 
-// ── WSAGetLastError ──────────────────────────────────────────
+//  WSAGetLastError 
 // int WSAGetLastError();
 uint64_t Ws2_32::WSAGetLastError(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return 0;
 }
 
-// ── inet_addr ────────────────────────────────────────────────
+//  inet_addr 
 // unsigned long inet_addr(const char* cp);
 uint64_t Ws2_32::inet_addr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return 0xFFFFFFFF;
@@ -228,7 +228,7 @@ uint64_t Ws2_32::inet_addr(void* e, const std::string&, int, const std::vector<u
     return static_cast<uint64_t>(ip);
 }
 
-// ── htons ────────────────────────────────────────────────────
+//  htons 
 // u_short htons(u_short hostshort);
 uint64_t Ws2_32::htons(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e;
@@ -236,7 +236,7 @@ uint64_t Ws2_32::htons(void* e, const std::string&, int, const std::vector<uint6
     uint16_t val = static_cast<uint16_t>(a[0] & 0xFFFF);
     return static_cast<uint64_t>((val >> 8) | (val << 8));
 }
-// ── select ────────────────────────────────────────────────────
+//  select 
 // int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout);
 uint64_t Ws2_32::select(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 5) return 0;
@@ -245,7 +245,7 @@ uint64_t Ws2_32::select(void* e, const std::string&, int, const std::vector<uint
     uint64_t exceptfds = a[3];
     (void)readfds; (void)writefds; (void)exceptfds;
 
-    // Return 0 (no ready handles) — keeps most malware in a loop but won't crash
+    // Return 0 (no ready handles)  keeps most malware in a loop but won't crash
     return 0;
 }
 

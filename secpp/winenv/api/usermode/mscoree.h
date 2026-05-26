@@ -1,4 +1,4 @@
-// mscoree.h — mscoree.dll API handler
+// mscoree.h  mscoree.dll API handler
 #ifndef SPEAKEASY_MSCOREE_H
 #define SPEAKEASY_MSCOREE_H
 #include <string>

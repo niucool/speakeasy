@@ -195,7 +195,7 @@ public:
     std::string do_str_format(const std::string& string, const std::vector<uint64_t>& argv);
 };
 
-// ── Registration macros ─────────────────────────────────────
+//  Registration macros 
 //
 // Usage in handler class:
 //   class Foo : public ApiHandler {

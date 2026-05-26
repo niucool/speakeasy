@@ -1,4 +1,4 @@
-// msi32.h — msi32.dll API handler
+// msi32.h  msi32.dll API handler
 #ifndef SPEAKEASY_MSI32_H
 #define SPEAKEASY_MSI32_H
 #include <string>

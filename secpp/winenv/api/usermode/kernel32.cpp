@@ -1,4 +1,4 @@
-// kernel32.cpp — kernel32.dll handler (v2 — ~110 APIs, macro-driven)
+// kernel32.cpp  kernel32.dll handler (v2  ~110 APIs, macro-driven)
 //
 // Maps to: speakeasy/winenv/api/usermode/kernel32.py
 //
@@ -34,7 +34,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) {
     return static_cast<WindowsEmulator*>(e);
 }
@@ -59,7 +59,7 @@ static inline int ptr_sz(void* e) {
 #undef RtlZeroMemory
 #endif
 
-// ── Windows constants (use K32_ prefix to avoid SDK macro conflicts) ──
+//  Windows constants (use K32_ prefix to avoid SDK macro conflicts) 
 static constexpr uint32_t K32_ERR_SUCCESS           = 0;
 static constexpr uint32_t K32_ERR_FILE_NOT_FOUND    = 2;
 static constexpr uint32_t K32_ERR_PATH_NOT_FOUND    = 3;
@@ -107,7 +107,7 @@ static constexpr uint32_t K32_TH32CS_SNAPTHREAD     = 0x00000004;
 static constexpr uint32_t K32_TH32CS_SNAPMODULE     = 0x00000008;
 static constexpr uint32_t K32_TH32CS_SNAPALL        = 0x0000000F;
 
-// ── Permission conversion helpers ─────────────────────────────
+//  Permission conversion helpers 
 static inline int win_to_emu_perms(uint32_t win_perms) {
     if (win_perms & K32_PAGE_EX_RW) return PERM_MEM_RWX;
     if (win_perms & K32_PAGE_NO) return PERM_MEM_NONE;
@@ -118,7 +118,7 @@ static inline int win_to_emu_perms(uint32_t win_perms) {
     return p;
 }
 
-// ── Snapshot state for Toolhelp ───────────────────────────────
+//  Snapshot state for Toolhelp 
 struct SnapEntry {
     int index;
     std::vector<void*> items;
@@ -128,7 +128,7 @@ static std::unordered_map<uint64_t, std::unordered_map<uint32_t, SnapEntry>> g_s
 static uint64_t g_next_handle = 0x1800;
 static uint64_t g_next_snap_handle = 0x2000;
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Kernel32)
     REG(Kernel32, CreateFileA, 7)    REG(Kernel32, CreateFileW, 7)
@@ -209,9 +209,9 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  FILE I/O APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::CreateFileA(void* emu, const std::string&, int,
                                 const std::vector<uint64_t>& argv) {
@@ -659,9 +659,9 @@ uint64_t Kernel32::GetDiskFreeSpaceExA(void* emu, const std::string&, int,
     return 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  MEMORY APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::VirtualAlloc(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>& argv) {
@@ -922,9 +922,9 @@ uint64_t Kernel32::RtlZeroMemory(void* emu, const std::string&, int,
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  DLL / MODULE APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 static uint64_t do_load_library(void* emu, uint64_t name_ptr, int cw) {
     if (!name_ptr) return 0;
@@ -1089,9 +1089,9 @@ uint64_t Kernel32::DisableThreadLibraryCalls(void* emu, const std::string&, int,
     return 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PROCESS / THREAD APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::CreateProcessA(void* emu, const std::string&, int,
                                    const std::vector<uint64_t>& argv) {
@@ -1389,9 +1389,9 @@ uint64_t Kernel32::GetThreadPriority(void* emu, const std::string&, int,
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  SYNC APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::CreateEventA(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>& argv) {
@@ -1542,9 +1542,9 @@ uint64_t Kernel32::CancelWaitableTimer(void* emu, const std::string&, int,
     return 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  SYSTEM APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::GetTickCount(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>&) {
@@ -1754,9 +1754,9 @@ uint64_t Kernel32::SetUnhandledExceptionFilter(void* emu, const std::string&, in
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  ERROR APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::GetLastError(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>&) {
@@ -1789,9 +1789,9 @@ uint64_t Kernel32::UnhandledExceptionFilter(void* emu, const std::string&, int,
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  STRING APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::lstrlenA(void* emu, const std::string&, int,
                              const std::vector<uint64_t>& argv) {
@@ -1933,9 +1933,9 @@ uint64_t Kernel32::GetCommandLineW(void* emu, const std::string&, int,
     return addr;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  ENVIRONMENT APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::GetEnvironmentVariableA(void* emu, const std::string&, int,
                                             const std::vector<uint64_t>& argv) {
@@ -2037,9 +2037,9 @@ uint64_t Kernel32::ExpandEnvironmentStringsA(void* emu, const std::string&, int,
     return static_cast<uint64_t>(result.size());
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  TOOLHELP APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, const std::string&, int,
                                              const std::vector<uint64_t>& argv) {
@@ -2225,9 +2225,9 @@ uint64_t Kernel32::Module32NextA(void* emu, const std::string&, int,
     return module32_impl(emu, argv, false);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  CONSOLE / MISC APIs
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Kernel32::AllocConsole(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>&) {

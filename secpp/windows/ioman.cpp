@@ -1,4 +1,4 @@
-// ioman.cpp — I/O Manager implementation
+// ioman.cpp  I/O Manager implementation
 
 #include "ioman.h"
 #include "objman.h"   // for Driver, Device

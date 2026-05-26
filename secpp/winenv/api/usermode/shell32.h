@@ -1,4 +1,4 @@
-// shell32.h — shell32.dll API handler (v2)
+// shell32.h  shell32.dll API handler (v2)
 #ifndef SPEAKEASY_SHELL32_H
 #define SPEAKEASY_SHELL32_H
 #include <string>

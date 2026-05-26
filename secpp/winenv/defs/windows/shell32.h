@@ -1,4 +1,4 @@
-// shell32.h — Windows Shell32 type definitions
+// shell32.h  Windows Shell32 type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/shell32.py
 //
@@ -16,7 +16,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── CSIDL constants ───────────────────────────────────────────
+//  CSIDL constants 
 
 constexpr uint32_t CSIDL_DESKTOP                  = 0x00;
 constexpr uint32_t CSIDL_INTERNET                 = 0x01;
@@ -149,7 +149,7 @@ inline std::string get_csidl_name(uint32_t csidl) {
     return (it != m.end()) ? it->second : "CSIDL_UNKNOWN";
 }
 
-// ── Structures ────────────────────────────────────────────────
+//  Structures 
 
 struct SHELLEXECUTEINFOA : speakeasy::EmuStruct {
     uint32_t cbSize            = 0;

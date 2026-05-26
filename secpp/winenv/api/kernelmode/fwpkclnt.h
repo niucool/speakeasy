@@ -1,4 +1,4 @@
-// fwpkclnt.h — Windows Filtering Platform API handler (STUB)
+// fwpkclnt.h  Windows Filtering Platform API handler (STUB)
 #ifndef SPEAKEASY_KERNELMODE_FWPKCLNT_H
 #define SPEAKEASY_KERNELMODE_FWPKCLNT_H
 #include <string>

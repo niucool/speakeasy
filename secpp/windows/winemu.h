@@ -1,4 +1,4 @@
-// winemu.h — Base Windows emulator class (C++ port of winemu.py)
+// winemu.h  Base Windows emulator class (C++ port of winemu.py)
 //
 // Python reference: speakeasy/windows/winemu.py  (2795 lines)
 //
@@ -61,11 +61,11 @@ using speakeasy::hex_str;
 // #include "winenv/defs/nt/ddk.h"
 // #include "winenv/defs/windows/windows.h"
 
-// ── Constants ────────────────────────────────────────────────
+//  Constants 
 
 constexpr int DISASM_SIZE = 0x20;
 
-// ── Bootstrap phase ──────────────────────────────────────────
+//  Bootstrap phase 
 
 enum class BootstrapPhase {
     INITIALIZED = 0,
@@ -74,14 +74,14 @@ enum class BootstrapPhase {
     FULL_SETUP_READY = 3
 };
 
-// ── Forward declarations ─────────────────────────────────────
+//  Forward declarations 
 
 class MemAccess;
 class Run;
 class WindowsEmuError;
 class WindowsApi;
 
-// ── WindowsEmulator ──────────────────────────────────────────
+//  WindowsEmulator 
 // Python winemu.py:51
 // class WindowsEmulator(BinaryEmulator):
 //     """Base class providing emulation of all Windows modules and shellcode.
@@ -94,20 +94,20 @@ class WindowsApi;
 
 class WindowsEmulator : public BinaryEmulator {
 protected:
-    // ── Core state ────────────────────────────────────────────
+    //  Core state 
     bool debug;
     int arch;
     BootstrapPhase bootstrap_phase = BootstrapPhase::INITIALIZED;
     bool _setup_done = false;
     bool kernel_mode = false;
 
-    // ── Modules ───────────────────────────────────────────────
+    //  Modules 
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> modules;
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules;
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> sys_modules;
     std::vector<std::tuple<void*, std::tuple<uint64_t, size_t>, std::string>> mod_refs;
 
-    // ── Runs ──────────────────────────────────────────────────
+    //  Runs 
     std::shared_ptr<Run> curr_run;
     bool restart_curr_run = false;
     std::shared_ptr<speakeasy::RuntimeModule> curr_mod;
@@ -118,13 +118,13 @@ protected:
     bool run_complete = false;
     bool emu_complete = false;
 
-    // ── Processes ─────────────────────────────────────────────
+    //  Processes 
     std::vector<std::shared_ptr<Process>> processes;
     std::vector<std::shared_ptr<Process>> child_processes;
     std::shared_ptr<Process> curr_process = nullptr;
     std::shared_ptr<Thread> curr_thread = nullptr;
 
-    // ── Memory / hooks ────────────────────────────────────────
+    //  Memory / hooks 
     uint64_t page_size = 4096;
     int ptr_size = 0;
     uint64_t virtual_mem_base = 0x50000;
@@ -135,37 +135,37 @@ protected:
     void* tmp_code_hook = nullptr;
     uint64_t prev_pc = 0;
 
-    // ── SEH / exceptions ──────────────────────────────────────
+    //  SEH / exceptions 
     uint64_t curr_exception_code = 0;
     uint64_t unhandled_exception_filter = 0;
     std::tuple<uint64_t, uint64_t> _seh_last_fault = {0, 0};
     int _seh_repeat_count = 0;
     static constexpr int _SEH_MAX_REPEAT = 3;
 
-    // ── Registers ─────────────────────────────────────────────
+    //  Registers 
     uint64_t fs_addr = 0;
     uint64_t gs_addr = 0;
     uint64_t return_hook = 0;
     uint64_t exit_hook = 0;
 
-    // ── Symbols / strings ─────────────────────────────────────
+    //  Symbols / strings 
     std::map<uint64_t, std::tuple<std::string, std::string>> symbols;
     std::vector<std::string> ansi_strings;
     std::vector<std::string> unicode_strings;
 
-    // ── Data queues ───────────────────────────────────────────
+    //  Data queues 
     std::vector<std::tuple<uint64_t, size_t>> tmp_maps;
     std::vector<std::tuple<std::string, std::string, uint64_t>> impdata_queue;
     std::vector<std::tuple<uint64_t, std::string, std::string>> dyn_imps;
     std::vector<std::tuple<uint64_t, std::string, std::string>> callbacks;
     std::map<uint64_t, std::tuple<std::string, uint64_t>> global_data;
-    // import_table: sentinel_addr → (dll_name, func_name)
+    // import_table: sentinel_addr  (dll_name, func_name)
     // Used by ensure_pe_import_hooks and load_image to patch IAT entries
     // so that API calls are intercepted via sentinel values.
     std::map<uint64_t, std::tuple<std::string, std::string>> import_table;
     std::vector<void*> pic_buffers;
 
-    // ── Config fields ─────────────────────────────────────────
+    //  Config fields 
     std::string cd;
     std::string command_line;
     std::map<std::string, std::string> registry_config;
@@ -174,7 +174,7 @@ protected:
     bool modules_always_exist = false;
     bool functions_always_exist = false;
 
-    // ── Managers ──────────────────────────────────────────────
+    //  Managers 
     std::shared_ptr<RegistryManager> regman = nullptr;
     std::shared_ptr<FileManager> fileman = nullptr;
     std::shared_ptr<NetworkManager> netman = nullptr;
@@ -185,7 +185,7 @@ protected:
     std::shared_ptr<ObjectManager> om = nullptr;     // ObjectManager
     void* wintypes = nullptr;
 
-    // ── Helper ────────────────────────────────────────────────
+    //  Helper 
     static std::string normalize_mod_name(const std::string& name);
 
 public:
@@ -196,7 +196,7 @@ public:
                     void* exit_event = nullptr, bool debug = false);
     virtual ~WindowsEmulator() = default;
 
-    // ── Abstract (subclass must implement) ────────────────────
+    //  Abstract (subclass must implement) 
     // Python winemu.py:190
     // def on_run_complete(self):
     //     """Clean up after a run completes (implemented in the child class) since
@@ -215,7 +215,7 @@ public:
     //     """Initialize configured processes. Subclasses must implement."""
     virtual void init_processes(const std::vector<void*>& lprocesses) {}
 
-    // ── Bootstrap ─────────────────────────────────────────────
+    //  Bootstrap 
     // Python winemu.py:155
     // def advance_bootstrap_phase(self, phase):
     //     """Advance the bootstrap phase with explicit transition validation.
@@ -238,14 +238,14 @@ public:
     //     """Validate that ObjectManager is initialized. Raises WindowsEmuError if not."""
     void validate_object_services(const std::string& reason);
 
-    // ── Config ────────────────────────────────────────────────
+    //  Config 
     // Config parsing now handled by BinaryEmulator (typed SpeakeasyConfig)
     // Python winemu.py:147
     // def _parse_config(self, config):
     //     """Parse the emulation config file. Not yet ported to C++."""
     std::map<std::string, std::string> get_registry_config();
 
-    // ── Hooks ─────────────────────────────────────────────────
+    //  Hooks 
     // Python winemu.py:199
     // def enable_code_hook(self):
     //     """Install the transient code hook needed for deferred work."""
@@ -281,7 +281,7 @@ public:
     //     and disables itself once the pending work is drained."""
     bool _hook_code_core(void* emu, uint64_t addr, size_t size);
 
-    // ── Memory exception handlers ───────────────────────────────
+    //  Memory exception handlers 
     // Python winemu.py:1960
     // def _handle_invalid_read(self, emu, address, size, value):
     //     """Hook each invalid memory read event that occurs."""
@@ -295,13 +295,13 @@ public:
     //     """Called when non-writable address is written to."""
     bool _handle_invalid_write(void* emu, uint64_t addr, size_t size, uint64_t value);
 
-    // ── Shared data ─────────────────────────────────────────────
+    //  Shared data 
     // Python winemu.py:507
     // def _populate_user_shared_data(self, base):
     //     """Populate the KUSER_SHARED_DATA page with system time and version info."""
     void _populate_user_shared_data(uint64_t base);
 
-    // ── Memory ────────────────────────────────────────────────
+    //  Memory 
     // Python winemu.py:251
     // def cast(self, obj, bytez):
     //     """Create a formatted structure from bytes"""
@@ -325,7 +325,7 @@ public:
     //     This will be done a little differently depending on architecture"""
     std::tuple<uint64_t, uint64_t> _setup_gdt(int arch);
 
-    // ── File ──────────────────────────────────────────────────
+    //  File 
     // Python winemu.py:267
     // def file_open(self, path, create=False, truncate=False):
     //     """Open an emulated file using the file manager"""
@@ -361,25 +361,25 @@ public:
     //     """Get the file emulation manager"""
     std::shared_ptr<FileManager> get_file_manager();
 
-    // ── Network ───────────────────────────────────────────────
+    //  Network 
     // Python winemu.py:315
     // def get_network_manager(self):
     //     """Get the network emulation manager"""
     std::shared_ptr<NetworkManager> get_network_manager();
 
-    // ── Crypto ────────────────────────────────────────────────
+    //  Crypto 
     // Python winemu.py:321
     // def get_crypt_manager(self):
     //     """Get the crypto manager"""
     std::shared_ptr<CryptoManager> get_crypt_manager();
 
-    // ── Drives ────────────────────────────────────────────────
+    //  Drives 
     // Python winemu.py:327
     // def get_drive_manager(self):
     //     """Get the drive manager"""
     std::shared_ptr<DriveManager> get_drive_manager();
 
-    // ── Registry ──────────────────────────────────────────────
+    //  Registry 
     // Python winemu.py:351
     // def reg_open_key(self, path, create=False):
     //     """Open or create a registry key in the emulation space"""
@@ -397,7 +397,7 @@ public:
     //     """Create a registry key"""
     void* reg_create_key(const std::string& path);
 
-    // ── Run control ───────────────────────────────────────────
+    //  Run control 
     // Python winemu.py:386
     // def add_run(self, run):
     //     """Add a run to the emulation run queue"""
@@ -414,7 +414,7 @@ public:
     // def call(self, addr, params=[]):
     //     """Start emulating at the specified address"""
     void call(uint64_t addr, const std::vector<std::string>& params = {});
-    // Python winemu.py:— (run exec loop inline in start())
+    // Python winemu.py: (run exec loop inline in start())
     std::shared_ptr<Run> _exec_run(std::shared_ptr<Run> run);
     // Python winemu.py:543
     // def start(self, addr=None, size=None):
@@ -425,7 +425,7 @@ public:
     //     """Resume emulation at the specified address."""
     void resume(uint64_t addr, int count = -1);
 
-    // ── Run access ────────────────────────────────────────────
+    //  Run access 
     // Python winemu.py:609
     // def get_current_run(self):
     //     """Get the current run that is being emulated"""
@@ -439,7 +439,7 @@ public:
     //     """Get all files written by the sample from the file manager"""
     std::vector<std::shared_ptr<File>> get_dropped_files();
 
-    // ── Process / thread ──────────────────────────────────────
+    //  Process / thread 
     // Python winemu.py:635
     // def get_processes(self):
     //     """Get the current processes that exist in the emulation space"""
@@ -466,7 +466,7 @@ public:
     //     """Set the current thread"""
     void set_current_thread(std::shared_ptr<Thread> thread);
 
-    // ── Environment ────────────────────────────────────────────
+    //  Environment 
     // Python winemu.py:1142
     // def get_system_root(self):
     //     """Get the path of the "SYSTEMROOT" environment variable"""
@@ -500,7 +500,7 @@ public:
     //     """Post-init setup hook. Subclasses override."""
     virtual void setup(size_t stack_commit = 0, bool first_time_setup = true) = 0;
 
-    // ── Object management ──────────────────────────────────────
+    //  Object management 
     // Python winemu.py:1182
     // def get_object_from_addr(self, addr):
     //     """Get an object from its memory address."""
@@ -530,7 +530,7 @@ public:
     //     """Create a new object of the given type."""
     template<typename T> std::shared_ptr<T> new_object();
 
-    // ── PE / module helpers ────────────────────────────────────
+    //  PE / module helpers 
     // Python winemu.py:847
     // def get_mod_from_addr(self, addr):
     //     """Get a module from an address within it."""
@@ -548,7 +548,7 @@ public:
     //     """Get modules that are visible in the PEB."""
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> get_peb_modules();
 
-    // ── PE initialization ─────────────────────────────────────
+    //  PE initialization 
     // Python winemu.py:760
     // def init_peb(self, user_mods, proc=None):
     //     """Initialize the Process Environment Block"""
@@ -577,7 +577,7 @@ public:
     //     values so that API calls are intercepted by speakeasy. Idempotent."""
     void ensure_pe_import_hooks(uint64_t base_addr);
 
-    // ── Module loading ────────────────────────────────────────
+    //  Module loading 
     // Python winemu.py:2180
     // def get_native_module_path(self, mod_name=""):
     //     """Get the full filesystem path of a default decoy that is supplied by speakeasy"""
@@ -616,7 +616,7 @@ public:
     //     """Initialize a group of modules from config objects."""
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> _init_module_group(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config, uint64_t default_base = 0);
 
-    // ── Thread context ────────────────────────────────────────
+    //  Thread context 
     // Python winemu.py:2364
     // def get_thread_context(self, thread=None):
     //     """Get the current thread CPU context"""
@@ -626,7 +626,7 @@ public:
     //     """Set the current thread CPU context"""
     void load_thread_context(void* ctx, std::shared_ptr<Thread> thread = nullptr);
 
-    // ── API / import handling ──────────────────────────────────
+    //  API / import handling 
     // Python winemu.py:1639
     // def handle_import_func(self, dll, name):
     //     """Forward imported functions to the corresponding handler (if any)."""
@@ -667,14 +667,14 @@ public:
     //     """Restart the current run"""
     void restart_run(void* run);
 
-    // ── Unicorn hook bridge ──────────────────────────────────
-    // Python winemu.py:— (Unicorn engine binding)
+    //  Unicorn hook bridge 
+    // Python winemu.py: (Unicorn engine binding)
     void _register_code_hook(void* callback, uint64_t begin, uint64_t end);
-    // Python winemu.py:— (Unicorn engine binding)
+    // Python winemu.py: (Unicorn engine binding)
     void _register_mem_hook(int hook_type, void* callback);
     std::vector<uc_hook> uc_hooks_;
 
-    // ── Memory hooks (additional) ──────────────────────────────
+    //  Memory hooks (additional) 
     // Python winemu.py:1831
     // def _hook_mem_read(self, emu, access, address, size, value):
     //     """Hook each memory read event that occurs. This hook is used to lookup symbols and modules
@@ -698,7 +698,7 @@ public:
     //     """Handle protection violation on write access by mapping a fake page and logging error."""
     bool _handle_prot_write(void* emu, uint64_t addr, uint64_t size, uint64_t value);
 
-    // ── Code hooks (additional) ────────────────────────────────
+    //  Code hooks (additional) 
     // Python winemu.py:2097
     // def _hook_code_tracing(self, emu, addr, size):
     //     """Persistent code hook for memory tracing: instruction counting,
@@ -722,7 +722,7 @@ public:
     //     """Install debug code hook if enabled."""
     void set_debug_hooks();
 
-    // ── SEH ───────────────────────────────────────────────────
+    //  SEH 
     // Python winemu.py:2467
     // def _get_exception_list(self):
     //     """Retrieves the exception handler list for the current thread"""
@@ -753,7 +753,7 @@ public:
     //     """Reset SEH repeat-detection state."""
     void continue_seh();
 
-    // ── Objects ───────────────────────────────────────────────
+    //  Objects 
     // Python winemu.py:2713
     // def create_event(self, name=""):
     //     """Create a kernel event object"""
@@ -772,17 +772,17 @@ public:
     void* dev_ioctl(uint32_t ctl_code, void* in_buf, size_t in_len,
                     void* out_buf, size_t out_len);
 
-    // ── Process / thread creation ─────────────────────────────
+    //  Process / thread creation 
     // Python winemu.py:1226
     // def create_process(self, path=None, cmdline=None, image=None, child=False):
     //     """Create a process object that will exist in the emulator.
-    //     NOT YET PORTED — stub only."""
+    //     NOT YET PORTED  stub only."""
     std::shared_ptr<Process> create_process(const std::string& path = "", const std::string& cmdline = "",
         std::shared_ptr<speakeasy::RuntimeModule> image = nullptr, bool child = false);
     // Python winemu.py:1293
     // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
     //     """Create a thread object that will exist in the emulator.
-    //     NOT YET PORTED — stub only."""
+    //     NOT YET PORTED  stub only."""
     std::shared_ptr<Thread> create_thread(uint64_t addr, void* ctx, std::shared_ptr<Process> proc_obj,
                         const std::string& thread_type = "thread", bool is_suspended = false);
     // def resume_thread(self, thread):
@@ -797,7 +797,7 @@ public:
     //     """Get the PEB for a given process."""
     void* get_process_peb(void* process);
 
-    // ── Error / context ────────────────────────────────────────
+    //  Error / context 
     // Python winemu.py:1511
     // def get_error_info(self, desc, address, traceback=None, access_type=None):
     //     """Collect emulator state information in the event of an error."""
@@ -811,14 +811,14 @@ public:
     //     """Return a RegionInfo for the region containing addr, or None if unmapped."""
     std::string _resolve_region_info(uint64_t addr);
 
-    // ── Hardware interrupts ───────────────────────────────────
+    //  Hardware interrupts 
     // Python winemu.py:2742
     // def _hook_interrupt(self, emu, intnum):
     //     """Called when software interrupts occur (INT3, INT0, INT1, INT0x29, etc.)"""
     bool _hook_interrupt(void* emu, int intnum);
 };
 
-// ── Free functions ───────────────────────────────────────────
+//  Free functions 
 
 // Python winemu.py:40
 // def _normalize_mod_name(name: str) -> str:

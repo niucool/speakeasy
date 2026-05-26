@@ -1,4 +1,4 @@
-// netio.cpp — Network I/O handler (implemented)
+// netio.cpp  Network I/O handler (implemented)
 #include "netio.h"
 
 #include <cstdint>
@@ -14,7 +14,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
@@ -25,7 +25,7 @@ Netio::Netio(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── Implementations ───────────────────────────────────────────
+//  Implementations 
 
 uint64_t Netio::NsiEnumerateObjectsAllParametersEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // ULONG NsiEnumerateObjectsAllParametersEx();

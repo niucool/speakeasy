@@ -1,4 +1,4 @@
-// iphlpapi.h — IP Helper API type definitions
+// iphlpapi.h  IP Helper API type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/iphlpapi.py
 //
@@ -15,7 +15,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── Constants ──────────────────────────────────────────────────
+//  Constants 
 
 constexpr uint32_t MAX_ADAPTER_NAME_LENGTH        = 256;
 constexpr uint32_t MAX_ADAPTER_DESCRIPTION_LENGTH = 128;
@@ -32,7 +32,7 @@ constexpr uint32_t MIB_IF_TYPE_SLIP      = 28;
 constexpr uint32_t IF_TYPE_ISO88025_TOKENRING = 9;
 constexpr uint32_t IF_TYPE_IEEE80211          = 71;
 
-// ── IP_ADDR_STRING ─────────────────────────────────────────────
+//  IP_ADDR_STRING 
 
 struct IP_ADDR_STRING : speakeasy::EmuStruct {
     uint64_t Next       = 0;  // struct _IP_ADDR_STRING*
@@ -65,7 +65,7 @@ struct IP_ADDR_STRING : speakeasy::EmuStruct {
     }
 };
 
-// ── IP_ADAPTER_INFO ────────────────────────────────────────────
+//  IP_ADAPTER_INFO 
 
 struct IP_ADAPTER_INFO : speakeasy::EmuStruct {
     uint64_t Next                      = 0;  // struct _IP_ADAPTER_INFO*

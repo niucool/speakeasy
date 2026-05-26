@@ -1,4 +1,4 @@
-// ndis.h — Network Driver Interface Specification API handler (STUB)
+// ndis.h  Network Driver Interface Specification API handler (STUB)
 #ifndef SPEAKEASY_KERNELMODE_NDIS_H
 #define SPEAKEASY_KERNELMODE_NDIS_H
 #include <string>

@@ -1,4 +1,4 @@
-// secur32.h — Windows Security Support Provider Interface types
+// secur32.h  Windows Security Support Provider Interface types
 //
 // Maps to: speakeasy/winenv/defs/windows/secur32.py
 //
@@ -15,7 +15,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── EXTENDED_NAME_FORMAT ──────────────────────────────────────
+//  EXTENDED_NAME_FORMAT 
 
 constexpr uint32_t NameUnknown          = 0;
 constexpr uint32_t NameFullyQualifiedDN = 1;
@@ -30,7 +30,7 @@ constexpr uint32_t NameDnsDomain        = 0xC;
 constexpr uint32_t NameGivenName        = 0xD;
 constexpr uint32_t NameSurname          = 0xE;
 
-// ── SECURITY error codes ──────────────────────────────────────
+//  SECURITY error codes 
 
 constexpr int32_t SEC_E_INVALID_HANDLE  = 0x80090301;
 constexpr int32_t SEC_E_OK              = 0;
@@ -44,7 +44,7 @@ constexpr int32_t SEC_E_NO_CREDENTIALS  = 0x8009030E;
 constexpr int32_t SEC_E_LOGON_DENIED    = 0x8009030C;
 constexpr int32_t SEC_E_BUFFER_TOO_SMALL = 0x80090321;
 
-// ── SecBuffer type flags ──────────────────────────────────────
+//  SecBuffer type flags 
 
 constexpr uint32_t SECBUFFER_VERSION   = 0;
 constexpr uint32_t SECBUFFER_EMPTY     = 0;
@@ -59,7 +59,7 @@ constexpr uint32_t SECBUFFER_NEGOTIATION_INFO = 8;
 constexpr uint32_t SECBUFFER_PADDING    = 9;
 constexpr uint32_t SECBUFFER_STREAM     = 10;
 
-// ── Security package flags ────────────────────────────────────
+//  Security package flags 
 
 constexpr uint32_t SECPKG_FLAG_INTEGRITY      = 0x1;
 constexpr uint32_t SECPKG_FLAG_PRIVACY        = 0x2;
@@ -68,7 +68,7 @@ constexpr uint32_t SECPKG_FLAG_DATAGRAM       = 0x8;
 constexpr uint32_t SECPKG_FLAG_CONNECTION     = 0x10;
 constexpr uint32_t SECPKG_FLAG_MULTI_REQUIRED = 0x20;
 
-// ── SecBuffer ─────────────────────────────────────────────────
+//  SecBuffer 
 
 struct SecBuffer : speakeasy::EmuStruct {
     uint32_t cbBuffer   = 0;  // Size of buffer
@@ -92,7 +92,7 @@ struct SecBuffer : speakeasy::EmuStruct {
     }
 };
 
-// ── SecBufferDesc ──────────────────────────────────────────────
+//  SecBufferDesc 
 
 struct SecBufferDesc : speakeasy::EmuStruct {
     uint32_t ulVersion   = SECBUFFER_VERSION;
@@ -116,7 +116,7 @@ struct SecBufferDesc : speakeasy::EmuStruct {
     }
 };
 
-// ── SecPkgInfo ────────────────────────────────────────────────
+//  SecPkgInfo 
 
 struct SecPkgInfo : speakeasy::EmuStruct {
     uint32_t fCapabilities = 0;  // SECPKG_FLAG_*

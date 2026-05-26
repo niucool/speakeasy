@@ -1,4 +1,4 @@
-// volmgr.h — Volume Manager kernel module
+// volmgr.h  Volume Manager kernel module
 //
 // Maps to: speakeasy/windows/kernel_mods/volmgr.py
 //
@@ -16,7 +16,7 @@
 
 namespace speakeasy {
 
-// ── Disk extent structures ───────────────────────────────────
+//  Disk extent structures 
 
 struct DISK_EXTENT : EmuStruct {
     uint32_t DiskNumber = 0;
@@ -51,7 +51,7 @@ struct VOLUME_DISK_EXTENTS : EmuStruct {
     }
 };
 
-// ── Volume Manager driver module ─────────────────────────────
+//  Volume Manager driver module 
 
 class VolMgrModule : public KernelModBase {
 public:

@@ -1,4 +1,4 @@
-// com_api.h — COM API handler (v2 — macro-based registration)
+// com_api.h  COM API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_COM_API_H
 #define SPEAKEASY_COM_API_H
 #include <string>

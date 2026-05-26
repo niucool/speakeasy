@@ -1,4 +1,4 @@
-// msvfw32.cpp — msvfw32.dll handler (real implementations)
+// msvfw32.cpp  msvfw32.dll handler (real implementations)
 #include "msvfw32.h"
 #include <cstdint>
 #include <string>
@@ -22,31 +22,31 @@ static uint64_t msvfw_get_handle() {
     return h;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  ICOpen
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Msvfw32::ICOpen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return msvfw_get_handle();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  ICSendMessage
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Msvfw32::ICSendMessage(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  ICClose
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Msvfw32::ICClose(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return 1;
 }
 
-// ── Constructor ─────────────────────────────────────────────────
+//  Constructor 
 Msvfw32::Msvfw32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Msvfw32)
     REG(Msvfw32, ICOpen, 3)

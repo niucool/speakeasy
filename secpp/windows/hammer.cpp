@@ -1,4 +1,4 @@
-// hammer.cpp — API Hammering Detection and Mitigation
+// hammer.cpp  API Hammering Detection and Mitigation
 //
 // Maps to: speakeasy/windows/hammer.py
 //
@@ -73,9 +73,9 @@ void ApiHammer::handle_import_func(const std::string& imp_api, int conv, int arg
     exceeding api_threshold, we patch the call site to bypass the API call.
 
     Two patch strategies:
-      1. Direct call via 'call dword ptr [addr]' — inline patch with
+      1. Direct call via 'call dword ptr [addr]'  inline patch with
          xor eax,eax; nop...
-      2. Indirect call via 'call reg' — redirect to a hammer patch region
+      2. Indirect call via 'call reg'  redirect to a hammer patch region
          that contains xor eax,eax; retn
     */
     if (!enabled) {
@@ -119,9 +119,9 @@ void ApiHammer::_handle_hammer_x86(const std::string& imp_api, int conv,
     Handle API hammering detection and patching for x86 (32-bit) architecture.
 
     Two main scenarios:
-      A) Direct call: 'call dword ptr [addr]' — 6 bytes before return address.
+      A) Direct call: 'call dword ptr [addr]'  6 bytes before return address.
          Patch inline with xor eax,eax + stack cleanup.
-      B) Indirect call via register: 'call reg' — 2 bytes before return address.
+      B) Indirect call via register: 'call reg'  2 bytes before return address.
          Too little space for inline stack fixup, so we redirect the register
          to a hammerpatch memory region.
     */
@@ -135,13 +135,13 @@ void ApiHammer::_handle_hammer_x86(const std::string& imp_api, int conv,
         if (is_direct_ptr_instr(mnem, instr)) {
             // Scenario A: direct call/jmp via pointer, we have 6 bytes of space
             if (conv == speakeasy::arch::CALL_CONV_CDECL) {
-                // cdecl: caller cleans stack — just xor eax,eax & nops
+                // cdecl: caller cleans stack  just xor eax,eax & nops
                 std::vector<uint8_t> patch = {0x31, 0xc0, 0x90, 0x90, 0x90, 0x90, 0x90};
                 emu->mem_write(eip, patch);
                 emu->log_info("API HAMMERING DETECTED - patching 1 cdecl at " +
                               std::to_string(eip));
             } else if (conv == speakeasy::arch::CALL_CONV_STDCALL) {
-                // stdcall: callee cleans stack — xor eax,eax; add esp, <count>
+                // stdcall: callee cleans stack  xor eax,eax; add esp, <count>
                 std::vector<uint8_t> patch = {0x31, 0xc0, 0x83, 0xc4,
                                                static_cast<uint8_t>(4 * argc), 0x90};
                 emu->mem_write(eip, patch);
@@ -221,9 +221,9 @@ void ApiHammer::_handle_hammer_amd64(const std::string& imp_api, int conv,
     cleaning the stack (like cdecl), so patches always use xor eax,eax; ret.
 
     Two main scenarios:
-      A) Direct call/jmp: 'call qword ptr [addr]' or 'jmp qword ptr [addr]' —
+      A) Direct call/jmp: 'call qword ptr [addr]' or 'jmp qword ptr [addr]' 
          6 bytes before return address. Patch inline with xor eax,eax; ret + nops.
-      B) Indirect call/jmp via register: 'call reg' or 'jmp reg' — 2 bytes.
+      B) Indirect call/jmp via register: 'call reg' or 'jmp reg'  2 bytes.
          Redirect the register to our hammer patch region (xor eax,eax; ret).
     */
     try {
@@ -235,7 +235,7 @@ void ApiHammer::_handle_hammer_amd64(const std::string& imp_api, int conv,
                       op + " " + instr);
 
         if (is_direct_ptr_instr(mnem, instr)) {
-            // Scenario A: direct call/jmp via pointer — 6 bytes of space
+            // Scenario A: direct call/jmp via pointer  6 bytes of space
             // x64 always uses caller-cleanup (like cdecl)
             // Patch: xor eax, eax (31 c0); ret (c3); nop padding
             std::vector<uint8_t> patch = {0x31, 0xc0, 0xc3, 0x90, 0x90, 0x90};

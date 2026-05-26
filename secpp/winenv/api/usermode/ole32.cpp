@@ -1,4 +1,4 @@
-// ole32.cpp — ole32.dll handler (~19 APIs, real implementations)
+// ole32.cpp  ole32.dll handler (~19 APIs, real implementations)
 #include "ole32.h"
 
 #include <cstring>
@@ -17,7 +17,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) {
     return static_cast<WindowsEmulator*>(e);
 }
@@ -31,7 +31,7 @@ static inline int ptr_sz(void* e) {
     return (be(e)->get_arch() == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
 }
 
-// ── GUID structure helpers ────────────────────────────────────
+//  GUID structure helpers 
 struct _OLEGUID {
     uint32_t Data1;
     uint16_t Data2;
@@ -63,7 +63,7 @@ static _OLEGUID read_guid(void* e, uint64_t addr) {
     return g;
 }
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 
 Ole32::Ole32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Ole32)
@@ -80,7 +80,7 @@ Ole32::Ole32(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── API implementations ───────────────────────────────────────
+//  API implementations 
 
 uint64_t Ole32::CoInitialize(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;

@@ -1,4 +1,4 @@
-// crypt32.cpp — crypt32.dll handler (~4 APIs, real implementations)
+// crypt32.cpp  crypt32.dll handler (~4 APIs, real implementations)
 #include "crypt32.h"
 
 #include <cstring>
@@ -15,7 +15,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) {
     return static_cast<WindowsEmulator*>(e);
 }
@@ -29,11 +29,11 @@ static inline MemoryManager* mm(void* e) {
     return static_cast<MemoryManager*>(e);
 }
 
-// ── Constants ─────────────────────────────────────────────────
+//  Constants 
 static const uint32_t CRYPT_FLAG_BASE64 = 0x01;
 static const uint32_t ERR_MORE_DATA = 234;
 
-// ── Base64 decode helper ──────────────────────────────────────
+//  Base64 decode helper 
 static std::vector<uint8_t> base64_decode(const std::string& input) {
     std::vector<uint8_t> empty;
     std::string s;
@@ -75,7 +75,7 @@ static std::vector<uint8_t> base64_decode(const std::string& input) {
     return out;
 }
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 
 Crypt32::Crypt32(void* emu) : ApiHandler(emu) {
     apis_ = {
@@ -86,7 +86,7 @@ Crypt32::Crypt32(void* emu) : ApiHandler(emu) {
     };
 }
 
-// ── API implementations ───────────────────────────────────────
+//  API implementations 
 
 uint64_t Crypt32::CryptStringToBinaryA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszString = a[0], cchString = a[1], dwFlags = a[2];

@@ -1,4 +1,4 @@
-// ndis.h — Network Driver Interface Specification (NDIS) types
+// ndis.h  Network Driver Interface Specification (NDIS) types
 //
 // Maps to: speakeasy/winenv/defs/ndis/ndis.py
 //
@@ -14,7 +14,7 @@
 
 namespace speakeasy { namespace defs { namespace ndis {
 
-// ── NDIS_OBJECT_HEADER (4 bytes) ─────────────────────────
+//  NDIS_OBJECT_HEADER (4 bytes) 
 struct NDIS_OBJECT_HEADER : speakeasy::EmuStruct {
     uint8_t  Type     = 0;  // offset 0
     uint8_t  Revision = 0;  // offset 1
@@ -30,7 +30,7 @@ struct NDIS_OBJECT_HEADER : speakeasy::EmuStruct {
     }
 };
 
-// ── NDIS_GENERIC_OBJECT ──────────────────────────────────
+//  NDIS_GENERIC_OBJECT 
 struct NDIS_GENERIC_OBJECT : speakeasy::EmuStruct {
     NDIS_OBJECT_HEADER Header;
     uint32_t __pad0    = 0;  // padding after Header to align pointer
@@ -53,7 +53,7 @@ struct NDIS_GENERIC_OBJECT : speakeasy::EmuStruct {
     }
 };
 
-// ── NET_BUFFER_LIST_POOL_PARAMETERS (20 bytes) ───────────
+//  NET_BUFFER_LIST_POOL_PARAMETERS (20 bytes) 
 struct NET_BUFFER_LIST_POOL_PARAMETERS : speakeasy::EmuStruct {
     NDIS_OBJECT_HEADER Header;
     uint8_t  ProtocolId            = 0;
@@ -79,7 +79,7 @@ struct NET_BUFFER_LIST_POOL_PARAMETERS : speakeasy::EmuStruct {
     }
 };
 
-// ── NET_BUFFER_LIST (x64: 128 bytes) ─────────────────────
+//  NET_BUFFER_LIST (x64: 128 bytes) 
 struct NET_BUFFER_LIST : speakeasy::EmuStruct {
     uint64_t Next              = 0;  // Ptr
     uint64_t FirstNetBuffer    = 0;  // Ptr
@@ -133,7 +133,7 @@ struct NET_BUFFER_LIST : speakeasy::EmuStruct {
     }
 };
 
-// ── NET_BUFFER_DATA (24 bytes) ───────────────────────────
+//  NET_BUFFER_DATA (24 bytes) 
 struct NET_BUFFER_DATA : speakeasy::EmuStruct {
     uint64_t Next             = 0;  // Ptr
     uint64_t CurrentMdl       = 0;  // Ptr
@@ -157,7 +157,7 @@ struct NET_BUFFER_DATA : speakeasy::EmuStruct {
     }
 };
 
-// ── NET_BUFFER_HEADER (16 bytes) ─────────────────────────
+//  NET_BUFFER_HEADER (16 bytes) 
 struct NET_BUFFER_HEADER : speakeasy::EmuStruct {
     NET_BUFFER_DATA NetBufferData;
     uint64_t        Link = 0;  // Ptr
@@ -174,7 +174,7 @@ struct NET_BUFFER_HEADER : speakeasy::EmuStruct {
     }
 };
 
-// ── NET_BUFFER (x64) ─────────────────────────────────────
+//  NET_BUFFER (x64) 
 struct NET_BUFFER : speakeasy::EmuStruct {
     uint64_t Link              = 0;  // Ptr
     uint64_t __pad0            = 0;  // padding for NET_BUFFER_HEADER alignment

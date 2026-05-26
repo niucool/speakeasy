@@ -1,4 +1,4 @@
-// dnsapi.cpp — dnsapi.dll handler (real implementation)
+// dnsapi.cpp  dnsapi.dll handler (real implementation)
 #include "dnsapi.h"
 #include <cstring>
 #include <cstdint>
@@ -14,14 +14,14 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ── DNS constants (DNS_ prefix to avoid Windows macro conflicts) ─
+//  DNS constants (DNS_ prefix to avoid Windows macro conflicts) 
 static constexpr uint32_t DNS_TEXT = 0x0010;
 static constexpr uint32_t DNS_A = 0x0001;
 static constexpr uint32_t DNS_OK = 0;
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  DnsQuery_
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t DnsApi::DnsQuery_(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 6) return 87; // ERROR_INVALID_PARAMETER
     uint64_t pszName = a[0];
@@ -116,7 +116,7 @@ uint64_t DnsApi::DnsQuery_(void* e, const std::string&, int, const std::vector<u
     return DNS_OK;
 }
 
-// ── Constructor ─────────────────────────────────────────────────
+//  Constructor 
 DnsApi::DnsApi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(DnsApi)
     REG(DnsApi, DnsQuery_, 6)

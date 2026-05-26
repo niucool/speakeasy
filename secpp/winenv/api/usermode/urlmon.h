@@ -1,4 +1,4 @@
-// urlmon.h — urlmon.dll API handler (v2 — macro-based registration)
+// urlmon.h  urlmon.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_URLMON_H
 #define SPEAKEASY_URLMON_H
 #include <string>

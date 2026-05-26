@@ -1,4 +1,4 @@
-// shell32.cpp — shell32.dll handler (~11 APIs, real implementations)
+// shell32.cpp  shell32.dll handler (~11 APIs, real implementations)
 #include "shell32.h"
 
 #include <cstring>
@@ -17,7 +17,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) {
     return static_cast<WindowsEmulator*>(e);
 }
@@ -28,7 +28,7 @@ static inline MemoryManager* mm(void* e) {
     return static_cast<MemoryManager*>(e);
 }
 
-// ── CSIDL path resolver ───────────────────────────────────────
+//  CSIDL path resolver 
 static std::string resolve_csidl_path(void* e, uint32_t csidl) {
     (void)e;
     switch (csidl) {
@@ -70,7 +70,7 @@ static std::string resolve_csidl_path(void* e, uint32_t csidl) {
     }
 }
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 
 Shell32::Shell32(void* emu) : ApiHandler(emu) {
     apis_ = {
@@ -88,7 +88,7 @@ Shell32::Shell32(void* emu) : ApiHandler(emu) {
     };
 }
 
-// ── API implementations ───────────────────────────────────────
+//  API implementations 
 
 uint64_t Shell32::ShellExecuteA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hwnd = a[0], lpOperation = a[1], lpFile = a[2];

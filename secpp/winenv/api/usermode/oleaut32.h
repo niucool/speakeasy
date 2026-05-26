@@ -1,4 +1,4 @@
-// oleaut32.h — oleaut32.dll API handler
+// oleaut32.h  oleaut32.dll API handler
 #ifndef SPEAKEASY_OLEAUT32_H
 #define SPEAKEASY_OLEAUT32_H
 #include <string>

@@ -1,4 +1,4 @@
-// kernel_mod.h — Kernel module base class (concrete stub)
+// kernel_mod.h  Kernel module base class (concrete stub)
 //
 // Maps to: speakeasy/windows/kernel_mods/kernel_mod.py
 //

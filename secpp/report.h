@@ -1,4 +1,4 @@
-// report.h — Report data structures for emulation output
+// report.h  Report data structures for emulation output
 //
 // Ported from: speakeasy/report.py (855 lines, 21 Pydantic models)
 // Porting status: 21/21 models | 0 gaps

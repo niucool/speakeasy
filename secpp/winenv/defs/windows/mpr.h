@@ -1,4 +1,4 @@
-// mpr.h — Windows Multi-Protocol Router (WNet) type definitions
+// mpr.h  Windows Multi-Protocol Router (WNet) type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/mpr.py
 //
@@ -42,31 +42,31 @@ namespace speakeasy { namespace defs { namespace windows {
 #undef ERROR_NO_NETWORK
 #endif
 
-// ── Resource scope ─────────────────────────────────────────────
+//  Resource scope 
 
 constexpr uint32_t RESOURCE_CONNECTED    = 1;
 constexpr uint32_t RESOURCE_GLOBALNET   = 2;
 constexpr uint32_t RESOURCE_REMEMBERED   = 3;
 constexpr uint32_t RESOURCE_CONTEXT      = 5;
 
-// ── Resource type ──────────────────────────────────────────────
+//  Resource type 
 
 constexpr uint32_t RESOURCETYPE_ANY    = 0;
 constexpr uint32_t RESOURCETYPE_DISK   = 1;
 constexpr uint32_t RESOURCETYPE_PRINT  = 2;
 
-// ── Resource usage ─────────────────────────────────────────────
+//  Resource usage 
 
 constexpr uint32_t RESOURCEUSAGE_CONNECTABLE = 1;
 constexpr uint32_t RESOURCEUSAGE_CONTAINER   = 2;
 constexpr uint32_t RESOURCEUSAGE_ATTACHED    = 0x10;
 constexpr uint32_t RESOURCEUSAGE_ALL         = 0x13;
 
-// ── Error codes ────────────────────────────────────────────────
+//  Error codes 
 
 constexpr uint32_t ERROR_NO_NETWORK = 0x4C6;
 
-// ── NETRESOURCE structure ──────────────────────────────────────
+//  NETRESOURCE structure 
 
 struct NETRESOURCE : speakeasy::EmuStruct {
     uint32_t dwScope       = 0;

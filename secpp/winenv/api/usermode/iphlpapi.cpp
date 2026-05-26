@@ -1,4 +1,4 @@
-// iphlpapi.cpp — iphlpapi.dll handler (real implementations)
+// iphlpapi.cpp  iphlpapi.dll handler (real implementations)
 #include "iphlpapi.h"
 #include <cstring>
 #include <cstdint>
@@ -16,13 +16,13 @@ static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline int ptr_sz(void* e) { return we(e)->get_ptr_size(); }
 
-// ── Error constants (IPH_ prefix to avoid Windows macro conflicts) ─
+//  Error constants (IPH_ prefix to avoid Windows macro conflicts) 
 static constexpr uint32_t IPH_OK = 0;
 static constexpr uint32_t IPH_BUF_OVERFLOW = 111;
 static constexpr uint32_t IPH_INVALID_PARAM = 87;
 static constexpr uint32_t IPH_NOT_SUPPORTED = 50;
 
-// ── Type constants ──────────────────────────────────────────────
+//  Type constants 
 static constexpr uint32_t MIB_IF_ETHERNET = 6;
 
 // Fake default MAC
@@ -42,9 +42,9 @@ static uint32_t mask_to_int(const std::string& mask) {
     return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetAdaptersInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetAdaptersInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 2) return IPH_INVALID_PARAM;
     uint64_t pAdapterInfo = a[0];
@@ -103,9 +103,9 @@ uint64_t Iphlpapi::GetAdaptersInfo(void* e, const std::string&, int, const std::
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetAdaptersAddresses
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetAdaptersAddresses(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 5) return IPH_INVALID_PARAM;
     uint64_t pAdapterAddresses = a[3];
@@ -136,9 +136,9 @@ uint64_t Iphlpapi::GetAdaptersAddresses(void* e, const std::string&, int, const 
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetNetworkParams
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetNetworkParams(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 2) return IPH_INVALID_PARAM;
     uint64_t pFixedInfo = a[0];
@@ -167,9 +167,9 @@ uint64_t Iphlpapi::GetNetworkParams(void* e, const std::string&, int, const std:
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetIfEntry
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetIfEntry(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return IPH_INVALID_PARAM;
     uint64_t pIfRow = a[0];
@@ -189,9 +189,9 @@ uint64_t Iphlpapi::GetIfEntry(void* e, const std::string&, int, const std::vecto
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetIfTable
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetIfTable(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return IPH_INVALID_PARAM;
     uint64_t pIfTable = a[0];
@@ -228,9 +228,9 @@ uint64_t Iphlpapi::GetIfTable(void* e, const std::string&, int, const std::vecto
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetExtendedTcpTable / GetExtendedUdpTable
-// ═══════════════════════════════════════════════════════════════
+// 
 static uint64_t get_extended_table_impl(void* e, const std::vector<uint64_t>& a) {
     if (a.size() < 6) return IPH_INVALID_PARAM;
     uint64_t pTcpTable = a[0];
@@ -265,9 +265,9 @@ uint64_t Iphlpapi::GetExtendedUdpTable(void* e, const std::string&, int, const s
     return get_extended_table_impl(e, a);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetBestInterface
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetBestInterface(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 2) return IPH_INVALID_PARAM;
     uint64_t pBestIndex = a[1];
@@ -279,9 +279,9 @@ uint64_t Iphlpapi::GetBestInterface(void* e, const std::string&, int, const std:
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetBestRoute
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetBestRoute(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return IPH_INVALID_PARAM;
     uint64_t pBestRoute = a[2];
@@ -301,9 +301,9 @@ uint64_t Iphlpapi::GetBestRoute(void* e, const std::string&, int, const std::vec
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetRTTAndHopCount
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetRTTAndHopCount(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 4) return 0;
     uint64_t pHopCount = a[1];
@@ -321,9 +321,9 @@ uint64_t Iphlpapi::GetRTTAndHopCount(void* e, const std::string&, int, const std
     return 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetFriendlyIfIndex
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetFriendlyIfIndex(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return 0;
     uint32_t ifIndex = static_cast<uint32_t>(a[0]);
@@ -331,9 +331,9 @@ uint64_t Iphlpapi::GetFriendlyIfIndex(void* e, const std::string&, int, const st
     return ifIndex;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NotifyAddrChange / NotifyRouteChange
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::NotifyAddrChange(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return IPH_NOT_SUPPORTED;
@@ -343,17 +343,17 @@ uint64_t Iphlpapi::NotifyRouteChange(void* e, const std::string&, int, const std
     return IPH_NOT_SUPPORTED;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  CancelIPChangeNotify
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::CancelIPChangeNotify(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  FlushIpNetTable / FlushIpPathTable
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::FlushIpNetTable(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return IPH_OK;
 }
@@ -361,9 +361,9 @@ uint64_t Iphlpapi::FlushIpPathTable(void* e, const std::string&, int, const std:
     (void)e; (void)a; return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetIpAddrTable
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetIpAddrTable(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return IPH_INVALID_PARAM;
     uint64_t pIpAddrTable = a[0];
@@ -399,9 +399,9 @@ uint64_t Iphlpapi::GetIpAddrTable(void* e, const std::string&, int, const std::v
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetIpForwardTable
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetIpForwardTable(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return IPH_INVALID_PARAM;
     uint64_t pIpForwardTable = a[0];
@@ -439,9 +439,9 @@ uint64_t Iphlpapi::GetIpForwardTable(void* e, const std::string&, int, const std
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetIpNetTable
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetIpNetTable(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return IPH_INVALID_PARAM;
     uint64_t pIpNetTable = a[0];
@@ -476,9 +476,9 @@ uint64_t Iphlpapi::GetIpNetTable(void* e, const std::string&, int, const std::ve
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetIpStatistics / GetIpStatisticsEx
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetIpStatistics(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return IPH_INVALID_PARAM;
     uint64_t pStats = a[0];
@@ -494,9 +494,9 @@ uint64_t Iphlpapi::GetIpStatisticsEx(void* e, const std::string&, int, const std
     return GetIpStatistics(e, "", 0, a);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetTcpStatistics / GetTcpStatisticsEx
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetTcpStatistics(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return IPH_INVALID_PARAM;
     uint64_t pStats = a[0];
@@ -512,9 +512,9 @@ uint64_t Iphlpapi::GetTcpStatisticsEx(void* e, const std::string&, int, const st
     return GetTcpStatistics(e, "", 0, a);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetUdpStatistics / GetUdpStatisticsEx
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetUdpStatistics(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return IPH_INVALID_PARAM;
     uint64_t pStats = a[0];
@@ -530,9 +530,9 @@ uint64_t Iphlpapi::GetUdpStatisticsEx(void* e, const std::string&, int, const st
     return GetUdpStatistics(e, "", 0, a);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  SetIpStatistics / SetIpTTL
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::SetIpStatistics(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return IPH_OK;
 }
@@ -540,9 +540,9 @@ uint64_t Iphlpapi::SetIpTTL(void* e, const std::string&, int, const std::vector<
     (void)e; (void)a; return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  AllocateAndGet*TableFromStack
-// ═══════════════════════════════════════════════════════════════
+// 
 static uint64_t alloc_and_get_table_impl(void* e, const std::vector<uint64_t>& a, size_t row_size, int ps) {
     if (a.size() < 4) return IPH_INVALID_PARAM;
     uint64_t ppTable = a[0];
@@ -582,9 +582,9 @@ uint64_t Iphlpapi::AllocateAndGetUdpTableFromStack(void* e, const std::string&, 
     return alloc_and_get_table_impl(e, a, 20, ptr_sz(e));
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetInterfaceInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetInterfaceInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 2) return IPH_INVALID_PARAM;
     uint64_t pIfTable = a[0];
@@ -617,9 +617,9 @@ uint64_t Iphlpapi::GetInterfaceInfo(void* e, const std::string&, int, const std:
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetNumberOfInterfaces
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::GetNumberOfInterfaces(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return IPH_INVALID_PARAM;
     uint64_t pCount = a[0];
@@ -631,16 +631,16 @@ uint64_t Iphlpapi::GetNumberOfInterfaces(void* e, const std::string&, int, const
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  DhcpRequestParams
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::DhcpRequestParams(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  EnableRouter / UnenableRouter
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::EnableRouter(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return IPH_INVALID_PARAM;
     uint64_t pHandle = a[0];
@@ -655,9 +655,9 @@ uint64_t Iphlpapi::UnenableRouter(void* e, const std::string&, int, const std::v
     (void)e; (void)a; return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  IpReleaseAddress / IpRenewAddress
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::IpReleaseAddress(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return IPH_OK;
 }
@@ -665,9 +665,9 @@ uint64_t Iphlpapi::IpRenewAddress(void* e, const std::string&, int, const std::v
     (void)e; (void)a; return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  SendARP
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::SendARP(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 4) return IPH_INVALID_PARAM;
     uint64_t pMacAddr = a[2];
@@ -689,9 +689,9 @@ uint64_t Iphlpapi::SendARP(void* e, const std::string&, int, const std::vector<u
     return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  Ping / PingEx / CancelIPInfoChange / SetAdapterIpAddress
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::Ping(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return IPH_OK;
 }
@@ -705,9 +705,9 @@ uint64_t Iphlpapi::SetAdapterIpAddress(void* e, const std::string&, int, const s
     (void)e; (void)a; return IPH_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  AddIPAddress / DeleteIPAddress
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Iphlpapi::AddIPAddress(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 5) return IPH_INVALID_PARAM;
     uint64_t pNTEContext = a[3];
@@ -728,7 +728,7 @@ uint64_t Iphlpapi::DeleteIPAddress(void* e, const std::string&, int, const std::
     (void)e; (void)a; return IPH_OK;
 }
 
-// ── Constructor ─────────────────────────────────────────────────
+//  Constructor 
 Iphlpapi::Iphlpapi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Iphlpapi)
     REG(Iphlpapi, GetAdaptersInfo, 2)

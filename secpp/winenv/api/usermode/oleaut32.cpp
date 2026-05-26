@@ -1,4 +1,4 @@
-// oleaut32.cpp — oleaut32.dll handler (~4 APIs, real implementations)
+// oleaut32.cpp  oleaut32.dll handler (~4 APIs, real implementations)
 #include "oleaut32.h"
 
 #include <cstring>
@@ -14,7 +14,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) {
     return static_cast<WindowsEmulator*>(e);
 }
@@ -25,7 +25,7 @@ static inline int ptr_sz(void* e) {
     return (be(e)->get_arch() == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
 }
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 
 Oleaut32::Oleaut32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Oleaut32)
@@ -36,7 +36,7 @@ Oleaut32::Oleaut32(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── API implementations ───────────────────────────────────────
+//  API implementations 
 
 uint64_t Oleaut32::SysAllocString(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t psz = a[0];

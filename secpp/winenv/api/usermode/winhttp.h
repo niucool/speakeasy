@@ -1,4 +1,4 @@
-// winhttp.h — winhttp.dll API handler (v2 — macro-based registration)
+// winhttp.h  winhttp.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_WINHTTP_H
 #define SPEAKEASY_WINHTTP_H
 #include <string>

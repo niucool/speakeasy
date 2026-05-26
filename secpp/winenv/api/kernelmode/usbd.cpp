@@ -1,4 +1,4 @@
-// usbd.cpp — USB Driver handler (implemented)
+// usbd.cpp  USB Driver handler (implemented)
 #include "usbd.h"
 
 #include <cstdint>
@@ -14,7 +14,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
@@ -25,7 +25,7 @@ Usbd::Usbd(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── Implementations ───────────────────────────────────────────
+//  Implementations 
 
 uint64_t Usbd::USBD_ValidateConfigurationDescriptor(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS USBD_ValidateConfigurationDescriptor(

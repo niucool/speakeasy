@@ -1,4 +1,4 @@
-// iphlpapi.h — iphlpapi.dll API handler (v2 — macro-based registration)
+// iphlpapi.h  iphlpapi.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_IPHLPAPI_H
 #define SPEAKEASY_IPHLPAPI_H
 #include <string>

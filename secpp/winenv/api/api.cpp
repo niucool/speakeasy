@@ -1,4 +1,4 @@
-// api.cpp — ApiHandler base class implementation
+// api.cpp  ApiHandler base class implementation
 //
 // Maps to: speakeasy/winenv/api/api.py
 //
@@ -27,7 +27,7 @@
 
 using namespace speakeasy;
 
-// ── Helper: emu() returns typed pointer ───────────────────────
+//  Helper: emu() returns typed pointer 
 
 static inline Win32Emulator* winemu32(void* raw) {
     return static_cast<Win32Emulator*>(raw);
@@ -41,11 +41,11 @@ static inline BinaryEmulator* binemu(void* raw) {
     return static_cast<BinaryEmulator*>(raw);
 }
 
-// ── Static member ─────────────────────────────────────────────
+//  Static member 
 
 std::string ApiHandler::name = "";
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 
 ApiHandler::ApiHandler(void* emu) : emu(emu) {
     // Detect pointer size from architecture
@@ -92,9 +92,9 @@ void ApiHandler::add_data(const std::string& name, std::function<void()> func) {
     data[name] = info;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// API Registration / Lookup (v1 — superseded by v2 macro system)
-// ═══════════════════════════════════════════════════════════════
+// 
+// API Registration / Lookup (v1  superseded by v2 macro system)
+// 
 
 std::function<std::function<void()>(std::function<void()>)>
 ApiHandler::apihook(const std::string& impname, int argc, int conv, int ordinal) {
@@ -119,7 +119,7 @@ std::string ApiHandler::get_api_name(std::function<void()> func) {
 }
 
 void ApiHandler::__get_hook_attrs__(ApiHandler* obj) {
-    // Python: dir(obj) → getattr → __apihook__ / __datahook__
+    // Python: dir(obj)  getattr  __apihook__ / __datahook__
     // In C++ this is done at compile-time via API_ENTRY / REG macros.
     (void)obj;
 }
@@ -132,7 +132,7 @@ std::function<void()> ApiHandler::get_data_handler(const std::string& exp_name) 
 
 std::tuple<std::string, std::function<void()>, int, int, int>
 ApiHandler::get_func_handler(const std::string& exp_name) {
-    // Support ordinal lookup: "ordinal_5" → look up by ordinal number
+    // Support ordinal lookup: "ordinal_5"  look up by ordinal number
     if (exp_name.compare(0, 8, "ordinal_") == 0) {
         int ord_num = 0;
         try {
@@ -161,9 +161,9 @@ int ApiHandler::get_pointer_size() {
     return ptr_size;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // EmuStruct Helpers
-// ═══════════════════════════════════════════════════════════════
+// 
 
 size_t ApiHandler::sizeof_obj(EmuStruct* obj) {
     if (obj) return obj->sizeof_obj();
@@ -188,9 +188,9 @@ void ApiHandler::write_back(uint64_t addr, EmuStruct* obj) {
     winemu(emu)->mem_write(addr, bytez);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Memory Allocation
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t ApiHandler::pool_alloc(int pool_type, size_t size, const std::string& tag) {
     (void)pool_type;
@@ -227,9 +227,9 @@ uint64_t ApiHandler::mem_reserve(size_t size, uint64_t base, const std::string& 
     return static_cast<MemoryManager*>(winemu(emu))->mem_reserve(size, base, 0, tag, 0, false);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Memory Casting & Copying
-// ═══════════════════════════════════════════════════════════════
+// 
 
 EmuStruct* ApiHandler::mem_cast(EmuStruct* obj, uint64_t addr) {
     auto struct_bytes = winemu(emu)->mem_read(addr, obj ? obj->sizeof_obj() : 0);
@@ -240,9 +240,9 @@ size_t ApiHandler::mem_copy(uint64_t dst, uint64_t src, size_t n) {
     return binemu(emu)->mem_copy(dst, src, n);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // String Reading / Writing
-// ═══════════════════════════════════════════════════════════════
+// 
 
 std::string ApiHandler::read_mem_string(uint64_t addr, int width, int max_chars) {
     return binemu(emu)->read_mem_string(addr, width, max_chars);
@@ -306,9 +306,9 @@ void ApiHandler::write_string(const std::string& string, uint64_t addr) {
     write_mem_string(string, addr, 1);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Run Management
-// ═══════════════════════════════════════════════════════════════
+// 
 
 void ApiHandler::queue_run(const std::string& run_type, uint64_t ep,
                            const std::vector<std::string>& run_args) {
@@ -319,9 +319,9 @@ void ApiHandler::queue_run(const std::string& run_type, uint64_t ep,
     winemu(emu)->add_run(run);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Event Logging
-// ═══════════════════════════════════════════════════════════════
+// 
 
 void ApiHandler::log_file_access(const std::string& path, const std::string& event_type,
                                  const std::vector<uint8_t>* in_data, int handle,
@@ -388,9 +388,9 @@ void ApiHandler::log_http(const std::string& server, int port, const std::string
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Utility Methods
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t ApiHandler::get_max_int() {
     // e.g. for 4-byte ptr: 0xFFFFFFFF, for 8-byte: 0xFFFFFFFFFFFFFFFF
@@ -403,9 +403,9 @@ std::vector<uint8_t> ApiHandler::mem_read(uint64_t addr, size_t size) {
     return winemu(emu)->mem_read(addr, size);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // File Management (delegates to WindowsEmulator)
-// ═══════════════════════════════════════════════════════════════
+// 
 
 void* ApiHandler::file_open(const std::string& path, bool create) {
     return winemu(emu)->file_open(path, create);
@@ -423,9 +423,9 @@ bool ApiHandler::does_file_exist(const std::string& path) {
     return winemu(emu)->does_file_exist(path);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Registry Management (delegates to WindowsEmulator)
-// ═══════════════════════════════════════════════════════════════
+// 
 
 void* ApiHandler::reg_open_key(const std::string& path, bool create) {
     return winemu(emu)->reg_open_key(path, create);
@@ -439,9 +439,9 @@ std::vector<std::string> ApiHandler::reg_get_subkeys(void* hkey) {
     return winemu(emu)->reg_get_subkeys(hkey);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Encoding / Character Width
-// ═══════════════════════════════════════════════════════════════
+// 
 
 std::string ApiHandler::get_encoding(int char_width) {
     if (char_width == 2) return "utf-16le";
@@ -449,18 +449,18 @@ std::string ApiHandler::get_encoding(int char_width) {
     throw std::runtime_error("No encoding found for char width: " + std::to_string(char_width));
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Memory Write
-// ═══════════════════════════════════════════════════════════════
+// 
 
 size_t ApiHandler::mem_write(uint64_t addr, const std::vector<uint8_t>& data) {
     winemu(emu)->mem_write(addr, data);
     return data.size();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Thread Management
-// ═══════════════════════════════════════════════════════════════
+// 
 
 void* ApiHandler::create_thread(uint64_t addr, void* ctx, void* hproc,
                                 const std::string& thread_type, bool is_suspended) {
@@ -492,9 +492,9 @@ std::shared_ptr<KernelObject> ApiHandler::get_object_from_name(const std::string
     return winemu(emu)->get_object_from_name(in_name);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // OS Information
-// ═══════════════════════════════════════════════════════════════
+// 
 
 std::map<std::string, std::string> ApiHandler::get_os_version() {
     return binemu(emu)->get_os_version();
@@ -504,9 +504,9 @@ void ApiHandler::exit_process() {
     winemu(emu)->stop();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Character / Format Methods
-// ═══════════════════════════════════════════════════════════════
+// 
 
 int ApiHandler::get_char_width(const std::map<std::string, std::string>& ctx) {
     auto it = ctx.find("func_name");
@@ -526,7 +526,7 @@ int ApiHandler::get_va_arg_count(const std::string& fmt) {
     for (size_t i = 0; i < fmt.size(); ++i) {
         if (fmt[i] == '%') {
             if (i + 1 < fmt.size() && fmt[i + 1] == '%') {
-                // %% — escaped percent, skip both
+                // %%  escaped percent, skip both
                 ++i;
                 continue;
             }

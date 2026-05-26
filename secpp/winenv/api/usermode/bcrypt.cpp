@@ -1,4 +1,4 @@
-// bcrypt.cpp — bcrypt.dll API handler (real implementations)
+// bcrypt.cpp  bcrypt.dll API handler (real implementations)
 #include "bcrypt.h"
 #include <cstring>
 #include <cstdint>
@@ -15,7 +15,7 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ── NTSTATUS constants (BC_ prefix to avoid Windows macro conflicts) ─
+//  NTSTATUS constants (BC_ prefix to avoid Windows macro conflicts) 
 static constexpr uint32_t BC_OK = 0x00000000;
 static constexpr uint32_t BC_INVALID_HANDLE = 0xC0000008;
 
@@ -38,9 +38,9 @@ static std::map<uint64_t, BcryptAlg>& algs() {
     return m;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  BCryptOpenAlgorithmProvider
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Bcrypt::BCryptOpenAlgorithmProvider(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 4) return BC_INVALID_HANDLE;
     uint64_t phAlgorithm = a[0];
@@ -75,9 +75,9 @@ uint64_t Bcrypt::BCryptOpenAlgorithmProvider(void* e, const std::string&, int, c
     return BC_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  BCryptImportKeyPair
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Bcrypt::BCryptImportKeyPair(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 7) return BC_INVALID_HANDLE;
     uint64_t hAlgorithm = a[0];
@@ -114,9 +114,9 @@ uint64_t Bcrypt::BCryptImportKeyPair(void* e, const std::string&, int, const std
     return BC_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  BCryptCloseAlgorithmProvider
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Bcrypt::BCryptCloseAlgorithmProvider(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return BC_INVALID_HANDLE;
     uint64_t hAlgorithm = a[0];
@@ -126,9 +126,9 @@ uint64_t Bcrypt::BCryptCloseAlgorithmProvider(void* e, const std::string&, int, 
     return BC_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  BCryptGetProperty
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Bcrypt::BCryptGetProperty(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 6) return BC_INVALID_HANDLE;
     uint64_t hObject = a[0];
@@ -169,9 +169,9 @@ uint64_t Bcrypt::BCryptGetProperty(void* e, const std::string&, int, const std::
     return BC_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  BCryptDestroyKey
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Bcrypt::BCryptDestroyKey(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return BC_INVALID_HANDLE;
     uint64_t hKey = a[0];
@@ -186,7 +186,7 @@ uint64_t Bcrypt::BCryptDestroyKey(void* e, const std::string&, int, const std::v
     return BC_INVALID_HANDLE;
 }
 
-// ── Constructor ─────────────────────────────────────────────────
+//  Constructor 
 Bcrypt::Bcrypt(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Bcrypt)
     REG(Bcrypt, BCryptOpenAlgorithmProvider, 4)

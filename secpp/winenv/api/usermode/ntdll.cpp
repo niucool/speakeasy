@@ -1,4 +1,4 @@
-// ntdll.cpp — ntdll.dll API handler implementation
+// ntdll.cpp  ntdll.dll API handler implementation
 //
 // Maps to: speakeasy/winenv/api/usermode/ntdll.py
 //
@@ -67,7 +67,7 @@ static constexpr uint32_t NT_STATUS_DLL_NOT_FOUND = 0xC0000135;
 namespace speakeasy {
 namespace api {
 
-// ── Forward declarations of helpers ───────────────────────────
+//  Forward declarations of helpers 
 
 /// Get pointer size from the emulator architecture
 static inline int get_ptr_size(void* emu) {
@@ -174,9 +174,9 @@ static inline std::vector<uint8_t> utf8_to_utf16(const std::string& s) {
     return out;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Constructor — register all API entries
-// ═══════════════════════════════════════════════════════════════
+// 
+// Constructor  register all API entries
+// 
 
 Ntdll::Ntdll(void* emu) : ApiHandler(emu) {
     apis_ = {
@@ -262,9 +262,9 @@ Ntdll::Ntdll(void* emu) : ApiHandler(emu) {
     };
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Heap functions
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::RtlAllocateHeap(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>& argv) {
@@ -298,7 +298,7 @@ uint64_t Ntdll::RtlFreeHeap(void* emu, const std::string&, int,
     (void)heap_handle;
     (void)flags;
 
-    if (heap_base == 0) return 1; // TRUE — freeing NULL is a no-op
+    if (heap_base == 0) return 1; // TRUE  freeing NULL is a no-op
 
     try {
         static_cast<MemoryManager*>(emu)->mem_free(heap_base);
@@ -328,7 +328,7 @@ uint64_t Ntdll::RtlReAllocateHeap(void* emu, const std::string&, int,
     uint64_t new_ptr = wemu->heap_alloc(new_size, "ntdll_realloc");
     if (new_ptr == 0) return 0; // NULL
 
-    // Copy old data — we don't know the old size, just copy up to new_size
+    // Copy old data  we don't know the old size, just copy up to new_size
     // Read a reasonable amount (use 0x1000 as a guess for old size)
     size_t copy_size = (new_size < 0x1000) ? new_size : 0x1000;
     try {
@@ -367,7 +367,7 @@ uint64_t Ntdll::RtlCreateHeap(void* emu, const std::string&, int,
     auto* mm = static_cast<MemoryManager*>(emu);
 
     if (heap_base != 0) {
-        // Use the specified base — just return it as a handle
+        // Use the specified base  just return it as a handle
         return heap_base;
     }
 
@@ -399,9 +399,9 @@ uint64_t Ntdll::RtlGetProcessHeap(void* emu, const std::string&, int,
     return heap;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Virtual Memory
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::NtAllocateVirtualMemory(void* emu, const std::string&, int,
                                           const std::vector<uint64_t>& argv) {
@@ -558,13 +558,13 @@ uint64_t Ntdll::NtQueryVirtualMemory(void* emu, const std::string&, int,
     // HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS InfoClass,
     // PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength
     (void)emu; (void)argv;
-    // Stub — returns success with basic info
+    // Stub  returns success with basic info
     return NT_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // File I/O
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::NtCreateFile(void* emu, const std::string&, int,
                               const std::vector<uint64_t>& argv) {
@@ -829,7 +829,7 @@ uint64_t Ntdll::NtClose(void* emu, const std::string&, int,
     // HANDLE Handle
     uint64_t handle = argv[0];
     (void)emu; (void)handle;
-    // Just return success — the handle cleanup is handled by the emulator's GC
+    // Just return success  the handle cleanup is handled by the emulator's GC
     return NT_SUCCESS;
 }
 
@@ -860,9 +860,9 @@ uint64_t Ntdll::NtDeviceIoControlFile(void* emu, const std::string&, int,
     return NT_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Process / Thread
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::NtCreateProcess(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>& argv) {
@@ -1021,7 +1021,7 @@ uint64_t Ntdll::NtGetContextThread(void* emu, const std::string&, int,
     void* ctx = wemu->get_thread_context(thread_obj);
     if (ctx && ctx_ptr != 0) {
         // Copy context data to the output pointer
-        // CONTEXT structure size varies by arch — just copy pointer
+        // CONTEXT structure size varies by arch  just copy pointer
         write_ptr(emu, ctx_ptr, reinterpret_cast<uint64_t>(ctx));
     }
 
@@ -1035,9 +1035,9 @@ uint64_t Ntdll::NtSetContextThread(void* emu, const std::string&, int,
     return NT_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // System Info
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::NtQuerySystemInformation(void* emu, const std::string&, int,
                                           const std::vector<uint64_t>& argv) {
@@ -1054,7 +1054,7 @@ uint64_t Ntdll::NtQuerySystemInformation(void* emu, const std::string&, int,
 
     switch (info_class) {
         case 0x05: { // SystemProcessInformation
-            // This is complex — just return success for now
+            // This is complex  just return success for now
             if (ret_len_ptr != 0) {
                 write_u32(emu, ret_len_ptr, info_len);
             }
@@ -1133,9 +1133,9 @@ uint64_t Ntdll::NtSetInformationProcess(void* emu, const std::string&, int,
     return NT_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Registry
-// ═══════════════════════════════════════════════════════════════
+// 
 
 /// Helper: convert registry define values to their string path prefixes
 static std::string reg_hkey_to_path(uint32_t hkey) {
@@ -1444,9 +1444,9 @@ uint64_t Ntdll::NtDeleteValueKey(void* emu, const std::string&, int,
     return STATUS_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Sections (memory-mapped files)
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::NtCreateSection(void* emu, const std::string&, int,
                                  const std::vector<uint64_t>& argv) {
@@ -1565,9 +1565,9 @@ uint64_t Ntdll::NtUnmapViewOfSection(void* emu, const std::string&, int,
     return NT_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Synchronization
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::NtCreateEvent(void* emu, const std::string&, int,
                                const std::vector<uint64_t>& argv) {
@@ -1722,9 +1722,9 @@ uint64_t Ntdll::NtDelayExecution(void* emu, const std::string&, int,
     return NT_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // String / Utility
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::RtlInitUnicodeString(void* emu, const std::string&, int,
                                       const std::vector<uint64_t>& argv) {
@@ -1884,9 +1884,9 @@ uint64_t Ntdll::CsrGetProcessId(void* emu, const std::string&, int,
     return 4; // Default PID
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Additional ntdll APIs (ported from Python reference)
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::RtlGetLastWin32Error(void* emu, const std::string&, int,
                                       const std::vector<uint64_t>&) {
@@ -2043,7 +2043,7 @@ uint64_t Ntdll::LdrFindResource_U(void* emu, const std::string&, int,
     //     PLDR_RESOURCE_INFO ResourceInfo, ULONG Level,
     //     PIMAGE_RESOURCE_DATA_ENTRY *ResourceDataEntry)
     (void)emu; (void)argv;
-    // Stub — resources are not deeply emulated
+    // Stub  resources are not deeply emulated
     return STATUS_SUCCESS;
 }
 
@@ -2249,9 +2249,9 @@ uint64_t Ntdll::RtlGetVersion(void* emu, const std::string&, int,
     return 0; // STATUS_SUCCESS
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Volume / Object
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::NtQueryVolumeInformationFile(void* emu, const std::string&, int,
                                               const std::vector<uint64_t>& argv) {
@@ -2338,9 +2338,9 @@ uint64_t Ntdll::NtDuplicateObject(void* emu, const std::string&, int,
     return NT_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // Fallback stub
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Ntdll::stub_api(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a; return NT_SUCCESS;

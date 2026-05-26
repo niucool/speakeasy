@@ -1,4 +1,4 @@
-// ncrypt.h — ncrypt.dll API handler (v2 — macro-based registration)
+// ncrypt.h  ncrypt.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_NCRYPT_H
 #define SPEAKEASY_NCRYPT_H
 #include <string>

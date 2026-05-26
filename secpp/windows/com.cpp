@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <cstring>
 
-// ── COM interface field definitions ───────────────────────────
+//  COM interface field definitions 
 
 namespace comdefs {
 
@@ -85,7 +85,7 @@ const std::map<std::string, std::vector<ComField>> IFACE_TYPES = {
 
 } // namespace comdefs
 
-// ── COM implementation ────────────────────────────────────────
+//  COM implementation 
 
 COM::COM(const speakeasy::SpeakeasyConfig& cfg)
     : config(cfg) {

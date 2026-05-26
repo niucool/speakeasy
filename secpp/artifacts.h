@@ -1,4 +1,4 @@
-// artifacts.h — Artifact store for emulation data blobs
+// artifacts.h  Artifact store for emulation data blobs
 //
 // Maps to: speakeasy/artifacts.py
 //

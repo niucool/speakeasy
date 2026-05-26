@@ -119,7 +119,7 @@ std::vector<void*> Win32Emulator::get_processes() {
 //     Initialize configured processes set in the emulator config
 //     """
 void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& processes) {
-    // Python win32.py:140-160 — initialize configured processes from emulator config
+    // Python win32.py:140-160  initialize configured processes from emulator config
     for (const auto& proc : processes) {
         auto p = std::make_shared<Process>(reinterpret_cast<void*>(this));
         add_object(p);
@@ -409,7 +409,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::init_sys_m
     for (auto& modconf : modules_config) {
         // Check if this is a SystemModule with a driver
         // SystemModule inherits from Module (non-polymorphic in config); check driver field
-        auto& drv_devices = modconf->path;  // placeholder — driver info is on SystemModule only
+        auto& drv_devices = modconf->path;  // placeholder  driver info is on SystemModule only
         // C++ note: SystemModule::driver.devices requires the concrete type;
         // the config modules are stored as shared_ptr<Module>, so we check for driver via name pattern
         auto sysmod =
@@ -432,7 +432,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::init_sys_m
 //     Create a process to be used to host shellcode or DLLs
 //     """
 void* Win32Emulator::init_container_process() {
-    // Python win32.py:572-587 — create a process to host shellcode or DLLs
+    // Python win32.py:572-587  create a process to host shellcode or DLLs
     for (auto& p : config.processes) {
         if (p.is_main_exe) {
             std::string name = p.name.empty() ? "" : p.name;
@@ -455,7 +455,7 @@ void* Win32Emulator::init_container_process() {
 }
 
 std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::get_user_modules() {
-    // Python win32.py:578-587 — return loaded user module RuntimeModules
+    // Python win32.py:578-587  return loaded user module RuntimeModules
     // modules is already vector<shared_ptr<RuntimeModule>>; filter non-driver entries
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> result;
     for (auto& mod : modules) {

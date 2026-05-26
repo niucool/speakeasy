@@ -514,7 +514,7 @@ void BinaryEmulator::_fire_dyn_code_hooks(uint64_t addr) {
     auto mm = get_address_map(addr);
     auto* prof = get_profiler().get();
     if (prof) {
-        // TODO: record_dyn_code_event is not a member of Profiler — needs implementation
+        // TODO: record_dyn_code_event is not a member of Profiler  needs implementation
         // auto* run = static_cast<Run*>(get_current_run().get());
         // if (run) prof->record_dyn_code_event(*run, mm ? mm->tag : "", mm ? mm->base : 0, mm ? mm->size : 0);
     }

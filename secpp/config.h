@@ -1,4 +1,4 @@
-// config.h — Emulation configuration
+// config.h  Emulation configuration
 //
 // Maps to: speakeasy/config.py
 //
@@ -18,7 +18,7 @@
 
 namespace speakeasy {
 
-// ── Config sub-structures ────────────────────────────────────
+//  Config sub-structures 
 
 struct OsVersion {
     std::string name = "windows";
@@ -180,7 +180,7 @@ struct ModulesConfig {
     std::vector<std::shared_ptr<Module>> user_modules;
 };
 
-// ── Top-level config ────────────────────────────────────────
+//  Top-level config 
 
 struct SpeakeasyConfig {
     double config_version = 0.2;
@@ -214,7 +214,7 @@ struct SpeakeasyConfig {
 
     SpeakeasyConfig();
 
-    // ── Validation ───────────────────────────────────────────────
+    //  Validation 
 
     /**
      * Validate an emulation configuration and throw on invalid values.
@@ -233,7 +233,7 @@ private:
     friend void from_json(const nlohmann::json& j, SpeakeasyConfig& cfg);
 };
 
-// ── Serialization (nlohmann_json) ───────────────────────────
+//  Serialization (nlohmann_json) 
 
 void to_json(nlohmann::json& j, const OsVersion& v);
 void from_json(const nlohmann::json& j, OsVersion& v);

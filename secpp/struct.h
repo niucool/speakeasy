@@ -1,4 +1,4 @@
-// struct.h — Emulated structure base class and helpers
+// struct.h  Emulated structure base class and helpers
 //
 // Maps to: speakeasy/struct.py
 //
@@ -20,7 +20,7 @@
 
 namespace speakeasy {
 
-// ── Exception ────────────────────────────────────────────────
+//  Exception 
 
 class EmuStructException : public std::runtime_error {
 public:
@@ -28,7 +28,7 @@ public:
         : std::runtime_error(msg) {}
 };
 
-// ── Enum helper ──────────────────────────────────────────────
+//  Enum helper 
 
 /**
  * Simple dynamic enum class.  Supports arbitrary attribute access
@@ -56,7 +56,7 @@ public:
     }
 };
 
-// ── Pointer tag ──────────────────────────────────────────────
+//  Pointer tag 
 
 /**
  * Tag type to mark fields that are pointers in the emulated address space.
@@ -73,7 +73,7 @@ struct EmuPtr {
     bool is_null() const { return address == 0; }
 };
 
-// ── Base class for emulated structures ───────────────────────
+//  Base class for emulated structures 
 
 /**
  * Base class for objects that represent C structures in emulated memory.
@@ -110,7 +110,7 @@ public:
     virtual std::string get_mem_tag() const { return "struct"; }
 };
 
-// ── Byte-level helpers ───────────────────────────────────────
+//  Byte-level helpers 
 
 /** Write a little-endian integer into a byte buffer at offset. */
 inline void write_le(std::vector<uint8_t>& buf, size_t offset, uint64_t value, size_t size_bytes) {

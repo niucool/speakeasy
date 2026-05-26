@@ -1,4 +1,4 @@
-// sfc.cpp — sfc.dll handler (real implementations)
+// sfc.cpp  sfc.dll handler (real implementations)
 #include "sfc.h"
 #include <cstdint>
 #include <string>
@@ -13,23 +13,23 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  SfcIsFileProtected
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Sfc::SfcIsFileProtected(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return 0;  // FALSE - file is not protected
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  SfcTerminateWatcherThread
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Sfc::SfcTerminateWatcherThread(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return 0;  // TRUE (non-zero success)
 }
 
-// ── Constructor ─────────────────────────────────────────────────
+//  Constructor 
 Sfc::Sfc(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Sfc)
     REG(Sfc, SfcIsFileProtected, 2)

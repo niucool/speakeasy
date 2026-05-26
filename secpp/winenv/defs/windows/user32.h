@@ -1,4 +1,4 @@
-// user32.h — Windows User32 type definitions
+// user32.h  Windows User32 type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/user32.py
 //
@@ -14,7 +14,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── Window Hook constants ─────────────────────────────────────
+//  Window Hook constants 
 
 constexpr int32_t WH_CALLWNDPROC     = 4;
 constexpr int32_t WH_CALLWNDPROCRET  = 12;
@@ -32,7 +32,7 @@ constexpr int32_t WH_MSGFILTER       = -1;
 constexpr int32_t WH_SHELL           = 10;
 constexpr int32_t WH_SYSMSGFILTER    = 6;
 
-// ── Window Message constants ──────────────────────────────────
+//  Window Message constants 
 
 constexpr uint32_t WM_KEYDOWN     = 0x0100;
 constexpr uint32_t WM_SYSKEYDOWN  = 0x0104;
@@ -40,7 +40,7 @@ constexpr uint32_t WM_TIMER       = 0x0113;
 constexpr uint32_t WM_PAINT       = 0x000F;
 constexpr uint32_t WM_INITDIALOG  = 0x0110;
 
-// ── Structures ────────────────────────────────────────────────
+//  Structures 
 
 struct MSG : speakeasy::EmuStruct {
     uint64_t hwnd     = 0;

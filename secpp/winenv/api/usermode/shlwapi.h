@@ -1,4 +1,4 @@
-// shlwapi.h — shlwapi.dll API handler (v2 — macro-based registration)
+// shlwapi.h  shlwapi.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_SHLWAPI_H
 #define SPEAKEASY_SHLWAPI_H
 #include <string>

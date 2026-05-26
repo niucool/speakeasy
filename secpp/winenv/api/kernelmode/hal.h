@@ -1,4 +1,4 @@
-// hal.h — Hardware Abstraction Layer API handler (STUB)
+// hal.h  Hardware Abstraction Layer API handler (STUB)
 #ifndef SPEAKEASY_KERNELMODE_HAL_H
 #define SPEAKEASY_KERNELMODE_HAL_H
 #include <string>

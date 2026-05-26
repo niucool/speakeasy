@@ -1,4 +1,4 @@
-// winemu.cpp — Windows Emulator base class implementation
+// winemu.cpp  Windows Emulator base class implementation
 //
 // Python reference: speakeasy/windows/winemu.py  (2795 lines)
 // Each function definition below includes its Python line number.
@@ -16,7 +16,7 @@
 
 namespace fs = std::filesystem;
 
-// ── Constructor ──────────────────────────────────────────────
+//  Constructor 
 // Python winemu.py:73
 // def __init__(self, config, exit_event=None, debug=False, gdb_port=None):
 //     """Initialize the Windows emulator with configuration.
@@ -39,7 +39,7 @@ WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* lo
     hammer = std::make_shared<ApiHammer>(this, config);
 }
 
-// ── Bootstrap ────────────────────────────────────────────────
+//  Bootstrap 
 // Python winemu.py:155
 // def advance_bootstrap_phase(self, phase):
 //     """Advance the bootstrap phase with explicit transition validation.
@@ -88,15 +88,15 @@ void WindowsEmulator::validate_object_services(const std::string& reason) {
     if (!om) throw WindowsEmuError(reason + " requires initialized object services");
 }
 
-// ── Config ───────────────────────────────────────────────────
-// Python winemu.py:— (accessor for registry_config map)
+//  Config 
+// Python winemu.py: (accessor for registry_config map)
 std::map<std::string, std::string> WindowsEmulator::get_registry_config() {
     return registry_config;
 }
 
-// ── Static trampolines for Unicorn callbacks ─────────────────
+//  Static trampolines for Unicorn callbacks 
 // These bridge the C callback convention to C++ member functions.
-// Python winemu.py:— (Unicorn engine binding, no direct Python equivalent)
+// Python winemu.py: (Unicorn engine binding, no direct Python equivalent)
 
 namespace {
 
@@ -151,9 +151,9 @@ bool intr_trampoline(uc_engine* uc, uint32_t intno, void* user_data) {
 
 } // anonymous namespace
 
-// ── Hook registration helpers ────────────────────────────────
+//  Hook registration helpers 
 
-// ── Hooks ────────────────────────────────────────────────────
+//  Hooks 
 // Python winemu.py:199
 // def enable_code_hook(self):
 //     """Install the transient code hook needed for deferred work."""
@@ -233,7 +233,7 @@ bool WindowsEmulator::_module_access_hook(void* emu, uint64_t addr,
     return false;
 }
 
-// ── Code hook core ───────────────────────────────────────────
+//  Code hook core 
 // Python winemu.py:2031
 // def _hook_code_core(self, emu, addr, size):
 //     """Transient code hook for deferred work: SEH dispatch, run lifecycle,
@@ -284,7 +284,7 @@ bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
     return true;
 }
 
-// ── Memory ───────────────────────────────────────────────────
+//  Memory 
 // Python winemu.py:251
 // def cast(self, obj, bytez):
 //     """Create a formatted structure from bytes"""
@@ -316,10 +316,10 @@ void WindowsEmulator::mem_purge() {
 // def setup_user_shared_data(self):
 //     """Setup the shared user data section that is often used to share data
 //     between user mode and kernel mode"""
-// Python winemu.py:1139 — default setup (overridden in subclasses)
+// Python winemu.py:1139  default setup (overridden in subclasses)
 void WindowsEmulator::setup(size_t stack_commit, bool first_time_setup) { /* default: no-op, overridden by Win32Emulator */ (void)stack_commit; (void)first_time_setup; }
 
-// Python winemu.py:548 — base class on_run_complete (Python has this on WindowsEmulator)
+// Python winemu.py:548  base class on_run_complete (Python has this on WindowsEmulator)
 void WindowsEmulator::on_run_complete() {
     run_complete = true;
 }
@@ -481,7 +481,7 @@ std::tuple<uint64_t, uint64_t> WindowsEmulator::_setup_gdt(int arch) {
     return {fs_addr, gs_addr};
 }
 
-// ── Memory exception handlers ────────────────────────────────
+//  Memory exception handlers 
 // Python winemu.py:1960
 // def _handle_invalid_read(self, emu, address, size, value):
 //     """Hook each invalid memory read event that occurs."""
@@ -519,7 +519,7 @@ bool WindowsEmulator::_handle_prot_fetch(void* emu, uint64_t address,
     (void)emu; (void)size; (void)value;
     std::string sym = get_symbol_from_address(address);
     if (!sym.empty()) {
-        return true;  // Symbol found — let caller handle import resolution
+        return true;  // Symbol found  let caller handle import resolution
     }
     return true;
 }
@@ -545,7 +545,7 @@ bool WindowsEmulator::_handle_invalid_write(void* emu, uint64_t address,
     return true;
 }
 
-// ── File ─────────────────────────────────────────────────────
+//  File 
 // Python winemu.py:267
 // def file_open(self, path, create=False, truncate=False):
 //     """Open a file in the emulated filesystem"""
@@ -795,7 +795,7 @@ void WindowsEmulator::resume(uint64_t addr, int count) {
     }
 }
 
-// ── Run access ───────────────────────────────────────────────
+//  Run access 
 // Python winemu.py:609
 // def get_current_run(self):
 //     """Get the current run that is being emulated"""
@@ -814,7 +814,7 @@ std::vector<std::shared_ptr<File>> WindowsEmulator::get_dropped_files() {
         return {};
  }
 
-// ── Process / thread ─────────────────────────────────────────
+//  Process / thread 
 // Python winemu.py:635
 std::vector<std::shared_ptr<Process>>& WindowsEmulator::get_processes() {
     return processes;
@@ -845,7 +845,7 @@ void WindowsEmulator::kill_process(std::shared_ptr<Process> proc) {
     run_complete = true;
 }
 
-// ── Environment ──────────────────────────────────────────────
+//  Environment 
 // Python winemu.py:1142
 // def get_system_root(self):
 //     """Get the path of the "SYSTEMROOT" environment variable"""
@@ -909,7 +909,7 @@ std::string WindowsEmulator::search_path(const std::string& file_name) {
     return fp + file_name;
 }
 
-// ── Object management ────────────────────────────────────────
+//  Object management 
 
 // Python winemu.py:1182
 // def get_object_from_addr(self, addr):
@@ -965,7 +965,7 @@ std::shared_ptr<KernelObject> WindowsEmulator::get_object_from_handle(uint64_t h
 int WindowsEmulator::get_object_handle(std::shared_ptr<KernelObject> obj) {
     validate_object_services("object handle lookup");
     if (!om || !obj) return 0;
-    // obj is a KernelObject* (or subclass) — cast and delegate
+    // obj is a KernelObject* (or subclass)  cast and delegate
     return om->get_handle(obj);
 }
 
@@ -976,7 +976,7 @@ int WindowsEmulator::get_object_handle(std::shared_ptr<KernelObject> obj) {
 void WindowsEmulator::add_object(std::shared_ptr<KernelObject> obj) {
     validate_object_services("object registration");
     if (!om || !obj) return;
-    // obj is a KernelObject* (or subclass) — cast and delegate
+    // obj is a KernelObject* (or subclass)  cast and delegate
     om->add_object(obj);
 }
 
@@ -991,7 +991,7 @@ template<typename T> std::shared_ptr<T> WindowsEmulator::new_object() {
     return om->new_object<T>();
 }
 
-// ── PE / module helpers ──────────────────────────────────────
+//  PE / module helpers 
 
 // Python winemu.py:847
 // def get_mod_from_addr(self, addr):
@@ -1058,7 +1058,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::get_peb_
     return result;
 }
 
-// ── PE initialization ───────────────────────────────────────
+//  PE initialization 
 
 // Python winemu.py:760
 // def init_peb(self, user_mods, proc=None):
@@ -1147,13 +1147,13 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     //    return nullptr;
 
     bool valid_arch = (img->arch == 32 || img->arch == 64);
-    // ── Determine architecture (Python 998-1004) ──
+    //  Determine architecture (Python 998-1004) 
     if (!arch) {
         arch = valid_arch ? img->arch : speakeasy::arch::ARCH_X86;
         set_ptr_size(arch);
     }
 
-    // ── Initialize emulation engine if needed (Python 1006-1008) ──
+    //  Initialize emulation engine if needed (Python 1006-1008) 
     if (!emu_eng) {
         int eng_arch = valid_arch ? img->arch : speakeasy::arch::ARCH_X86;
         int mode = (img->arch == 64) ? speakeasy::arch::BITS_64 : speakeasy::arch::BITS_32;
@@ -1162,7 +1162,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     }
     if (!ptr_size) ptr_size = 4;
 
-    // ── Initialize API handler (Python 1019-1022) ──
+    //  Initialize API handler (Python 1019-1022) 
     if (!api) {
         api = std::make_shared<WindowsApi>(reinterpret_cast<Emulator*>(this));
     }
@@ -1170,7 +1170,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     advance_bootstrap_phase(BootstrapPhase::ENGINE_API_READY);
     bootstrap_object_services();
 
-    // ── Map image regions (Python 1027-1040) ──
+    //  Map image regions (Python 1027-1040) 
     // single_region_pe: only one region, base matches, image_size > region data
     bool single_region_pe = (!img->regions.empty()
                              && img->regions.size() == 1
@@ -1212,7 +1212,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     //    mem_write(img->base, img->mapped_image);
     //}
 
-    // ── Patch IAT with sentinel values for import hooking (Python 1042-1050) ──
+    //  Patch IAT with sentinel values for import hooking (Python 1042-1050) 
     int psz = get_ptr_size();
     if (psz == 0) psz = 4;
 
@@ -1229,7 +1229,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     // Also patch from PE header (catches injected PEs that bypass the loader's import table)
     ensure_pe_import_hooks(img->base);
 
-    // ── Apply PE section memory protection (Python 1052-1077) ──
+    //  Apply PE section memory protection (Python 1052-1077) 
     // Python condition: isinstance(image.loader, PeLoader) and image.sections
     bool has_pe_loader = (img->sections.size() > 1);  // PeLoader creates multiple sections per PE
     if (has_pe_loader && !img->sections.empty()) {
@@ -1267,17 +1267,17 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         }
     }
 
-    // ── Create RuntimeModule (Python 1079-1081) ──
+    //  Create RuntimeModule (Python 1079-1081) 
     std::shared_ptr<speakeasy::RuntimeModule> mod = std::make_shared<speakeasy::RuntimeModule>(img);
     if (img->base != 0 && mod->base != img->base)
         mod->base = img->base;
 
-    // ── Determine module type (Python 1083) ──
+    //  Determine module type (Python 1083) 
     bool is_pe = (!img->sections.empty() && img->sections.size() > 1);  // PeLoader produces multiple sections
     bool is_shellcode = (img->module_type == "shellcode");
     bool is_primary = is_pe || is_shellcode;
 
-    // ── Normalize module name for API lookup (Python 1085-1086) ──
+    //  Normalize module name for API lookup (Python 1085-1086) 
     std::string mod_base_name;
     if (!img->emu_path.empty()) {
         auto pos = img->emu_path.find_last_of("/\\");
@@ -1287,7 +1287,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     }
     std::string mod_base_name_no_ext = normalize_mod_name(mod_base_name);
 
-    // ── Process exports: build symbol table and register hooks (Python 1088-1109) ──
+    //  Process exports: build symbol table and register hooks (Python 1088-1109) 
     bool has_api_exports = false;
     if (api) {
         for (auto& exp : img->exports) {
@@ -1320,7 +1320,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         // Here we just ensure imports are patched after sentinel IAT setup above.
     }
 
-    // ── String profiling for primary modules (Python 1120-1124) ──
+    //  String profiling for primary modules (Python 1120-1124) 
     if (is_primary && profiler && config.analysis.strings && !img->regions.empty()) {
         auto& raw = img->regions[0].data;
         if (!raw.empty()) {
@@ -1334,17 +1334,17 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         }
     }
 
-    // ── Register module (Python 1126) ──
+    //  Register module (Python 1126) 
     modules.push_back(mod);
 
-    // ── Allocate stack for primary image (Python 1128-1130) ──
+    //  Allocate stack for primary image (Python 1128-1130) 
     if (is_primary && stack_base == 0 && img->stack_size > 0) {
         size_t stack_size = img->stack_size;  // use image_size as default (stack_size field not on C++ LoadedImage)
         auto [sb, sp] = alloc_stack(stack_size);
         stack_base = sb;
     }
 
-    // ── Run one-time setup (Python 1132-1135) ──
+    //  Run one-time setup (Python 1132-1135) 
     if (!_setup_done) {
         _setup_done = true;
         setup();
@@ -1359,29 +1359,29 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
     if (psz == 0) psz = 4;
     bool is64 = (get_arch() == speakeasy::arch::ARCH_AMD64);
 
-    // ── Read DOS header → verify MZ ──
+    //  Read DOS header  verify MZ 
     auto dos_hdr = mem_read(base_addr, 0x40);
     if (dos_hdr.size() < 0x40 || dos_hdr[0] != 'M' || dos_hdr[1] != 'Z')
         return;
 
-    // ── Read PE offset (e_lfanew) ──
+    //  Read PE offset (e_lfanew) 
     uint32_t e_lfanew = 0;
     for (int i = 0; i < 4; ++i)
         e_lfanew |= static_cast<uint32_t>(dos_hdr[0x3C + i]) << (i * 8);
     uint64_t pe_sig_off = base_addr + e_lfanew;
 
-    // ── Read PE header → verify signature ──
+    //  Read PE header  verify signature 
     auto pe_hdr = mem_read(pe_sig_off, 0x18);
     if (pe_hdr.size() < 4 || pe_hdr[0] != 'P' || pe_hdr[1] != 'E')
         return;
 
-    // ── Read Optional Header → get import directory ──
+    //  Read Optional Header  get import directory 
     // Optional Header starts at pe_sig_off + 0x18 (after Signature + FileHeader)
     uint64_t opt_off = pe_sig_off + 0x18;
     uint32_t import_dir_rva = 0, import_dir_size = 0;
 
     if (is64) {
-        // PE32+: IMAGE_OPTIONAL_HEADER64 — import dir at offset 0x70 in opt hdr
+        // PE32+: IMAGE_OPTIONAL_HEADER64  import dir at offset 0x70 in opt hdr
         auto opt = mem_read(opt_off, 0x70 + 16 * 8);
         if (opt.size() < 0x80) return;
         import_dir_rva = opt[0x70] | (static_cast<uint32_t>(opt[0x71]) << 8) |
@@ -1389,7 +1389,7 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
         import_dir_size = opt[0x74] | (static_cast<uint32_t>(opt[0x75]) << 8) |
                          (static_cast<uint32_t>(opt[0x76]) << 16) | (static_cast<uint32_t>(opt[0x77]) << 24);
     } else {
-        // PE32: IMAGE_OPTIONAL_HEADER32 — import dir at offset 0x68 in opt hdr
+        // PE32: IMAGE_OPTIONAL_HEADER32  import dir at offset 0x68 in opt hdr
         auto opt = mem_read(opt_off, 0x60 + 16 * 8);
         if (opt.size() < 0x70) return;
         import_dir_rva = opt[0x68] | (static_cast<uint32_t>(opt[0x69]) << 8) |
@@ -1400,7 +1400,7 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
 
     if (!import_dir_rva || !import_dir_size) return;
 
-    // ── Walk IMAGE_IMPORT_DESCRIPTOR array ──
+    //  Walk IMAGE_IMPORT_DESCRIPTOR array 
     uint64_t import_dir_va = base_addr + import_dir_rva;
     const size_t desc_size = 20;  // sizeof(IMAGE_IMPORT_DESCRIPTOR)
     int n_descriptors = 0, n_fixups = 0;
@@ -1426,7 +1426,7 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
         if (!name_rva && !iat_rva) break;
         n_descriptors++;
 
-        // ── Read DLL name ──
+        //  Read DLL name 
         auto dll_bytes = mem_read(base_addr + name_rva, 256);
         std::string dll_name;
         {
@@ -1437,7 +1437,7 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
         }
         if (dll_name.empty()) continue;
 
-        // ── Walk thunk entries ──
+        //  Walk thunk entries 
         uint32_t thunk_rva = ilt_rva ? ilt_rva : iat_rva;
         int idx = 0;
 
@@ -1454,7 +1454,7 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
                 thunk_val |= static_cast<uint64_t>(thunk_data[i]) << (i * 8);
             if (thunk_val == 0) break;
 
-            // ── Check if already patched ──
+            //  Check if already patched 
             auto iat_data = mem_read(iat_va, static_cast<size_t>(psz));
             uint64_t iat_val = 0;
             for (int i = 0; i < psz; ++i)
@@ -1462,7 +1462,7 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
 
             if (import_table.count(iat_val)) continue;
 
-            // ── Resolve function name ──
+            //  Resolve function name 
             bool is_ordinal = (is64 ? ((thunk_val >> 63) & 1) : ((thunk_val >> 31) & 1));
             std::string func_name;
 
@@ -1482,7 +1482,7 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
             }
             if (func_name.empty()) continue;
 
-            // ── Allocate sentinel & patch IAT ──
+            //  Allocate sentinel & patch IAT 
             uint64_t sentinel = _alloc_sentinel();
             import_table[sentinel] = {normalize_mod_name(dll_name), func_name};
 
@@ -1601,7 +1601,7 @@ std::shared_ptr<Thread> WindowsEmulator::create_thread(uint64_t addr, void* ctx,
     return thread;
 }
 
-// ── Module loading ───────────────────────────────────────────
+//  Module loading 
 
 
 // Python winemu.py:2180
@@ -1752,8 +1752,8 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::init_use
 //         Priority: native PE file -> API handler (JIT PE) -> placeholder stub."""
 std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_module_group(
     const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config, uint64_t default_base) {
-    // Python winemu.py:2308-2362 — initialize a group of modules from config objects
-    // For each module: try native PE file → API handler (synthetic) → decoy placeholder
+    // Python winemu.py:2308-2362  initialize a group of modules from config objects
+    // For each module: try native PE file  API handler (synthetic)  decoy placeholder
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> rtmods;
     
     for (const auto& modconf : modules_config) {
@@ -1769,7 +1769,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_mo
         std::shared_ptr<speakeasy::RuntimeModule> rtmod;
         
         if (!native_path.empty()) {
-            // PE file exists on disk → PeLoader
+            // PE file exists on disk  PeLoader
             try {
                 speakeasy::PeLoader loader(native_path);
                 auto img = loader.make_image();
@@ -1783,7 +1783,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_mo
         }
         
         if (!rtmod) {
-            // Priority 2: API handler → ApiModuleLoader (synthetic PE)
+            // Priority 2: API handler  ApiModuleLoader (synthetic PE)
             if (api) {
                 auto handler = api->load_api_handler(modname);
                 if (handler) {
@@ -1805,7 +1805,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_mo
         }
         
         if (!rtmod) {
-            // Priority 3: DecoyLoader — minimal PEB-visible stub
+            // Priority 3: DecoyLoader  minimal PEB-visible stub
             speakeasy::DecoyLoader decoy(modname, base_addr ? base_addr : 0,
                                          emu_path, modconf->image_size);
             auto img = decoy.make_image();
@@ -1821,7 +1821,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_mo
 }
 
 
-// ── Thread context ───────────────────────────────────────────
+//  Thread context 
 
 
 // Python winemu.py:2364
@@ -1993,7 +1993,7 @@ void WindowsEmulator::load_thread_context(void* ctx, std::shared_ptr<Thread> thr
     }
 }
 
-// ── SEH ──────────────────────────────────────────────────────
+//  SEH 
 
 
 // Python winemu.py:2662
@@ -2014,7 +2014,7 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
     if (ptr_size == 4) {
         rv = _dispatch_seh_x86(except_code);
     } else {
-        // x64: VEH (Vectored Exception Handling) — walk VEH handler list
+        // x64: VEH (Vectored Exception Handling)  walk VEH handler list
         for (auto* veh : veh_handlers) {
             uint64_t handler = reinterpret_cast<uint64_t>(veh);
             if (handler == 0 || handler == 0xFFFFFFFFFFFFFFFFULL) continue;
@@ -2105,7 +2105,7 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
 void WindowsEmulator::_continue_seh_x86() {
     // After SEH handler returns, EIP should be set by the handler
     // The handler typically calls RtlRestoreContext or similar
-    set_pc(0);  // Placeholder — actual EIP from handler context
+    set_pc(0);  // Placeholder  actual EIP from handler context
 }
 
 
@@ -2118,7 +2118,7 @@ void WindowsEmulator::continue_seh() {
     _seh_repeat_count = 0;
 }
 
-// ── API dispatch ──────────────────────────────────────────────
+//  API dispatch 
 
 
 // Python winemu.py:1358
@@ -2195,7 +2195,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
     if (dll_norm.size() > 4 && dll_norm.substr(dll_norm.size() - 4) == ".dll")
         dll_norm = dll_norm.substr(0, dll_norm.size() - 4);
 
-    // ── Primary handler lookup ──
+    //  Primary handler lookup 
     ApiHandler* handler_mod = nullptr;
     void* func_ptr = nullptr;
 
@@ -2203,7 +2203,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         std::tie(handler_mod, func_ptr) = api->get_export_func_handler(dll_norm, name);
     }
 
-    // ── Normalization fallback ──
+    //  Normalization fallback 
     if (!func_ptr) {
         auto [alt_dll, alt_name] = normalize_import_miss(dll, name);
         if (alt_dll != dll_norm || alt_name != name) {
@@ -2214,7 +2214,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         }
     }
 
-    // ── Execute handler ──
+    //  Execute handler 
     if (func_ptr && handler_mod) {
         int conv = speakeasy::arch::CALL_CONV_STDCALL;
         int argc = 4;
@@ -2252,8 +2252,8 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         return;
     }
 
-    // ── No handler: unsupported API ──
-    // (API hooks not yet ported — ApiHook struct is TBD)
+    //  No handler: unsupported API 
+    // (API hooks not yet ported  ApiHook struct is TBD)
     on_run_complete();
 }
 
@@ -2351,7 +2351,7 @@ void WindowsEmulator::restart_run(void* run) {
     restart_curr_run = true;
 }
 
-// ── Memory hooks (additional) ───────────────────────────────
+//  Memory hooks (additional) 
 
 
 // Python winemu.py:1831
@@ -2551,7 +2551,7 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
                 if (!curr_run->api_callbacks.empty()) {
                     auto cb = curr_run->api_callbacks.front();
                     curr_run->api_callbacks.erase(curr_run->api_callbacks.begin());
-                    // cb is a function<void()> — invoke to process pending work
+                    // cb is a function<void()>  invoke to process pending work
                     // For now, unset hooks and let code core handle it
                     _unset_emu_hooks();
                 }
@@ -2602,7 +2602,7 @@ bool WindowsEmulator::_handle_prot_write(void* emu, uint64_t addr,
     return false;
 }
 
-// ── Code hooks (additional) ─────────────────────────────────
+//  Code hooks (additional) 
 
 
 // Python winemu.py:2097
@@ -2835,7 +2835,7 @@ void* WindowsEmulator::get_process_peb(void* process) {
     return nullptr;
 }
 
-// ── Error / context ─────────────────────────────────────────
+//  Error / context 
 
 
 // Python winemu.py:1511
@@ -2906,7 +2906,7 @@ std::string WindowsEmulator::_resolve_region_info(uint64_t addr) {
 }
 
 
-// ── Hardware interrupts ──────────────────────────────────────
+//  Hardware interrupts 
 
 
 // Python winemu.py:2742
@@ -2917,7 +2917,7 @@ bool WindowsEmulator::_hook_interrupt(void* emu, int intnum) {
     return false;
 }
 
-// ── Run control extension ─────────────────────────────────────
+//  Run control extension 
 
 
 // Python winemu.py:386
@@ -2927,7 +2927,7 @@ void WindowsEmulator::add_run(std::shared_ptr<Run> run) {
     run_queue.push_back(run);
 }
 
-// ── Bootstrap / reference counting ────────────────────────────
+//  Bootstrap / reference counting 
 
 
 // Python winemu.py:2723
@@ -2942,7 +2942,7 @@ int WindowsEmulator::dec_ref(void* obj) {
     return 0;
 }
 
-// ── File management wrappers ──────────────────────────────────
+//  File management wrappers 
 
 
 // Python winemu.py:291
@@ -2987,7 +2987,7 @@ void* WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
     return nullptr;
 }
 
-// ── Manager accessors ─────────────────────────────────────────
+//  Manager accessors 
 
 
 // Python winemu.py:309
@@ -3010,7 +3010,7 @@ std::shared_ptr<CryptoManager> WindowsEmulator::get_crypt_manager()   { return c
 //     """Get the drive manager"""
 std::shared_ptr<DriveManager> WindowsEmulator::get_drive_manager()   { return driveman; }
 
-// ── Registry wrappers ─────────────────────────────────────────
+//  Registry wrappers 
 
 
 // Python winemu.py:357
@@ -3018,7 +3018,7 @@ std::shared_ptr<DriveManager> WindowsEmulator::get_drive_manager()   { return dr
 //     """Get subkeys for a given registry key"""
 std::vector<std::string> WindowsEmulator::reg_get_subkeys(void* hkey) {
     (void)hkey;
-    // RegistryManager::get_subkeys accepts shared_ptr<RegKey> — adapter needed
+    // RegistryManager::get_subkeys accepts shared_ptr<RegKey>  adapter needed
     return {};
 }
 
@@ -3034,7 +3034,7 @@ void* WindowsEmulator::dev_ioctl(uint32_t ctl_code, void* in_buf,
 }
 
 
-// Python winemu.py:— (Unicorn engine binding)
+// Python winemu.py: (Unicorn engine binding)
 void WindowsEmulator::_register_code_hook(void* callback, uint64_t begin, uint64_t end) {
     if (!emu_eng) return;
     uc_hook hh = 0;
@@ -3046,7 +3046,7 @@ void WindowsEmulator::_register_code_hook(void* callback, uint64_t begin, uint64
 }
 
 
-// Python winemu.py:— (Unicorn engine binding)
+// Python winemu.py: (Unicorn engine binding)
 void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
     if (!emu_eng) return;
     uc_hook hh = 0;
@@ -3058,7 +3058,7 @@ void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
     }
 }
 
-// _get_exception_list was accidentally removed — re-adding
+// _get_exception_list was accidentally removed  re-adding
 
 // Python winemu.py:2467
 // def _get_exception_list(self):

@@ -1,4 +1,4 @@
-// wdfldr.cpp — Windows Driver Framework Loader handler (implemented)
+// wdfldr.cpp  Windows Driver Framework Loader handler (implemented)
 #include "wdfldr.h"
 
 #include <cstdint>
@@ -15,7 +15,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
@@ -64,7 +64,7 @@ Wdfldr::Wdfldr(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── Implementations ───────────────────────────────────────────
+//  Implementations 
 
 uint64_t Wdfldr::WdfVersionBind(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS WdfVersionBind(DriverObject, RegistryPath, BindInfo, ComponentGlobals)

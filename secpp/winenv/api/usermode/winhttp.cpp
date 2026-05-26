@@ -1,4 +1,4 @@
-// winhttp.cpp — winhttp.dll handler (v2 — real implementations)
+// winhttp.cpp  winhttp.dll handler (v2  real implementations)
 #include "winhttp.h"
 #include <cstring>
 #include <cstdint>
@@ -15,13 +15,13 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ── Handle management ────────────────────────────────────────
+//  Handle management 
 static uint64_t next_handle() {
     static uint64_t h = 0x2000;
     return ++h;
 }
 
-// ── Internal HTTP state tracking ─────────────────────────────
+//  Internal HTTP state tracking 
 struct WinHttpRequest {
     uint64_t hnd;
     std::string verb;
@@ -42,11 +42,11 @@ static std::map<uint64_t, WinHttpRequest>& requests() {
     return r;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 // API implementations
-// ═══════════════════════════════════════════════════════════════
+// 
 
-// ── WinHttpOpen ──────────────────────────────────────────────
+//  WinHttpOpen 
 // HINTERNET WinHttpOpen(LPCWSTR pszAgentW, DWORD dwAccessType,
 //                       LPCWSTR pszProxyW, LPCWSTR pszProxyBypassW, DWORD dwFlags);
 uint64_t WinHttp::WinHttpOpen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
@@ -73,7 +73,7 @@ uint64_t WinHttp::WinHttpOpen(void* e, const std::string&, int, const std::vecto
     return hnd;
 }
 
-// ── WinHttpConnect ───────────────────────────────────────────
+//  WinHttpConnect 
 // HINTERNET WinHttpConnect(HINTERNET hSession, LPCWSTR pswzServerName,
 //                          INTERNET_PORT nServerPort, DWORD dwReserved);
 uint64_t WinHttp::WinHttpConnect(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
@@ -97,7 +97,7 @@ uint64_t WinHttp::WinHttpConnect(void* e, const std::string&, int, const std::ve
     return hnd;
 }
 
-// ── WinHttpOpenRequest ───────────────────────────────────────
+//  WinHttpOpenRequest 
 // HINTERNET WinHttpOpenRequest(HINTERNET hConnect, LPCWSTR pwszVerb,
 //                              LPCWSTR pwszObjectName, LPCWSTR pwszVersion, ...);
 uint64_t WinHttp::WinHttpOpenRequest(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
@@ -148,7 +148,7 @@ uint64_t WinHttp::WinHttpOpenRequest(void* e, const std::string&, int, const std
     return hnd;
 }
 
-// ── WinHttpGetIEProxyConfigForCurrentUser ────────────────────
+//  WinHttpGetIEProxyConfigForCurrentUser 
 uint64_t WinHttp::WinHttpGetIEProxyConfigForCurrentUser(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return 0;
     uint64_t proxy_config = a[0];
@@ -161,20 +161,20 @@ uint64_t WinHttp::WinHttpGetIEProxyConfigForCurrentUser(void* e, const std::stri
     return 1; // TRUE
 }
 
-// ── WinHttpGetProxyForUrl ────────────────────────────────────
+//  WinHttpGetProxyForUrl 
 uint64_t WinHttp::WinHttpGetProxyForUrl(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e;
     if (a.size() < 1) return 0;
     return 1; // TRUE (no proxy)
 }
 
-// ── WinHttpSetOption ─────────────────────────────────────────
+//  WinHttpSetOption 
 uint64_t WinHttp::WinHttpSetOption(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return 1; // TRUE
 }
 
-// ── WinHttpSendRequest ───────────────────────────────────────
+//  WinHttpSendRequest 
 uint64_t WinHttp::WinHttpSendRequest(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 7) return 0;
     uint64_t hRequest = a[0];
@@ -227,13 +227,13 @@ uint64_t WinHttp::WinHttpSendRequest(void* e, const std::string&, int, const std
     return 1; // TRUE
 }
 
-// ── WinHttpReceiveResponse ───────────────────────────────────
+//  WinHttpReceiveResponse 
 uint64_t WinHttp::WinHttpReceiveResponse(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return 1; // TRUE
 }
 
-// ── WinHttpReadData ──────────────────────────────────────────
+//  WinHttpReadData 
 uint64_t WinHttp::WinHttpReadData(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 4) return 0;
     uint64_t hRequest = a[0];
@@ -256,7 +256,7 @@ uint64_t WinHttp::WinHttpReadData(void* e, const std::string&, int, const std::v
     return 1; // TRUE
 }
 
-// ── WinHttpCrackUrl ──────────────────────────────────────────
+//  WinHttpCrackUrl 
 uint64_t WinHttp::WinHttpCrackUrl(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 4) return 0;
     uint64_t pwszUrl = a[0];
@@ -269,7 +269,7 @@ uint64_t WinHttp::WinHttpCrackUrl(void* e, const std::string&, int, const std::v
 
     std::string url = be(e)->read_mem_string(pwszUrl, 2);
 
-    // Parse URL components — we just set nScheme based on prefix
+    // Parse URL components  we just set nScheme based on prefix
     uint64_t scheme = 1; // INTERNET_SCHEME_HTTP = 1
     if (url.find("https") == 0 || url.find("HTTPS") == 0) {
         scheme = 2; // INTERNET_SCHEME_HTTPS = 2
@@ -291,7 +291,7 @@ uint64_t WinHttp::WinHttpCrackUrl(void* e, const std::string&, int, const std::v
     return 1; // TRUE
 }
 
-// ── WinHttpAddRequestHeaders ─────────────────────────────────
+//  WinHttpAddRequestHeaders 
 uint64_t WinHttp::WinHttpAddRequestHeaders(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 4) return 0;
     uint64_t hRequest = a[0];
@@ -311,7 +311,7 @@ uint64_t WinHttp::WinHttpAddRequestHeaders(void* e, const std::string&, int, con
     return 1; // TRUE
 }
 
-// ── WinHttpQueryHeaders ──────────────────────────────────────
+//  WinHttpQueryHeaders 
 uint64_t WinHttp::WinHttpQueryHeaders(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 6) return 0;
     uint64_t hRequest = a[0];
@@ -348,7 +348,7 @@ uint64_t WinHttp::WinHttpQueryHeaders(void* e, const std::string&, int, const st
     return 1;
 }
 
-// ── WinHttpCloseHandle ───────────────────────────────────────
+//  WinHttpCloseHandle 
 uint64_t WinHttp::WinHttpCloseHandle(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return 0;
     uint64_t hnd = a[0];

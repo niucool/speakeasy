@@ -1,4 +1,4 @@
-// regdefs.h — Registry type constants and helpers
+// regdefs.h  Registry type constants and helpers
 // Maps to: speakeasy/winenv/defs/registry/reg.py
 
 #ifndef REGDEFS_H

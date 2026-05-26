@@ -1,4 +1,4 @@
-// cli_config.cpp — CLI configuration implementation
+// cli_config.cpp  CLI configuration implementation
 
 #include "cli_config.h"
 

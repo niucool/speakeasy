@@ -1,4 +1,4 @@
-// cli_config.h — CLI configuration field specs and overrides
+// cli_config.h  CLI configuration field specs and overrides
 //
 // Maps to: speakeasy/cli_config.py
 

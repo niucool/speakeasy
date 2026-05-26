@@ -1,4 +1,4 @@
-// netapi32.cpp — netapi32.dll handler (real implementations)
+// netapi32.cpp  netapi32.dll handler (real implementations)
 #include "netapi32.h"
 #include <cstdint>
 #include <cstring>
@@ -7,7 +7,7 @@
 #include "windows/winemu.h"
 #include "winenv/defs/windows/netapi32.h"
 
-// ── Windows SDK macro conflict protection ─────────────────────
+//  Windows SDK macro conflict protection 
 #ifdef _WIN32
 #pragma push_macro("ERROR_SUCCESS")
 #pragma push_macro("ERROR_INVALID_LEVEL")
@@ -29,7 +29,7 @@ static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline int ptr_sz(void* e) { return (be(e)->get_arch() == speakeasy::arch::ARCH_AMD64) ? 8 : 4; }
 
-// ── Local error code constants ────────────────────────────────
+//  Local error code constants 
 static constexpr uint32_t NET_ERROR_SUCCESS           = 0;
 static constexpr uint32_t NET_NERR_Success             = 0;
 static constexpr uint32_t NET_ERROR_INVALID_LEVEL      = 124;
@@ -39,7 +39,7 @@ static constexpr uint32_t NET_ERROR_INSUFFICIENT_BUFFER = 122;
 
 
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 NetApi32::NetApi32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(NetApi32)
     // Domain / workstation
@@ -124,9 +124,9 @@ NetApi32::NetApi32(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGetJoinInformation
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGetJoinInformation(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NET_API_STATUS NetGetJoinInformation(
     //   LPCWSTR lpServer,        // a[0]
@@ -165,9 +165,9 @@ uint64_t NetApi32::NetGetJoinInformation(void* e, const std::string&, int, const
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetWkstaGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NET_API_STATUS NetWkstaGetInfo(
     //   LMSTR  servername,   // a[0]
@@ -267,9 +267,9 @@ uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::string&, int, const std::
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetWkstaUserEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetWkstaUserEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t servername = a[0];
     uint64_t level = a[1];
@@ -279,25 +279,25 @@ uint64_t NetApi32::NetWkstaUserEnum(void* e, const std::string&, int, const std:
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetServerEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetServerEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetServerEnumEx
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetServerEnumEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetServerGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetServerGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NET_API_STATUS NetServerGetInfo(LMSTR servername, DWORD level, LPBYTE *bufptr);
     uint64_t servername = a[0];
@@ -339,17 +339,17 @@ uint64_t NetApi32::NetServerGetInfo(void* e, const std::string&, int, const std:
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetServerSetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetServerSetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserAdd
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserAdd(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NET_API_STATUS NetUserAdd(LPCWSTR servername, DWORD level, LPBYTE buf, LPDWORD parm_err);
     uint64_t servername = a[0];
@@ -366,9 +366,9 @@ uint64_t NetApi32::NetUserAdd(void* e, const std::string&, int, const std::vecto
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserDel
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserDel(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t servername = a[0];
     uint64_t username = a[1];
@@ -380,161 +380,161 @@ uint64_t NetApi32::NetUserDel(void* e, const std::string&, int, const std::vecto
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserGetGroups
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserGetGroups(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserSetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserSetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserGetLocalGroups
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserGetLocalGroups(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserModalsGet
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserModalsGet(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUserModalsSet
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUserModalsSet(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGroupEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGroupEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGroupGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGroupGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGroupSetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGroupSetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGroupAddUser
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGroupAddUser(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGroupDelUser
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGroupDelUser(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetLocalGroupEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetLocalGroupEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetLocalGroupGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetLocalGroupGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetLocalGroupSetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetLocalGroupSetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetLocalGroupAdd
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetLocalGroupAdd(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetLocalGroupAddMembers
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetLocalGroupAddMembers(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetLocalGroupDelMembers
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetLocalGroupDelMembers(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetLocalGroupGetMembers
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetLocalGroupGetMembers(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetApiBufferAllocate
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetApiBufferAllocate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t ByteCount = a[0];
     uint64_t Buffer = a[1];
@@ -548,33 +548,33 @@ uint64_t NetApi32::NetApiBufferAllocate(void* e, const std::string&, int, const 
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetApiBufferFree
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetApiBufferFree(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetApiBufferReallocate
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetApiBufferReallocate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetApiBufferSize
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetApiBufferSize(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGetDCName
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGetDCName(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t servername = a[0];
     uint64_t domainname = a[1];
@@ -598,360 +598,360 @@ uint64_t NetApi32::NetGetDCName(void* e, const std::string&, int, const std::vec
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGetAnyDCName
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGetAnyDCName(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     return NetGetDCName(e, std::string(), 0, a);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGetDisplayInformationIndex
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetGetDisplayInformationIndex(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetQueryDisplayInformation
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetQueryDisplayInformation(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetShareAdd
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetShareAdd(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetShareCheck
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetShareCheck(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetShareDel
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetShareDel(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetShareEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetShareEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetShareGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetShareGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetShareSetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetShareSetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetConnectionEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetConnectionEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetFileEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetFileEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetFileGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetFileGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetFileClose
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetFileClose(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetSessionEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetSessionEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetSessionGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetSessionGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetSessionDel
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetSessionDel(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUseAdd
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUseAdd(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUseDel
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUseDel(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUseEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUseEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetUseGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetUseGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetScheduleJobAdd
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetScheduleJobAdd(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetScheduleJobDel
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetScheduleJobDel(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetScheduleJobEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetScheduleJobEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetScheduleJobGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetScheduleJobGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetRemoteComputerSupports
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetRemoteComputerSupports(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetRemoteTOD
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetRemoteTOD(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetWkstaSetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetWkstaSetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetWkstaTransportEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetWkstaTransportEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetWkstaTransportAdd
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetWkstaTransportAdd(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetWkstaTransportDel
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetWkstaTransportDel(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetAccessAdd
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetAccessAdd(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetAccessDel
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetAccessDel(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetAccessEnum
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetAccessEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetAccessGetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetAccessGetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetAccessSetInfo
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetAccessSetInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetAuditClear
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetAuditClear(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetAuditRead
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetAuditRead(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetAuditWrite
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetAuditWrite(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetConfigGet
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetConfigGet(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetConfigGetAll
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetConfigGetAll(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetConfigSet
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetConfigSet(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetErrorLogClear
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetErrorLogClear(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetErrorLogRead
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetErrorLogRead(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetErrorLogWrite
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::NetErrorLogWrite(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  SetServiceBits
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t NetApi32::SetServiceBits(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return NET_NERR_Success;
@@ -959,7 +959,7 @@ uint64_t NetApi32::SetServiceBits(void* e, const std::string&, int, const std::v
 
 }} // namespaces
 
-// ── Pop SDK macros ────────────────────────────────────────────
+//  Pop SDK macros 
 #ifdef _WIN32
 #pragma pop_macro("ERROR_INSUFFICIENT_BUFFER")
 #pragma pop_macro("ERROR_MORE_DATA")

@@ -1,4 +1,4 @@
-// loaders.h — PE file loader for emulated modules
+// loaders.h  PE file loader for emulated modules
 //
 // Maps to: speakeasy/windows/loaders.py
 //
@@ -19,7 +19,7 @@
 
 namespace speakeasy {
 
-// ── Data structures ──────────────────────────────────────────
+//  Data structures 
 
 struct ResourceEntry {
     int id = 0;
@@ -98,7 +98,7 @@ struct LoadedImage {
 };
 
 
-// ── RuntimeModule ─────────────────────────────────────────
+//  RuntimeModule 
 /**
  * Wraps a LoadedImage with runtime state tracked during emulation.
  * Mirrors Python speakeasy/windows/loaders.py class RuntimeModule (lines 109-167).
@@ -150,13 +150,13 @@ private:
     std::shared_ptr<speakeasy::LoadedImage> _image;
 };
 
-// ── PE Loader ────────────────────────────────────────────────
+//  PE Loader 
 
 /**
  * Parses PE files (EXE, DLL, SYS) and produces a LoadedImage ready
  * for mapping into the emulated address space.
  */
-// ── Abstract Loader base class ───────────────────────────
+//  Abstract Loader base class 
 /**
  * Virtual base for all module loaders (PE, shellcode, API module, decoy).
  * Mirrors the Python duck-typing contract: every loader provides make_image().
@@ -232,7 +232,7 @@ private:
  * Convert section characteristics flags to memory permissions.
  */
 
-// ── Shellcode Loader ──────────────────────────────────────
+//  Shellcode Loader 
 /**
  * Wraps raw shellcode bytes as a LoadedImage.
  * Mirrors Python speakeasy/windows/loaders.py class ShellcodeLoader (lines 353-388).
@@ -246,7 +246,7 @@ private:
     int arch_;
 };
 
-// ── API Module Loader ─────────────────────────────────────
+//  API Module Loader 
 /**
  * Creates a synthetic PE image that exports API handler stubs.
  * Mirrors Python speakeasy/windows/loaders.py class ApiModuleLoader (lines 391-508).
@@ -264,7 +264,7 @@ private:
     std::string emu_path_;
 };
 
-// ── Decoy Loader ──────────────────────────────────────────
+//  Decoy Loader 
 /**
  * Creates a minimal LoadedImage for modules that only exist for
  * PEB visibility (e.g. ntdll.dll, kernel32.dll as decoys).

@@ -1,4 +1,4 @@
-// winmm.cpp — winmm.dll handler (real implementations)
+// winmm.cpp  winmm.dll handler (real implementations)
 #include "winmm.h"
 #include <cstdint>
 #include <string>
@@ -26,9 +26,9 @@ Winmm::Winmm(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  timeBeginPeriod — set minimum timer resolution
-// ═══════════════════════════════════════════════════════════════
+// 
+//  timeBeginPeriod  set minimum timer resolution
+// 
 uint64_t Winmm::timeBeginPeriod(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e;
     uint32_t uPeriod = static_cast<uint32_t>(a[0] & 0xFFFFFFFF);
@@ -36,9 +36,9 @@ uint64_t Winmm::timeBeginPeriod(void* e, const std::string&, int, const std::vec
     return TIMERR_NOERROR;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  timeEndPeriod — clear minimum timer resolution
-// ═══════════════════════════════════════════════════════════════
+// 
+//  timeEndPeriod  clear minimum timer resolution
+// 
 uint64_t Winmm::timeEndPeriod(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e;
     uint32_t uPeriod = static_cast<uint32_t>(a[0] & 0xFFFFFFFF);
@@ -46,9 +46,9 @@ uint64_t Winmm::timeEndPeriod(void* e, const std::string&, int, const std::vecto
     return TIMERR_NOERROR;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  timeGetTime — get system time in milliseconds
-// ═══════════════════════════════════════════════════════════════
+// 
+//  timeGetTime  get system time in milliseconds
+// 
 uint64_t Winmm::timeGetTime(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     auto now = std::chrono::steady_clock::now();

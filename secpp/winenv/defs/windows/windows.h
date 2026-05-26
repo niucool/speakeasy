@@ -1,4 +1,4 @@
-// windows.h — Common Windows user-mode type definitions
+// windows.h  Common Windows user-mode type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/windows.py
 
@@ -21,7 +21,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── FILETIME ─────────────────────────────────────────────────
+//  FILETIME 
 
 struct FILETIME : speakeasy::EmuStruct {
     uint32_t dwLowDateTime  = 0;
@@ -36,7 +36,7 @@ struct FILETIME : speakeasy::EmuStruct {
     }
 };
 
-// ── SYSTEMTIME ───────────────────────────────────────────────
+//  SYSTEMTIME 
 
 struct SYSTEMTIME : speakeasy::EmuStruct {
     uint16_t wYear         = 0;
@@ -63,7 +63,7 @@ struct SYSTEMTIME : speakeasy::EmuStruct {
     }
 };
 
-// ── SYSTEM_INFO ──────────────────────────────────────────────
+//  SYSTEM_INFO 
 
 struct SYSTEM_INFO : speakeasy::EmuStruct {
     uint16_t wProcessorArchitecture = 0;
@@ -110,7 +110,7 @@ struct SYSTEM_INFO : speakeasy::EmuStruct {
     }
 };
 
-// ── MEMORY_BASIC_INFORMATION ─────────────────────────────────
+//  MEMORY_BASIC_INFORMATION 
 
 struct MEMORY_BASIC_INFORMATION : speakeasy::EmuStruct {
     uint64_t BaseAddress       = 0;
@@ -145,7 +145,7 @@ struct MEMORY_BASIC_INFORMATION : speakeasy::EmuStruct {
     }
 };
 
-// ── Memory flags ─────────────────────────────────────────────
+//  Memory flags 
 
 constexpr uint32_t MEM_COMMIT  = 0x1000;
 constexpr uint32_t MEM_RESERVE = 0x2000;
@@ -154,7 +154,7 @@ constexpr uint32_t MEM_IMAGE   = 0x1000000;
 constexpr uint32_t MEM_MAPPED  = 0x40000;
 constexpr uint32_t MEM_PRIVATE = 0x20000;
 
-// ── Page protection ──────────────────────────────────────────
+//  Page protection 
 
 constexpr uint32_t PAGE_NOACCESS          = 0x01;
 constexpr uint32_t PAGE_READONLY          = 0x02;

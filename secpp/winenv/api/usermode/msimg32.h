@@ -1,4 +1,4 @@
-// msimg32.h — msimg32.dll API handler
+// msimg32.h  msimg32.dll API handler
 #ifndef SPEAKEASY_MSIMG32_H
 #define SPEAKEASY_MSIMG32_H
 #include <string>

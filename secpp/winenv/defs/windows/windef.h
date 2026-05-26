@@ -1,4 +1,4 @@
-// windef.h — Windows base type definitions
+// windef.h  Windows base type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/windef.py
 //
@@ -16,13 +16,13 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── Constants ──────────────────────────────────────────────────
+//  Constants 
 
 #ifndef ANYSIZE_ARRAY
 constexpr uint32_t ANYSIZE_ARRAY = 1;
 #endif
 
-// ── POINT ──────────────────────────────────────────────────────
+//  POINT 
 
 struct POINT : speakeasy::EmuStruct {
     int32_t x = 0;
@@ -37,7 +37,7 @@ struct POINT : speakeasy::EmuStruct {
     }
 };
 
-// ── POINTS (short-coordinate variant) ───────────────────────────
+//  POINTS (short-coordinate variant) 
 
 struct POINTS : speakeasy::EmuStruct {
     int16_t x = 0;
@@ -52,7 +52,7 @@ struct POINTS : speakeasy::EmuStruct {
     }
 };
 
-// ── RECT ───────────────────────────────────────────────────────
+//  RECT 
 
 struct RECT : speakeasy::EmuStruct {
     int32_t left   = 0;
@@ -71,7 +71,7 @@ struct RECT : speakeasy::EmuStruct {
     }
 };
 
-// ── RECTL (long-coordinate variant) ─────────────────────────────
+//  RECTL (long-coordinate variant) 
 
 struct RECTL : speakeasy::EmuStruct {
     int32_t left   = 0;
@@ -90,7 +90,7 @@ struct RECTL : speakeasy::EmuStruct {
     }
 };
 
-// ── SIZE ───────────────────────────────────────────────────────
+//  SIZE 
 
 struct SIZE : speakeasy::EmuStruct {
     int32_t cx = 0;
@@ -105,7 +105,7 @@ struct SIZE : speakeasy::EmuStruct {
     }
 };
 
-// ── MONITORINFO ────────────────────────────────────────────────
+//  MONITORINFO 
 
 struct MONITORINFO : speakeasy::EmuStruct {
     uint32_t cbSize    = sizeof(MONITORINFO);
@@ -126,7 +126,7 @@ struct MONITORINFO : speakeasy::EmuStruct {
     }
 };
 
-// ── GUID ───────────────────────────────────────────────────────
+//  GUID 
 #ifndef _WIN32
 struct GUID : speakeasy::EmuStruct {
     uint32_t Data1    = 0;
@@ -165,7 +165,7 @@ struct GUID : speakeasy::EmuStruct {
 };
 #endif
 
-// ── LUID ───────────────────────────────────────────────────────
+//  LUID 
 
 struct LUID : speakeasy::EmuStruct {
     uint32_t LowPart  = 0;
@@ -180,7 +180,7 @@ struct LUID : speakeasy::EmuStruct {
     }
 };
 
-// ── LARGE_INTEGER / ULARGE_INTEGER ────────────────────────────
+//  LARGE_INTEGER / ULARGE_INTEGER 
 
 struct LARGE_INTEGER : speakeasy::EmuStruct {
     int64_t QuadPart = 0;
@@ -204,7 +204,7 @@ struct ULARGE_INTEGER : speakeasy::EmuStruct {
     }
 };
 
-// ── PE header structures ───────────────────────────────────────
+//  PE header structures 
 
 // IMAGE_DOS_HEADER
 struct IMAGE_DOS_HEADER : speakeasy::EmuStruct {
@@ -513,7 +513,7 @@ struct IMAGE_SECTION_HEADER : speakeasy::EmuStruct {
     }
 };
 
-// ── PE Constants ───────────────────────────────────────────────
+//  PE Constants 
 
 // Machine types
 #ifndef IMAGE_FILE_MACHINE_I386

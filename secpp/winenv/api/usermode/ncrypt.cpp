@@ -1,4 +1,4 @@
-// ncrypt.cpp — ncrypt.dll handler (real implementations)
+// ncrypt.cpp  ncrypt.dll handler (real implementations)
 #include "ncrypt.h"
 #include <cstring>
 #include <cstdint>
@@ -15,7 +15,7 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ── SECURITY_STATUS constants (NC_ prefix to avoid macro conflicts) ─
+//  SECURITY_STATUS constants (NC_ prefix to avoid macro conflicts) 
 static constexpr uint32_t NC_OK = 0x00000000;
 static constexpr uint32_t NC_NTE_INVALID_HANDLE = 0x80090026;
 
@@ -37,9 +37,9 @@ static std::map<uint64_t, NcryptProv>& providers() {
     return m;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NCryptOpenStorageProvider
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Ncrypt::NCryptOpenStorageProvider(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return NC_NTE_INVALID_HANDLE;
     uint64_t phProvider = a[0];
@@ -67,9 +67,9 @@ uint64_t Ncrypt::NCryptOpenStorageProvider(void* e, const std::string&, int, con
     return NC_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NCryptImportKey
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Ncrypt::NCryptImportKey(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 8) return NC_NTE_INVALID_HANDLE;
     uint64_t hProvider = a[0];
@@ -106,9 +106,9 @@ uint64_t Ncrypt::NCryptImportKey(void* e, const std::string&, int, const std::ve
     return NC_OK;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NCryptDeleteKey
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Ncrypt::NCryptDeleteKey(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 2) return NC_NTE_INVALID_HANDLE;
     uint64_t hKey = a[0];
@@ -125,9 +125,9 @@ uint64_t Ncrypt::NCryptDeleteKey(void* e, const std::string&, int, const std::ve
     return NC_NTE_INVALID_HANDLE;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NCryptFreeObject
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Ncrypt::NCryptFreeObject(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return NC_NTE_INVALID_HANDLE;
     uint64_t hObject = a[0];
@@ -151,7 +151,7 @@ uint64_t Ncrypt::NCryptFreeObject(void* e, const std::string&, int, const std::v
     return NC_NTE_INVALID_HANDLE;
 }
 
-// ── Constructor ─────────────────────────────────────────────────
+//  Constructor 
 Ncrypt::Ncrypt(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Ncrypt)
     REG(Ncrypt, NCryptOpenStorageProvider, 3)

@@ -1,4 +1,4 @@
-// advpack.h — advpack.dll API handler (v2 — macro-based registration)
+// advpack.h  advpack.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_ADVPACK_H
 #define SPEAKEASY_ADVPACK_H
 #include <string>

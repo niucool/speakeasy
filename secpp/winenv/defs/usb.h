@@ -1,4 +1,4 @@
-// usb.h — Universal Serial Bus type definitions
+// usb.h  Universal Serial Bus type definitions
 //
 // Maps to: speakeasy/winenv/defs/usb.py
 //
@@ -14,25 +14,25 @@
 
 namespace speakeasy { namespace defs {
 
-// ── USB descriptor type constants ──────────────────────────
+//  USB descriptor type constants 
 constexpr uint32_t USB_DEVICE_DESCRIPTOR_TYPE        = 0x01;
 constexpr uint32_t USB_CONFIGURATION_DESCRIPTOR_TYPE = 0x02;
 constexpr uint32_t USB_STRING_DESCRIPTOR_TYPE        = 0x03;
 constexpr uint32_t USB_INTERFACE_DESCRIPTOR_TYPE     = 0x04;
 constexpr uint32_t USB_ENDPOINT_DESCRIPTOR_TYPE      = 0x05;
 
-// ── USB endpoint types ────────────────────────────────────
+//  USB endpoint types 
 constexpr uint32_t USB_ENDPOINT_TYPE_MASK       = 0x03;
 constexpr uint32_t USB_ENDPOINT_TYPE_CONTROL     = 0x00;
 constexpr uint32_t USB_ENDPOINT_TYPE_ISOCHRONOUS = 0x01;
 constexpr uint32_t USB_ENDPOINT_TYPE_BULK        = 0x02;
 constexpr uint32_t USB_ENDPOINT_TYPE_INTERRUPT   = 0x03;
 
-// ── USB direction bits ────────────────────────────────────
+//  USB direction bits 
 constexpr uint32_t USB_DIR_IN  = 0x80;
 constexpr uint32_t USB_DIR_OUT = 0x00;
 
-// ── USB_DEVICE_DESCRIPTOR (18 bytes) ──────────────────────
+//  USB_DEVICE_DESCRIPTOR (18 bytes) 
 struct USB_DEVICE_DESCRIPTOR : speakeasy::EmuStruct {
     uint8_t  bLength            = 0;  // offset  0
     uint8_t  bDescriptorType    = 0;  // offset  1
@@ -71,7 +71,7 @@ struct USB_DEVICE_DESCRIPTOR : speakeasy::EmuStruct {
     }
 };
 
-// ── USB_CONFIGURATION_DESCRIPTOR (9 bytes) ────────────────
+//  USB_CONFIGURATION_DESCRIPTOR (9 bytes) 
 struct USB_CONFIGURATION_DESCRIPTOR : speakeasy::EmuStruct {
     uint8_t  bLength             = 0;  // offset 0
     uint8_t  bDescriptorType     = 0;  // offset 1
@@ -98,7 +98,7 @@ struct USB_CONFIGURATION_DESCRIPTOR : speakeasy::EmuStruct {
     }
 };
 
-// ── USB_INTERFACE_DESCRIPTOR (9 bytes) ────────────────────
+//  USB_INTERFACE_DESCRIPTOR (9 bytes) 
 struct USB_INTERFACE_DESCRIPTOR : speakeasy::EmuStruct {
     uint8_t bLength            = 0;  // offset 0
     uint8_t bDescriptorType    = 0;  // offset 1
@@ -127,7 +127,7 @@ struct USB_INTERFACE_DESCRIPTOR : speakeasy::EmuStruct {
     }
 };
 
-// ── USB_ENDPOINT_DESCRIPTOR (7 bytes) ─────────────────────
+//  USB_ENDPOINT_DESCRIPTOR (7 bytes) 
 struct USB_ENDPOINT_DESCRIPTOR : speakeasy::EmuStruct {
     uint8_t  bLength          = 0;  // offset 0
     uint8_t  bDescriptorType  = 0;  // offset 1
@@ -150,7 +150,7 @@ struct USB_ENDPOINT_DESCRIPTOR : speakeasy::EmuStruct {
     }
 };
 
-// ── USBD_VERSION_INFORMATION (4 bytes) ────────────────────
+//  USBD_VERSION_INFORMATION (4 bytes) 
 struct USBD_VERSION_INFORMATION : speakeasy::EmuStruct {
     uint32_t USBDI_Version       = 0;  // offset 0
     uint32_t Supported_USB_Version = 0; // offset 4 -- actually this might be uint32_t...

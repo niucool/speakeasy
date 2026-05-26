@@ -1,4 +1,4 @@
-// wdf.h — Windows Driver Framework (WDF) type definitions
+// wdf.h  Windows Driver Framework (WDF) type definitions
 //
 // Maps to: speakeasy/winenv/defs/wdf.py
 //
@@ -15,7 +15,7 @@
 
 namespace speakeasy { namespace defs {
 
-// ── WDF USB target select config type enums ───────────────
+//  WDF USB target select config type enums 
 constexpr uint32_t WdfUsbTargetDeviceSelectConfigTypeInvalid             = 0;
 constexpr uint32_t WdfUsbTargetDeviceSelectConfigTypeDeconfig           = 1;
 constexpr uint32_t WdfUsbTargetDeviceSelectConfigTypeSingleInterface    = 2;
@@ -28,19 +28,19 @@ constexpr uint32_t WdfUsbInterfaceSelectSettingTypeDescriptor = 0x10;
 constexpr uint32_t WdfUsbInterfaceSelectSettingTypeSetting    = 0x11;
 constexpr uint32_t WdfUsbInterfaceSelectSettingTypeUrb        = 0x12;
 
-// ── WDF USB pipe type enums ────────────────────────────────
+//  WDF USB pipe type enums 
 constexpr uint32_t WdfUsbPipeTypeInvalid      = 0;
 constexpr uint32_t WdfUsbPipeTypeControl      = 1;
 constexpr uint32_t WdfUsbPipeTypeIsochronous  = 2;
 constexpr uint32_t WdfUsbPipeTypeBulk         = 3;
 constexpr uint32_t WdfUsbPipeTypeInterrupt    = 4;
 
-// ── WDF USB device trait flags ─────────────────────────────
+//  WDF USB device trait flags 
 constexpr uint32_t WDF_USB_DEVICE_TRAIT_SELF_POWERED          = 1;
 constexpr uint32_t WDF_USB_DEVICE_TRAIT_REMOTE_WAKE_CAPABLE   = 2;
 constexpr uint32_t WDF_USB_DEVICE_TRAIT_AT_HIGH_SPEED         = 4;
 
-// ── WDF_VERSION (12 bytes) ─────────────────────────────────
+//  WDF_VERSION (12 bytes) 
 struct WDF_VERSION : speakeasy::EmuStruct {
     uint32_t Major = 0;
     uint32_t Minor = 0;
@@ -56,7 +56,7 @@ struct WDF_VERSION : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_BIND_INFO ─────────────────────────────────────────
+//  WDF_BIND_INFO 
 struct WDF_BIND_INFO : speakeasy::EmuStruct {
     uint32_t Size       = 0;
     uint32_t __pad0     = 0;
@@ -85,7 +85,7 @@ struct WDF_BIND_INFO : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_USB_DEVICE_INFORMATION ────────────────────────────
+//  WDF_USB_DEVICE_INFORMATION 
 struct WDF_USB_DEVICE_INFORMATION : speakeasy::EmuStruct {
     uint32_t Size                  = 0;
     uint32_t __pad0                = 0;
@@ -109,7 +109,7 @@ struct WDF_USB_DEVICE_INFORMATION : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_DRIVER_CONFIG ─────────────────────────────────────
+//  WDF_DRIVER_CONFIG 
 struct WDF_DRIVER_CONFIG : speakeasy::EmuStruct {
     uint32_t Size            = 0;
     uint32_t __pad0          = 0;
@@ -132,7 +132,7 @@ struct WDF_DRIVER_CONFIG : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_COMPONENT_GLOBALS (0x100 opaque bytes) ────────────
+//  WDF_COMPONENT_GLOBALS (0x100 opaque bytes) 
 struct WDF_COMPONENT_GLOBALS : speakeasy::EmuStruct {
     uint8_t Data[0x100] = {};
 
@@ -142,7 +142,7 @@ struct WDF_COMPONENT_GLOBALS : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_TYPED_CONTEXT_WORKER (0x100 opaque bytes) ─────────
+//  WDF_TYPED_CONTEXT_WORKER (0x100 opaque bytes) 
 struct WDF_TYPED_CONTEXT_WORKER : speakeasy::EmuStruct {
     uint8_t Data[0x100] = {};
 
@@ -152,7 +152,7 @@ struct WDF_TYPED_CONTEXT_WORKER : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_USB_PIPE_INFORMATION ──────────────────────────────
+//  WDF_USB_PIPE_INFORMATION 
 struct WDF_USB_PIPE_INFORMATION : speakeasy::EmuStruct {
     uint32_t Size               = 0;
     uint32_t MaximumPacketSize  = 0;
@@ -178,7 +178,7 @@ struct WDF_USB_PIPE_INFORMATION : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_PNPPOWER_EVENT_CALLBACKS ──────────────────────────
+//  WDF_PNPPOWER_EVENT_CALLBACKS 
 struct WDF_PNPPOWER_EVENT_CALLBACKS : speakeasy::EmuStruct {
     uint32_t Size                                  = 0;
     uint32_t __pad0                                = 0;
@@ -229,7 +229,7 @@ struct WDF_PNPPOWER_EVENT_CALLBACKS : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_USB_INTERFACE_SELECT_SETTING_PARAMS ───────────────
+//  WDF_USB_INTERFACE_SELECT_SETTING_PARAMS 
 struct _WDF_USB_INTERFACE_SELECT_SETTING_PARAMS_Descriptor : speakeasy::EmuStruct {
     uint64_t InterfaceDescriptor = 0;  // Ptr
     size_t sizeof_obj() const override { return 8; }
@@ -281,7 +281,7 @@ struct WDF_USB_INTERFACE_SELECT_SETTING_PARAMS : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_USB_DEVICE_SELECT_CONFIG_PARAMS ───────────────────
+//  WDF_USB_DEVICE_SELECT_CONFIG_PARAMS 
 struct _WDF_USB_DEVICE_SELECT_CONFIG_PARAMS_Descriptor : speakeasy::EmuStruct {
     uint64_t ConfigurationDescriptor = 0;  // Ptr
     uint64_t InterfaceDescriptors    = 0;  // Ptr
@@ -362,7 +362,7 @@ struct WDF_USB_DEVICE_SELECT_CONFIG_PARAMS : speakeasy::EmuStruct {
     }
 };
 
-// ── WDF_IO_QUEUE_CONFIG ───────────────────────────────────
+//  WDF_IO_QUEUE_CONFIG 
 struct WDF_IO_QUEUE_CONFIG : speakeasy::EmuStruct {
     uint32_t Size                    = 0;
     uint32_t __pad0                  = 0;
@@ -409,10 +409,10 @@ struct WDF_IO_QUEUE_CONFIG : speakeasy::EmuStruct {
     }
 };
 
-// ── WDFFUNCTIONS (function table) ─────────────────────────
+//  WDFFUNCTIONS (function table) 
 //
 // WDF function dispatch table. All entries are 8-byte pointers.
-// Total field count: 422 = 422 pointers × 8 bytes = 3376 bytes.
+// Total field count: 422 = 422 pointers  8 bytes = 3376 bytes.
 //
 struct WDFFUNCTIONS : speakeasy::EmuStruct {
     enum : size_t { FIELD_COUNT = 422 };

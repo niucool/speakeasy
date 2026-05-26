@@ -1,4 +1,4 @@
-// wsk.h — Winsock Kernel API handler (STUB)
+// wsk.h  Winsock Kernel API handler (STUB)
 #ifndef SPEAKEASY_KERNELMODE_WSK_H
 #define SPEAKEASY_KERNELMODE_WSK_H
 #include <string>

@@ -1,4 +1,4 @@
-// netutils.h — netutils.dll API handler (v2 — macro-based registration)
+// netutils.h  netutils.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_NETUTILS_H
 #define SPEAKEASY_NETUTILS_H
 #include <string>

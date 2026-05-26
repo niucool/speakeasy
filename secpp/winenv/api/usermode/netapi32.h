@@ -1,4 +1,4 @@
-// netapi32.h — netapi32.dll API handler (v2 — macro-based registration)
+// netapi32.h  netapi32.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_NETAPI32_H
 #define SPEAKEASY_NETAPI32_H
 #include <string>

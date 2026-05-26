@@ -1,4 +1,4 @@
-// wininet.h — wininet.dll API handler
+// wininet.h  wininet.dll API handler
 #ifndef SPEAKEASY_WININET_H
 #define SPEAKEASY_WININET_H
 #include <string>

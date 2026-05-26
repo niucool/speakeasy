@@ -1,4 +1,4 @@
-// profiler.cpp — Execution profiler and report generation
+// profiler.cpp  Execution profiler and report generation
 // Ported from: speakeasy/profiler.py (796 lines)
 // Python docstrings embedded as C++ comments on each method.
 // Reference: // Python:<line> points to the Python source line.
@@ -12,7 +12,7 @@
 
 using namespace speakeasy;
 
-// Python:91-131 — Run class implementation
+// Python:91-131  Run class implementation
 // class Run:
 //     """Represents the basic execution primative for the emulation engine.
 //     A "run" can represent any form of execution: a thread, a callback,
@@ -37,7 +37,7 @@ int Run::get_api_count() {
     return num_apis;
 }
 
-// Python:133-151 — Profiler class implementation
+// Python:133-151  Profiler class implementation
 // class Profiler:
 //     """The profiler class exists to generate an execution report
 //     for all runs that occur within a binary emulation."""
@@ -155,7 +155,7 @@ std::string Profiler::merge_binary_data(const std::string& ref, const std::vecto
     return artifact_store.put_bytes(merged);
 }
 
-// Python:214-225 — log dropped files from an emulation run
+// Python:214-225  log dropped files from an emulation run
 // def record_dropped_files_event(self, run, files):
 //     for f in files:
 //         run.dropped_files.append({
@@ -165,7 +165,7 @@ void Profiler::log_dropped_files(std::shared_ptr<Run> run, const std::vector<std
     record_dropped_files_event(run, files);
 }
 
-// Python:214-225 — log dropped files from an emulation run
+// Python:214-225  log dropped files from an emulation run
 // def record_dropped_files_event(self, run, files):
 //     for f in files:
 //         data = f.get_data()
@@ -572,14 +572,14 @@ void Profiler::log_network(std::shared_ptr<Run> run, const std::string& server, 
     run->network["traffic"].push_back(entry);
 }
 
-// Python:597-620 — handled exception event
+// Python:597-620  handled exception event
 // def record_exception_event(self, run, pos, exc_va, handler_va, code, ...):
 //     """Log an exception that was generated during emulation"""
 void Profiler::log_exception(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info) {
     run->handled_exceptions.push_back(info);
 }
 
-// Python:622-633 — module load event
+// Python:622-633  module load event
 // def record_module_load_event(self, run, pos, name, path, base, size):
 //     """Log a module being loaded into the emulated process"""
 void Profiler::log_module_load(std::shared_ptr<Run> run, const std::string& name,

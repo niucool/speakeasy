@@ -1,4 +1,4 @@
-// msvfw32.h — msvfw32.dll API handler
+// msvfw32.h  msvfw32.dll API handler
 #ifndef SPEAKEASY_MSVFW32_H
 #define SPEAKEASY_MSVFW32_H
 #include <string>

@@ -1,4 +1,4 @@
-// wkscli.cpp — wkscli.dll handler (real implementations)
+// wkscli.cpp  wkscli.dll handler (real implementations)
 #include "wkscli.h"
 #include <cstdint>
 #include <string>
@@ -14,9 +14,9 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  NetGetJoinInformation
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Wkscli::NetGetJoinInformation(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 3) return 87;  // ERROR_INVALID_PARAMETER
     uint64_t lpServer = a[0];
@@ -56,7 +56,7 @@ uint64_t Wkscli::NetGetJoinInformation(void* e, const std::string&, int, const s
     return defs::windows::NERR_Success;
 }
 
-// ── Constructor ─────────────────────────────────────────────────
+//  Constructor 
 Wkscli::Wkscli(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Wkscli)
     REG(Wkscli, NetGetJoinInformation, 3)

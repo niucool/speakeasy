@@ -12,11 +12,11 @@
 #include "../errors.h"
 #include "../config.h"
 
-// ── Forward declarations ──────────────────────────────────────
+//  Forward declarations 
 class WindowsEmulator;
 class COM;
 
-// ── COM Interface field descriptor ────────────────────────────
+//  COM Interface field descriptor 
 // Describes one field (slot) in a COM interface vtable.
 // If is_interface is true, this field is an embedded inherited
 // interface (e.g. IUnknown inside IMalloc); the inner interface's
@@ -27,7 +27,7 @@ struct ComField {
     bool is_interface;
 };
 
-// ── ComInterface wrapper ──────────────────────────────────────
+//  ComInterface wrapper 
 // Holds the emulated vtable address, size, and field layout for
 // one COM interface instance.
 class ComInterface {
@@ -43,7 +43,7 @@ public:
     }
 };
 
-// ── COM definitions ───────────────────────────────────────────
+//  COM definitions 
 namespace comdefs {
 
 #ifndef S_OK
@@ -62,7 +62,7 @@ extern const std::map<std::string, std::vector<ComField>> IFACE_TYPES;
 
 } // namespace comdefs
 
-// ── COM manager ──────────────────────────────────────────────
+//  COM manager 
 // The Component Object Model (COM) manager for the emulator.
 // Manages COM interface vtables in the emulated address space.
 class COM {

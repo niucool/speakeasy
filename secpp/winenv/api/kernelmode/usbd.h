@@ -1,4 +1,4 @@
-// usbd.h — USB Driver API handler (STUB)
+// usbd.h  USB Driver API handler (STUB)
 #ifndef SPEAKEASY_KERNELMODE_USBD_H
 #define SPEAKEASY_KERNELMODE_USBD_H
 #include <string>

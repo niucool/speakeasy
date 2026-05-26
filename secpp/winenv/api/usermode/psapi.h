@@ -1,4 +1,4 @@
-// psapi.h — psapi.dll API handler (v2 — macro-based registration)
+// psapi.h  psapi.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_PSAPI_H
 #define SPEAKEASY_PSAPI_H
 #include <string>

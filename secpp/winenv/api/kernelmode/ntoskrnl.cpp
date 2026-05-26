@@ -1,4 +1,4 @@
-// ntoskrnl.cpp — Windows NT Kernel handler (implemented, ~154 APIs)
+// ntoskrnl.cpp  Windows NT Kernel handler (implemented, ~154 APIs)
 #include "ntoskrnl.h"
 
 #include <cstdint>
@@ -49,13 +49,13 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
 static inline int ptr_sz(void* e) { return we(e)->get_ptr_size(); }
 
-// ── NTSTATUS constants (avoid Windows SDK macro conflicts) ────
+//  NTSTATUS constants (avoid Windows SDK macro conflicts) 
 static constexpr uint64_t KERN_STATUS_SUCCESS                  = 0x00000000;
 static constexpr uint64_t KERN_STATUS_INFO_LENGTH_MISMATCH    = 0xC0000004;
 static constexpr uint64_t KERN_STATUS_INVALID_PARAMETER       = 0xC000000D;
@@ -186,7 +186,7 @@ Ntoskrnl::Ntoskrnl(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── Helper: read a STRING (ANSI_STRING) from memory ───────────
+//  Helper: read a STRING (ANSI_STRING) from memory 
 static std::string read_ansi_string_from_mem(void* e, uint64_t addr) {
     if (!addr) return "";
     int psz = ptr_sz(e);
@@ -201,7 +201,7 @@ static std::string read_ansi_string_from_mem(void* e, uint64_t addr) {
     return std::string(data.begin(), data.end());
 }
 
-// ── Helper: read a UNICODE_STRING from memory ─────────────────
+//  Helper: read a UNICODE_STRING from memory 
 static std::u16string read_unicode_string_from_mem(void* e, uint64_t addr) {
     if (!addr) return {};
     int psz = ptr_sz(e);
@@ -222,7 +222,7 @@ static std::u16string read_unicode_string_from_mem(void* e, uint64_t addr) {
     return result;
 }
 
-// ── Helper: write UNICODE_STRING fields ───────────────────────
+//  Helper: write UNICODE_STRING fields 
 static void write_unicode_string_fields(void* e, uint64_t addr, uint16_t length, uint16_t maxlen, uint64_t buffer) {
     int psz = ptr_sz(e);
     auto data = std::vector<uint8_t>(4 + static_cast<size_t>(psz));
@@ -232,7 +232,7 @@ static void write_unicode_string_fields(void* e, uint64_t addr, uint16_t length,
     mm(e)->mem_write(addr, data);
 }
 
-// ── Helper: read a wide string from a raw pointer ─────────────
+//  Helper: read a wide string from a raw pointer 
 static std::u16string read_wide_string_ptr(void* e, uint64_t addr, int max = 0) {
     if (!addr) return {};
     std::u16string result;
@@ -245,7 +245,7 @@ static std::u16string read_wide_string_ptr(void* e, uint64_t addr, int max = 0) 
     return result;
 }
 
-// ── Helper: read an ANSI string from a raw pointer ────────────
+//  Helper: read an ANSI string from a raw pointer 
 static std::string read_ansi_string_ptr(void* e, uint64_t addr, int max = 0) {
     if (!addr) return "";
     std::string result;
@@ -258,11 +258,11 @@ static std::string read_ansi_string_ptr(void* e, uint64_t addr, int max = 0) {
     return result;
 }
 
-// ══════════════════════════════════════════════════════════════
+// 
 // IMPLEMENTATIONS
-// ══════════════════════════════════════════════════════════════
+// 
 
-// ── Object/Reference ──────────────────────────────────────────
+//  Object/Reference 
 
 uint64_t Ntoskrnl::ObfDereferenceObject(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // void ObfDereferenceObject(a);
@@ -316,7 +316,7 @@ uint64_t Ntoskrnl::ObSetSecurityObjectByPointer(void* e, const std::string&, int
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Debug/Print ───────────────────────────────────────────────
+//  Debug/Print 
 
 uint64_t Ntoskrnl::DbgPrint(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // ULONG DbgPrint(PCSTR Format, ...);
@@ -336,7 +336,7 @@ uint64_t Ntoskrnl::DbgPrintEx(void* e, const std::string&, int, const std::vecto
     return static_cast<uint64_t>(msg.length());
 }
 
-// ── String/Format ─────────────────────────────────────────────
+//  String/Format 
 
 uint64_t Ntoskrnl::_vsnprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // int _vsnprintf(char *buffer, size_t count, const char *format, va_list argptr)
@@ -381,7 +381,7 @@ uint64_t Ntoskrnl::_snwprintf(void* e, const std::string&, int, const std::vecto
     return 0;
 }
 
-// ── Rtl string ────────────────────────────────────────────────
+//  Rtl string 
 
 uint64_t Ntoskrnl::RtlInitAnsiString(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // VOID RtlInitAnsiString(PANSI_STRING DestinationString, PCSZ SourceString)
@@ -572,7 +572,7 @@ uint64_t Ntoskrnl::RtlMoveMemory(void* e, const std::string&, int, const std::ve
     return memcpy(e, "", 0, a);
 }
 
-// ── Memory/Pool ───────────────────────────────────────────────
+//  Memory/Pool 
 
 uint64_t Ntoskrnl::ExAllocatePoolWithTag(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // PVOID ExAllocatePoolWithTag(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Tag)
@@ -695,7 +695,7 @@ uint64_t Ntoskrnl::MmIsDriverVerifying(void* e, const std::string&, int, const s
     return 0; // FALSE - driver is not being verified
 }
 
-// ── memcpy/memset/etc ─────────────────────────────────────────
+//  memcpy/memset/etc 
 
 uint64_t Ntoskrnl::memmove(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     return memcpy(e, "", 0, a);
@@ -727,7 +727,7 @@ uint64_t Ntoskrnl::memset(void* e, const std::string&, int, const std::vector<ui
     return dest;
 }
 
-// ── Wide char string ──────────────────────────────────────────
+//  Wide char string 
 
 uint64_t Ntoskrnl::wcscpy(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // wchar_t *wcscpy(wchar_t *strDestination, const wchar_t *strSource)
@@ -930,7 +930,7 @@ uint64_t Ntoskrnl::mbstowcs(void* e, const std::string&, int, const std::vector<
     return static_cast<uint64_t>(len);
 }
 
-// ── I/O ───────────────────────────────────────────────────────
+//  I/O 
 
 uint64_t Ntoskrnl::IoDeleteDriver(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // VOID IoDeleteDriver(PDRIVER_OBJECT DriverObject)
@@ -1097,7 +1097,7 @@ uint64_t Ntoskrnl::IoUnregisterShutdownNotification(void* e, const std::string&,
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Ke (Kernel) ───────────────────────────────────────────────
+//  Ke (Kernel) 
 
 uint64_t Ntoskrnl::KeInitializeMutex(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // VOID KeInitializeMutex(PRKMUTEX Mutex, ULONG Level)
@@ -1216,7 +1216,7 @@ uint64_t Ntoskrnl::KeLeaveCriticalRegion(void* e, const std::string&, int, const
     return 0;
 }
 
-// ── Ps (Process) ──────────────────────────────────────────────
+//  Ps (Process) 
 
 uint64_t Ntoskrnl::PsCreateSystemThread(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS PsCreateSystemThread(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, ...)
@@ -1310,7 +1310,7 @@ uint64_t Ntoskrnl::PsRemoveCreateThreadNotifyRoutine(void* e, const std::string&
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Zw/Nt system calls ────────────────────────────────────────
+//  Zw/Nt system calls 
 
 uint64_t Ntoskrnl::ZwQuerySystemInformation(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS ZwQuerySystemInformation(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG)
@@ -1534,7 +1534,7 @@ uint64_t Ntoskrnl::NtSetInformationThread(void* e, const std::string&, int, cons
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Mm (Memory Management) ────────────────────────────────────
+//  Mm (Memory Management) 
 
 uint64_t Ntoskrnl::MmProbeAndLockPages(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // VOID MmProbeAndLockPages(PMDL MemoryDescriptorList, KPROCESSOR_MODE AccessMode, ...)
@@ -1542,7 +1542,7 @@ uint64_t Ntoskrnl::MmProbeAndLockPages(void* e, const std::string&, int, const s
     return 0;
 }
 
-// ── Ex (Executive) ────────────────────────────────────────────
+//  Ex (Executive) 
 
 uint64_t Ntoskrnl::ExInitializeResourceLite(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS ExInitializeResourceLite(PRESOURCE_LITE Resource)
@@ -1597,7 +1597,7 @@ uint64_t Ntoskrnl::ExSystemTimeToLocalTime(void* e, const std::string&, int, con
     return 0;
 }
 
-// ── Security ──────────────────────────────────────────────────
+//  Security 
 
 uint64_t Ntoskrnl::RtlLengthRequiredSid(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // ULONG RtlLengthRequiredSid(ULONG SubAuthorityCount)
@@ -1677,7 +1677,7 @@ uint64_t Ntoskrnl::RtlAddAccessAllowedAce(void* e, const std::string&, int, cons
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Registry ──────────────────────────────────────────────────
+//  Registry 
 
 uint64_t Ntoskrnl::RtlQueryRegistryValuesEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS RtlQueryRegistryValuesEx(ULONG RelativeTo, PCWSTR Path, PRTL_QUERY_REGISTRY_TABLE, ...)
@@ -1685,14 +1685,14 @@ uint64_t Ntoskrnl::RtlQueryRegistryValuesEx(void* e, const std::string&, int, co
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Timer/Power ───────────────────────────────────────────────
+//  Timer/Power 
 
 uint64_t Ntoskrnl::PoDeletePowerRequest(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Kd ────────────────────────────────────────────────────────
+//  Kd 
 
 uint64_t Ntoskrnl::KdDisableDebugger(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS KdDisableDebugger()
@@ -1706,7 +1706,7 @@ uint64_t Ntoskrnl::KdChangeOption(void* e, const std::string&, int, const std::v
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Cm (Configuration Manager) ────────────────────────────────
+//  Cm (Configuration Manager) 
 
 uint64_t Ntoskrnl::CmRegisterCallbackEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS CmRegisterCallbackEx(...)
@@ -1726,7 +1726,7 @@ uint64_t Ntoskrnl::CmUnRegisterCallback(void* e, const std::string&, int, const 
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Etw ───────────────────────────────────────────────────────
+//  Etw 
 
 uint64_t Ntoskrnl::EtwRegister(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS EtwRegister(...)
@@ -1734,7 +1734,7 @@ uint64_t Ntoskrnl::EtwRegister(void* e, const std::string&, int, const std::vect
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Image ─────────────────────────────────────────────────────
+//  Image 
 
 uint64_t Ntoskrnl::RtlImageDirectoryEntryToData(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // PVOID RtlImageDirectoryEntryToData(PVOID ImageBase, BOOLEAN MappedAsImage, USHORT DirectoryEntry, ...)
@@ -1742,7 +1742,7 @@ uint64_t Ntoskrnl::RtlImageDirectoryEntryToData(void* e, const std::string&, int
     return 0;
 }
 
-// ── Compression ───────────────────────────────────────────────
+//  Compression 
 
 uint64_t Ntoskrnl::RtlGetCompressionWorkSpaceSize(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // NTSTATUS RtlGetCompressionWorkSpaceSize(USHORT, PULONG, PULONG)
@@ -1756,7 +1756,7 @@ uint64_t Ntoskrnl::RtlDecompressBuffer(void* e, const std::string&, int, const s
     return KERN_STATUS_SUCCESS;
 }
 
-// ── Misc ──────────────────────────────────────────────────────
+//  Misc 
 
 uint64_t Ntoskrnl::RtlTimeToTimeFields(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // VOID RtlTimeToTimeFields(PLARGE_INTEGER Time, PTIME_FIELDS TimeFields)

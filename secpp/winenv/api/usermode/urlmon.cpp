@@ -1,11 +1,11 @@
-// urlmon.cpp — urlmon.dll handler (real implementations)
+// urlmon.cpp  urlmon.dll handler (real implementations)
 #include "urlmon.h"
 #include <cstdint>
 #include <string>
 #include <vector>
 #include "windows/winemu.h"
 
-// ── Windows SDK macro conflict protection ─────────────────────
+//  Windows SDK macro conflict protection 
 #ifdef _WIN32
 #pragma push_macro("S_OK")
 #pragma push_macro("ERROR_SUCCESS")
@@ -34,9 +34,9 @@ Urlmon::Urlmon(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  URLDownloadToFile
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Urlmon::URLDownloadToFile(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // HRESULT URLDownloadToFile(
     //     LPUNKNOWN            pCaller,    // a[0]
@@ -75,9 +75,9 @@ uint64_t Urlmon::URLDownloadToFile(void* e, const std::string&, int, const std::
     return URLMON_ERROR_SUCCESS;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  URLDownloadToCacheFile
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Urlmon::URLDownloadToCacheFile(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // HRESULT URLDownloadToCacheFile(
     //     LPUNKNOWN            pCaller,      // a[0]
@@ -132,7 +132,7 @@ uint64_t Urlmon::URLDownloadToCacheFile(void* e, const std::string&, int, const 
 
 }} // namespaces
 
-// ── Pop SDK macros ────────────────────────────────────────────
+//  Pop SDK macros 
 #ifdef _WIN32
 #pragma pop_macro("ERROR_INSUFFICIENT_BUFFER")
 #pragma pop_macro("ERROR_SUCCESS")

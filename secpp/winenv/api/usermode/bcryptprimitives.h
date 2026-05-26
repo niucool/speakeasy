@@ -1,4 +1,4 @@
-// bcryptprimitives.h — bcryptprimitives.dll API handler
+// bcryptprimitives.h  bcryptprimitives.dll API handler
 #ifndef SPEAKEASY_BCRYPTPRIMITIVES_H
 #define SPEAKEASY_BCRYPTPRIMITIVES_H
 #include <string>

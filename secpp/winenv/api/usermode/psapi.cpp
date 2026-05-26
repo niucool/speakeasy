@@ -1,4 +1,4 @@
-// psapi.cpp — psapi.dll handler (real implementations)
+// psapi.cpp  psapi.dll handler (real implementations)
 #include "psapi.h"
 #include <cstring>
 #include <cstdint>
@@ -78,9 +78,9 @@ static std::string get_module_file_name(void* e, std::shared_ptr<Process> proc, 
     return proc->path;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  EnumProcesses — enumerate running processes
-// ═══════════════════════════════════════════════════════════════
+// 
+//  EnumProcesses  enumerate running processes
+// 
 uint64_t Psapi::EnumProcesses(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t lpidProcess = a[0];
     uint64_t cb = a[1];
@@ -113,9 +113,9 @@ uint64_t Psapi::EnumProcesses(void* e, const std::string&, int, const std::vecto
     return 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  EnumProcessModules — enumerate modules in a process
-// ═══════════════════════════════════════════════════════════════
+// 
+//  EnumProcessModules  enumerate modules in a process
+// 
 uint64_t Psapi::EnumProcessModules(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hProcess = a[0];
     uint64_t lphModule = a[1];
@@ -150,9 +150,9 @@ uint64_t Psapi::EnumProcessModules(void* e, const std::string&, int, const std::
     return 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetModuleBaseName / GetModuleBaseNameA / GetModuleBaseNameW
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Psapi::GetModuleBaseName(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hProcess = a[0];
     uint64_t hModule = a[1];
@@ -197,9 +197,9 @@ uint64_t Psapi::GetModuleBaseNameW(void* e, const std::string& n, int c, const s
     return static_cast<uint64_t>(name.size());
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  GetModuleFileNameEx / GetModuleFileNameExA / GetModuleFileNameExW
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Psapi::GetModuleFileNameEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hProcess = a[0];
     uint64_t hModule = a[1];

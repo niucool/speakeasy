@@ -1,4 +1,4 @@
-// fwpmtypes.h — Windows Filtering Platform (WFP) type definitions
+// fwpmtypes.h  Windows Filtering Platform (WFP) type definitions
 //
 // Maps to: speakeasy/winenv/defs/wfp/fwpmtypes.py
 //
@@ -14,7 +14,7 @@
 
 namespace speakeasy { namespace defs { namespace wfp {
 
-// ── GUID (16 bytes) ──────────────────────────────────────
+//  GUID (16 bytes) 
 struct GUID : speakeasy::EmuStruct {
     uint32_t Data1 = 0;
     uint16_t Data2 = 0;
@@ -33,7 +33,7 @@ struct GUID : speakeasy::EmuStruct {
     }
 };
 
-// ── FWPM_DISPLAY_DATA0 (16 bytes) ────────────────────────
+//  FWPM_DISPLAY_DATA0 (16 bytes) 
 struct FWPM_DISPLAY_DATA0 : speakeasy::EmuStruct {
     uint64_t name        = 0;  // PWSTR
     uint64_t description = 0;  // PWSTR
@@ -47,7 +47,7 @@ struct FWPM_DISPLAY_DATA0 : speakeasy::EmuStruct {
     }
 };
 
-// ── FWP_VALUE0 (16 bytes) ────────────────────────────────
+//  FWP_VALUE0 (16 bytes) 
 struct FWP_VALUE0 : speakeasy::EmuStruct {
     uint32_t type = 0;    // FWP_DATA_TYPE
     uint32_t __pad0 = 0;
@@ -63,7 +63,7 @@ struct FWP_VALUE0 : speakeasy::EmuStruct {
     }
 };
 
-// ── FWP_BYTE_BLOB (16 bytes) ─────────────────────────────
+//  FWP_BYTE_BLOB (16 bytes) 
 struct FWP_BYTE_BLOB : speakeasy::EmuStruct {
     uint32_t size = 0;
     uint32_t __pad0 = 0;
@@ -79,7 +79,7 @@ struct FWP_BYTE_BLOB : speakeasy::EmuStruct {
     }
 };
 
-// ── FWPM_SUBLAYER0 (80 bytes) ────────────────────────────
+//  FWPM_SUBLAYER0 (80 bytes) 
 struct FWPM_SUBLAYER0 : speakeasy::EmuStruct {
     GUID      subLayerKey;
     FWPM_DISPLAY_DATA0 displayData;
@@ -111,7 +111,7 @@ struct FWPM_SUBLAYER0 : speakeasy::EmuStruct {
     }
 };
 
-// ── FWPS_CALLOUT1 (40 bytes) ─────────────────────────────
+//  FWPS_CALLOUT1 (40 bytes) 
 struct FWPS_CALLOUT1 : speakeasy::EmuStruct {
     GUID     calloutKey;
     uint32_t flags = 0;
@@ -136,7 +136,7 @@ struct FWPS_CALLOUT1 : speakeasy::EmuStruct {
     }
 };
 
-// ── FWPM_CALLOUT0 (88 bytes) ─────────────────────────────
+//  FWPM_CALLOUT0 (88 bytes) 
 struct FWPM_CALLOUT0 : speakeasy::EmuStruct {
     GUID      calloutKey;
     FWPM_DISPLAY_DATA0 displayData;
@@ -171,7 +171,7 @@ struct FWPM_CALLOUT0 : speakeasy::EmuStruct {
     }
 };
 
-// ── FWPM_FILTER_CONDITION0 (32 bytes) ────────────────────
+//  FWPM_FILTER_CONDITION0 (32 bytes) 
 struct FWPM_FILTER_CONDITION0 : speakeasy::EmuStruct {
     GUID       fieldKey;
     uint32_t   matchType = 0;
@@ -193,7 +193,7 @@ struct FWPM_FILTER_CONDITION0 : speakeasy::EmuStruct {
     }
 };
 
-// ── FWPM_ACTION0 (20 bytes) ──────────────────────────────
+//  FWPM_ACTION0 (20 bytes) 
 struct FWPM_ACTION0 : speakeasy::EmuStruct {
     uint32_t type = 0;
     uint32_t __pad0 = 0;
@@ -212,7 +212,7 @@ struct FWPM_ACTION0 : speakeasy::EmuStruct {
     }
 };
 
-// ── FWPM_FILTER0 (152 bytes) ─────────────────────────────
+//  FWPM_FILTER0 (152 bytes) 
 struct FWPM_FILTER0 : speakeasy::EmuStruct {
     GUID      filterKey;
     FWPM_DISPLAY_DATA0 displayData;

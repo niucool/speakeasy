@@ -1,4 +1,4 @@
-// wkscli.h — wkscli.dll API handler (v2 — macro-based registration)
+// wkscli.h  wkscli.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_WKSCLI_H
 #define SPEAKEASY_WKSCLI_H
 #include <string>

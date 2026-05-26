@@ -1,4 +1,4 @@
-// wininet.h — Windows Internet (WinINet/WinHTTP) type definitions
+// wininet.h  Windows Internet (WinINet/WinHTTP) type definitions
 //
 // Maps to: speakeasy/winenv/defs/wininet.py
 //
@@ -14,7 +14,7 @@
 
 namespace speakeasy { namespace defs {
 
-// ── Internet flags ──────────────────────────────────────────
+//  Internet flags 
 constexpr uint32_t INTERNET_FLAG_ASYNC              = 0x10000000;
 constexpr uint32_t INTERNET_FLAG_CACHE_ASYNC        = 0x00000080;
 constexpr uint32_t INTERNET_FLAG_CACHE_IF_NET_FAIL  = 0x00010000;
@@ -48,7 +48,7 @@ constexpr uint32_t INTERNET_FLAG_SECURE             = 0x00800000;
 constexpr uint32_t INTERNET_FLAG_TRANSFER_ASCII     = 0x00000001;
 constexpr uint32_t INTERNET_FLAG_TRANSFER_BINARY    = 0x00000002;
 
-// ── Connection types ───────────────────────────────────────
+//  Connection types 
 constexpr uint32_t INTERNET_NO_CALLBACK             = 0x00000000;
 constexpr uint32_t INTERNET_CONNECTION_MODEM        = 0x00000001;
 constexpr uint32_t INTERNET_CONNECTION_LAN          = 0x00000002;
@@ -58,16 +58,16 @@ constexpr uint32_t INTERNET_RAS_INSTALLED           = 0x00000010;
 constexpr uint32_t INTERNET_CONNECTION_OFFLINE      = 0x00000020;
 constexpr uint32_t INTERNET_CONNECTION_CONFIGURED   = 0x00000040;
 
-// ── Options ────────────────────────────────────────────────
+//  Options 
 constexpr uint32_t INTERNET_OPTION_SUPPRESS_SERVER_AUTH = 104;
 constexpr uint32_t INTERNET_OPTION_SECURITY_FLAGS       = 31;
 
-// ── API flags ──────────────────────────────────────────────
+//  API flags 
 constexpr uint32_t WININET_API_FLAG_ASYNC         = 0x00000001;
 constexpr uint32_t WININET_API_FLAG_SYNC          = 0x00000004;
 constexpr uint32_t WININET_API_FLAG_USE_CONTEXT   = 0x00000008;
 
-// ── Internet schemes ───────────────────────────────────────
+//  Internet schemes 
 constexpr int32_t INTERNET_SCHEME_PARTIAL  = -2;
 constexpr int32_t INTERNET_SCHEME_UNKNOWN  = -1;
 constexpr int32_t INTERNET_SCHEME_DEFAULT  = 0;
@@ -76,7 +76,7 @@ constexpr int32_t INTERNET_SCHEME_GOPHER   = 2;
 constexpr int32_t INTERNET_SCHEME_HTTP     = 3;
 constexpr int32_t INTERNET_SCHEME_HTTPS    = 4;
 
-// ── WinHTTP add/replace flags ───────────────────────────────
+//  WinHTTP add/replace flags 
 constexpr uint32_t WINHTTP_ADDREQ_INDEX_MASK               = 0x0000FFFF;
 constexpr uint32_t WINHTTP_ADDREQ_FLAGS_MASK               = 0xFFFF0000;
 constexpr uint32_t WINHTTP_ADDREQ_FLAG_ADD_IF_NEW          = 0x10000000;
@@ -84,7 +84,7 @@ constexpr uint32_t WINHTTP_ADDREQ_FLAG_ADD                 = 0x20000000;
 constexpr uint32_t WINHTTP_ADDREQ_FLAG_COALESCE_WITH_COMMA = 0x40000000;
 constexpr uint32_t WINHTTP_ADDREQ_FLAG_COALESCE_WITH_SEMICOLON = 0x01000000;
 
-// ── WinHTTP query info types ───────────────────────────────
+//  WinHTTP query info types 
 constexpr uint32_t WINHTTP_QUERY_MIME_VERSION            = 0;
 constexpr uint32_t WINHTTP_QUERY_CONTENT_TYPE            = 1;
 constexpr uint32_t WINHTTP_QUERY_CONTENT_TRANSFER_ENCODING = 2;
@@ -162,13 +162,13 @@ constexpr uint32_t WINHTTP_QUERY_PASSPORT_URLS           = 77;
 constexpr uint32_t WINHTTP_QUERY_PASSPORT_CONFIG         = 78;
 constexpr uint32_t WINHTTP_QUERY_MAX                     = 78;
 
-// ── Security flags ─────────────────────────────────────────
+//  Security flags 
 constexpr uint32_t SECURITY_FLAG_SECURE = 1;
 
-// ── Errors ─────────────────────────────────────────────────
+//  Errors 
 constexpr uint32_t ERROR_INSUFFICIENT_BUFFER = 122;
 
-// ── URL_COMPONENTS structure (x64 layout) ──────────────────
+//  URL_COMPONENTS structure (x64 layout) 
 //
 // On x64 Windows each LPWSTR/LPTSTR is 8 bytes, requiring
 // padding after uint32_t fields that precede a pointer.

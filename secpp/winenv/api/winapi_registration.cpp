@@ -68,7 +68,7 @@ void register_all_api_handlers() {
         });
     };
 
-    // ── Usermode Handlers ────────────────────────────────────
+    //  Usermode Handlers 
     reg("advapi32", [](void* emu) { return new Advapi32(emu); });
     reg("advpack", [](void* emu) { return new Advpack(emu); });
     reg("bcrypt", [](void* emu) { return new Bcrypt(emu); });
@@ -109,7 +109,7 @@ void register_all_api_handlers() {
     reg("ws2_32", [](void* emu) { return new Ws2_32(emu); });
     reg("wtsapi32", [](void* emu) { return new Wtsapi32(emu); });
 
-    // ── Kernelmode Handlers ──────────────────────────────────
+    //  Kernelmode Handlers 
     reg("fwpkclnt", [](void* emu) { return new Fwpkclnt(emu); });
     reg("hal", [](void* emu) { return new Hal(emu); });
     reg("ndis", [](void* emu) { return new Ndis(emu); });

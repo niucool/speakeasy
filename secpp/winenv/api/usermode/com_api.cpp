@@ -1,4 +1,4 @@
-// com_api.cpp — COM API handler (real implementations)
+// com_api.cpp  COM API handler (real implementations)
 #include "com_api.h"
 #include <cstdint>
 #include <string>
@@ -6,7 +6,7 @@
 #include "windows/winemu.h"
 #include "winenv/defs/windows/com.h"
 
-// ── Windows SDK macro conflict protection ─────────────────────
+//  Windows SDK macro conflict protection 
 #ifdef _WIN32
 #pragma push_macro("S_OK")
 #pragma push_macro("S_FALSE")
@@ -35,7 +35,7 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 ComApi::ComApi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(ComApi)
     REG(ComApi, IUnknown_QueryInterface, 3)
@@ -46,9 +46,9 @@ ComApi::ComApi(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  IUnknown::QueryInterface
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t ComApi::IUnknown_QueryInterface(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // HRESULT QueryInterface(REFIID riid, void **ppvObject);
     // riid = a[0], ppvObject = a[1]
@@ -56,27 +56,27 @@ uint64_t ComApi::IUnknown_QueryInterface(void* e, const std::string&, int, const
     return 0;  // S_OK
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  IUnknown::AddRef
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t ComApi::IUnknown_AddRef(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // ULONG AddRef();
     (void)e; (void)a;
     return 1;  // refcount increment
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  IUnknown::Release
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t ComApi::IUnknown_Release(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // ULONG Release();
     (void)e; (void)a;
     return 0;  // refcount zero
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  IWbemLocator::ConnectServer
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t ComApi::IWbemLocator_ConnectServer(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // HRESULT ConnectServer(
     //     const BSTR    strNetworkResource,  // a[0]
@@ -133,9 +133,9 @@ uint64_t ComApi::IWbemLocator_ConnectServer(void* e, const std::string&, int, co
     return 0;  // S_OK
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  IWbemServices::ExecQuery
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t ComApi::IWbemServices_ExecQuery(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // HRESULT ExecQuery(
     //     const BSTR           strQueryLanguage,  // a[0]
@@ -168,7 +168,7 @@ uint64_t ComApi::IWbemServices_ExecQuery(void* e, const std::string&, int, const
 
 }} // namespaces
 
-// ── Pop SDK macros ────────────────────────────────────────────
+//  Pop SDK macros 
 #ifdef _WIN32
 #pragma pop_macro("ERROR_SUCCESS")
 #pragma pop_macro("E_INVALIDARG")

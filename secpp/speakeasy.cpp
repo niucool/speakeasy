@@ -30,7 +30,7 @@ Speakeasy::Speakeasy(const speakeasy::SpeakeasyConfig& cfg, void* logger,
 Speakeasy::~Speakeasy() { shutdown(); }
 
 void Speakeasy::_auto_mount_target_directory(const std::string& path) {
-    // Python speakeasy.py:205-239 — mount sibling files into emulated current directory
+    // Python speakeasy.py:205-239  mount sibling files into emulated current directory
     if (path.empty()) return;
     
     std::error_code ec;
@@ -93,7 +93,7 @@ void Speakeasy::_auto_mount_target_directory(const std::string& path) {
 
 void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_t>& data, bool is_raw_code) {
     if (!is_raw_code) {
-        // ── Use pe-parse for PE analysis (Python: _PeParser) ──
+        //  Use pe-parse for PE analysis (Python: _PeParser) 
         peparse::parsed_pe* pe = nullptr;
         if (!path.empty()) {
             pe = peparse::ParsePEFromFile(path.c_str());
@@ -114,7 +114,7 @@ void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_
                 auto& fh = nt.FileHeader;
                 auto& oh = nt.OptionalHeader;
 
-                // ── Architecture check (Python: MACHINE_TYPE) ──
+                //  Architecture check (Python: MACHINE_TYPE) 
                 if (fh.Machine == 0x8664) {  // IMAGE_FILE_MACHINE_AMD64
                     pe_arch = "amd64";
                 } else if (fh.Machine == 0x14c) {  // IMAGE_FILE_MACHINE_I386
@@ -124,7 +124,7 @@ void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_
                     throw SpeakeasyError("Unsupported architecture: " + arch_str);
                 }
 
-                // ── .NET detection (Python: pe.is_dotnet()) ──
+                //  .NET detection (Python: pe.is_dotnet()) 
                 // DIR_COM_DESCRIPTOR (index 14) has non-zero VA for .NET
                 if (nt.OptionalMagic == 0x20B ||  // NT_OPTIONAL_64_MAGIC
                     nt.OptionalMagic == 0x10B) {  // NT_OPTIONAL_32_MAGIC
@@ -134,7 +134,7 @@ void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_
                     }
                 }
 
-                // ── Driver detection (Python: pe.is_driver()) ──
+                //  Driver detection (Python: pe.is_driver()) 
                 // 1. Characteristics check
                 if (fh.Characteristics & 0x1000) {  // IMAGE_FILE_SYSTEM
                     is_driver = true;
@@ -157,14 +157,14 @@ void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_
         }
 
         if (is_driver) {
-            // ── Kernel-mode emulator (Python: WinKernelEmulator) ──
+            //  Kernel-mode emulator (Python: WinKernelEmulator) 
             emu = new speakeasy::WinKernelEmulator(config, argv, debug, logger, exit_event);
         } else {
-            // ── User-mode emulator (Python: Win32Emulator) ──
+            //  User-mode emulator (Python: Win32Emulator) 
             emu = new Win32Emulator(config, argv, debug, logger, exit_event);
         }
     } else {
-        // ── Raw/Shellcode mode (Python: Win32Emulator) ──
+        //  Raw/Shellcode mode (Python: Win32Emulator) 
         emu = new Win32Emulator(config, argv, debug, logger, exit_event);
     }
 }

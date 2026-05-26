@@ -1,4 +1,4 @@
-// ddk.h — Windows Driver Development Kit constants
+// ddk.h  Windows Driver Development Kit constants
 //
 // Maps to: speakeasy/winenv/defs/nt/ddk.py
 //
@@ -10,7 +10,7 @@
 
 #include <cstdint>
 
-// ── IRQL Levels ──────────────────────────────────────────────
+//  IRQL Levels 
 
 constexpr uint32_t PASSIVE_LEVEL  = 0;
 constexpr uint32_t LOW_LEVEL      = 0;
@@ -24,7 +24,7 @@ constexpr uint32_t IPI_LEVEL      = 29;
 constexpr uint32_t POWER_LEVEL    = 30;
 constexpr uint32_t HIGH_LEVEL     = 31;
 
-// ── NT Status Codes ──────────────────────────────────────────
+//  NT Status Codes 
 
 constexpr uint32_t STATUS_SUCCESS                   = 0x00000000;
 constexpr uint32_t STATUS_BREAKPOINT                = 0x80000003;
@@ -51,14 +51,14 @@ constexpr uint32_t STATUS_UNSUPPORTED_COMPRESSION   = 0xC000025F;
 constexpr uint32_t STATUS_NOINTERFACE               = 0xC00002B9;
 constexpr uint32_t STATUS_PORT_NOT_SET              = 0xC0000353;
 
-// ── Device Flags ─────────────────────────────────────────────
+//  Device Flags 
 
 constexpr uint32_t DO_DIRECT_IO           = 0x00000010;
 constexpr uint32_t DO_BUFFERED_IO         = 0x00000004;
 constexpr uint32_t DO_EXCLUSIVE           = 0x00000008;
 constexpr uint32_t DO_DEVICE_INITIALIZING  = 0x00000080;
 
-// ── IRP Major Function Codes ─────────────────────────────────
+//  IRP Major Function Codes 
 
 constexpr uint32_t IRP_MJ_CREATE                   = 0x00;
 constexpr uint32_t IRP_MJ_CREATE_NAMED_PIPE        = 0x01;
@@ -91,7 +91,7 @@ constexpr uint32_t IRP_MJ_PNP                      = 0x1B;
 constexpr uint32_t IRP_MJ_PNP_POWER                = IRP_MJ_PNP;
 constexpr uint32_t IRP_MJ_MAXIMUM_FUNCTION         = 0x1B;
 
-// ── POOL_TYPE ────────────────────────────────────────────────
+//  POOL_TYPE 
 
 struct POOL_TYPE {
     static constexpr int NonPagedPool    = 0;

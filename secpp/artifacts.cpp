@@ -1,4 +1,4 @@
-// artifacts.cpp — Artifact store implementation
+// artifacts.cpp  Artifact store implementation
 //
 // Maps to: speakeasy/artifacts.py
 //
@@ -21,7 +21,7 @@
 
 namespace speakeasy {
 
-// ── Base64 encoding/decoding (inline, no external dependency) ─
+//  Base64 encoding/decoding (inline, no external dependency) 
 
 namespace {
 
@@ -69,7 +69,7 @@ std::vector<uint8_t> base64_decode(const std::string& s) {
 
 } // anonymous namespace
 
-// ── zlib-compatible compression (via miniz/vcpkg) ────────────
+//  zlib-compatible compression (via miniz/vcpkg) 
 
 static const std::string kArtifactCompression = "zlib";
 
@@ -116,7 +116,7 @@ std::vector<uint8_t> artifact_decompress(const std::vector<uint8_t>& data) {
     throw std::runtime_error("miniz decompression failed: buffer too small after 10 attempts");
 }
 
-// ── ArtifactStore ────────────────────────────────────────────
+//  ArtifactStore 
 
 std::string ArtifactStore::put_bytes(const std::vector<uint8_t>& data) {
     if (data.empty()) return "";

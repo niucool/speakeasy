@@ -1,4 +1,4 @@
-// rpcrt4.cpp — rpcrt4.dll handler (real implementations)
+// rpcrt4.cpp  rpcrt4.dll handler (real implementations)
 #include "rpcrt4.h"
 #include <cstdint>
 #include <cstdlib>
@@ -17,9 +17,9 @@ namespace speakeasy { namespace api {
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  UuidCreate
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Rpcrt4::UuidCreate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 1) return 1;
     uint64_t uuidp = a[0];
@@ -46,9 +46,9 @@ uint64_t Rpcrt4::UuidCreate(void* e, const std::string&, int, const std::vector<
     return 0;  // RPC_S_OK
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  UuidToStringA
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Rpcrt4::UuidToStringA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     if (a.size() < 2) return 1;
     uint64_t uuidp = a[0];
@@ -92,7 +92,7 @@ uint64_t Rpcrt4::UuidToStringA(void* e, const std::string&, int, const std::vect
     return 0;  // RPC_S_OK
 }
 
-// ── Constructor ─────────────────────────────────────────────────
+//  Constructor 
 Rpcrt4::Rpcrt4(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Rpcrt4)
     REG(Rpcrt4, UuidCreate, 1)

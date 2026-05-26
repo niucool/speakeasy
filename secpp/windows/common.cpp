@@ -1,4 +1,4 @@
-// common.cpp — Windows emulation common utilities
+// common.cpp  Windows emulation common utilities
 #include "common.h"
 #include "struct.h"
 #include <algorithm>
@@ -57,7 +57,7 @@ static void sync_optional_header(peparse::parsed_pe* parsed_pe) {
     }
 }
 
-// ── Import callback ──────────────────────────────────────
+//  Import callback 
 struct PeImportCtx {
     std::map<uint64_t, std::tuple<std::string, std::string>> imports;
 };
@@ -75,7 +75,7 @@ static int pefile_imp_cb(void* cbd, const peparse::VA& iat_addr,
     return 0;
 }
 
-// ── Export callback ──────────────────────────────────────
+//  Export callback 
 struct PeExportCtx {
     std::vector<ExportEntry> exports;
 };
@@ -93,7 +93,7 @@ static int pefile_exp_cb(void* cbd, const peparse::VA& addr,
     return 0;
 }
 
-// ── Section callback ─────────────────────────────────────
+//  Section callback 
 struct PeSectionCtx {
     std::vector<PeSection> sections;
     uint64_t image_base;
@@ -117,7 +117,7 @@ static int pefile_sec_cb(void* cbd, const peparse::VA& sec_base,
     return 0;
 }
 
-// ── PeFile implementation ─────────────────────────────────
+//  PeFile implementation 
 PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
                uint64_t imp_id, uint64_t imp_step,
                const std::string& emu_path, bool fast_load)
@@ -621,7 +621,7 @@ std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_addres
     return mapped_data;
 }
 
-// ── DecoyModule implementation ────────────────────────────
+//  DecoyModule implementation 
 DecoyModule::DecoyModule(const std::string& path, const std::vector<uint8_t>& data,
                          bool fast_load, uint64_t base, const std::string& emu_path,
                          bool is_jitted)
@@ -646,7 +646,7 @@ std::vector<uint8_t> DecoyModule::get_memory_mapped_image(uint64_t max_virtual_a
     return PeFile::get_memory_mapped_image(max_virtual_address, base_addr);
 }
 
-// ── JitPeFile implementation ──────────────────────────────
+//  JitPeFile implementation 
 
 // Exported stub template definitions
 static const std::vector<uint8_t> X86_EXPORTED_FUNCTION = {

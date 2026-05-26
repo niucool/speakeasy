@@ -1,4 +1,4 @@
-// mpr.cpp — mpr.dll handler (real implementations)
+// mpr.cpp  mpr.dll handler (real implementations)
 #include "mpr.h"
 #include <cstring>
 #include <cstdint>
@@ -38,9 +38,9 @@ Mpr::Mpr(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  WNetOpenEnum — start network resource enumeration
-// ═══════════════════════════════════════════════════════════════
+// 
+//  WNetOpenEnum  start network resource enumeration
+// 
 uint64_t Mpr::WNetOpenEnum(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t dwScope = a[0];
     uint64_t dwType = a[1];
@@ -66,9 +66,9 @@ uint64_t Mpr::WNetOpenEnum(void* e, const std::string&, int, const std::vector<u
     return mpr_defs::ERROR_NO_NETWORK;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  WNetEnumResource — continue network resource enumeration
-// ═══════════════════════════════════════════════════════════════
+// 
+//  WNetEnumResource  continue network resource enumeration
+// 
 uint64_t Mpr::WNetEnumResource(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hEnum = a[0];
     uint64_t lpcCount = a[1];
@@ -79,9 +79,9 @@ uint64_t Mpr::WNetEnumResource(void* e, const std::string&, int, const std::vect
     return mpr_defs::ERROR_NO_NETWORK;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  WNetAddConnection2 — add a network connection
-// ═══════════════════════════════════════════════════════════════
+// 
+//  WNetAddConnection2  add a network connection
+// 
 uint64_t Mpr::WNetAddConnection2(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t lpNetResource = a[0];
     uint64_t lpPassword = a[1];
@@ -101,9 +101,9 @@ uint64_t Mpr::WNetAddConnection2(void* e, const std::string&, int, const std::ve
     return mpr_defs::ERROR_NO_NETWORK;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  WNetGetConnection — get remote name for redirected local device
-// ═══════════════════════════════════════════════════════════════
+// 
+//  WNetGetConnection  get remote name for redirected local device
+// 
 uint64_t Mpr::WNetGetConnection(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t lpLocalName = a[0];
     uint64_t lpRemoteName = a[1];

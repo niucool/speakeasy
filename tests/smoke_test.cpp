@@ -1,5 +1,5 @@
 /**
- * smoke_test.cpp — Speakeasy C++ Port Dependency & Core Tests (GTest)
+ * smoke_test.cpp  Speakeasy C++ Port Dependency & Core Tests (GTest)
  *
  * Validates all third-party libraries plus core C++ port modules.
  * Runs via: ctest -C Debug  or  ./speakeasy_tests --gtest_filter=Smoke*
@@ -30,7 +30,7 @@
 
 using namespace speakeasy;
 
-// ── Third-party library smoke tests ──────────────────────────
+//  Third-party library smoke tests 
 
 TEST(SmokeTest, JsonLibrary) {
     nlohmann::json j;
@@ -55,7 +55,7 @@ TEST(SmokeTest, ProjectVersion) {
     EXPECT_TRUE(true); // version check placeholder
 }
 
-// ── Architecture constants ──────────────────────────────────
+//  Architecture constants 
 
 TEST(ArchTest, Constants) {
     EXPECT_EQ(speakeasy::arch::ARCH_X86, 32);
@@ -63,7 +63,7 @@ TEST(ArchTest, Constants) {
     EXPECT_EQ(speakeasy::arch::PAGE_SIZE, 0x1000U);
 }
 
-// ── NT Kernel Structure tests ───────────────────────────────
+//  NT Kernel Structure tests 
 
 TEST(NtStructTest, UnicodeStringSize) {
     // 64-bit layout: Length(2) + MaxLen(2) + pad(4) + Buffer(8) = 16
@@ -111,7 +111,7 @@ TEST(NtStructTest, KSystemTime) {
     EXPECT_EQ(bytes[4], 0x44);
 }
 
-// ── DDK constants ────────────────────────────────────────────
+//  DDK constants 
 
 TEST(DdkTest, MajorFunctionCodes) {
     EXPECT_EQ(IRP_MJ_CREATE, 0x00);
@@ -121,7 +121,7 @@ TEST(DdkTest, MajorFunctionCodes) {
     EXPECT_EQ(IRP_MJ_MAXIMUM_FUNCTION, 0x1B);
 }
 
-// ── File tests (standalone data classes) ─────────────────────
+//  File tests (standalone data classes) 
 
 TEST(FileTest, FileConstructor) {
     File f(nullptr, "/tmp/test.txt", {}, {});
@@ -214,7 +214,7 @@ TEST(FileTest, PipeConstructor) {
     EXPECT_GT(p.get_handle(), 0);
 }
 
-// ── Error tests ──────────────────────────────────────────────
+//  Error tests 
 
 TEST(ErrorTest, SpeakeasyErrorMessage) {
     SpeakeasyError err("custom error");
@@ -236,7 +236,7 @@ TEST(ErrorTest, NotSupportedError) {
     EXPECT_STREQ(err.what(), "not supported");
 }
 
-// ── Memory Manager tests ─────────────────────────────────────
+//  Memory Manager tests 
 
 TEST(MemoryManagerTest, DefaultConstruction) {
     MemoryManager mm;
@@ -300,7 +300,7 @@ TEST(MemoryManagerTest, MemReserve) {
     EXPECT_EQ(mm.get_address_map(addr), nullptr);
 }
 
-// ── Profiler tests ───────────────────────────────────────────
+//  Profiler tests 
 
 TEST(ProfilerTest, RunConstruction) {
     ::Run test_run;
@@ -342,7 +342,7 @@ TEST(ProfilerTest, ProfilerEmptyJsonReport) {
     EXPECT_TRUE(json.is_object() || json.is_null());
 }
 
-// ── Profiler event logging tests ─────────────────────────────
+//  Profiler event logging tests 
 
 TEST(ProfilerTest, LogFileAccess) {
     Profiler prof;
@@ -412,7 +412,7 @@ TEST(ProfilerTest, HandleBinaryData) {
     EXPECT_FALSE(ref.empty());
 }
 
-// ── ArtifactStore tests ──────────────────────────────────────
+//  ArtifactStore tests 
 
 TEST(ArtifactStoreTest, PutAndGet) {
     ArtifactStore store;
@@ -448,7 +448,7 @@ TEST(ArtifactStoreTest, EmptyData) {
     EXPECT_NO_THROW(store.put_bytes({}));
 }
 
-// ── GDT constants ────────────────────────────────────────────
+//  GDT constants 
 
 TEST(GdtTest, AccessBits) {
     EXPECT_EQ(GDT_ACCESS_BITS::ProtMode32, 0x04);

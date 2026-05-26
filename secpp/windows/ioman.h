@@ -1,4 +1,4 @@
-// ioman.h — I/O Manager for kernel emulation
+// ioman.h  I/O Manager for kernel emulation
 //
 // Maps to: speakeasy/windows/ioman.py
 //

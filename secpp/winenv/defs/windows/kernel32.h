@@ -1,4 +1,4 @@
-// kernel32.h — Windows kernel32 API type definitions
+// kernel32.h  Windows kernel32 API type definitions
 //
 // Maps to: speakeasy/winenv/defs/windows/kernel32.py
 //
@@ -14,7 +14,7 @@
 #include "../../../struct.h"
 #include "windows.h"
 
-// On Windows, the SDK defines many types as macros — undefine the ones
+// On Windows, the SDK defines many types as macros  undefine the ones
 // that conflict with our constexpr struct member names and constants.
 #ifdef _WIN32
 #pragma push_macro("MAX_PATH")
@@ -99,7 +99,7 @@
 
 namespace speakeasy { namespace defs { namespace windows {
 
-// ── Constants ─────────────────────────────────────────────────
+//  Constants 
 
 constexpr uint32_t MAX_PATH           = 260;
 constexpr uint32_t MAX_MODULE_NAME32  = 255;
@@ -160,7 +160,7 @@ constexpr uint32_t LOCALE_CUSTOM_UI_DEFAULT    = 0x1400;
 constexpr uint32_t LOCALE_SENGLISHLANGUAGENAME = 0x1001;
 constexpr uint32_t LOCALE_SENGLISHCOUNTRYNAME  = 0x1002;
 
-// ── PROCESS_INFORMATION ───────────────────────────────────────
+//  PROCESS_INFORMATION 
 
 struct PROCESS_INFORMATION : speakeasy::EmuStruct {
     uint64_t hProcess    = 0;  // HANDLE
@@ -189,7 +189,7 @@ struct PROCESS_INFORMATION : speakeasy::EmuStruct {
     }
 };
 
-// ── STARTUPINFO ───────────────────────────────────────────────
+//  STARTUPINFO 
 
 struct STARTUPINFO : speakeasy::EmuStruct {
     uint32_t cb              = sizeof(STARTUPINFO);
@@ -262,7 +262,7 @@ struct STARTUPINFO : speakeasy::EmuStruct {
     }
 };
 
-// ── PROCESSENTRY32 (Wide-character, Toolhelp API) ─────────────
+//  PROCESSENTRY32 (Wide-character, Toolhelp API) 
 
 struct PROCESSENTRY32 : speakeasy::EmuStruct {
     uint32_t dwSize              = sizeof(PROCESSENTRY32);
@@ -313,7 +313,7 @@ struct PROCESSENTRY32 : speakeasy::EmuStruct {
     }
 };
 
-// ── THREADENTRY32 (Toolhelp API) ──────────────────────────────
+//  THREADENTRY32 (Toolhelp API) 
 
 struct THREADENTRY32 : speakeasy::EmuStruct {
     uint32_t dwSize              = sizeof(THREADENTRY32);
@@ -338,7 +338,7 @@ struct THREADENTRY32 : speakeasy::EmuStruct {
     }
 };
 
-// ── MODULEENTRY32 (Wide-character, Toolhelp API) ──────────────
+//  MODULEENTRY32 (Wide-character, Toolhelp API) 
 
 struct MODULEENTRY32 : speakeasy::EmuStruct {
     uint32_t dwSize              = sizeof(MODULEENTRY32);
@@ -391,7 +391,7 @@ struct MODULEENTRY32 : speakeasy::EmuStruct {
     }
 };
 
-// ── WIN32_FIND_DATA (Wide-character) ──────────────────────────
+//  WIN32_FIND_DATA (Wide-character) 
 
 struct WIN32_FIND_DATA : speakeasy::EmuStruct {
     uint32_t dwFileAttributes    = 0;
@@ -443,7 +443,7 @@ struct WIN32_FIND_DATA : speakeasy::EmuStruct {
     }
 };
 
-// ── WIN32_FILE_ATTRIBUTE_DATA ─────────────────────────────────
+//  WIN32_FILE_ATTRIBUTE_DATA 
 
 struct WIN32_FILE_ATTRIBUTE_DATA : speakeasy::EmuStruct {
     uint32_t dwFileAttributes    = 0;
@@ -481,7 +481,7 @@ struct WIN32_FILE_ATTRIBUTE_DATA : speakeasy::EmuStruct {
     }
 };
 
-// ── OSVERSIONINFO ─────────────────────────────────────────────
+//  OSVERSIONINFO 
 
 struct OSVERSIONINFO : speakeasy::EmuStruct {
     uint32_t dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
@@ -505,7 +505,7 @@ struct OSVERSIONINFO : speakeasy::EmuStruct {
     }
 };
 
-// ── OSVERSIONINFOEX ───────────────────────────────────────────
+//  OSVERSIONINFOEX 
 
 struct OSVERSIONINFOEX : speakeasy::EmuStruct {
     uint32_t dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
@@ -539,7 +539,7 @@ struct OSVERSIONINFOEX : speakeasy::EmuStruct {
     }
 };
 
-// ── SECURITY_ATTRIBUTES ───────────────────────────────────────
+//  SECURITY_ATTRIBUTES 
 
 struct SECURITY_ATTRIBUTES : speakeasy::EmuStruct {
     uint32_t nLength              = sizeof(SECURITY_ATTRIBUTES);
@@ -565,7 +565,7 @@ struct SECURITY_ATTRIBUTES : speakeasy::EmuStruct {
     }
 };
 
-// ── OVERLAPPED ────────────────────────────────────────────────
+//  OVERLAPPED 
 
 struct OVERLAPPED : speakeasy::EmuStruct {
     uint64_t Internal     = 0;  // ULONG_PTR

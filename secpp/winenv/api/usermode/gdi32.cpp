@@ -1,4 +1,4 @@
-// gdi32.cpp — gdi32.dll handler (~22 APIs, real implementations)
+// gdi32.cpp  gdi32.dll handler (~22 APIs, real implementations)
 #include "gdi32.h"
 
 #include <vector>
@@ -12,7 +12,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline BinaryEmulator* be(void* e) {
     return static_cast<BinaryEmulator*>(e);
 }
@@ -20,7 +20,7 @@ static inline MemoryManager* mm(void* e) {
     return static_cast<MemoryManager*>(e);
 }
 
-// ── Static GDI handle counter ─────────────────────────────────
+//  Static GDI handle counter 
 static uint64_t gdi_handle_counter = 0x1000;
 
 static uint64_t gdi_next_handle() {
@@ -28,7 +28,7 @@ static uint64_t gdi_next_handle() {
     return gdi_handle_counter;
 }
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 
 GDI32::GDI32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(GDI32)
@@ -46,7 +46,7 @@ GDI32::GDI32(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── API implementations ───────────────────────────────────────
+//  API implementations 
 
 uint64_t GDI32::CreateBitmap(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;

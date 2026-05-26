@@ -1,4 +1,4 @@
-// loaders.cpp — PE file loader implementation using pe-parse callback API
+// loaders.cpp  PE file loader implementation using pe-parse callback API
 
 #include "loaders.h"
 #include "../winenv/api/api.h"
@@ -10,13 +10,13 @@
 
 namespace speakeasy {
 
-// ── PE Section characteristics ───────────────────────────────
+//  PE Section characteristics 
 
 constexpr uint32_t IMAGE_SCN_MEM_READ    = 0x40000000;
 constexpr uint32_t IMAGE_SCN_MEM_WRITE   = 0x80000000;
 constexpr uint32_t IMAGE_SCN_MEM_EXECUTE = 0x20000000;
 
-// ── Callback context for pe-parse iterations ─────────────────
+//  Callback context for pe-parse iterations 
 
 struct ParseCtx {
     std::vector<SectionEntry> sections;
@@ -35,7 +35,7 @@ struct ParseCtx {
     int arch = 32;
 };
 
-// ── Section callback ─────────────────────────────────────────
+//  Section callback 
 
 static int sec_cb(void* cbd,
                   const peparse::VA& sec_base,
@@ -56,13 +56,13 @@ static int sec_cb(void* cbd,
 
     if (sec_data) {
         // Section data available via bounded_buffer
-        // We don't store it here — it'll be assembled in make_image
+        // We don't store it here  it'll be assembled in make_image
     }
     ctx->sections.push_back(entry);
     return 0;  // continue iteration
 }
 
-// ── Import callback ──────────────────────────────────────────
+//  Import callback 
 
 static int imp_cb(void* cbd,
                   const peparse::VA& iat_addr,
@@ -83,7 +83,7 @@ static int imp_cb(void* cbd,
     return 0;
 }
 
-// ── Export callback ──────────────────────────────────────────
+//  Export callback 
 
 static int exp_cb(void* cbd,
                   const peparse::VA& addr,
@@ -103,7 +103,7 @@ static int exp_cb(void* cbd,
     return 0;
 }
 
-// ── Resource callback ────────────────────────────────────────
+//  Resource callback 
 
 static int rsrc_cb(void* cbd, const peparse::resource& r) {
     auto* ctx = static_cast<ParseCtx*>(cbd);
@@ -118,7 +118,7 @@ static int rsrc_cb(void* cbd, const peparse::resource& r) {
     return 0;
 }
 
-// ── Helper: read BYTE at RVA from PE raw data ───────────────
+//  Helper: read BYTE at RVA from PE raw data 
 
 /**
  * Read a single byte at a given Virtual Address from the parsed PE.
@@ -151,7 +151,7 @@ static std::vector<uint8_t> read_bytes_at_va(peparse::parsed_pe* pe,
     return data;
 }
 
-// ── PeLoader implementation ─────────────────────────────────
+//  PeLoader implementation 
 
 PeLoader::PeLoader(const std::string& path, 
     const std::vector<uint8_t>& data,
@@ -214,7 +214,7 @@ void PeLoader::parse_pe() {
     peparse::IterRsrc(pe, rsrc_cb, &ctx);
     metadata_.resources = ctx.resources;
 
-    // TLS callbacks — parse TLS directory
+    // TLS callbacks  parse TLS directory
     auto tls_dir = pe->peHeader.nt.OptionalHeader.DataDirectory[9];
     if (tls_dir.VirtualAddress != 0) {
         uint64_t callbacks_rva = 0;
@@ -385,7 +385,7 @@ std::string PeLoader::get_prot_string(uint32_t perms) {
 }
 
 
-// ── RuntimeModule ─────────────────────────────────────────
+//  RuntimeModule 
 
 RuntimeModule::RuntimeModule(std::shared_ptr<speakeasy::LoadedImage> image) : _image(image) {
     if (!image) return;
@@ -447,7 +447,7 @@ std::string RuntimeModule::to_string() const {
            std::to_string(base) + ")";
 }
 
-// ── ShellcodeLoader ──────────────────────────────────────
+//  ShellcodeLoader 
 
 ShellcodeLoader::ShellcodeLoader(const std::vector<uint8_t>& data, int arch)
     : data_(data), arch_(arch) {}
@@ -478,7 +478,7 @@ std::shared_ptr<LoadedImage> ShellcodeLoader::make_image() {
     return img;
 }
 
-// ── ApiModuleLoader ──────────────────────────────────────
+//  ApiModuleLoader 
 
 ApiModuleLoader::ApiModuleLoader(const std::string& name, void* api,
                                  int arch, uint64_t base, const std::string& emu_path)
@@ -631,7 +631,7 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     return img;
 }
 
-// ── DecoyLoader ──────────────────────────────────────────
+//  DecoyLoader 
 
 DecoyLoader::DecoyLoader(const std::string& name, uint64_t base,
                          const std::string& emu_path, uint64_t image_size)

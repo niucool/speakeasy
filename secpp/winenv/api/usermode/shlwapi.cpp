@@ -1,4 +1,4 @@
-// shlwapi.cpp — shlwapi.dll handler (real implementations)
+// shlwapi.cpp  shlwapi.dll handler (real implementations)
 #include "shlwapi.h"
 #include <cstdint>
 #include <cstring>
@@ -9,7 +9,7 @@
 #include <cctype>
 #include "windows/winemu.h"
 
-// ── Windows SDK macro conflict protection ─────────────────────
+//  Windows SDK macro conflict protection 
 #ifdef _WIN32
 #pragma push_macro("MAX_PATH")
 #pragma push_macro("ERROR_SUCCESS")
@@ -29,7 +29,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 static constexpr uint32_t SHLWAPI_MAX_PATH = 260;
 static constexpr uint32_t SHLWAPI_ERROR_SUCCESS = 0;
 
-// ── Format string helpers (replicated from msvcrt pattern) ────
+//  Format string helpers (replicated from msvcrt pattern) 
 
 static int shlwapi_va_arg_count(const std::string& fmt) {
     int count = 0;
@@ -150,7 +150,7 @@ static std::vector<uint64_t> shlwapi_read_va_args(void* e, uint64_t va_list_ptr,
     return args;
 }
 
-// ── Constructor ───────────────────────────────────────────────
+//  Constructor 
 Shlwapi::Shlwapi(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Shlwapi)
     REG(Shlwapi, PathIsRelative, 1)      REG(Shlwapi, StrStr, 2)
@@ -164,9 +164,9 @@ Shlwapi::Shlwapi(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathIsRelative
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathIsRelative(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     bool rv = false;
@@ -181,9 +181,9 @@ uint64_t Shlwapi::PathIsRelative(void* e, const std::string&, int, const std::ve
     return rv ? 1 : 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  StrStr
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::StrStr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hay = a[0];
     uint64_t needle = a[1];
@@ -205,9 +205,9 @@ uint64_t Shlwapi::StrStr(void* e, const std::string&, int, const std::vector<uin
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  StrStrI
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::StrStrI(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hay = a[0];
     uint64_t needle = a[1];
@@ -235,9 +235,9 @@ uint64_t Shlwapi::StrStrI(void* e, const std::string&, int, const std::vector<ui
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathFindExtension
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathFindExtension(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
@@ -256,9 +256,9 @@ uint64_t Shlwapi::PathFindExtension(void* e, const std::string&, int, const std:
     return pszPath + idx1 + 1 + idx2;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  StrCmpI
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::StrCmpI(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t psz1 = a[0];
     uint64_t psz2 = a[1];
@@ -275,9 +275,9 @@ uint64_t Shlwapi::StrCmpI(void* e, const std::string&, int, const std::vector<ui
     return (s1_lower == s2_lower) ? 0 : 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathFindFileName
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathFindFileName(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
@@ -290,9 +290,9 @@ uint64_t Shlwapi::PathFindFileName(void* e, const std::string&, int, const std::
     return pszPath + idx + 1;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathRemoveExtension
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathRemoveExtension(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
@@ -310,9 +310,9 @@ uint64_t Shlwapi::PathRemoveExtension(void* e, const std::string&, int, const st
     return pszPath;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathStripPath
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathStripPath(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
@@ -329,9 +329,9 @@ uint64_t Shlwapi::PathStripPath(void* e, const std::string&, int, const std::vec
     return 0;  // void return
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  wvnsprintfA
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::wvnsprintfA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t buffer = a[0];
     uint64_t count = a[1];
@@ -352,9 +352,9 @@ uint64_t Shlwapi::wvnsprintfA(void* e, const std::string&, int, const std::vecto
     return rv;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  wnsprintf
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::wnsprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // int wnsprintf(PSTR pszDest, int cchDest, PCSTR pszFmt, ...);
     uint64_t buf = a[0];
@@ -391,9 +391,9 @@ uint64_t Shlwapi::wnsprintf(void* e, const std::string&, int, const std::vector<
     return static_cast<uint64_t>(-1);  // -1 on failure
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathAppend
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathAppend(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     uint64_t pszMore = a[1];
@@ -415,9 +415,9 @@ uint64_t Shlwapi::PathAppend(void* e, const std::string&, int, const std::vector
     return 1;  // TRUE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathCanonicalize
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathCanonicalize(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszBuf = a[0];
     uint64_t pszPath = a[1];
@@ -427,9 +427,9 @@ uint64_t Shlwapi::PathCanonicalize(void* e, const std::string&, int, const std::
     return 1;  // TRUE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathRemoveFileSpec
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathRemoveFileSpec(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
@@ -444,9 +444,9 @@ uint64_t Shlwapi::PathRemoveFileSpec(void* e, const std::string&, int, const std
     return 1;  // TRUE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathAddBackslash
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathAddBackslash(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
@@ -462,9 +462,9 @@ uint64_t Shlwapi::PathAddBackslash(void* e, const std::string&, int, const std::
     return pszPath;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  PathRenameExtension
-// ═══════════════════════════════════════════════════════════════
+// 
 uint64_t Shlwapi::PathRenameExtension(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t pszPath = a[0];
     uint64_t pszExt = a[1];
@@ -494,7 +494,7 @@ uint64_t Shlwapi::PathRenameExtension(void* e, const std::string&, int, const st
 
 }} // namespaces
 
-// ── Pop SDK macros ────────────────────────────────────────────
+//  Pop SDK macros 
 #ifdef _WIN32
 #pragma pop_macro("ERROR_INSUFFICIENT_BUFFER")
 #pragma pop_macro("ERROR_SUCCESS")

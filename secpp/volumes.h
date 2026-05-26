@@ -1,4 +1,4 @@
-// volumes.h — Docker-style --volume support for mounting host files
+// volumes.h  Docker-style --volume support for mounting host files
 //
 // Maps to: speakeasy/volumes.py
 //

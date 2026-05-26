@@ -1,4 +1,4 @@
-// sfc_os.cpp — sfc_os.dll handler (real implementations, inherits sfc APIs)
+// sfc_os.cpp  sfc_os.dll handler (real implementations, inherits sfc APIs)
 #include "sfc_os.h"
 #include <cstring>
 #include <cstdint>
@@ -22,9 +22,9 @@ Sfc_os::Sfc_os(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  SfcIsFileProtected — check if a file is protected by WFP
-// ═══════════════════════════════════════════════════════════════
+// 
+//  SfcIsFileProtected  check if a file is protected by WFP
+// 
 uint64_t Sfc_os::SfcIsFileProtected(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t hRpc = a[0];
     uint64_t pszProtFileName = a[1];
@@ -42,9 +42,9 @@ uint64_t Sfc_os::SfcIsFileProtected(void* e, const std::string&, int, const std:
     return SFC_ERROR;  // Return FALSE (not protected) to let operations proceed
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  SfcTerminateWatcherThread — terminate the WFP watcher thread
-// ═══════════════════════════════════════════════════════════════
+// 
+//  SfcTerminateWatcherThread  terminate the WFP watcher thread
+// 
 uint64_t Sfc_os::SfcTerminateWatcherThread(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
     return SFC_SUCCESS;

@@ -5,6 +5,23 @@
 
 ## [Unreleased]
 
+### 2026-05-26
+
+#### Changed
+
+- **全部159个.h/.cpp文件**: 移除所有非ASCII字符（56352字符），消除编译时 warnings/internationalization 干扰
+  - UTF-8 EM DASH (U+2014) → 移除
+  - BOX DRAWINGS (U+2500) → 移除
+  - 此前文档中的中文字符全部清理
+
+#### Fixed
+
+- **CMakeLists.txt**: 修复 pe-parse 构建失败 — `third_party/pe-parse` 为空目录
+  - git clone trailofbits/pe-parse 到 `third_party/pe-parse/`
+  - 安装 `libicu-dev` 系统包（pe-parse 依赖 ICU）
+- **picosha2.h**: 从 vcpkg 拷贝到 `secpp/` 目录并改用 `#include "picosha2.h"` 形式
+- **windows/common.cpp**: 添加缺失的 `#include <cstring>` 解决 `std::memcpy` 未声明错误
+
 ### 2026-05-25
 
 #### Changed

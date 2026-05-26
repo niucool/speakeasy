@@ -1,4 +1,4 @@
-// ndis.cpp — Network Driver Interface Specification handler (implemented)
+// ndis.cpp  Network Driver Interface Specification handler (implemented)
 #include "ndis.h"
 
 #include <cstdint>
@@ -14,7 +14,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api { namespace kernelmode {
 
-// ── Typed cast helpers ────────────────────────────────────────
+//  Typed cast helpers 
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
@@ -41,7 +41,7 @@ Ndis::Ndis(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ── Internal helpers ──────────────────────────────────────────
+//  Internal helpers 
 static uint32_t ndis_next_handle = 4;
 static inline uint32_t ndis_new_id() {
     uint32_t h = ndis_next_handle;
@@ -60,7 +60,7 @@ static inline std::string ndis_tag_to_str(uint32_t tag) {
     return std::string(buf);
 }
 
-// ── Implementations ───────────────────────────────────────────
+//  Implementations 
 
 uint64_t Ndis::NdisGetVersion(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // UINT NdisGetVersion();

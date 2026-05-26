@@ -1,4 +1,4 @@
-// kernel32.h — kernel32.dll API handler (v2 — macro-based registration)
+// kernel32.h  kernel32.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_KERNEL32_H
 #define SPEAKEASY_KERNEL32_H
 #include <string>

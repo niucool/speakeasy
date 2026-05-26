@@ -1,4 +1,4 @@
-// gdi32.h — gdi32.dll API handler (v2 — macro-based registration)
+// gdi32.h  gdi32.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_GDI32_H
 #define SPEAKEASY_GDI32_H
 #include <string>

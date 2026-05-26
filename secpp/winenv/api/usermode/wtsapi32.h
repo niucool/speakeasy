@@ -1,4 +1,4 @@
-// wtsapi32.h — wtsapi32.dll API handler (v2 — macro-based registration)
+// wtsapi32.h  wtsapi32.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_WTSAPI32_H
 #define SPEAKEASY_WTSAPI32_H
 #include <string>

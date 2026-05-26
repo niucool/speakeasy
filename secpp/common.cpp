@@ -56,7 +56,7 @@ void Hook::disable() {
  * Wrapper for code callback
  */
 bool Hook::_wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx) {
-    // Static wrapper — the 'container' field from the Hook is passed
+    // Static wrapper  the 'container' field from the Hook is passed
     // as ctx[0] (registered as cb_data from hook_add).
     // Dispatch to the actual Hook's callback.
     (void)emu; (void)addr; (void)size;

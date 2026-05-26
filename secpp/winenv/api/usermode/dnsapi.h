@@ -1,4 +1,4 @@
-// dnsapi.h — dnsapi.dll API handler (v2 — macro-based registration)
+// dnsapi.h  dnsapi.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_DNSAPI_H
 #define SPEAKEASY_DNSAPI_H
 #include <string>

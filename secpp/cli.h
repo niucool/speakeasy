@@ -1,4 +1,4 @@
-// cli.h — Speakeasy CLI entry point
+// cli.h  Speakeasy CLI entry point
 //
 // Maps to: speakeasy/cli.py
 

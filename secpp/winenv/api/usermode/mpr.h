@@ -1,4 +1,4 @@
-// mpr.h — mpr.dll API handler (v2 — macro-based registration)
+// mpr.h  mpr.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_MPR_H
 #define SPEAKEASY_MPR_H
 #include <string>

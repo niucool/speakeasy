@@ -1,16 +1,16 @@
 /**
- * test_porting.cpp — Comprehensive porting-regression tests (GTest)
+ * test_porting.cpp  Comprehensive porting-regression tests (GTest)
  *
  * Ports the following Python test files to C++:
- *   test_struct.py                → StructLayoutTest  (EmuStruct byte layout, write_le)
- *   test_cli_config.py            → ConfigTest        (defaults, JSON round-trip, merge)
- *   test_config.py                → ConfigTest        (validate, reject invalid engine)
- *   test_config_memory_dumps.py   → ConfigTest        (legacy alias)
- *   test_module_name_normalization.py → NormalizeModNameTest
- *   test_profiler_artifacts.py    → ProfilerEventTest (log_file_access, log_registry)
- *   test_volumes.py               → VolumeTest        (parse_volume_spec, expand)
- *   test_process_parameters.py    → NtDefTest         (UNICODE_STRING, KSYSTEM_TIME)
- *   test_artifact_store.py        → ArtifactStorePortTest (put/get, dedup, empty, size)
+ *   test_struct.py                 StructLayoutTest  (EmuStruct byte layout, write_le)
+ *   test_cli_config.py             ConfigTest        (defaults, JSON round-trip, merge)
+ *   test_config.py                 ConfigTest        (validate, reject invalid engine)
+ *   test_config_memory_dumps.py    ConfigTest        (legacy alias)
+ *   test_module_name_normalization.py  NormalizeModNameTest
+ *   test_profiler_artifacts.py     ProfilerEventTest (log_file_access, log_registry)
+ *   test_volumes.py                VolumeTest        (parse_volume_spec, expand)
+ *   test_process_parameters.py     NtDefTest         (UNICODE_STRING, KSYSTEM_TIME)
+ *   test_artifact_store.py         ArtifactStorePortTest (put/get, dedup, empty, size)
  */
 
 #include <gtest/gtest.h>
@@ -37,9 +37,9 @@
 
 using namespace speakeasy;
 
-// ══════════════════════════════════════════════════════════════════
-// Struct tests  (← tests/test_struct.py)
-// ══════════════════════════════════════════════════════════════════
+// 
+// Struct tests  ( tests/test_struct.py)
+// 
 
 class DEEP_NEST : public EmuStruct {
 public:
@@ -101,10 +101,10 @@ TEST(StructLayoutTest, WriteLeUint32) {
     EXPECT_EQ(buf[3], 0xAA);
 }
 
-// ══════════════════════════════════════════════════════════════════
-// Config tests  (← tests/test_cli_config.py, test_config.py,
+// 
+// Config tests  ( tests/test_cli_config.py, test_config.py,
 //                 test_config_memory_dumps.py)
-// ══════════════════════════════════════════════════════════════════
+// 
 
 TEST(ConfigTest, DefaultConfigValidates) {
     SpeakeasyConfig cfg;
@@ -147,7 +147,7 @@ TEST(ConfigTest, RejectsInvalidEngine) {
     EXPECT_THROW(cfg.validate_config(), ConfigError);
 }
 
-// Legacy capture_memory_dumps alias (← test_config_memory_dumps.py)
+// Legacy capture_memory_dumps alias ( test_config_memory_dumps.py)
 TEST(ConfigTest, LegacyCaptureMemoryDumpsAlias) {
     nlohmann::json j = R"({
         "config_version": 0.2,
@@ -170,11 +170,11 @@ TEST(ConfigTest, LegacyCaptureMemoryDumpsAlias) {
     SUCCEED();
 }
 
-// ══════════════════════════════════════════════════════════════════
-// Module name normalization  (← tests/test_module_name_normalization.py)
-// ── Replicates WindowsEmulator::normalize_mod_name inline
+// 
+// Module name normalization  ( tests/test_module_name_normalization.py)
+//  Replicates WindowsEmulator::normalize_mod_name inline
 //     (the method is protected in the class)
-// ══════════════════════════════════════════════════════════════════
+// 
 
 static std::string normalize_mod_name(const std::string& name) {
     auto dot = name.find_last_of('.');
@@ -205,9 +205,9 @@ TEST(NormalizeModNameTest, NoExtension) {
     EXPECT_EQ(normalize_mod_name("kernel32"), "kernel32");
 }
 
-// ══════════════════════════════════════════════════════════════════
-// Profiler event tests  (← tests/test_profiler_artifacts.py)
-// ══════════════════════════════════════════════════════════════════
+// 
+// Profiler event tests  ( tests/test_profiler_artifacts.py)
+// 
 
 TEST(ProfilerEventTest, LogFileAccess) {
     Profiler prof;
@@ -245,9 +245,9 @@ TEST(ProfilerEventTest, MultipleFileAccesses) {
             std::to_string(i) + ".bin", "write"));
 }
 
-// ══════════════════════════════════════════════════════════════════
-// Volume tests  (← tests/test_volumes.py)
-// ══════════════════════════════════════════════════════════════════
+// 
+// Volume tests  ( tests/test_volumes.py)
+// 
 
 TEST(VolumeTest, ParseUnixToWindows) {
     auto [host, guest] = parse_volume_spec("/tmp/samples:C:\\test");
@@ -270,9 +270,9 @@ TEST(VolumeTest, RejectsMissingColon) {
     EXPECT_THROW(parse_volume_spec("invalid"), std::invalid_argument);
 }
 
-// ══════════════════════════════════════════════════════════════════
-// ArtifactStore  (← tests/test_artifact_store.py)
-// ══════════════════════════════════════════════════════════════════
+// 
+// ArtifactStore  ( tests/test_artifact_store.py)
+// 
 
 TEST(ArtifactStorePortTest, GetMissing) {
     ArtifactStore store;
@@ -314,9 +314,9 @@ TEST(ArtifactStorePortTest, SizeAndClear) {
     EXPECT_EQ(store.size(), 0);
 }
 
-// ══════════════════════════════════════════════════════════════════
+// 
 // Memory Manager
-// ══════════════════════════════════════════════════════════════════
+// 
 
 TEST(MemoryManagerPortTest, MemMapMultiple) {
     MemoryManager mm;
@@ -332,9 +332,9 @@ TEST(MemoryManagerPortTest, MemMapAtFixedAddress) {
     EXPECT_EQ(addr, 0x10000000);
 }
 
-// ══════════════════════════════════════════════════════════════════
-// NT struct offset tests  (← tests/test_process_parameters.py)
-// ══════════════════════════════════════════════════════════════════
+// 
+// NT struct offset tests  ( tests/test_process_parameters.py)
+// 
 
 TEST(NtDefTest, UnicodeStringOffsets) {
     defs::nt::UNICODE_STRING us;
@@ -377,9 +377,9 @@ TEST(NtDefTest, StringStruct) {
     EXPECT_EQ(bytes[2], 8);   // MaxLength
 }
 
-// ══════════════════════════════════════════════════════════════════
+// 
 // Loaders & Module Classification Tests
-// ══════════════════════════════════════════════════════════════════
+// 
 
 TEST(LoaderModuleClassificationTest, SubsystemCUIExeClassification) {
     auto img = std::make_shared<LoadedImage>();
@@ -428,11 +428,11 @@ TEST(LoaderModuleClassificationTest, ApiModuleLoaderClassification) {
     EXPECT_EQ(mod.module_type, "dll");
 }
 
-// ══════════════════════════════════════════════════════════════════
+// 
 // PE File Memory Mapped Image Tests
-// ══════════════════════════════════════════════════════════════════
+// 
 // JitPeFile Modular Porting Tests
-// ══════════════════════════════════════════════════════════════════
+// 
 
 TEST(JitPeFileTest, BasicAssembly) {
     // Test 64-bit JitPeFile initialization
@@ -497,9 +497,9 @@ TEST(JitPeFileTest, FullDecoyAssembly) {
     }
 }
 
-// ══════════════════════════════════════════════════════════════════
+// 
 // PE File Memory Mapped Image Tests
-// ══════════════════════════════════════════════════════════════════
+// 
 
 TEST(PeFileMemoryMappedImageTest, GetMemoryMappedImage) {
     std::string test_pe_path = "tests/bins/antidbg.exe";
@@ -593,9 +593,9 @@ TEST(PeFileMemoryMappedImageTest, RelocateImage) {
     }
 }
 
-// ══════════════════════════════════════════════════════════════════
+// 
 // Object Manager Porting Validation
-// ══════════════════════════════════════════════════════════════════
+// 
 
 TEST(ObjmanPortingTest, PebTebLinkedlistValidation) {
     SpeakeasyConfig cfg;

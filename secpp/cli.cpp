@@ -1,4 +1,4 @@
-// cli.cpp — Speakeasy CLI implementation
+// cli.cpp  Speakeasy CLI implementation
 //
 // Maps to: speakeasy/cli.py
 
@@ -141,7 +141,7 @@ std::string emulate_binary(const std::string& target_path,
                            size_t raw_offset, bool emulate_children,
                            bool verbose, size_t entry_point) {
     try {
-        // ── 1. Build config (Python: get_default_config_dict + merge + apply volumes) ──
+        //  1. Build config (Python: get_default_config_dict + merge + apply volumes) 
         speakeasy::SpeakeasyConfig config;
 
         // Merge user config file if provided (Python: load + merge_config_dicts)
@@ -150,12 +150,12 @@ std::string emulate_binary(const std::string& target_path,
             config.validate_config();
         }
 
-        // ── 3. Initialise Speakeasy ──
+        //  3. Initialise Speakeasy 
         Speakeasy se(config, nullptr, extra_argv, false, nullptr);
         std::string report;
 
         if (is_raw) {
-            // ── Shellcode mode (Python: load_shellcode + run_shellcode) ──
+            //  Shellcode mode (Python: load_shellcode + run_shellcode) 
             std::string resolved_arch = arch.empty() ? "x86" : arch;
             std::transform(resolved_arch.begin(), resolved_arch.end(),
                            resolved_arch.begin(), ::tolower);
@@ -164,7 +164,7 @@ std::string emulate_binary(const std::string& target_path,
             uint64_t sc_addr = se.load_shellcode(target_path, resolved_arch);
             se.run_shellcode(sc_addr, 0x4000, raw_offset);
         } else {
-            // ── PE module mode (Python: load_module + run_module) ──
+            //  PE module mode (Python: load_module + run_module) 
             auto module = se.load_module(target_path);
             se.run_module(module, true, emulate_children);
         }

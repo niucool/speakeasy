@@ -1,4 +1,4 @@
-// msvcrt.h — msvcrt.dll API handler (C runtime, ~120 APIs)
+// msvcrt.h  msvcrt.dll API handler (C runtime, ~120 APIs)
 #ifndef SPEAKEASY_MSVCRT_H
 #define SPEAKEASY_MSVCRT_H
 #include <string>

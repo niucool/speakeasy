@@ -1,4 +1,4 @@
-// wsk.h — Winsock Kernel (WSK) type definitions
+// wsk.h  Winsock Kernel (WSK) type definitions
 //
 // Maps to: speakeasy/winenv/defs/wsk.py
 //
@@ -14,7 +14,7 @@
 
 namespace speakeasy { namespace defs {
 
-// ── WSK_PROVIDER_BASIC_DISPATCH (16 bytes) ────────────────
+//  WSK_PROVIDER_BASIC_DISPATCH (16 bytes) 
 struct WSK_PROVIDER_BASIC_DISPATCH : speakeasy::EmuStruct {
     uint64_t WskControlSocket = 0;  // Ptr
     uint64_t WskCloseSocket   = 0;  // Ptr
@@ -28,7 +28,7 @@ struct WSK_PROVIDER_BASIC_DISPATCH : speakeasy::EmuStruct {
     }
 };
 
-// ── WSK_PROVIDER_DATAGRAM_DISPATCH (48 bytes) ─────────────
+//  WSK_PROVIDER_DATAGRAM_DISPATCH (48 bytes) 
 struct WSK_PROVIDER_DATAGRAM_DISPATCH : speakeasy::EmuStruct {
     WSK_PROVIDER_BASIC_DISPATCH Basic;
     uint64_t WskBind            = 0;
@@ -57,7 +57,7 @@ struct WSK_PROVIDER_DATAGRAM_DISPATCH : speakeasy::EmuStruct {
     }
 };
 
-// ── WSK_CLIENT_DISPATCH (16 bytes) ────────────────────────
+//  WSK_CLIENT_DISPATCH (16 bytes) 
 struct WSK_CLIENT_DISPATCH : speakeasy::EmuStruct {
     uint16_t Version   = 0;
     uint16_t Reserved  = 0;
@@ -75,7 +75,7 @@ struct WSK_CLIENT_DISPATCH : speakeasy::EmuStruct {
     }
 };
 
-// ── WSK_CLIENT_NPI (16 bytes) ─────────────────────────────
+//  WSK_CLIENT_NPI (16 bytes) 
 struct WSK_CLIENT_NPI : speakeasy::EmuStruct {
     uint64_t ClientContext = 0;  // Ptr
     uint64_t Dispatch      = 0;  // Ptr (PWSK_CLIENT_DISPATCH)
@@ -89,7 +89,7 @@ struct WSK_CLIENT_NPI : speakeasy::EmuStruct {
     }
 };
 
-// ── WSK_PROVIDER_DISPATCH (56 bytes) ──────────────────────
+//  WSK_PROVIDER_DISPATCH (56 bytes) 
 struct WSK_PROVIDER_DISPATCH : speakeasy::EmuStruct {
     uint16_t Version           = 0;
     uint16_t Reserved          = 0;
@@ -119,7 +119,7 @@ struct WSK_PROVIDER_DISPATCH : speakeasy::EmuStruct {
     }
 };
 
-// ── WSK_PROVIDER_NPI (16 bytes) ───────────────────────────
+//  WSK_PROVIDER_NPI (16 bytes) 
 struct WSK_PROVIDER_NPI : speakeasy::EmuStruct {
     uint64_t Client   = 0;  // Ptr
     uint64_t Dispatch = 0;  // Ptr

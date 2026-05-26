@@ -1,4 +1,4 @@
-// comctl32.h — comctl32.dll API handler (v2 — macro-based registration)
+// comctl32.h  comctl32.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_COMCTL32_H
 #define SPEAKEASY_COMCTL32_H
 #include <string>

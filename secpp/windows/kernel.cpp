@@ -1,4 +1,4 @@
-// kernel.cpp — Windows Kernel Emulator implementation
+// kernel.cpp  Windows Kernel Emulator implementation
 //
 // Maps to: speakeasy/windows/kernel.py
 // Python: class WinKernelEmulator(WindowsEmulator, IoManager):

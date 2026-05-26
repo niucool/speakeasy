@@ -1,4 +1,4 @@
-// ntoskrnl.h — Windows NT Kernel API handler (STUB)
+// ntoskrnl.h  Windows NT Kernel API handler (STUB)
 // ~154 APIs from Python reference: speakeasy/winenv/api/kernelmode/ntoskrnl.py
 #ifndef SPEAKEASY_KERNELMODE_NTOSKRNL_H
 #define SPEAKEASY_KERNELMODE_NTOSKRNL_H

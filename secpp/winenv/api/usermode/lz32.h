@@ -1,4 +1,4 @@
-// lz32.h — lz32.dll API handler (v2 — macro-based registration)
+// lz32.h  lz32.dll API handler (v2  macro-based registration)
 #ifndef SPEAKEASY_LZ32_H
 #define SPEAKEASY_LZ32_H
 #include <string>

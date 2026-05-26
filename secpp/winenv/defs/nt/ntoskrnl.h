@@ -1,4 +1,4 @@
-// ntoskrnl.h — Windows NT kernel type definitions
+// ntoskrnl.h  Windows NT kernel type definitions
 //
 // Maps to: speakeasy/winenv/defs/nt/ntoskrnl.py
 //
@@ -14,7 +14,7 @@
 
 namespace speakeasy { namespace defs { namespace nt {
 
-// ── Common NT structures ─────────────────────────────────────
+//  Common NT structures 
 
 struct LIST_ENTRY : speakeasy::EmuStruct {
     uint64_t Flink = 0;
@@ -56,7 +56,7 @@ struct KSYSTEM_TIME : speakeasy::EmuStruct {
 struct UNICODE_STRING : speakeasy::EmuStruct {
     uint16_t Length         = 0;
     uint16_t MaximumLength  = 0;
-    uint64_t Buffer         = 0;  // Ptr → address of UTF-16 string
+    uint64_t Buffer         = 0;  // Ptr  address of UTF-16 string
 
     int ptr_size = 4;
     UNICODE_STRING(int ptr_sz = 8) : ptr_size(ptr_sz) {}
@@ -92,7 +92,7 @@ struct UNICODE_STRING : speakeasy::EmuStruct {
 struct STRING : speakeasy::EmuStruct {
     uint16_t Length         = 0;
     uint16_t MaximumLength  = 0;
-    uint64_t Buffer         = 0;  // Ptr → address of ANSI string
+    uint64_t Buffer         = 0;  // Ptr  address of ANSI string
 
     int ptr_size = 4;
     STRING(int ptr_sz = 8) : ptr_size(ptr_sz) {}
@@ -203,7 +203,7 @@ struct LARGE_INTEGER : speakeasy::EmuStruct {
     }
 };
 
-// ── SYSTEM_INFORMATION structures ────────────────────────────
+//  SYSTEM_INFORMATION structures 
 
 struct SYSTEM_TIMEOFDAY_INFORMATION : speakeasy::EmuStruct {
     uint64_t BootTime       = 0;
@@ -257,7 +257,7 @@ struct SYSTEM_PROCESS_INFORMATION : speakeasy::EmuStruct {
     }
 };
 
-// ── Dummy sync and process structures ─────────────────────────
+//  Dummy sync and process structures 
 
 struct EPROCESS : speakeasy::EmuStruct {
     size_t sizeof_obj() const override { return 4096; }
@@ -279,7 +279,7 @@ struct MUTANT : speakeasy::EmuStruct {
     std::vector<uint8_t> get_bytes() const override { return std::vector<uint8_t>(4096, 0); }
 };
 
-// ── PEB Ldr Linked Lists and Module entries ───────────────────
+//  PEB Ldr Linked Lists and Module entries 
 
 struct PEB_LDR_DATA : speakeasy::EmuStruct {
     uint32_t Length = 0;
@@ -430,7 +430,7 @@ struct LDR_DATA_TABLE_ENTRY : speakeasy::EmuStruct {
     }
 };
 
-// ── Process Parameters ────────────────────────────────────────
+//  Process Parameters 
 
 struct CURDIR : speakeasy::EmuStruct {
     UNICODE_STRING DosPath;
@@ -621,7 +621,7 @@ struct RTL_USER_PROCESS_PARAMETERS : speakeasy::EmuStruct {
     }
 };
 
-// ── Process Environment Block (PEB) ───────────────────────────
+//  Process Environment Block (PEB) 
 
 struct PEB : speakeasy::EmuStruct {
     uint8_t InheritedAddressSpace = 0;
@@ -737,7 +737,7 @@ struct PEB : speakeasy::EmuStruct {
     }
 };
 
-// ── Thread Environment Block (TEB) ───────────────────────────
+//  Thread Environment Block (TEB) 
 
 struct NT_TIB : speakeasy::EmuStruct {
     uint64_t ExceptionList = 0;
@@ -854,7 +854,7 @@ struct TEB : speakeasy::EmuStruct {
     }
 };
 
-// ── Interrupt Descriptor Table (IDT) ───────────────────────────
+//  Interrupt Descriptor Table (IDT) 
 
 struct KIDTENTRY : speakeasy::EmuStruct {
     uint16_t OffsetLow = 0;

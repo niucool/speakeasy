@@ -1,4 +1,4 @@
-// sfc.h — sfc.dll API handler
+// sfc.h  sfc.dll API handler
 #ifndef SPEAKEASY_SFC_H
 #define SPEAKEASY_SFC_H
 #include <string>

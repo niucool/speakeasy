@@ -1,4 +1,4 @@
-// volmgr.cpp — Volume Manager kernel module implementation
+// volmgr.cpp  Volume Manager kernel module implementation
 
 #include "volmgr.h"
 
@@ -26,7 +26,7 @@ VolMgrModule::ioctl(int arch, uint32_t code, const std::vector<uint8_t>& inbuf) 
     return {STATUS_INVALID_DEVICE_REQUEST, {}};
 }
 
-// ── Module registry ──────────────────────────────────────────
+//  Module registry 
 
 std::vector<std::unique_ptr<KernelModule>> create_kernel_modules() {
     std::vector<std::unique_ptr<KernelModule>> mods;

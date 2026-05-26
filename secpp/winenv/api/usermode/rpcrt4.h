@@ -1,4 +1,4 @@
-// rpcrt4.h — rpcrt4.dll API handler
+// rpcrt4.h  rpcrt4.dll API handler
 #ifndef SPEAKEASY_RPCRT4_H
 #define SPEAKEASY_RPCRT4_H
 #include <string>

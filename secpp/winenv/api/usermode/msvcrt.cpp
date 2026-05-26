@@ -1,4 +1,4 @@
-// msvcrt.cpp — msvcrt.dll handler (~120 APIs, real implementations)
+// msvcrt.cpp  msvcrt.dll handler (~120 APIs, real implementations)
 #include "msvcrt.h"
 #include <cstring>
 #include <cstdlib>
@@ -19,7 +19,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-// ── Helper: typed casts from void* ───────────────────────────
+//  Helper: typed casts from void* 
 static inline WindowsEmulator* we(void* e) {
     return static_cast<WindowsEmulator*>(e);
 }
@@ -27,14 +27,14 @@ static inline BinaryEmulator* be(void* e) {
     return static_cast<BinaryEmulator*>(e);
 }
 
-// ── Static state for stateful APIs ───────────────────────────
+//  Static state for stateful APIs 
 static int msvc_rand_state = 0;
 static uint64_t msvc_errno_ptr = 0;
 static std::map<uint64_t, int> msvc_file_streams; // stream_addr -> file_handle
 
-// ─────────────────────────────────────────────────────────────
+// 
 //  CONSTRUCTOR
-// ─────────────────────────────────────────────────────────────
+// 
 
 Msvcrt::Msvcrt(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Msvcrt)
@@ -124,9 +124,9 @@ Msvcrt::Msvcrt(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  MEMORY
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::malloc(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     size_t sz = static_cast<size_t>(a.empty() ? 0 : a[0]);
@@ -195,9 +195,9 @@ uint64_t Msvcrt::memcmp(void* e, const std::string&, int, const std::vector<uint
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  STRING (ANSI)
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::strlen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t s = a.empty() ? 0 : a[0];
@@ -398,9 +398,9 @@ uint64_t Msvcrt::wcstombs(void* e, const std::string&, int, const std::vector<ui
     return ws.size();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  STRING (WIDE)
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::wcslen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t s = a.empty() ? 0 : a[0];
@@ -490,9 +490,9 @@ uint64_t Msvcrt::strncat_s(void* e, const std::string&, int, const std::vector<u
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  FORMATTED I/O
-// ═══════════════════════════════════════════════════════════════
+// 
 
 // Helper: format a string using the do_str_format logic
 // Unfortunately do_str_format is an instance method on ApiHandler.
@@ -781,9 +781,9 @@ uint64_t Msvcrt::puts(void* e, const std::string&, int, const std::vector<uint64
     return static_cast<uint64_t>(str.size());
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  FILE I/O
-// ═══════════════════════════════════════════════════════════════
+// 
 
 // Helper: get pointer size from emulator
 static int msvc_ptr_size(void* e) {
@@ -897,9 +897,9 @@ uint64_t Msvcrt::_unlock(void* e, const std::string&, int, const std::vector<uin
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  MATH
-// ═══════════════════════════════════════════════════════════════
+// 
 
 // Helper: interpret uint64_t as IEEE double
 static double u64_to_double(uint64_t x) {
@@ -944,9 +944,9 @@ uint64_t Msvcrt::_ftol(void* e, const std::string&, int, const std::vector<uint6
     return f; // truncation done by caller
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  TIME
-// ═══════════════════════════════════════════════════════════════
+// 
 
 static uint64_t msvc_tick_counter = 86400000; // 1 day in ms
 
@@ -983,9 +983,9 @@ uint64_t Msvcrt::_strdate(void* e, const std::string&, int, const std::vector<ui
     return buffer;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  RANDOM
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::srand(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     msvc_rand_state = static_cast<int>(a.empty() ? 0 : a[0]);
@@ -999,9 +999,9 @@ uint64_t Msvcrt::rand(void* e, const std::string&, int, const std::vector<uint64
     return static_cast<uint64_t>(msvc_rand_state);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  EXIT / TERMINATION
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::exit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)a;
@@ -1033,9 +1033,9 @@ uint64_t Msvcrt::terminate(void* e, const std::string&, int, const std::vector<u
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  EXCEPTION / SEH
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::_XcptFilter(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
@@ -1087,9 +1087,9 @@ uint64_t Msvcrt::__current_exception(void* e, const std::string&, int, const std
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  STARTUP / INIT
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::__p__acmdln(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)a;
@@ -1242,9 +1242,9 @@ uint64_t Msvcrt::_get_initial_wide_environment(void* e, const std::string&, int,
     return mem;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  APP TYPE / MODE
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::__set_app_type(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
@@ -1309,9 +1309,9 @@ uint64_t Msvcrt::__setusermatherr(void* e, const std::string&, int, const std::v
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  C++ HELPERS
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::_set_invalid_parameter_handler(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     (void)e; (void)a;
@@ -1354,9 +1354,9 @@ uint64_t Msvcrt::_configure_narrow_argv(void* e, const std::string&, int, const 
     return 0;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  THREADING
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::_beginthreadex(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     // security, stack_size, start_address, arglist, initflag, thrdaddr
@@ -1383,9 +1383,9 @@ uint64_t Msvcrt::_beginthread(void* e, const std::string&, int, const std::vecto
     return reinterpret_cast<uint64_t>(thread.get());
 }
 
-// ═══════════════════════════════════════════════════════════════
+// 
 //  MISC
-// ═══════════════════════════════════════════════════════════════
+// 
 
 uint64_t Msvcrt::system(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t s = a.empty() ? 0 : a[0];

@@ -1,4 +1,4 @@
-// spea_ws2_32.h — Windows Sockets 2 (ws2_32) type definitions
+// spea_ws2_32.h  Windows Sockets 2 (ws2_32) type definitions
 //
 // Maps to: speakeasy/winenv/defs/winsock/ws2_32.py
 //
@@ -14,12 +14,12 @@
 
 namespace speakeasy { namespace defs { namespace winsock {
 
-// ── Constants ─────────────────────────────────────────────────
+//  Constants 
 
 constexpr size_t WSADESCRIPTION_LEN = 256;
 constexpr size_t WSASYS_STATUS_LEN  = 128;
 
-// ── WSAData ──────────────────────────────────────────────────
+//  WSAData 
 
 struct WSAData : speakeasy::EmuStruct {
     uint16_t wVersion         = 0;
@@ -46,7 +46,7 @@ struct WSAData : speakeasy::EmuStruct {
     }
 };
 
-// ── sockaddr ─────────────────────────────────────────────────
+//  sockaddr 
 
 struct sockaddr : speakeasy::EmuStruct {
     uint16_t sa_family = 0;
@@ -62,7 +62,7 @@ struct sockaddr : speakeasy::EmuStruct {
     }
 };
 
-// ── sockaddr_in ─────────────────────────────────────────────
+//  sockaddr_in 
 
 struct sockaddr_in : speakeasy::EmuStruct {
     uint16_t sin_family = 0;
@@ -82,7 +82,7 @@ struct sockaddr_in : speakeasy::EmuStruct {
     }
 };
 
-// ── hostent ─────────────────────────────────────────────────
+//  hostent 
 
 struct hostent : speakeasy::EmuStruct {
     uint64_t h_name      = 0;  // Ptr
@@ -103,7 +103,7 @@ struct hostent : speakeasy::EmuStruct {
     }
 };
 
-// ── addrinfo ────────────────────────────────────────────────
+//  addrinfo 
 
 struct addrinfo : speakeasy::EmuStruct {
     uint32_t ai_flags     = 0;

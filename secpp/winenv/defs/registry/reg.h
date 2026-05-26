@@ -1,4 +1,4 @@
-// spea_reg.h — Registry type definitions
+// spea_reg.h  Registry type definitions
 //
 // Maps to: speakeasy/winenv/defs/registry/reg.py
 //
@@ -16,7 +16,7 @@
 
 namespace speakeasy { namespace defs { namespace registry {
 
-// ── Registry value type constants ────────────────────────────
+//  Registry value type constants 
 // (Inside namespace to avoid Windows SDK REG_* macro conflicts)
 
 constexpr int kRegNone     = 0;
@@ -27,7 +27,7 @@ constexpr int kRegDword    = 4;
 constexpr int kRegMultiSz  = 7;
 constexpr int kRegQword    = 11;
 
-// ── RTL registry path constants ──────────────────────────────
+//  RTL registry path constants 
 
 constexpr int kRtlRegistryAbsolute   = 0;
 constexpr int kRtlRegistryServices   = 1;
@@ -37,14 +37,14 @@ constexpr int kRtlRegistryDevicemap  = 4;
 constexpr int kRtlRegistryUser       = 5;
 constexpr int kRtlRegistryMaximum    = 6;
 
-// ── HKEY constants ───────────────────────────────────────────
+//  HKEY constants 
 
 constexpr uint32_t kHkeyClassesRoot   = 0x80000000;
 constexpr uint32_t kHkeyCurrentUser   = 0x80000001;
 constexpr uint32_t kHkeyLocalMachine  = 0x80000002;
 constexpr uint32_t kHkeyUsers        = 0x80000003;
 
-// ── KEY_VALUE_INFORMATION_CLASS enum ─────────────────────────
+//  KEY_VALUE_INFORMATION_CLASS enum 
 
 enum class KeyValueInformationClass : int {
     KeyValueBasicInformation           = 0x00,
@@ -56,13 +56,13 @@ enum class KeyValueInformationClass : int {
     MaxKeyValueInfoClass               = 0x06,
 };
 
-// ── KEY_VALUE_PARTIAL_INFORMATION ────────────────────────────
+//  KEY_VALUE_PARTIAL_INFORMATION 
 
 struct KEY_VALUE_PARTIAL_INFORMATION : speakeasy::EmuStruct {
     uint32_t TitleIndex = 0;
     uint32_t Type       = 0;
     uint32_t DataLength = 0;
-    // Followed by Data[1] (variable-length) — handled at call site
+    // Followed by Data[1] (variable-length)  handled at call site
 
     size_t sizeof_obj() const override { return 12; }
     std::vector<uint8_t> get_bytes() const override {
@@ -74,13 +74,13 @@ struct KEY_VALUE_PARTIAL_INFORMATION : speakeasy::EmuStruct {
     }
 };
 
-// ── KEY_VALUE_BASIC_INFORMATION ─────────────────────────────
+//  KEY_VALUE_BASIC_INFORMATION 
 
 struct KEY_VALUE_BASIC_INFORMATION : speakeasy::EmuStruct {
     uint32_t TitleIndex = 0;
     uint32_t Type       = 0;
     uint32_t NameLength = 0;
-    // Followed by Name[1] (variable-length) — handled at call site
+    // Followed by Name[1] (variable-length)  handled at call site
 
     size_t sizeof_obj() const override { return 12; }
     std::vector<uint8_t> get_bytes() const override {
@@ -92,7 +92,7 @@ struct KEY_VALUE_BASIC_INFORMATION : speakeasy::EmuStruct {
     }
 };
 
-// ── KEY_VALUE_FULL_INFORMATION ──────────────────────────────
+//  KEY_VALUE_FULL_INFORMATION 
 
 struct KEY_VALUE_FULL_INFORMATION : speakeasy::EmuStruct {
     uint32_t TitleIndex = 0;
@@ -100,7 +100,7 @@ struct KEY_VALUE_FULL_INFORMATION : speakeasy::EmuStruct {
     uint32_t DataOffset = 0;
     uint32_t DataLength = 0;
     uint32_t NameLength = 0;
-    // Followed by Name[1] (variable-length) — handled at call site
+    // Followed by Name[1] (variable-length)  handled at call site
 
     size_t sizeof_obj() const override { return 20; }
     std::vector<uint8_t> get_bytes() const override {
@@ -114,7 +114,7 @@ struct KEY_VALUE_FULL_INFORMATION : speakeasy::EmuStruct {
     }
 };
 
-// ── Helper functions ────────────────────────────────────────
+//  Helper functions 
 
 // Get the string name for an HKEY value
 inline std::string get_hkey_type(uint32_t hkey) {
