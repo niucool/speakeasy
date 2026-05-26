@@ -281,11 +281,8 @@ public:
     void pad_file();
     int get_current_offset();
     void append_data(const std::vector<uint8_t>& data);
-    int get_exports_size(const std::string& name, const std::vector<std::pair<uint32_t, std::string>>& exports_info);
     std::vector<uint8_t> get_decoy_pe_image(const std::string& mod_name,
                                             const std::vector<std::string>& exports);
-    void init_export_section(const std::string& name, const std::vector<std::pair<uint32_t, std::string>>& exports_info);
-    std::vector<std::pair<uint32_t, std::string>> init_text_section(const std::vector<std::string>& names);
 };
 
 #endif // WINDOWS_COMMON_H
