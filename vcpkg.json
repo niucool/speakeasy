@@ -6,6 +6,7 @@
     "plog",
     "unicorn",
     "cxxopts",
+    "gtest",
     "miniz"
   ]
 }
