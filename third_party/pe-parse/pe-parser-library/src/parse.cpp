@@ -2955,96 +2955,6 @@ bool parsed_pe::AddSection(const std::string &name, std::uint32_t characteristic
   return true;
 }
 
-bool parsed_pe::Write(std::vector<std::uint8_t> &outBuf) {
-  if (!fileBuffer || !internal) return false;
-
-  std::uint32_t e_lfanew = 0;
-  if (fileBuffer->bufLen >= 0x3C + 4) {
-    std::memcpy(&e_lfanew, &fileBuffer->buf[0x3C], 4);
-  } else {
-    return false;
-  }
-
-  std::uint32_t file_align = 0x200;
-  std::uint16_t size_of_opt = 0;
-  std::uint16_t size_of_header = sizeof(file_header);
-  if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
-    file_align = peHeader.nt.OptionalHeader.FileAlignment;
-    size_of_opt = peHeader.nt.FileHeader.SizeOfOptionalHeader;
-  } else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
-    file_align = peHeader.nt.OptionalHeader64.FileAlignment;
-    size_of_opt = peHeader.nt.FileHeader.SizeOfOptionalHeader;
-  }
-
-  auto align_up = [](std::uint32_t val, std::uint32_t align) {
-    return align == 0 ? val : (val + align - 1) & ~(align - 1);
-  };
-
-  std::uint32_t first_raw_ptr = file_align;
-  if (!internal->secs.empty()) {
-    first_raw_ptr = internal->secs[0].sec.PointerToRawData;
-    for (const auto &s : internal->secs) {
-      if (s.sec.PointerToRawData > 0 && s.sec.PointerToRawData < first_raw_ptr) {
-        first_raw_ptr = s.sec.PointerToRawData;
-      }
-    }
-  }
-
-  std::uint32_t orig_header_size = std::min(first_raw_ptr, fileBuffer->bufLen);
-  outBuf.assign(fileBuffer->buf, fileBuffer->buf + orig_header_size);
-
-  std::uint16_t num_secs = peHeader.nt.FileHeader.NumberOfSections;
-  //std::memcpy(&outBuf[e_lfanew + 4 + 2], &num_secs, 2);
-  printf("sizeof(file_header)=%zu,\n sizeof(optional_header_32)=%zu, sizeof(optional_header_64)=%zu,\n sizeof(image_section_header)=%zu\n", 
-      sizeof(file_header), sizeof(optional_header_32), sizeof(optional_header_64), sizeof(image_section_header));
-  std::memcpy(&outBuf[e_lfanew + 4], &peHeader.nt.FileHeader, sizeof(file_header));
-
-  //std::uint32_t size_of_headers = 0;
-  //std::uint32_t size_of_image = 0;
-  if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
-    //size_of_headers = peHeader.nt.OptionalHeader.SizeOfHeaders;
-    //size_of_image = peHeader.nt.OptionalHeader.SizeOfImage;
-    std::memcpy(&outBuf[e_lfanew + 4 + size_of_header], &peHeader.nt.OptionalHeader, sizeof(optional_header_32));
-  } else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
-    //size_of_headers = peHeader.nt.OptionalHeader64.SizeOfHeaders;
-    //size_of_image = peHeader.nt.OptionalHeader64.SizeOfImage;
-    std::memcpy(&outBuf[e_lfanew + 4 + size_of_header], &peHeader.nt.OptionalHeader64, sizeof(optional_header_64));
-  }
-  //std::memcpy(&outBuf[e_lfanew + 4 + 20 + 60], &size_of_headers, 4);
-  //std::memcpy(&outBuf[e_lfanew + 4 + 20 + 56], &size_of_image, 4);
-
-  std::uint32_t section_table_offset = e_lfanew + 4 + size_of_header + size_of_opt;
-  if (static_cast<size_t>(section_table_offset + num_secs * sizeof(image_section_header)) > outBuf.size()) {
-    outBuf.resize(section_table_offset + num_secs * sizeof(image_section_header), 0);
-  }
-
-  for (size_t i = 0; i < num_secs; ++i) {
-    const auto &s = internal->secs[i];
-    std::uint32_t offset = section_table_offset + static_cast<std::uint32_t>(i * sizeof(image_section_header));
-    std::memcpy(&outBuf[offset], &s.sec, sizeof(image_section_header));
-  }
-
-  std::uint32_t aligned_headers_size = align_up(static_cast<std::uint32_t>(outBuf.size()), file_align);
-  if (aligned_headers_size > outBuf.size()) {
-    outBuf.resize(aligned_headers_size, 0);
-  }
-
-  for (size_t i = 0; i < num_secs; ++i) {
-    const auto &s = internal->secs[i];
-    if (s.sec.PointerToRawData == 0 || s.sec.SizeOfRawData == 0) continue;
-
-    if (static_cast<size_t>(s.sec.PointerToRawData + s.sec.SizeOfRawData) > outBuf.size()) {
-      outBuf.resize(s.sec.PointerToRawData + s.sec.SizeOfRawData, 0);
-    }
-
-    if (s.sectionData && s.sectionData->buf && s.sectionData->bufLen > 0) {
-      std::memcpy(&outBuf[s.sec.PointerToRawData], s.sectionData->buf, std::min(s.sec.SizeOfRawData, s.sectionData->bufLen));
-    }
-  }
-
-  return true;
-}
-
 bool parsed_pe::InitTextSection(const std::vector<std::string> &names, std::vector<std::pair<std::uint32_t, std::string>> &exports_info) {
   if (!internal) return false;
 
@@ -3065,6 +2975,10 @@ bool parsed_pe::InitTextSection(const std::vector<std::string> &names, std::vect
   static const std::vector<std::uint8_t> X64_STUB = {
       0x48, 0x89, 0xFF, 0x90, 0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00, 0xC3, 0xCC, 0xCC, 0xCC, 0xCC
   };
+
+  auto align_up = [](std::uint32_t val, std::uint32_t align) {
+      return align == 0 ? val : (val + align - 1) & ~(align - 1);
+      };
 
   const auto &stub_template = is_32 ? X86_STUB : X64_STUB;
   size_t val_offset = is_32 ? 6 : 7;
@@ -3106,9 +3020,11 @@ bool parsed_pe::InitTextSection(const std::vector<std::string> &names, std::vect
       deleteBuffer(text_sec->sectionData);
     }
     text_sec->sectionData = new bounded_buffer();
-    text_sec->sectionData->buf = new std::uint8_t[pattern.size()];
+    uint32_t section_size = align_up(static_cast<std::uint32_t>(pattern.size()), file_align);
+    text_sec->sectionData->buf = new std::uint8_t[section_size];
+    std::memset(text_sec->sectionData->buf, 0, section_size);
     std::memcpy(text_sec->sectionData->buf, pattern.data(), pattern.size());
-    text_sec->sectionData->bufLen = static_cast<std::uint32_t>(pattern.size());
+    text_sec->sectionData->bufLen = section_size;
     text_sec->sectionData->copy = true;
     text_sec->sectionData->swapBytes = false;
     text_sec->sectionData->detail = nullptr;
@@ -3231,5 +3147,111 @@ bool parsed_pe::InitExportSection(const std::string &mod_name, const std::vector
 
   return true;
 }
+
+bool parsed_pe::Write(std::vector<std::uint8_t>& outBuf) {
+    if (!fileBuffer || !internal) return false;
+
+    std::uint32_t e_lfanew = 0;
+    if (fileBuffer->bufLen >= 0x3C + 4) {
+        std::memcpy(&e_lfanew, &fileBuffer->buf[0x3C], 4);
+    }
+    else {
+        return false;
+    }
+
+    std::uint32_t file_align = 0x200;
+    std::uint16_t size_of_opt = 0;
+    std::uint16_t size_of_header = sizeof(file_header);
+    if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
+        file_align = peHeader.nt.OptionalHeader.FileAlignment;
+        size_of_opt = peHeader.nt.FileHeader.SizeOfOptionalHeader;
+    }
+    else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
+        file_align = peHeader.nt.OptionalHeader64.FileAlignment;
+        size_of_opt = peHeader.nt.FileHeader.SizeOfOptionalHeader;
+    }
+
+    auto align_up = [](std::uint32_t val, std::uint32_t align) {
+        return align == 0 ? val : (val + align - 1) & ~(align - 1);
+        };
+
+    std::uint32_t first_raw_ptr = file_align;
+    if (!internal->secs.empty()) {
+        first_raw_ptr = internal->secs[0].sec.PointerToRawData;
+        for (const auto& s : internal->secs) {
+            if (s.sec.PointerToRawData > 0 && s.sec.PointerToRawData < first_raw_ptr) {
+                first_raw_ptr = s.sec.PointerToRawData;
+            }
+        }
+    }
+
+    std::uint32_t orig_header_size = std::min(first_raw_ptr, fileBuffer->bufLen);
+    outBuf.assign(fileBuffer->buf, fileBuffer->buf + orig_header_size);
+
+    std::uint16_t num_secs = peHeader.nt.FileHeader.NumberOfSections;
+    //std::memcpy(&outBuf[e_lfanew + 4 + 2], &num_secs, 2);
+    printf("sizeof(file_header)=%zu,\n sizeof(optional_header_32)=%zu, sizeof(optional_header_64)=%zu,\n sizeof(image_section_header)=%zu\n",
+        sizeof(file_header), sizeof(optional_header_32), sizeof(optional_header_64), sizeof(image_section_header));
+    std::memcpy(&outBuf[e_lfanew + 4], &peHeader.nt.FileHeader, sizeof(file_header));
+
+    std::uint32_t sec_align = 0x1000;
+    if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
+        sec_align = peHeader.nt.OptionalHeader.SectionAlignment;
+    }
+    else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
+        sec_align = peHeader.nt.OptionalHeader64.SectionAlignment;
+    }
+
+    std::uint32_t last_v_addr = 0x1000;
+    for (const auto& s : internal->secs) {
+        std::uint32_t v_end = s.sec.VirtualAddress + align_up(s.sec.Misc.VirtualSize, sec_align);
+        if (v_end > last_v_addr) {
+            last_v_addr = v_end;
+        }
+    }
+
+    if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
+        peHeader.nt.OptionalHeader.SizeOfImage = last_v_addr;
+        std::memcpy(&outBuf[e_lfanew + 4 + size_of_header], &peHeader.nt.OptionalHeader, sizeof(optional_header_32));
+    }
+    else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
+        peHeader.nt.OptionalHeader64.SizeOfImage = last_v_addr;
+        std::memcpy(&outBuf[e_lfanew + 4 + size_of_header], &peHeader.nt.OptionalHeader64, sizeof(optional_header_64));
+    }
+    //std::memcpy(&outBuf[e_lfanew + 4 + 20 + 60], &size_of_headers, 4);
+    //std::memcpy(&outBuf[e_lfanew + 4 + 20 + 56], &size_of_image, 4);
+
+    std::uint32_t section_table_offset = e_lfanew + 4 + size_of_header + size_of_opt;
+    if (static_cast<size_t>(section_table_offset + num_secs * sizeof(image_section_header)) > outBuf.size()) {
+        outBuf.resize(section_table_offset + num_secs * sizeof(image_section_header), 0);
+    }
+
+    for (size_t i = 0; i < num_secs; ++i) {
+        const auto& s = internal->secs[i];
+        std::uint32_t offset = section_table_offset + static_cast<std::uint32_t>(i * sizeof(image_section_header));
+        std::memcpy(&outBuf[offset], &s.sec, sizeof(image_section_header));
+    }
+
+    std::uint32_t aligned_headers_size = align_up(static_cast<std::uint32_t>(outBuf.size()), file_align);
+    if (aligned_headers_size > outBuf.size()) {
+        outBuf.resize(aligned_headers_size, 0);
+    }
+
+    for (size_t i = 0; i < num_secs; ++i) {
+        const auto& s = internal->secs[i];
+        if (s.sec.PointerToRawData == 0 || s.sec.SizeOfRawData == 0) continue;
+
+        if (static_cast<size_t>(s.sec.PointerToRawData + s.sec.SizeOfRawData) > outBuf.size()) {
+            outBuf.resize(s.sec.PointerToRawData + s.sec.SizeOfRawData, 0);
+        }
+
+        if (s.sectionData && s.sectionData->buf && s.sectionData->bufLen > 0) {
+            std::memcpy(&outBuf[s.sec.PointerToRawData], s.sectionData->buf, std::min(s.sec.SizeOfRawData, s.sectionData->bufLen));
+        }
+    }
+
+    return true;
+}
+
 
 } // namespace peparse

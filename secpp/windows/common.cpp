@@ -853,33 +853,6 @@ void JitPeFile::update_image_size() {
     //update();
 }
 
-void JitPeFile::add_section(const std::string& name, uint32_t chars) {
-    parsed_pe->AddSection(name, chars);
-    parsed_pe->Write(raw_pe_data);
-    update();
-}
-
-void JitPeFile::pad_file() {
-    size_t cur_offset = raw_pe_data.size();
-    size_t aligned_offset = align_up(static_cast<uint32_t>(cur_offset), 0x200);
-    if (aligned_offset > cur_offset) {
-        raw_pe_data.resize(aligned_offset, 0);
-    }
-}
-
-int JitPeFile::get_current_offset() {
-    return static_cast<int>(raw_pe_data.size());
-}
-
-void JitPeFile::append_data(const std::vector<uint8_t>& data) {
-    raw_pe_data.insert(raw_pe_data.end(), data.begin(), data.end());
-}
-
-void* JitPeFile::cast_section(int offset) {
-    (void)offset;
-    return nullptr;
-}
-
 std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
                                                 const std::vector<std::string>& exports) {
     std::vector<std::pair<std::uint32_t, std::string>> exports_info;
@@ -895,7 +868,7 @@ std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
     parsed_pe->Write(raw_pe_data);
     
     //update();
-    save_vector_to_file("ntoskrnl.bin", raw_pe_data);
+    //save_vector_to_file("ntoskrnl.bin", raw_pe_data);
     
     return raw_pe_data;
 }

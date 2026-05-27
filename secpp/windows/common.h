@@ -275,12 +275,7 @@ public:
     int get_section_count();
     std::vector<uint8_t> get_raw_pe();
     void update();
-    void* cast_section(int offset = -1);
     void update_image_size();
-    void add_section(const std::string& name, uint32_t chars = 0x40000040);
-    void pad_file();
-    int get_current_offset();
-    void append_data(const std::vector<uint8_t>& data);
     std::vector<uint8_t> get_decoy_pe_image(const std::string& mod_name,
                                             const std::vector<std::string>& exports);
 };
