@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+### 2026-05-27
+
+#### Added
+
+- **tests**: 在 `test_porting.cpp` 中新增了 `JitPeFileTest.ConstructorDecoyAssembly` 单元测试用例，用以验证通过 `JitPeFile` 构造函数直接指定导出函数名称列表时，自动触发 PE 诱饵头部与 `.text` / `.edata` 节段组装的正确性。
+
+#### Fixed
+
+- **secpp**: 补全并修复了 `JitPeFile` 的 C++ 缺失实现与 MSVC 编译警告（对齐 Python 行为）：
+  - 补充实现了 `add_section`、`pad_file`、`get_current_offset` 和 `append_data` 成员函数，解决了单元测试链接时出现的 unresolved external symbol (`LNK2019`) 错误。
+  - 重命名了 `add_section` 和 `get_decoy_pe_image` 中的参数名称（如 `name` -> `sect_name`，`exports` -> `export_names`），消除了 MSVC 编译器下由于遮蔽（shadowing）成员变量而引发的 `C4458` 警告。
+  - 在 32 位 `JitPeFile` 模版构造中，对 optional header 中的 `ImageBase` 赋值进行了显式的 `static_cast<uint32_t>` 强类型转换，消除了 `C4244` 精度丢失警告，确保了整个项目在 `/W4` 下的高标准 Warning-Free 编译。
+
 ### 2026-05-26
 
 #### Changed

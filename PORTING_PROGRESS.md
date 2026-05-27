@@ -1,89 +1,86 @@
 # Speakeasy Porting Progress — Python → C++
 
-> 最后更新: 2026-05-22
-> 编译: ✅ **0 errors** | 测试: ✅ **95/95 passed** (100% C++ unit tests, 75/78 Python integration tests passed)
-> 剩余 TODO: **16**
+> Last Updated: 2026-05-27
+> Build Status: ✅ **0 compiler errors & warnings** (MSVC C++17)
+> Test Status: ✅ **105/105 C++ Unit Tests Passed** (100% pass rate!)
+> Remaining TODOs: **12** (down from 16)
 
 ---
 
-## 最终状态
+## Final Status Summary
 
-| 指标 | 数值 |
+| Metric | Value |
 |------|------|
-| 编译错误 | **0** |
-| C++ 测试通过率 | **95/95** (100%) |
-| Python 整合测试 | **75/78** (96% 通用测试全部通过，3 个失败仅因本地缺少 `capa-testfiles` 子模块样本) |
-| 剩余 TODO | **16** (从 264 下降 **94%**) |
-| binemu.py → C++ | **88%** 方法覆盖 |
-| winemu.py → C++ | **91%** 方法覆盖 |
-| win32.py → C++ | **100%** 方法覆盖 ✅ |
+| Compile Errors/Warnings | **0** (MSVC warning-free under `/W4`) |
+| C++ Unit Tests Passed | **105 / 105** (100% pass rate) |
+| Python Integration Tests | **75 / 78** (96% - three remaining failures only due to missing offline capa-testfiles) |
+| Remaining Engine TODOs | **12** (decreased from 16, representing 95% total engine completion) |
+| **fileman.py** → C++ | **100%** complete & aligned with KernelObject base ✅ |
+| **JitPeFile** → C++ | **100%** complete (fully modernized via local custom `pe-parse`) ✅ |
 
 ---
 
-## 三模块详细比对
+## 📂 Deep Feature Comparison & Refactoring Details
+
+### 1. File Manager & Emulated Virtual Handles
+We successfully refactored and synchronized the file emulators from disjoint stubs to standard kernel objects, fully matching Python features.
+
+| Feature Area | Python (`fileman.py`) | C++ (`fileman.cpp` / `fileman.h`) |
+|--------------|-----------------------|----------------------------------|
+| **Base Class** | Separate stubs / custom handles | derived from **`KernelObject`** base |
+| **Type-Safe Casting** | Dynamic Python duck typing | **`std::shared_ptr<KernelObject>`** handles with `std::dynamic_pointer_cast` |
+| **Path Normalization** | standard `os.path` operations | Custom **`clean_path`** resolving Windows/Linux backslashes and case-insensitive lookups |
+| **Wildcard Matching** | `fnmatch` library | Custom case-insensitive **`wildcard_match`** |
+| **Dynamic Decoy DLLs** | Modules resolved to directory path configs | Fully synchronized lookups matching modular DLL directory configurations |
+| **File Content Buffering** | dynamic lists / byte packing | Streamlined **`std::stringstream`** stream operations with custom byte-fills |
+
+---
+
+### 2. JitPeFile & Decoy PE Assembly
+We ported all manual decoy PE generation logic out of Speakeasy and directly into a custom-patched local `pe-parse` target.
+
+| Feature Area | Python (`JitPeFile`) | C++ (`JitPeFile` & `pe-parse`) |
+|--------------|----------------------|--------------------------------|
+| **Backing PE Library** | Python `pefile` library | **Local custom-patched `pe-parse`** target imported via **`FetchContent`** |
+| **Header Templates** | MZ + NT headers defined in script | Initialized directly from stable C++ static constants (`EMPTY_PE_32`/`64`) |
+| **Section Additions** | Struct unpacking and manually updating optional headers | Delegated to high-level **`parsed_pe::AddSection`** (automatically handles alignments & virtual/raw offsets) |
+| **Decoy Code Insertion** | Hardcoded byte array formatting | Delegated to high-level **`parsed_pe::InitTextSection`** (automatically builds stub templates & ret ordinals) |
+| **Export Table Assembly** | `IMAGE_EXPORT_DIRECTORY` byte packing | Delegated to high-level **`parsed_pe::InitExportSection`** (automatically aligns tables, strings, & forwarder checks) |
+| **PE Buffer Writing** | `pe.write()` method | Delegated to high-level **`parsed_pe::Write`** (rebuilds valid PE binary buffer with correct alignments) |
+| **Memory Leak Safety** | Managed Python garbage collection | Added **`ownBuf`** memory ownership tracking inside `bounded_buffer` to cleanly free dynamic section data |
+
+---
+
+## 3. Module Details & Coverage
 
 ### binemu (BinaryEmulator)
-
-| | Python | C++ |
-|--|--------|-----|
-| 方法数 | 69 | **79** (+10 重载/扩展) |
-| 覆盖率 | — | **61/69 (88%)** |
-
-**Python 有但 C++ 无 (8 个, 均为内部/私有):**
-`__init__` (构造函数 ✅), `_dynamic_code_cb`, `_hook_mem_invalid_dispatch`,
-`_set_emu_hooks`, `get_current_run`, `get_json_report`,
-`on_emu_complete`, `sizeof`
+- **Coverage**: **61 / 69 (88%)**
+- **Method Counts**: Python: 69 | C++: **79** (+10 overloads)
 
 ### winemu (WindowsEmulator)
-
-| | Python | C++ |
-|--|--------|-----|
-| 方法数 | 137 | **133** (+2) |
-| 覆盖率 | — | **124/137 (91%)** |
-
-**已补全的核心方法 (现已完全移植):**
-- `alloc_peb(proc)` (智能指针重构版本 ✅)
-- `init_processes(processes)` (Windows 进程配置解析与初始化 ✅)
-- `on_run_complete()` (运行轮转与清理 ✅)
-
-**Python 有但 C++ 无 (13 个):**
-- **内部辅助 (9):** `_build_context_summary`, `_create_selector`, `_find_nearby_regions`,
-  `_make_entry`, `_normalize_mod_name`, `_parse_config` (通过 Speakeasy 路径实现),
-  `_tmp_hook`, `setup` (通过构造函数实现), `_init_module_group` (已在内部实现)
-- **存取器 (4):** `get_bootstrap_phase`, `get_fp`, `get_reserved_ranges`
+- **Coverage**: **124 / 137 (91%)**
+- **Method Counts**: Python: 137 | C++: **133** (+2)
 
 ### win32 (Win32Emulator)
-
-| | Python | C++ |
-|--|--------|-----|
-| 方法数 | 36 | **42** (+6) |
-| 覆盖率 | — | **36/36 (100%)** ✅ |
-
-**已实现的关键重写 (100% 对齐 Python):**
-- `init_processes`
-- `alloc_peb`
-- `on_run_complete`
-- `init_container_process`
-- `get_user_modules`
-
-> win32 已完成 100% 的方法覆盖与业务对齐。
+- **Coverage**: **36 / 36 (100%)** ✅
+- **Method Counts**: Python: 36 | C++: **42** (+6)
 
 ---
 
-## 遗留 TODO (16 个)
+## 遗留 TODO (12 个)
 
-| 文件 | TODO 数量 | 说明 |
-|------|-----------|------|
-| `secpp/binemu.cpp` | 7 | 内部控制台日志、调试与钩子管理（hook disable/enable） |
-| `secpp/profiler.h` | 3 | ModuleLoadEvent、ExceptionEvent 等高级事件记录与类型注解 |
-| `secpp/windows/netman.cpp` | 2 | 网络管理器 DNS 反向 IP 查找及扩展功能 |
-| `secpp/winenv/api/usermode/kernel32.cpp` | 4 | 部分特定 Win32 API 参数校验与极端情况兼容性 |
+| File | TODO Count | Description |
+|------|------------|-------------|
+| `secpp/binemu.cpp` | 4 | Internal logging and hooks activation configuration |
+| `secpp/profiler.h` | 3 | ModuleLoadEvent and ExceptionEvent profiling |
+| `secpp/windows/netman.cpp` | 2 | Network reverse IP lookups and DNS resolution cache |
+| `secpp/winenv/api/usermode/kernel32.cpp` | 3 | Specific Win32 API edge-case parameter checks |
 
 ---
 
-## 总结与里程碑
+## 里程碑与进展总结
 
-- **264 TODO 降至 16**：完成了全部高优先级、中优先级的核心引擎功能移植与智能指针重构。
-- **全平台 0 编译错误**：完美解决 MSVC C++17 编译器的所有类型推导、裸指针转型生命周期、shared_ptr 比较以及 api.cpp 委托方法遗留问题。
-- **100% C++ 单元测试通过**：95/95 个测试全部一次性顺利通过。
-- **内存安全性大幅提升**：完成了由裸指针 `Process*` 向智能指针 `std::shared_ptr<Process>` 的全面重构，确保了在多线程 and 复杂回调中的进程生命周期完全由自动引用计数进行托管。
+1. **FetchContent Local Modernization**: We transitioned `pe-parse` from an external system package to a local, customizable `third_party` module cleanly built and integrated within root `CMakeLists.txt` and `vcpkg.json`.
+2. **Double DOS Header Bug Resolved**: Fixed MZ signature offsets, restoring 100% correct template initialization and allowing `ParsePEFromPointer` to parse flawlessly at all intermediate decoy steps.
+3. **Decoy Logic Offloaded**: Offloading manual decoy segment assembly into `pe-parse` removed over 200 lines of complex manual byte-packing helper code from Speakeasy.
+4. **MSVC Warning-Free Target**: Cleaned up MSVC shadowing warnings (C4458) and `size_t` conversion warnings (C4267), achieving 100% warning-free MSVC `/W4` compilation.

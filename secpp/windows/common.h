@@ -269,15 +269,15 @@ private:
 
 public:
     // Constructor
-    JitPeFile(int arch, uint64_t base = 0, const std::string& mod_name = "", const std::vector<std::string>& exports = {});
+    JitPeFile(int arch, uint64_t base = 0, const std::string& mod_name = "", const std::vector<std::string>& export_names = {});
     
     // Methods
     int get_section_count();
     std::vector<uint8_t> get_raw_pe();
     void update();
     void update_image_size();
-    std::vector<uint8_t> get_decoy_pe_image(const std::string& mod_name,
-                                            const std::vector<std::string>& exports);
+    std::vector<uint8_t>& get_decoy_pe_image(const std::string& mod_name,
+                                            const std::vector<std::string>& export_names);
 };
 
 #endif // WINDOWS_COMMON_H

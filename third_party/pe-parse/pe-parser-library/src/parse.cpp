@@ -1688,7 +1688,7 @@ bool getExports(parsed_pe *p) {
         }
 
         exportent a;
-        a.ordinal = ordinal;
+        a.ordinal = ordinal + static_cast<std::uint16_t>(ordinalBase);
         a.symbolName = symName;
         a.moduleName = modName;
 
@@ -3190,8 +3190,8 @@ bool parsed_pe::Write(std::vector<std::uint8_t>& outBuf) {
 
     std::uint16_t num_secs = peHeader.nt.FileHeader.NumberOfSections;
     //std::memcpy(&outBuf[e_lfanew + 4 + 2], &num_secs, 2);
-    printf("sizeof(file_header)=%zu,\n sizeof(optional_header_32)=%zu, sizeof(optional_header_64)=%zu,\n sizeof(image_section_header)=%zu\n",
-        sizeof(file_header), sizeof(optional_header_32), sizeof(optional_header_64), sizeof(image_section_header));
+    //printf("sizeof(file_header)=%zu,\n sizeof(optional_header_32)=%zu, sizeof(optional_header_64)=%zu,\n sizeof(image_section_header)=%zu\n",
+    //    sizeof(file_header), sizeof(optional_header_32), sizeof(optional_header_64), sizeof(image_section_header));
     std::memcpy(&outBuf[e_lfanew + 4], &peHeader.nt.FileHeader, sizeof(file_header));
 
     std::uint32_t sec_align = 0x1000;

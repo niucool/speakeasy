@@ -125,6 +125,23 @@ static int pefile_exp_cb(void* cbd, const peparse::VA& addr,
     return 0;
 }
 
+static int pefile_exp_full_cb(void* cbd, const peparse::VA& addr,
+    std::uint16_t ordinal,
+    const std::string& mod_name,
+    const std::string& name,
+    const std::string& forward_name) {
+    auto* ctx = static_cast<PeExportCtx*>(cbd);
+    ExportEntry e;
+    e.name = name;
+    e.address = addr;
+    e.forwarder = forward_name;
+    e.ordinal = ordinal;
+    ctx->exports.push_back(e);
+    (void)mod_name;
+    return 0;
+}
+
+
 //  Section callback 
 struct PeSectionCtx {
     std::vector<PeSection> sections;
@@ -325,7 +342,8 @@ std::vector<ExportEntry> PeFile::get_exports() {
 std::vector<ExportEntry> PeFile::_get_pe_exports() {
     if (!parsed_pe) return {};
     PeExportCtx ctx;
-    peparse::IterExpVA(parsed_pe, pefile_exp_cb, &ctx);
+    //peparse::IterExpVA(parsed_pe, pefile_exp_cb, &ctx);
+    peparse::IterExpFull(parsed_pe, pefile_exp_full_cb, &ctx);
     return ctx.exports;
 }
 
@@ -735,7 +753,7 @@ static inline uint32_t align_up(uint32_t val, uint32_t align) {
     return (val + align - 1) & ~(align - 1);
 }
 
-JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const std::vector<std::string>& exports)
+JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const std::vector<std::string>& export_names)
     : PeFile("", {}, 0xFEEDFACE, 4, "", true),
       pattern_size(arch == 32 ? 4 : 8) {
     this->arch = arch;
@@ -757,7 +775,7 @@ JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const
         parsed_pe->peHeader.nt.OptionalHeader.FileAlignment = 0x200;
         parsed_pe->peHeader.nt.OptionalHeader.SectionAlignment = 0x1000;
         if (base)
-            parsed_pe->peHeader.nt.OptionalHeader.ImageBase = base;
+            parsed_pe->peHeader.nt.OptionalHeader.ImageBase = static_cast<uint32_t>(base);
     }
     else {
         parsed_pe->peHeader.nt.OptionalHeader64.AddressOfEntryPoint = 0;
@@ -767,11 +785,11 @@ JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const
             parsed_pe->peHeader.nt.OptionalHeader64.ImageBase = base;
     }
 
-    //update();
-
-    if (!exports.empty()) {
-        get_decoy_pe_image(mod_name, exports);
+    if (!export_names.empty()) {
+        get_decoy_pe_image(mod_name, export_names);
     }
+
+    update();
 }
 
 int JitPeFile::get_section_count() {
@@ -783,16 +801,7 @@ std::vector<uint8_t> JitPeFile::get_raw_pe() {
 }
 
 void JitPeFile::update() {
-    if (parsed_pe) {
-        peparse::DestructParsedPE(parsed_pe);
-        parsed_pe = nullptr;
-    }
-    // Re-parse the PE data to refresh sections
-    parsed_pe = peparse::ParsePEFromPointer(
-        const_cast<uint8_t*>(raw_pe_data.data()),
-        static_cast<uint32_t>(raw_pe_data.size()));
     if (!parsed_pe) {
-        std::fprintf(stderr, "[DEBUG] update: ParsePEFromPointer failed! raw_pe_data.size()=%d\n", (int)raw_pe_data.size());
         return;
     }
     
@@ -853,11 +862,11 @@ void JitPeFile::update_image_size() {
     //update();
 }
 
-std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
-                                                const std::vector<std::string>& exports) {
+std::vector<uint8_t>& JitPeFile::get_decoy_pe_image(const std::string& mod_name,
+                                                const std::vector<std::string>& export_names) {
     std::vector<std::pair<std::uint32_t, std::string>> exports_info;
     parsed_pe->AddSection(".text", 0x60000020);
-    parsed_pe->InitTextSection(exports, exports_info);
+    parsed_pe->InitTextSection(export_names, exports_info);
     //pad_file();
 
     parsed_pe->AddSection(".edata", 0x40000040);
@@ -868,7 +877,7 @@ std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
     parsed_pe->Write(raw_pe_data);
     
     //update();
-    //save_vector_to_file("ntoskrnl.bin", raw_pe_data);
+    //save_vector_to_file(mod_name, raw_pe_data);
     
     return raw_pe_data;
 }
