@@ -2967,6 +2967,7 @@ bool parsed_pe::Write(std::vector<std::uint8_t> &outBuf) {
 
   std::uint32_t file_align = 0x200;
   std::uint16_t size_of_opt = 0;
+  std::uint16_t size_of_header = sizeof(file_header);
   if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
     file_align = peHeader.nt.OptionalHeader.FileAlignment;
     size_of_opt = peHeader.nt.FileHeader.SizeOfOptionalHeader;
@@ -2993,29 +2994,34 @@ bool parsed_pe::Write(std::vector<std::uint8_t> &outBuf) {
   outBuf.assign(fileBuffer->buf, fileBuffer->buf + orig_header_size);
 
   std::uint16_t num_secs = peHeader.nt.FileHeader.NumberOfSections;
-  std::memcpy(&outBuf[e_lfanew + 4 + 2], &num_secs, 2);
+  //std::memcpy(&outBuf[e_lfanew + 4 + 2], &num_secs, 2);
+  printf("sizeof(file_header)=%zu,\n sizeof(optional_header_32)=%zu, sizeof(optional_header_64)=%zu,\n sizeof(image_section_header)=%zu\n", 
+      sizeof(file_header), sizeof(optional_header_32), sizeof(optional_header_64), sizeof(image_section_header));
+  std::memcpy(&outBuf[e_lfanew + 4], &peHeader.nt.FileHeader, sizeof(file_header));
 
-  std::uint32_t size_of_headers = 0;
-  std::uint32_t size_of_image = 0;
+  //std::uint32_t size_of_headers = 0;
+  //std::uint32_t size_of_image = 0;
   if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
-    size_of_headers = peHeader.nt.OptionalHeader.SizeOfHeaders;
-    size_of_image = peHeader.nt.OptionalHeader.SizeOfImage;
+    //size_of_headers = peHeader.nt.OptionalHeader.SizeOfHeaders;
+    //size_of_image = peHeader.nt.OptionalHeader.SizeOfImage;
+    std::memcpy(&outBuf[e_lfanew + 4 + size_of_header], &peHeader.nt.OptionalHeader, sizeof(optional_header_32));
   } else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
-    size_of_headers = peHeader.nt.OptionalHeader64.SizeOfHeaders;
-    size_of_image = peHeader.nt.OptionalHeader64.SizeOfImage;
+    //size_of_headers = peHeader.nt.OptionalHeader64.SizeOfHeaders;
+    //size_of_image = peHeader.nt.OptionalHeader64.SizeOfImage;
+    std::memcpy(&outBuf[e_lfanew + 4 + size_of_header], &peHeader.nt.OptionalHeader64, sizeof(optional_header_64));
   }
-  std::memcpy(&outBuf[e_lfanew + 4 + 20 + 60], &size_of_headers, 4);
-  std::memcpy(&outBuf[e_lfanew + 4 + 20 + 56], &size_of_image, 4);
+  //std::memcpy(&outBuf[e_lfanew + 4 + 20 + 60], &size_of_headers, 4);
+  //std::memcpy(&outBuf[e_lfanew + 4 + 20 + 56], &size_of_image, 4);
 
-  std::uint32_t section_table_offset = e_lfanew + 4 + 20 + size_of_opt;
-  if (static_cast<size_t>(section_table_offset + num_secs * 40) > outBuf.size()) {
-    outBuf.resize(section_table_offset + num_secs * 40, 0);
+  std::uint32_t section_table_offset = e_lfanew + 4 + size_of_header + size_of_opt;
+  if (static_cast<size_t>(section_table_offset + num_secs * sizeof(image_section_header)) > outBuf.size()) {
+    outBuf.resize(section_table_offset + num_secs * sizeof(image_section_header), 0);
   }
 
   for (size_t i = 0; i < num_secs; ++i) {
     const auto &s = internal->secs[i];
-    std::uint32_t offset = section_table_offset + static_cast<std::uint32_t>(i * 40);
-    std::memcpy(&outBuf[offset], &s.sec, 40);
+    std::uint32_t offset = section_table_offset + static_cast<std::uint32_t>(i * sizeof(image_section_header));
+    std::memcpy(&outBuf[offset], &s.sec, sizeof(image_section_header));
   }
 
   std::uint32_t aligned_headers_size = align_up(static_cast<std::uint32_t>(outBuf.size()), file_align);
@@ -3065,6 +3071,14 @@ bool parsed_pe::InitTextSection(const std::vector<std::string> &names, std::vect
 
   std::uint32_t sec_rva = text_sec->sec.VirtualAddress;
   std::vector<std::uint8_t> pattern;
+  std::uint32_t file_align = 0x200;
+
+  if (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC) {
+      file_align = peHeader.nt.OptionalHeader.FileAlignment;
+  }
+  else if (peHeader.nt.OptionalMagic == NT_OPTIONAL_64_MAGIC) {
+      file_align = peHeader.nt.OptionalHeader64.FileAlignment;
+  }
 
   for (size_t i = 0; i < names.size(); ++i) {
     std::uint32_t func_rva = sec_rva + static_cast<std::uint32_t>(pattern.size());

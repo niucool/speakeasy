@@ -281,6 +281,7 @@ enum data_directory_kind {
   DIR_RESERVED = 15,
 };
 
+// sizeof(IMAGE_OPTIONAL_HEADER32) = 224 bytes
 struct optional_header_32 {
   std::uint16_t Magic;
   std::uint8_t MajorLinkerVersion;
@@ -319,6 +320,7 @@ struct optional_header_32 {
  * This is used for PE32+ binaries. It is similar to optional_header_32
  * except some fields don't exist here (BaseOfData), and others are bigger.
  */
+// sizeof(IMAGE_OPTIONAL_HEADER64) = 240 bytes
 struct optional_header_64 {
   std::uint16_t Magic;
   std::uint8_t MajorLinkerVersion;
