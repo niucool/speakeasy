@@ -737,23 +737,38 @@ void Win32Emulator::_ensure_core_dlls_loaded() {
 // Python win32.py:589
 // def _init_user_modules_from_config(self):
 void Win32Emulator::_init_user_modules_from_config() {
-/*
-    nlohmann::json proc_mod;
-    for (auto& p : config_processes) {
-        if (p.value("is_main_exe", false)) {
-            proc_mod = p;
+    // Python win32.py:589-601 — find main exe from config processes, prepend to user_modules
+    using speakeasy::ProcessEntry;
+    using speakeasy::Module;
+    
+    std::shared_ptr<ProcessEntry> proc_mod;
+    for (auto& p : config.processes) {
+        if (p.is_main_exe) {
+            proc_mod = std::make_shared<ProcessEntry>(p);
             break;
         }
     }
-    std::vector<nlohmann::json> all_user_mods;
-    if (!proc_mod.empty()) {
-        all_user_mods.push_back(proc_mod);
-        all_user_mods.insert(all_user_mods.end(), config_user_modules.begin(), config_user_modules.end());
+
+    std::vector<std::shared_ptr<Module>> all_user_mods;
+    if (proc_mod) {
+        // Convert ProcessEntry to a Module-compatible entry
+        auto mod = std::make_shared<Module>();
+        mod->name = proc_mod->name;
+        mod->path = proc_mod->path;
+        try {
+            mod->base = std::stoull(proc_mod->base, nullptr, 0);
+        } catch (...) {
+            mod->base = 0;
+        }
+        mod->image_size = 0;
+        all_user_mods.push_back(mod);
+        all_user_mods.insert(all_user_mods.end(),
+            config.modules.user_modules.begin(),
+            config.modules.user_modules.end());
     } else {
-        all_user_mods = config_user_modules;
+        all_user_mods = config.modules.user_modules;
     }
     init_user_modules(all_user_mods);
-*/
 }
 
 // Python win32.py:670
