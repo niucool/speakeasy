@@ -12,6 +12,38 @@
 
 #include "picosha2.h"
 
+
+/**
+ * Saves a std::vector<uint8_t> to a file in binary mode.
+ *
+ * @param filename The path to the output file.
+ * @param data The vector containing the byte data.
+ * @return true if the file was written successfully, false otherwise.
+ */
+bool save_vector_to_file(const std::string& filename, const std::vector<uint8_t>& data) {
+    // Open the file in binary mode for writing
+    std::ofstream file(filename, std::ios::out | std::ios::binary);
+
+    // Check if the file stream opened successfully
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file for writing: " << filename << std::endl;
+        return false;
+    }
+
+    // Only write if the vector is not empty
+    if (!data.empty()) {
+        file.write(reinterpret_cast<const char*>(data.data()), data.size());
+    }
+
+    // Check if any error occurred during the write operation
+    if (!file.good()) {
+        std::cerr << "Error: Failed to write data to file: " << filename << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 static std::string to_lower(const std::string& s) {
     std::string r = s;
     std::transform(r.begin(), r.end(), r.begin(), ::tolower);
@@ -703,28 +735,6 @@ static inline uint32_t align_up(uint32_t val, uint32_t align) {
     return (val + align - 1) & ~(align - 1);
 }
 
-static void write_section_header(std::vector<uint8_t>& buf, size_t sect_table_offset, int sect_idx,
-                                 const std::string& name, uint32_t v_size, uint32_t v_addr,
-                                 uint32_t raw_size, uint32_t raw_ptr, uint32_t chars) {
-    size_t offset = sect_table_offset + sect_idx * 40;
-    if (offset + 40 > buf.size()) buf.resize(offset + 40, 0);
-    
-    // Name (up to 8 bytes, null-padded)
-    uint8_t name_bytes[8] = {0};
-    std::memcpy(name_bytes, name.c_str(), std::min(name.length(), (size_t)8));
-    std::memcpy(&buf[offset], name_bytes, 8);
-    
-    write_u32(buf, offset + 8, v_size);
-    write_u32(buf, offset + 12, v_addr);
-    write_u32(buf, offset + 16, raw_size);
-    write_u32(buf, offset + 20, raw_ptr);
-    write_u32(buf, offset + 24, 0); // PointerToRelocations
-    write_u32(buf, offset + 28, 0); // PointerToLinenumbers
-    write_u16(buf, offset + 32, 0); // NumberOfRelocations
-    write_u16(buf, offset + 34, 0); // NumberOfLinenumbers
-    write_u32(buf, offset + 36, chars);
-}
-
 JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const std::vector<std::string>& exports)
     : PeFile("", {}, 0xFEEDFACE, 4, "", true),
       pattern_size(arch == 32 ? 4 : 8) {
@@ -885,6 +895,7 @@ std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
     parsed_pe->Write(raw_pe_data);
     
     //update();
+    save_vector_to_file("ntoskrnl.bin", raw_pe_data);
     
     return raw_pe_data;
 }
