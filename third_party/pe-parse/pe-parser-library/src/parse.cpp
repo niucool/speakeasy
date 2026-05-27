@@ -3128,9 +3128,9 @@ bool parsed_pe::InitExportSection(const std::string &mod_name, const std::vector
   exports_size += mod_name.length() + 1;
   for (const auto &exp : exports_info) {
     exports_size += exp.second.length() + 1;
-    exports_size += 10; // funcs (4) + names (4) + ordinals (2)
+    exports_size += 12; // funcs (4) + names (4) + ordinals (4)
   }
-  exports_size += num_funcs * num_funcs; // loop fluff
+  //exports_size += num_funcs * num_funcs; // loop fluff
 
   edata_sec->sec.VirtualAddress = sec_rva;
   edata_sec->sec.Misc.VirtualSize = static_cast<std::uint32_t>(exports_size);
@@ -3161,17 +3161,30 @@ bool parsed_pe::InitExportSection(const std::string &mod_name, const std::vector
     std::memcpy(&buf[offset], &val, 2);
   };
 
-  write_u32(edata_data, 0, 0); // Characteristics
-  write_u32(edata_data, 4, 0xD1234567); // TimeDateStamp
-  write_u16(edata_data, 8, 0); // Major
-  write_u16(edata_data, 10, 0); // Minor
-  write_u32(edata_data, 12, sec_rva + static_cast<std::uint32_t>(dll_name_offset)); // DLL Name string RVA
-  write_u32(edata_data, 16, 1); // Base ordinal = 1
-  write_u32(edata_data, 20, static_cast<std::uint32_t>(num_funcs)); // NumberOfFunctions
-  write_u32(edata_data, 24, static_cast<std::uint32_t>(num_funcs)); // NumberOfNames
-  write_u32(edata_data, 28, sec_rva + static_cast<std::uint32_t>(funcs_offset)); // AddressOfFunctions RVA
-  write_u32(edata_data, 32, sec_rva + static_cast<std::uint32_t>(names_offset)); // AddressOfNames RVA
-  write_u32(edata_data, 36, sec_rva + static_cast<std::uint32_t>(ords_offset)); // AddressOfNameOrdinals RVA
+  export_dir_table *edt = reinterpret_cast<export_dir_table *>(&edata_data[0]);
+  edt->ExportFlags = 0;
+  edt->TimeDateStamp = 0xD1234567;
+  edt->MajorVersion = 0;
+  edt->MinorVersion = 0;
+  edt->NameRVA = sec_rva + static_cast<std::uint32_t>(dll_name_offset);
+  edt->OrdinalBase = 1;
+  edt->AddressTableEntries = static_cast<std::uint32_t>(num_funcs);
+  edt->NumberOfNamePointers = static_cast<std::uint32_t>(num_funcs);
+  edt->ExportAddressTableRVA = sec_rva + static_cast<std::uint32_t>(funcs_offset);
+  edt->NamePointerRVA = sec_rva + static_cast<std::uint32_t>(names_offset);
+  edt->OrdinalTableRVA = sec_rva + static_cast<std::uint32_t>(ords_offset);
+  
+  //write_u32(edata_data, 0, 0); // Characteristics
+  //write_u32(edata_data, 4, 0xD1234567); // TimeDateStamp
+  //write_u16(edata_data, 8, 0); // Major
+  //write_u16(edata_data, 10, 0); // Minor
+  //write_u32(edata_data, 12, sec_rva + static_cast<std::uint32_t>(dll_name_offset)); // DLL Name string RVA
+  //write_u32(edata_data, 16, 1); // Base ordinal = 1
+  //write_u32(edata_data, 20, static_cast<std::uint32_t>(num_funcs)); // NumberOfFunctions
+  //write_u32(edata_data, 24, static_cast<std::uint32_t>(num_funcs)); // NumberOfNames
+  //write_u32(edata_data, 28, sec_rva + static_cast<std::uint32_t>(funcs_offset)); // AddressOfFunctions RVA
+  //write_u32(edata_data, 32, sec_rva + static_cast<std::uint32_t>(names_offset)); // AddressOfNames RVA
+  //write_u32(edata_data, 36, sec_rva + static_cast<std::uint32_t>(ords_offset)); // AddressOfNameOrdinals RVA
 
   // Write DLL name
   std::memcpy(&edata_data[dll_name_offset], mod_name.c_str(), mod_name.length() + 1);

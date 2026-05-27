@@ -355,7 +355,7 @@ void deleteBuffer(bounded_buffer *b) {
     return;
   }
 
-  if (!b->copy) {
+  if (!b->copy && b->buf) {
 #ifdef _WIN32
     UnmapViewOfFile(b->buf);
     CloseHandle(b->detail->sec);

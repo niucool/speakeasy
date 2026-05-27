@@ -757,7 +757,7 @@ JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const
             parsed_pe->peHeader.nt.OptionalHeader64.ImageBase = base;
     }
 
-    update();
+    //update();
 
     if (!exports.empty()) {
         get_decoy_pe_image(mod_name, exports);
@@ -872,18 +872,19 @@ void* JitPeFile::cast_section(int offset) {
 
 std::vector<uint8_t> JitPeFile::get_decoy_pe_image(const std::string& mod_name,
                                                 const std::vector<std::string>& exports) {
-    parsed_pe->AddSection(".text", 0x60000020);
-    parsed_pe->AddSection(".edata", 0x40000040);
-    pad_file();
-    
     std::vector<std::pair<std::uint32_t, std::string>> exports_info;
+    parsed_pe->AddSection(".text", 0x60000020);
     parsed_pe->InitTextSection(exports, exports_info);
-    pad_file();
-    
+    //pad_file();
+
+    parsed_pe->AddSection(".edata", 0x40000040);
     parsed_pe->InitExportSection(mod_name, exports_info);
+    
+    //pad_file();
+    
     parsed_pe->Write(raw_pe_data);
     
-    update();
+    //update();
     
     return raw_pe_data;
 }
