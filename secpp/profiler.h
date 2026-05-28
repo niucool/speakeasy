@@ -98,6 +98,7 @@ public:
     std::deque<uint64_t> read_cache{4};  // Python:114
     std::deque<uint64_t> write_cache{4}; // Python:115
     std::vector<std::string> args;     // Python:117
+    std::vector<uint64_t> args_values;
     uint64_t start_addr = 0;           // Python:118
     std::string type;                  // Python:119
     std::map<std::string,std::string> error; // Python:120

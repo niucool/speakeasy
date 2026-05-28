@@ -197,34 +197,104 @@ std::shared_ptr<speakeasy::RuntimeModule> Win32Emulator::load_module(const std::
 
 // Python win32.py:223
 // def prepare_module_for_emulation(self, module, all_entrypoints, entry_point=None):
-void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints) {
-    if (!module) return;
+void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, const std::optional<uint64_t>& entry_point) {
+    if (!module) {
+        stop();
+        throw Win32EmuError("Module not found");
+    }
+
     auto img = module;
-    auto tls = img->tls_callbacks_;
+    
+    // Check if any TLS callbacks exist, these run before the module's entry point
+    auto tls = img->get_tls_callbacks();
     for (size_t i = 0; i < tls.size(); ++i) {
         uint64_t cb_addr = tls[i];
         if (cb_addr > img->base && cb_addr < img->base + img->image_size) {
             auto run = std::make_shared<Run>();
             run->start_addr = cb_addr;
             run->type = "tls_callback_" + std::to_string(i);
+            run->args_values = {img->base, static_cast<uint64_t>(DLL_PROCESS_ATTACH), 0};
+            run->args = {hex_str(img->base, true), std::to_string(DLL_PROCESS_ATTACH), "0"};
             add_run(run);
         }
     }
+
+    uint64_t ep;
+    if (entry_point.has_value()) {
+        ep = img->base + entry_point.value();
+    } else {
+        ep = img->base + img->ep;
+    }
+
     auto run = std::make_shared<Run>();
-    run->start_addr = img->base + img->ep;
-    run->type = img->is_driver() ? "driver_entry" : "module_entry";
-    if (!img->is_driver()) user_modules.insert(user_modules.begin(), module);
+    run->start_addr = ep;
+
+    if (!img->is_exe()) {
+        run->args_values = {img->base, static_cast<uint64_t>(DLL_PROCESS_ATTACH), 0};
+        run->args = {hex_str(img->base, true), std::to_string(DLL_PROCESS_ATTACH), "0"};
+        run->type = "dll_entry.DLL_PROCESS_ATTACH";
+        auto* container = static_cast<Process*>(init_container_process());
+        if (container) {
+            for (auto& p : processes) {
+                if (p.get() == container) {
+                    run->process_context = p;
+                    curr_process = p;
+                    break;
+                }
+            }
+        }
+        if (!img->is_driver()) {
+            user_modules.insert(user_modules.begin(), module);
+        }
+    } else {
+        run->type = "module_entry";
+        std::vector<uint64_t> args_vals;
+        std::vector<std::string> args_strs;
+        for (int i = 0; i < 4; ++i) {
+            uint64_t arg_val = mem_map(8, 0, PERM_MEM_RW, "emu.module_arg_" + std::to_string(i));
+            args_vals.push_back(arg_val);
+            args_strs.push_back(hex_str(arg_val, true));
+        }
+        run->args_values = args_vals;
+        run->args = args_strs;
+    }
+
     add_run(run);
+
     if (all_entrypoints) {
-        static const size_t MAX_EXPORTS = 100;
-        auto exports = img->exports_;
-        if (exports.size() > MAX_EXPORTS) exports.resize(MAX_EXPORTS);
-        for (auto& exp : exports) {
-            if (exp.name == "DllMain") continue;
-            auto erun = std::make_shared<Run>();
-            erun->type = "export." + exp.name;
-            erun->start_addr = exp.address;
-            add_run(erun);
+        static const size_t MAX_EXPORTS_TO_EMULATE = 10;
+        auto exports = img->get_exports();
+        if (exports.size() > MAX_EXPORTS_TO_EMULATE) {
+            exports.resize(MAX_EXPORTS_TO_EMULATE);
+        }
+
+        if (!exports.empty()) {
+            std::vector<uint64_t> dummy_args;
+            std::vector<std::string> dummy_strs;
+            for (int i = 0; i < 4; ++i) {
+                uint64_t arg_val = mem_map(8, 0x41420000, PERM_MEM_RW, "emu.export_arg_" + std::to_string(i));
+                dummy_args.push_back(arg_val);
+                dummy_strs.push_back(hex_str(arg_val, true));
+            }
+
+            for (auto& exp : exports) {
+                if (exp.name == "DllMain") continue;
+                auto erun = std::make_shared<Run>();
+                std::string fn = exp.name.empty() ? "no_name" : exp.name;
+                erun->type = "export." + fn;
+                erun->start_addr = exp.address;
+
+                if (!exp.name.empty() && exp.name.rfind("ServiceMain", 0) == 0) {
+                    int char_width = get_service_main_char_width(exp.name);
+                    auto res = build_service_main_args("IPRIP", {}, char_width);
+                    erun->args_values = {static_cast<uint64_t>(res.first), res.second};
+                    erun->args = {std::to_string(res.first), hex_str(res.second, true)};
+                } else {
+                    erun->args_values = dummy_args;
+                    erun->args = dummy_strs;
+                }
+                add_run(erun);
+            }
         }
     }
 }
@@ -238,8 +308,8 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
 //     Arguments:
 //         module: Module to emulate
 //     """
-void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, bool emulate_children) {
-    prepare_module_for_emulation(module, all_entrypoints);
+void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, bool emulate_children, const std::optional<uint64_t>& entry_point) {
+    prepare_module_for_emulation(module, all_entrypoints, entry_point);
     if (processes.empty()) {
         auto p = std::make_shared<Process>(this, module);
         p->path = module->emu_path;
@@ -553,11 +623,9 @@ uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {
     return addr;
 }
 
-// Python win32.py:61
-// def build_service_main_args(self, service_name, service_args=None, char_width=1):
-int Win32Emulator::build_service_main_args(const std::string& service_name,
-                                           const std::vector<std::string>& service_args,
-                                           int char_width) {
+std::pair<int, uint64_t> Win32Emulator::build_service_main_args(const std::string& service_name,
+                                                                 const std::vector<std::string>& service_args,
+                                                                 int char_width) {
     int ptr_sz = get_ptr_size();
     std::vector<std::string> args;
     args.push_back(service_name);
@@ -566,7 +634,7 @@ int Win32Emulator::build_service_main_args(const std::string& service_name,
     std::string codec;
     if (char_width == 1) codec = "utf-8";
     else if (char_width == 2) codec = "utf-16le";
-    else return 0;
+    else return std::make_pair(0, 0ULL);
 
     std::vector<std::vector<uint8_t>> enc_args;
     size_t total_str_size = 0;
@@ -596,7 +664,7 @@ int Win32Emulator::build_service_main_args(const std::string& service_name,
         str_ptr += enc_args[i].size();
     }
     write_ptr(argv_ptr + (enc_args.size() * ptr_sz), 0);
-    return (int)enc_args.size();
+    return std::make_pair(static_cast<int>(enc_args.size()), argv_ptr);
 }
 
 // Python win32.py:93

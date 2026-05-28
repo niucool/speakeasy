@@ -141,7 +141,7 @@ public:
     
     // Python win32.py:223
     // def prepare_module_for_emulation(self, module, all_entrypoints, entry_point=None):
-    void prepare_module_for_emulation(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints);
+    void prepare_module_for_emulation(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, const std::optional<uint64_t>& entry_point = std::nullopt);
     
     // Python win32.py:293
     // def run_module(self, module, all_entrypoints=False, emulate_children=False, entry_point=None):
@@ -151,7 +151,7 @@ public:
     //     Arguments:
     //         module: Module to emulate
     //     """
-    void run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints = false, bool emulate_children = false);
+    void run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints = false, bool emulate_children = false, const std::optional<uint64_t>& entry_point = std::nullopt);
     
     // Python win32.py:353
     // def _init_name(self, path, data=None, filename=None):
@@ -261,9 +261,9 @@ public:
     // Python win32.py:61
     // def build_service_main_args(self, service_name, service_args=None, char_width=1):
     //     """Build service main args"""
-    int build_service_main_args(const std::string& service_name, 
-                                const std::vector<std::string>& service_args = {},
-                                int char_width = 1);
+    std::pair<int, uint64_t> build_service_main_args(const std::string& service_name, 
+                                                     const std::vector<std::string>& service_args = {},
+                                                     int char_width = 1);
     
     // Python win32.py:93
     // def get_service_main_char_width(self, module, export_name):

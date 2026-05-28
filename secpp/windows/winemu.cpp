@@ -680,9 +680,9 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
 
     runs.push_back(curr_run);
 
-    // Set up stack for return; subclass handles args
+    // Set up stack for return and args
     uint64_t stk_ptr = get_stack_ptr();
-    (void)stk_ptr;
+    set_func_args(stk_ptr, return_hook, run->args_values);
 
     if (run->process_context &&
         run->process_context != get_current_process()) {

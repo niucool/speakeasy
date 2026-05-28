@@ -10,6 +10,11 @@
 #### Added
 
 - **tests**: 在 `test_porting.cpp` 中新增了 `JitPeFileTest.ConstructorDecoyAssembly` 单元测试用例，用以验证通过 `JitPeFile` 构造函数直接指定导出函数名称列表时，自动触发 PE 诱饵头部与 `.text` / `.edata` 节段组装的正确性。
+- **secpp**: 成功将 `win32::prepare_module_for_emulation` 模块准备逻辑从 Python 移植至 C++。
+  - 在 `Run` 类中添加了 `args_values` 向量以暂存 raw numeric arguments。
+  - 在 `WindowsEmulator::_prepare_run_context` 中实现了对 `set_func_args` 的调用，使之能够在每次执行 `Run` 之前，将运行参数准确载入 CPU 寄存器与堆栈。
+  - 完整补全了 `prepare_module_for_emulation` 和 `run_module` 对 `entry_point` 参数的可选支持。
+  - 重构了 `build_service_main_args` 使之能够以 `std::pair` 形式返回 `argc` 和 `argv_ptr`。
 
 #### Fixed
 
