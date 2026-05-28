@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### 2026-05-28
+
+#### Changed
+
+- **docs**: 重新核对 `PORTING_PROGRESS.md`、`CHANGELOG.md` 与当前 `secpp` 移植代码中的显式 TODO 标记，更新遗留 TODO 总数为 20，并补充遗漏的 `ntdll.cpp` 注册表/句柄相关移植项。
+
 ### 2026-05-27
 
 #### Added
