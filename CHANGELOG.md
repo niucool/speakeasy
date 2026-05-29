@@ -7,6 +7,12 @@
 
 ### 2026-05-29
 
+#### Added
+
+- **secpp**: 补全了 `BinaryEmulator` 中与 Python 一致的 `_hook_mem_invalid_dispatch` 动态内存失效 Hook 调度分配器以及 `add_mem_invalid_hook` 首个原生调度 Hook 的注册挂载，大幅提升了仿真引擎对越界/失效内存访问的追踪分配效率。
+- **secpp**: 补全了动态代码 Hook 触发路径 `_fire_dyn_code_hooks` 和 `_set_dyn_code_hook`（包含自关闭的临时 CodeHook），深度打通了 Profiler 动态代码的事件记录 (`log_dyn_code`) 以及 `DynCodeHook::invoke` 调度机制。
+- **secpp**: 在 `Speakeasy` (在 `speakeasy.cpp`) 对外暴露的 Hook 注册 API 中添加了类型安全的 Lambda 闭包包装器，完美适配并对齐了 `BinaryEmulator` 全新现代化的 Callback 签名，彻底解决了头文件重构后的回调类型编译冲突。
+
 #### Changed
 
 - **secpp**: 对核心类、管理器类、基础仿真器类及用户态仿真器类中的所有 `private`/`protected` 成员变量进行了系统性的重构，在变量末尾统一追加下划线 `_`（包含：`BinaryEmulator`、`Win32Emulator`、`Console`、`SEH`、`KernelObject`、`Driver`、`Device`、`Irp`、`Thread`、`ObjectManager`、`FileMap`、`File`、`Pipe`、`FileManager`、`RegValue`·、`RegKey`、`RegistryManager` 等类中的所有私有/受保护成员）。完全消除了成员变量在构造函数初始化列表、Getter/Setter 接口以及继承子类中被 shadowing 遮蔽编译警告（MSVC `C4458`）的安全隐患，规范并统一了 C++ 代码风格，确保在 `/W4` 警告级别下编译零警告。
@@ -14,6 +20,7 @@
 
 #### Fixed
 
+- **secpp**: 修复了 `common.cpp` 中内存 Hook 子类（`ReadMemHook`、`WriteMemHook` 及 `InvalidMemHook`）构造函数在调用基类 `MemHook` 时直接丢弃了用户传入的 cb/begin/end 回调和访问地址范围的严重 Bug，确保所有内存 Hook 均能正常携带回调及其监视范围进行拦截调度。
 - **secpp**: 修复了 C++ Hook 框架子类（`MemHook` 及其派生类、`InterruptHook`、`InstructionHook`、`InvalidInstructionHook`）在注册回调时传递错误 context 指针的严重内存安全 bug（在 `hook_add` 中将原本的 `container` 修正为 `this`），彻底消除了在此类 Hook 触发时由于类型强转错误（`WindowsEmulator*` 转具体 `Hook*`）而引发的 Segmentation Fault 隐患，保障了 C++ Emulation 运行时 Hook 调度的内存安全。
 
 ### 2026-05-28

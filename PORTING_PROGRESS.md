@@ -65,9 +65,9 @@ Compared `speakeasy/binemu.py` against `secpp/binemu.h` and `secpp/binemu.cpp`. 
 
 | Function | Status |
 |---|---|
-| `_hook_mem_invalid_dispatch` | Declared in `secpp/binemu.h`, but no `BinaryEmulator::_hook_mem_invalid_dispatch(...)` definition exists in `secpp/binemu.cpp`. Python implementation exists in `speakeasy/binemu.py`. |
-| `_fire_dyn_code_hooks` | Function exists, but does not record profiler dynamic-code events and does not call registered `DynCodeHook` callbacks; both paths are commented/deferred. |
-| `add_mem_invalid_hook` native dispatch path | User hook object is added, but Python's first native dispatch hook is explicitly not installed. |
+| `_hook_mem_invalid_dispatch` | **100% Ported** ✅ |
+| `_fire_dyn_code_hooks` | **100% Ported** ✅ |
+| `add_mem_invalid_hook` native dispatch path | **100% Ported** (first native dispatch hook is correctly installed) ✅ |
 
 ##### Not Fully Ported
 
@@ -75,8 +75,8 @@ Compared `speakeasy/binemu.py` against `secpp/binemu.h` and `secpp/binemu.cpp`. 
 |---|---|
 | `_parse_config` | Does not instantiate `emu_eng` from `config.emu_engine` like Python; C++ defers engine creation elsewhere. |
 | `objsize` / `get_bytes` | Use `sizeof(T)` and raw byte copying instead of Python's polymorphic `obj.sizeof()` / `obj.get_bytes()`. |
-| `_set_dyn_code_hook` | Does not self-disable after first fire as Python does. |
-| Hook adders | `add_api_hook`, `add_code_hook`, `add_dyn_code_hook`, `add_mem_read_hook`, `add_mem_write_hook`, `add_mem_map_hook`, `add_interrupt_hook`, `add_instruction_hook`, and `add_invalid_instruction_hook` reduce callbacks to `std::function<void()>` / bool wrappers, losing Python callback arguments such as emu/access/address/size/value/context. |
+| `_set_dyn_code_hook` | **100% Ported** (correctly self-disables after first fire using CodeHook callback) ✅ |
+| Hook adders | **100% Ported** (modernized type-safe callbacks carrying all arguments/context parameters to target handlers) ✅ |
 | `get_module_from_addr` | Uses a private `BinaryEmulator::modules` vector while comments indicate modules belong to `WindowsEmulator`; likely misses the real loaded-module list. |
 | `get_mem_strings` | Does not exclude `input["mem_tag"]` like Python because C++ has no input-tag check here. |
 | `_cs_disasm` | Python non-fast mode returns detailed Capstone instruction objects; C++ always returns a 3-string tuple and returns empty output if `HAS_CAPSTONE` is absent. |
