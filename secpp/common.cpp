@@ -141,7 +141,8 @@ bool CodeHook::_wrap_code_cb(void* emu, uint64_t addr, uint32_t size, void* ctx)
  */
 void CodeHook::add() {
     if (!added && native_hook) {
-        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&CodeHook::_wrap_code_cb), HOOK_CODE, this, begin, end));
+        handle = static_cast<int>(emu_eng->hook_add(
+            nullptr, reinterpret_cast<void*>(&CodeHook::_wrap_code_cb), HOOK_CODE, this, begin, end));
     }
     added = true;
     enabled = true;
@@ -180,7 +181,8 @@ bool MemHook::_wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint3
  */
 void MemHook::add() {
     if (!added && native_hook) {
-        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&MemHook::_wrap_memory_access_cb), access_type, container, begin, end));
+        handle = static_cast<int>(emu_eng->hook_add(
+            nullptr, reinterpret_cast<void*>(&MemHook::_wrap_memory_access_cb), access_type, this, begin, end));
     }
     added = true;
     enabled = true;
@@ -278,7 +280,8 @@ bool InterruptHook::invoke(void* emu, int num) {
  */
 void InterruptHook::add() {
     if (!added && native_hook) {
-        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&InterruptHook::_wrap_intr_cb), HOOK_INTERRUPT, container));
+        handle = static_cast<int>(emu_eng->hook_add(
+            nullptr, reinterpret_cast<void*>(&InterruptHook::_wrap_intr_cb), HOOK_INTERRUPT, this));
     }
     added = true;
     enabled = true;
@@ -311,10 +314,19 @@ bool InstructionHook::_wrap_syscall_insn_cb(void* emu, void* ctx) {
  */
 void InstructionHook::add() {
     if (!added && native_hook) {
-        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&InstructionHook::_wrap_syscall_insn_cb), HOOK_INSN, container, 1, 0, reinterpret_cast<uintptr_t>(insn)));
+        handle = static_cast<int>(emu_eng->hook_add(
+            nullptr, reinterpret_cast<void*>(&InstructionHook::_wrap_syscall_insn_cb), 
+            HOOK_INSN, this, 1, 0, reinterpret_cast<uintptr_t>(insn)));
     }
     added = true;
     enabled = true;
+}
+
+bool InstructionHook::invoke(void* emu) {
+    if (cb) {
+        return cb(emu);
+    }
+    return true;
 }
 
 /**
@@ -349,7 +361,9 @@ bool InvalidInstructionHook::_wrap_invalid_insn_cb(void* emu, void* ctx) {
  */
 void InvalidInstructionHook::add() {
     if (!added && native_hook) {
-        handle = static_cast<int>(emu_eng->hook_add(nullptr, reinterpret_cast<void*>(&InvalidInstructionHook::_wrap_invalid_insn_cb), HOOK_INSN_INVALID, container));
+        handle = static_cast<int>(emu_eng->hook_add(
+            nullptr, reinterpret_cast<void*>(&InvalidInstructionHook::_wrap_invalid_insn_cb), 
+            HOOK_INSN_INVALID, this));
     }
     added = true;
     enabled = true;

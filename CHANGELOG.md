@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### 2026-05-29
+
+#### Fixed
+
+- **secpp**: 修复了 C++ Hook 框架子类（`MemHook` 及其派生类、`InterruptHook`、`InstructionHook`、`InvalidInstructionHook`）在注册回调时传递错误 context 指针的严重内存安全 bug（在 `hook_add` 中将原本的 `container` 修正为 `this`），彻底消除了在此类 Hook 触发时由于类型强转错误（`WindowsEmulator*` 转具体 `Hook*`）而引发的 Segmentation Fault 隐患，保障了 C++ Emulation 运行时 Hook 调度的内存安全。
+
 ### 2026-05-28
 
 #### Changed
