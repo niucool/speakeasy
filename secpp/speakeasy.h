@@ -35,13 +35,14 @@ private:
 
     std::vector<std::tuple<ApiCallback, std::string, std::string, int, std::string>> api_hooks;
     std::vector<std::tuple<CodeCallback, uint64_t, uint64_t, std::map<std::string, std::string>>> code_hooks;
-    std::vector<std::tuple<DynCodeHook, std::map<std::string, std::string>>> dyn_code_hooks;
-    std::vector<std::tuple<InvalidInstructionHook, std::vector<void*>>> invalid_insn_hooks;
-    std::vector<std::tuple<ReadMemHook, uint64_t, uint64_t>> mem_read_hooks;
-    std::vector<std::tuple<WriteMemHook, uint64_t, uint64_t>> mem_write_hooks;
-    std::vector<std::tuple<InvalidMemHook>> mem_invalid_hooks;
-    std::vector<std::tuple<InterruptHook, std::map<std::string, std::string>>> interrupt_hooks;
-    std::vector<std::tuple<MapMemHook, uint64_t, uint64_t>> mem_map_hooks;
+    std::vector<std::tuple<DynCodeCallback, std::map<std::string, std::string>>> dyn_code_hooks;
+    std::vector<std::tuple<InsnCallback, std::vector<void*>>> invalid_insn_hooks;
+    std::vector<std::tuple<MemAccessCallback, uint64_t, uint64_t>> mem_read_hooks;
+    std::vector<std::tuple<MemAccessCallback, uint64_t, uint64_t>> mem_write_hooks;
+    std::vector<std::tuple<MemAccessCallback>> mem_invalid_hooks;
+    std::vector<std::tuple<IntrCallback, std::map<std::string, std::string>>> interrupt_hooks;
+    std::vector<std::tuple<MapMemCallback, uint64_t, uint64_t>> mem_map_hooks;
+    std::vector<std::tuple<InsnCallback, uint64_t, uint64_t, void*>> instruction_hooks;
 
     std::vector<std::string> loaded_bins;
     std::vector<std::string> argv;

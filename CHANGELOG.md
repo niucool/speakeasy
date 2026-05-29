@@ -20,6 +20,9 @@
 
 #### Fixed
 
+- **secpp**: 修复了 `speakeasy.h` 与 `speakeasy.cpp` 中由于延迟 Hook 队列容器错误存放 Hook 类类型而非 Callback 类型的编译模板实例化错误，将类型规范化为 Callback 包装容器。
+- **secpp**: 修复了 `add_IN_instruction_hook` 与 `add_SYSCALL_instruction_hook` 将指令 Hook 错误存入 `mem_write_hooks` 队列的遗留 bug，独立划分了 `instruction_hooks` 延迟列表并在 `_init_hooks()` 中打通挂载注册。
+- **secpp**: 修复了 `MapMemHook::invoke` 丢失参数的错误，更新其函数签名以携带全部 6 个环境上下文参数，完美对齐了 `MapMemCallback`。
 - **secpp**: 修复了 `common.cpp` 中内存 Hook 子类（`ReadMemHook`、`WriteMemHook` 及 `InvalidMemHook`）构造函数在调用基类 `MemHook` 时直接丢弃了用户传入的 cb/begin/end 回调和访问地址范围的严重 Bug，确保所有内存 Hook 均能正常携带回调及其监视范围进行拦截调度。
 - **secpp**: 修复了 C++ Hook 框架子类（`MemHook` 及其派生类、`InterruptHook`、`InstructionHook`、`InvalidInstructionHook`）在注册回调时传递错误 context 指针的严重内存安全 bug（在 `hook_add` 中将原本的 `container` 修正为 `this`），彻底消除了在此类 Hook 触发时由于类型强转错误（`WindowsEmulator*` 转具体 `Hook*`）而引发的 Segmentation Fault 隐患，保障了 C++ Emulation 运行时 Hook 调度的内存安全。
 

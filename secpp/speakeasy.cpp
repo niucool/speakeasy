@@ -180,6 +180,46 @@ void Speakeasy::_init_hooks() {
         code_hooks.erase(code_hooks.begin());
         add_code_hook(cb, begin, end, ctx);
     }
+    while (!dyn_code_hooks.empty()) {
+        auto [cb, ctx] = dyn_code_hooks.front();
+        dyn_code_hooks.erase(dyn_code_hooks.begin());
+        add_dyn_code_hook(cb, ctx);
+    }
+    while (!invalid_insn_hooks.empty()) {
+        auto [cb, ctx] = invalid_insn_hooks.front();
+        invalid_insn_hooks.erase(invalid_insn_hooks.begin());
+        add_invalid_instruction_hook(cb, ctx);
+    }
+    while (!mem_read_hooks.empty()) {
+        auto [cb, begin, end] = mem_read_hooks.front();
+        mem_read_hooks.erase(mem_read_hooks.begin());
+        add_mem_read_hook(cb, begin, end);
+    }
+    while (!mem_write_hooks.empty()) {
+        auto [cb, begin, end] = mem_write_hooks.front();
+        mem_write_hooks.erase(mem_write_hooks.begin());
+        add_mem_write_hook(cb, begin, end);
+    }
+    while (!mem_invalid_hooks.empty()) {
+        auto [cb] = mem_invalid_hooks.front();
+        mem_invalid_hooks.erase(mem_invalid_hooks.begin());
+        add_mem_invalid_hook(cb);
+    }
+    while (!interrupt_hooks.empty()) {
+        auto [cb, ctx] = interrupt_hooks.front();
+        interrupt_hooks.erase(interrupt_hooks.begin());
+        add_interrupt_hook(cb, ctx);
+    }
+    while (!mem_map_hooks.empty()) {
+        auto [cb, begin, end] = mem_map_hooks.front();
+        mem_map_hooks.erase(mem_map_hooks.begin());
+        add_mem_map_hook(cb, begin, end);
+    }
+    while (!instruction_hooks.empty()) {
+        auto [cb, begin, end, insn] = instruction_hooks.front();
+        instruction_hooks.erase(instruction_hooks.begin());
+        emu->add_instruction_hook(cb, begin, end, {}, (BinaryEmulator*)this, insn);
+    }
 }
 
 std::tuple<std::string, std::string, std::string> Speakeasy::disasm(uint64_t addr, size_t size, bool fast) {
@@ -292,7 +332,7 @@ std::shared_ptr<WriteMemHook> Speakeasy::add_mem_write_hook(MemAccessCallback cb
 
 std::shared_ptr<InstructionHook> Speakeasy::add_IN_instruction_hook(InsnCallback cb, uint64_t begin, uint64_t end) {
     if (!emu) { 
-        mem_write_hooks.emplace_back(cb, begin, end); 
+        instruction_hooks.emplace_back(cb, begin, end, (void*)(uintptr_t)218); 
         return nullptr; 
     }
     return emu->add_instruction_hook(cb, begin, end, {}, emu, (void*)(uintptr_t)218);
@@ -300,7 +340,7 @@ std::shared_ptr<InstructionHook> Speakeasy::add_IN_instruction_hook(InsnCallback
 
 std::shared_ptr<InstructionHook> Speakeasy::add_SYSCALL_instruction_hook(InsnCallback cb, uint64_t begin, uint64_t end) {
     if (!emu) { 
-        mem_write_hooks.emplace_back(cb, begin, end); 
+        instruction_hooks.emplace_back(cb, begin, end, (void*)(uintptr_t)700); 
         return nullptr; 
     }
     return emu->add_instruction_hook(cb, begin, end, {}, emu, (void*)(uintptr_t)700);

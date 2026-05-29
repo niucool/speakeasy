@@ -246,9 +246,9 @@ void MapMemHook::add() {
     enabled = true;
 }
 
-bool MapMemHook::invoke() {
+bool MapMemHook::invoke(void* emu, uint64_t addr, uint32_t size, const std::string& tag, int64_t prot, int64_t flags) {
    if (cb) {
-        return cb();
+        return cb(emu, addr, size, tag, prot, flags);
    }
    return true;
 }

@@ -211,8 +211,8 @@ public:
                MapMemCallback cb,
                uint64_t begin = 1,
                uint64_t end = 0);
-    void add();
-    bool invoke();
+    void add() override;
+    bool invoke(void* emu, uint64_t addr, uint32_t size, const std::string& tag, int64_t prot, int64_t flags);
 };
 
 /** Hook that fires each time an invalid chunk of memory is accessed */
