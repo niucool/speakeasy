@@ -377,7 +377,7 @@ uint64_t BinaryEmulator::push_stack(uint64_t val) {
     mem_write(sp, std::vector<uint8_t>(reinterpret_cast<uint8_t*>(&val),
                                         reinterpret_cast<uint8_t*>(&val) + ps));
     set_stack_ptr(sp);
-    return sp;
+    return val;
 }
 
 // Python binemu.py:452-462 doc: "Get value from the stack and adjust the stack pointer"
@@ -757,7 +757,12 @@ void BinaryEmulator::set_func_args(uint64_t stack_addr, uint64_t ret_addr,
     // x64: first 4 args in registers
     if (arch == 64 && home_space) {
         sp -= 0x20;  // shadow space
-        static const int x64_arg_regs[] = {2, 1, 8, 9};  // rcx, rdx, r8, r9 (approx)
+        static const int x64_arg_regs[] = {
+            speakeasy::arch::REG_RCX,
+            speakeasy::arch::REG_RDX,
+            speakeasy::arch::REG_R8,
+            speakeasy::arch::REG_R9
+        };
         for (int i = 0; i < 4 && arg_idx < args.size(); ++i) {
             reg_write(x64_arg_regs[i], args[arg_idx++]);
         }
@@ -811,7 +816,12 @@ std::vector<uint64_t> BinaryEmulator::get_func_argv(int callconv, int argc) {
 
     if (arch == 64) {
         // x64: rcx, rdx, r8, r9
-        static const int x64_regs[] = {2, 1, 8, 9};
+        static const int x64_regs[] = {
+            speakeasy::arch::REG_RCX,
+            speakeasy::arch::REG_RDX,
+            speakeasy::arch::REG_R8,
+            speakeasy::arch::REG_R9
+        };
         uint64_t sp = get_stack_ptr() + 0x20;
         for (int i = 0; i < 4 && nargs > 0; ++i) {
             argv.push_back(reg_read(x64_regs[i]));
@@ -862,10 +872,46 @@ void BinaryEmulator::set_pc(uint64_t addr) {
 
 void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_value, int conv) {
     // Python binemu.py:383-418 doc: "Set the emulation state after a call has completed"
-    (void)argc; (void)conv;
-    reg_write(get_arch() == 64 ? 0 : 0, ret_value);  // rax/eax
+    int arch = get_arch();
+    int sp_reg = 0;
+    int pc_reg = 0;
+    int ret_reg = 0;
+
+    if (arch == speakeasy::arch::ARCH_X86) {
+        sp_reg = speakeasy::arch::REG_ESP;
+        pc_reg = speakeasy::arch::REG_EIP;
+        ret_reg = speakeasy::arch::REG_EAX;
+    } else if (arch == speakeasy::arch::ARCH_AMD64) {
+        sp_reg = speakeasy::arch::REG_RSP;
+        pc_reg = speakeasy::arch::REG_RIP;
+        ret_reg = speakeasy::arch::REG_RAX;
+    } else {
+        return;
+    }
+
+    if (conv == speakeasy::arch::CALL_CONV_FLOAT) {
+        ret_reg = speakeasy::arch::REG_XMM0;
+    }
+
+    uint64_t stk_ptr = reg_read(sp_reg);
+
     if (ret_addr != 0) {
+        reg_write(sp_reg, stk_ptr + get_ptr_size());
         set_pc(ret_addr);
+    }
+    reg_write(ret_reg, ret_value);
+
+    // Cleanup the stack
+    if (conv == speakeasy::arch::CALL_CONV_CDECL) {
+        // If cdecl, emu engine will clean the stack
+    } else if (conv == speakeasy::arch::CALL_CONV_FASTCALL) {
+        if (arch == speakeasy::arch::ARCH_X86) {
+            if (argc > 2) {
+                clean_stack_args(argc - 2);
+            }
+        }
+    } else {
+        clean_stack_args(argc);
     }
 }
 
@@ -918,7 +964,7 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
             uint16_t ch = static_cast<uint16_t>(raw[i]) | (static_cast<uint16_t>(raw[i+1]) << 8);
             if (ch == 0) break;
             // Python binemu.py:681-684 : .decode('utf-16le', 'ignore') : best-effort
-            if (ch >= 0x20 && ch <= 0x7e) {
+            if ((ch >= 0x20 && ch <= 0x7e) || ch == '\t' || ch == '\n' || ch == '\r') {
                 result += static_cast<char>(ch);
             } else if (ch >= 0x80) {
                 // Pass through high codepoints as UTF-8 multibyte
@@ -1113,11 +1159,14 @@ uint64_t BinaryEmulator::get_return_val() {
 
 void BinaryEmulator::clean_stack_args(int argc) {
     // Python binemu.py:612-630 doc: "Adjust the stack for arguments that were supplied"
-    int ps = get_ptr_size();
-    uint64_t sp = get_stack_ptr();
-    sp += ps;  // skip ret addr
-    sp += argc * ps;
-    set_stack_ptr(sp);
+    if (argc == 0) return;
+    int arch = get_arch();
+    if (arch == speakeasy::arch::ARCH_X86) {
+        int ps = get_ptr_size();
+        uint64_t sp = get_stack_ptr();
+        sp += argc * ps;
+        set_stack_ptr(sp);
+    }
 }
 
 // Python binemu.py:700-717 doc: "Get all ansi strings from a supplied memory blob"

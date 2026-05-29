@@ -9,13 +9,17 @@
 
 #### Added
 
+- **secpp**: 补全了 `BinaryEmulator` 的 X86/AMD64 调用约定栈帧清理与返回处理 `do_call_return` 及 `clean_stack_args`，支持 `cdecl`、`stdcall`、`fastcall` 等调用约定的传参和出栈清理。
 - **secpp**: 补全了 `BinaryEmulator` 中与 Python 一致的 `_hook_mem_invalid_dispatch` 动态内存失效 Hook 调度分配器以及 `add_mem_invalid_hook` 首个原生调度 Hook 的注册挂载，大幅提升了仿真引擎对越界/失效内存访问的追踪分配效率。
 - **secpp**: 补全了动态代码 Hook 触发路径 `_fire_dyn_code_hooks` 和 `_set_dyn_code_hook`（包含自关闭的临时 CodeHook），深度打通了 Profiler 动态代码的事件记录 (`log_dyn_code`) 以及 `DynCodeHook::invoke` 调度机制。
 - **secpp**: 在 `Speakeasy` (在 `speakeasy.cpp`) 对外暴露的 Hook 注册 API 中添加了类型安全的 Lambda 闭包包装器，完美适配并对齐了 `BinaryEmulator` 全新现代化的 Callback 签名，彻底解决了头文件重构后的回调类型编译冲突。
 
 #### Changed
 
-- **secpp**: 对核心类、管理器类、基础仿真器类及用户态仿真器类中的所有 `private`/`protected` 成员变量进行了系统性的重构，在变量末尾统一追加下划线 `_`（包含：`BinaryEmulator`、`Win32Emulator`、`Console`、`SEH`、`KernelObject`、`Driver`、`Device`、`Irp`、`Thread`、`ObjectManager`、`FileMap`、`File`、`Pipe`、`FileManager`、`RegValue`·、`RegKey`、`RegistryManager` 等类中的所有私有/受保护成员）。完全消除了成员变量在构造函数初始化列表、Getter/Setter 接口以及继承子类中被 shadowing 遮蔽编译警告（MSVC `C4458`）的安全隐患，规范并统一了 C++ 代码风格，确保在 `/W4` 警告级别下编译零警告。
+- **secpp**: 重构规范化了 `BinaryEmulator::set_func_args` 和 `get_func_argv` 中 AMD64 架构下前 4 个参数寄存器的绑定与读取，完全改用 `speakeasy::arch` 下的标准 `REG_RCX`/`REG_RDX`/`REG_R8`/`REG_R9` 寄存器常量映射，消除了原有的硬编码占位符。
+- **secpp**: 修复并对齐了 `BinaryEmulator::push_stack` 的返回值，使其返回被推入栈的数值本身，与 Python 仿真层返回逻辑完全保持一致。
+- **secpp**: 改进了 `BinaryEmulator::read_mem_string` 中对 UTF-16LE 宽字符的解析逻辑，追加支持了制表符 `\t`、换行符 `\n` 以及回车符 `\r` 的完整解码输出。
+- **secpp**: 对核心类、管理器类、基础仿真器类及用户态仿真器类中的所有 `private`/`protected` 成员变量进行了系统性的重构，在变量末尾统一追加下划线 `_`（包含：`BinaryEmulator`、`Win32Emulator`、`Console`、`SEH`、`KernelObject`、`Driver`、`Device`、`Irp`、`Thread`、`ObjectManager` – `FileMap`、`File`、`Pipe`、`FileManager`、`RegValue`·、`RegKey`、`RegistryManager` 等类中的所有私有/受保护成员）。完全消除了成员变量在构造函数初始化列表、Getter/Setter 接口以及继承子类中被 shadowing 遮蔽编译警告（MSVC `C4458`）的安全隐患，规范并统一了 C++ 代码风格，确保在 `/W4` 警告级别下编译零警告。
 - **secpp**: 将 `BinaryEmulator` 内持有的 CPU 指令与内存读写 Hook 容器类型由裸指针 `std::map<int, std::vector<Hook*>>` 重构升级为智能指针 `std::map<int, std::vector<std::shared_ptr<Hook>>>`。这一现代化重构消除了原先由于在仿真器生命周期结束时未手动释放 Hook 对象而造成的潜在内存泄漏问题，全面规范了 C++ 代码的生命周期管理，使其符合 RAII 最佳实践。
 
 #### Fixed
