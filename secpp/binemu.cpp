@@ -140,23 +140,6 @@ std::map<std::string, std::string> BinaryEmulator::get_user() {
     return user_config_;
 }
 
-template<typename T>
-size_t BinaryEmulator::objsize(T obj) {
-    // Python binemu.py:137-141 doc: "Get the size (in the emulation space) of the supplied object"
-    // TODO: Python delegates to obj.sizeof() -- only works for EmuStruct types
-    //       C++ uses sizeof(T) which is correct for POD but wrong for structs with virtual methods
-    (void)obj;
-    return sizeof(T);  // Default: return sizeof(T) for plain types; override for EmuStruct types
-}
-
-template<typename T>
-std::vector<uint8_t> BinaryEmulator::get_bytes(T obj) {
-    // Python binemu.py:143-147 doc: "Get the bytes represented in the emulation space of the supplied object"
-    // TODO: Python delegates to obj.get_bytes() -- polymorphic
-    //       C++ does raw byte copy; correct for POD, wrong for EmuStruct objects
-    (void)obj;
-    return std::vector<uint8_t>((uint8_t*)&obj, (uint8_t*)&obj + sizeof(T));  // Default: raw byte copy; override for EmuStruct types
-}
 
 void BinaryEmulator::stop() {
     // Python binemu.py:149-156 doc: "Stop emulation completely"

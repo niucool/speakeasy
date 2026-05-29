@@ -133,11 +133,25 @@ public:
     std::map<std::string, std::string> get_user();
     
     // Python binemu.py:137-141 doc: "Get the size (in the emulation space) of the supplied object"
-    template<typename T>
-    size_t objsize(T obj);
+    template<typename T, typename std::enable_if<std::is_base_of<speakeasy::EmuStruct, T>::value, int>::type = 0>
+    size_t objsize(const T& obj) {
+        return obj.sizeof_obj();
+    }
+    template<typename T, typename std::enable_if<!std::is_base_of<speakeasy::EmuStruct, T>::value, int>::type = 0>
+    size_t objsize(const T& obj) {
+        (void)obj;
+        return sizeof(T);
+    }
+
     // Python binemu.py:143-147 doc: "Get the bytes represented in the emulation space of the supplied object"
-    template<typename T>
-    std::vector<uint8_t> get_bytes(T obj);
+    template<typename T, typename std::enable_if<std::is_base_of<speakeasy::EmuStruct, T>::value, int>::type = 0>
+    std::vector<uint8_t> get_bytes(const T& obj) {
+        return obj.get_bytes();
+    }
+    template<typename T, typename std::enable_if<!std::is_base_of<speakeasy::EmuStruct, T>::value, int>::type = 0>
+    std::vector<uint8_t> get_bytes(const T& obj) {
+        return std::vector<uint8_t>(reinterpret_cast<const uint8_t*>(&obj), reinterpret_cast<const uint8_t*>(&obj) + sizeof(T));
+    }
     
     // Python binemu.py:149-156 doc: "Stop emulation completely"
     void stop();

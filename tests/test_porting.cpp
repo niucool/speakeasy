@@ -712,5 +712,51 @@ TEST(ObjmanPortingTest, PebTebLinkedlistValidation) {
     }
 }
 
+// Custom EmuStruct test subclass for verifying SFINAE polymorphism
+class MockPolyStruct : public EmuStruct {
+public:
+    uint32_t val = 0xCCDDEEFF;
+    size_t sizeof_obj() const override { return 100; }
+    std::vector<uint8_t> get_bytes() const override {
+        std::vector<uint8_t> data(100, 0xAB);
+        write_le(data, 0, val, 4);
+        return data;
+    }
+};
+
+TEST(StructLayoutTest, PolymorphicStructSerialization) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    MockPolyStruct poly;
+
+    // Verify polymorphic size resolved correctly via objsize template overload
+    EXPECT_EQ(emu.objsize(poly), 100);
+
+    // Verify polymorphic byte serialization resolved correctly via get_bytes template overload
+    auto bytes = emu.get_bytes(poly);
+    ASSERT_EQ(bytes.size(), 100);
+    EXPECT_EQ(bytes[0], 0xFF);
+    EXPECT_EQ(bytes[1], 0xEE);
+    EXPECT_EQ(bytes[2], 0xDD);
+    EXPECT_EQ(bytes[3], 0xCC);
+    EXPECT_EQ(bytes[4], 0xAB); // filled byte
+}
+
+TEST(ObjmanPortingTest, WinemuErrorContextTriage) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // Verify region info retrieval resolves to null or expected mapped ranges
+    auto region = emu._resolve_region_info(0x1000);
+    EXPECT_EQ(region, nullptr);
+
+    // Verify context triage builder formats summaries faithfully
+    auto nearby = emu._find_nearby_regions(0x1000, 2);
+    auto summary = emu._build_context_summary("read", 0x401000, 0x1000, "read", "test.exe+0x1000", nullptr, nearby);
+    EXPECT_FALSE(summary.empty());
+}
+
+
 
 

@@ -809,7 +809,16 @@ public:
     // Python winemu.py:1448
     // def _resolve_region_info(self, addr: int) -> RegionInfo | None:
     //     """Return a RegionInfo for the region containing addr, or None if unmapped."""
-    std::string _resolve_region_info(uint64_t addr);
+    std::shared_ptr<speakeasy::RegionInfo> _resolve_region_info(uint64_t addr);
+    // Python winemu.py:1456
+    // def _find_nearby_regions(self, addr: int, count: int = 2) -> list[RegionInfo]:
+    std::vector<speakeasy::RegionInfo> _find_nearby_regions(uint64_t addr, int count = 2);
+    // Python winemu.py:1475
+    std::string _build_context_summary(const std::string& desc, uint64_t pc, uint64_t address,
+                                       const std::string& access_type,
+                                       const std::string& pc_module,
+                                       std::shared_ptr<speakeasy::RegionInfo> address_region,
+                                       const std::vector<speakeasy::RegionInfo>& nearby_regions);
 
     //  Hardware interrupts 
     // Python winemu.py:2742

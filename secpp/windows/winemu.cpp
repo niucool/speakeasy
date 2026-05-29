@@ -2847,7 +2847,8 @@ std::string WindowsEmulator::get_error_info(const std::string& msg, uint64_t pc,
 
     // Build module + offset info for PC
     std::string pc_module = _resolve_module_offset(pc);
-    std::string addr_region = _resolve_region_info(pc);
+    auto addr_region = _resolve_region_info(pc);
+    std::string region_str = addr_region ? addr_region->tag : "none";
 
     // Get register state
     auto regs = get_register_state();
@@ -2872,7 +2873,7 @@ std::string WindowsEmulator::get_error_info(const std::string& msg, uint64_t pc,
         msg.c_str(),
         static_cast<unsigned long long>(pc),
         pc_module.empty() ? "none" : pc_module.c_str(),
-        addr_region.empty() ? "none" : addr_region.c_str(),
+        region_str.c_str(),
         instr.c_str(),
         trace.empty() ? "none" : trace.c_str());
     result += buf;
@@ -2892,17 +2893,96 @@ std::string WindowsEmulator::get_error_info(const std::string& msg, uint64_t pc,
 // def _resolve_module_offset(self, addr: int) -> str | None:
 //     """Return module+0xoffset string for an address inside a loaded module, or None."""
 std::string WindowsEmulator::_resolve_module_offset(uint64_t addr) {
-    (void)addr;
+    auto mod = get_mod_from_addr(addr);
+    if (mod) {
+        uint64_t offset = addr - mod->base;
+        std::string name = mod->name;
+        if (name.empty()) name = mod->emu_path;
+        if (name.empty()) name = "unknown";
+        return name + "+" + hex_str(offset);
+    }
     return "";
 }
-
 
 // Python winemu.py:1448
 // def _resolve_region_info(self, addr: int) -> RegionInfo | None:
 //     """Return a RegionInfo for the region containing addr, or None if unmapped."""
-std::string WindowsEmulator::_resolve_region_info(uint64_t addr) {
-    (void)addr;
-    return "";
+std::shared_ptr<speakeasy::RegionInfo> WindowsEmulator::_resolve_region_info(uint64_t addr) {
+    for (auto* m : maps_) {
+        auto* mem_map_ptr = static_cast<MemMap*>(m);
+        if (mem_map_ptr && mem_map_ptr->get_base() <= addr && addr <= (mem_map_ptr->get_base() + mem_map_ptr->get_size() - 1)) {
+            auto ri = std::make_shared<speakeasy::RegionInfo>();
+            ri->tag = mem_map_ptr->get_tag().empty() ? "unknown" : mem_map_ptr->get_tag();
+            ri->base = mem_map_ptr->get_base();
+            ri->size = mem_map_ptr->get_size();
+            ri->prot = ""; // Placeholder for protection string if needed
+            return ri;
+        }
+    }
+    return nullptr;
+}
+
+// Python winemu.py:1456
+// def _find_nearby_regions(self, addr: int, count: int = 2) -> list[RegionInfo]:
+//     """Return up to `count` nearest memory regions to an unmapped address."""
+std::vector<speakeasy::RegionInfo> WindowsEmulator::_find_nearby_regions(uint64_t addr, int count) {
+    std::vector<std::pair<uint64_t, speakeasy::RegionInfo>> distances;
+    for (auto* m : maps_) {
+        auto* mem_map_ptr = static_cast<MemMap*>(m);
+        if (!mem_map_ptr) continue;
+        uint64_t base = mem_map_ptr->get_base();
+        uint64_t size = mem_map_ptr->get_size();
+        uint64_t end = base + size - 1;
+        uint64_t dist = 0;
+        if (addr < base) {
+            dist = base - addr;
+        } else if (addr > end) {
+            dist = addr - end;
+        } else {
+            continue;
+        }
+        speakeasy::RegionInfo ri;
+        ri.tag = mem_map_ptr->get_tag().empty() ? "unknown" : mem_map_ptr->get_tag();
+        ri.base = base;
+        ri.size = size;
+        ri.prot = "";
+        distances.push_back({dist, ri});
+    }
+    std::sort(distances.begin(), distances.end(), [](const auto& a, const auto& b) {
+        return a.first < b.first;
+    });
+    std::vector<speakeasy::RegionInfo> results;
+    for (int i = 0; i < count && i < static_cast<int>(distances.size()); ++i) {
+        results.push_back(distances[i].second);
+    }
+    return results;
+}
+
+// Python winemu.py:1475
+std::string WindowsEmulator::_build_context_summary(const std::string& desc, uint64_t pc, uint64_t address,
+                                                   const std::string& access_type,
+                                                   const std::string& pc_module,
+                                                   std::shared_ptr<speakeasy::RegionInfo> address_region,
+                                                   const std::vector<speakeasy::RegionInfo>& nearby_regions) {
+    std::string result;
+    std::string access_str = access_type.empty() ? desc : access_type;
+    if (address != pc) {
+        result += access_str + " of " + (address_region ? "" : "unmapped ") + hex_str(address);
+    } else {
+        result += access_str + " at " + hex_str(address);
+    }
+    if (!pc_module.empty()) {
+        result += " from " + pc_module;
+    } else {
+        result += " from pc=" + hex_str(pc);
+    }
+    if (address_region) {
+        result += " in " + address_region->tag + " [" + hex_str(address_region->base) + "-" + hex_str(address_region->base + address_region->size - 1) + "]";
+    } else if (!nearby_regions.empty()) {
+        const auto& nearest = nearby_regions[0];
+        result += "; nearest: " + nearest.tag + " [" + hex_str(nearest.base) + "-" + hex_str(nearest.base + nearest.size - 1) + "]";
+    }
+    return result;
 }
 
 
@@ -2913,7 +2993,15 @@ std::string WindowsEmulator::_resolve_region_info(uint64_t addr) {
 // def _hook_interrupt(self, emu, intnum):
 //     """Called when software interrupts occur (INT3, INT0, INT1, INT0x29, etc.)"""
 bool WindowsEmulator::_hook_interrupt(void* emu, int intnum) {
-    (void)emu; (void)intnum;
+    (void)emu;
+    uint64_t exception_list = _get_exception_list();
+    if (exception_list != 0 && config_.exceptions.dispatch_handlers) {
+        if (intnum == 3 || intnum == 0x2D) {
+            curr_exception_code = 0x80000003; // STATUS_BREAKPOINT
+            enable_code_hook(); // Make sure SEH core hook catches it
+            return true;
+        }
+    }
     return false;
 }
 
