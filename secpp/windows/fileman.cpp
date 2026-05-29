@@ -85,25 +85,25 @@ MapView::MapView(uint64_t base, uint64_t offset, size_t size, int protect, void*
 //int FileMap::curr_handle = 0x280;
 
 FileMap::FileMap(void* emu, const std::string& name, size_t size, int prot, void* backed_file)
-    : KernelObject(emu), name(name), backed_file(backed_file), size(size), prot(prot) {
+    : KernelObject(emu), name_(name), backed_file_(backed_file), size_(size), prot_(prot) {
     // Constructor
 }
 
 std::string FileMap::get_name() {
-    return name;
+    return name_;
 }
 
 int FileMap::get_prot() {
-    return prot;
+    return prot_;
 }
 
 void* FileMap::get_backed_file() {
-    return backed_file;
+    return backed_file_;
 }
 
 void FileMap::add_view(uint64_t base, uint64_t offset, size_t size, int protect) {
     std::shared_ptr<MapView> view = std::make_shared<MapView>(base, offset, size, protect);
-    views[base] = view;
+    views_[base] = view;
 }
 
 // File implementation
@@ -111,27 +111,27 @@ void FileMap::add_view(uint64_t base, uint64_t offset, size_t size, int protect)
 
 File::File(void* emu, const std::string& path, const std::map<std::string, std::string>& config, 
            const std::vector<uint8_t>& data)
-    : KernelObject(emu), path(path), bytes_written(0), curr_offset(0), is_dir(false), config(config) {
+    : KernelObject(emu), path_(path), bytes_written_(0), curr_offset_(0), is_dir_(false), config_(config) {
     
     if (!data.empty()) {
-        this->data = std::make_shared<std::stringstream>(std::string(data.begin(), data.end()));
+        this->data_ = std::make_shared<std::stringstream>(std::string(data.begin(), data.end()));
     }
 }
 
 std::shared_ptr<File> File::duplicate() {
     std::vector<uint8_t> file_data;
-    if (data) {
-        std::string data_str = data->str();
+    if (data_) {
+        std::string data_str = data_->str();
         file_data = std::vector<uint8_t>(data_str.begin(), data_str.end());
     }
     
-    std::shared_ptr<File> new_file = std::make_shared<File>(emu, path, config, file_data);
-    new_file->is_dir = is_dir;
+    std::shared_ptr<File> new_file = std::make_shared<File>(emu_, path_, config_, file_data);
+    new_file->is_dir_ = is_dir_;
     return new_file;
 }
 
 std::string File::get_path() {
-    return path;
+    return path_;
 }
 
 std::string File::get_hash() {
@@ -140,40 +140,40 @@ std::string File::get_hash() {
 }
 
 size_t File::get_size() {
-    if (!data && !config.empty()) {
-        data = handle_file_data();
+    if (!data_ && !config_.empty()) {
+        data_ = handle_file_data();
     }
-    if (!data) {
+    if (!data_) {
         return 0;
     }
     
-    std::streampos off = data->tellg();
-    data->seekg(0, std::ios::beg);
-    size_t size = data->str().length();
-    data->seekg(off, std::ios::beg);
+    std::streampos off = data_->tellg();
+    data_->seekg(0, std::ios::beg);
+    size_t size = data_->str().length();
+    data_->seekg(off, std::ios::beg);
     return size;
 }
 
 std::vector<uint8_t> File::get_data(int size, bool reset_pointer) {
-    if (!data && !config.empty()) {
-        data = handle_file_data();
+    if (!data_ && !config_.empty()) {
+        data_ = handle_file_data();
     }
 
-    if (!data) {
+    if (!data_) {
         return std::vector<uint8_t>();
     }
 
-    std::streampos off = data->tellg();
+    std::streampos off = data_->tellg();
     if (off == static_cast<std::streampos>(get_size())) {
         if (reset_pointer) {
             // Reset the file pointer
-            data->seekg(0);
+            data_->seekg(0);
         } else {
             return std::vector<uint8_t>();
         }
     }
 
-    std::string data_str = data->str();
+    std::string data_str = data_->str();
     if (size == -1) {
         // Read all data
         std::string remaining_data = data_str.substr(off);
@@ -186,46 +186,46 @@ std::vector<uint8_t> File::get_data(int size, bool reset_pointer) {
 }
 
 void File::seek(uint64_t offset, int whence) {
-    if (!data) return;
+    if (!data_) return;
     std::ios::seekdir dir = std::ios::beg;
     if (whence == 1) dir = std::ios::cur;
     else if (whence == 2) dir = std::ios::end;
-    data->seekg((int32_t)offset, dir);
+    data_->seekg((int32_t)offset, dir);
 }
 
 uint64_t File::tell() {
-    if (data) {
-        return data->tellg();
+    if (data_) {
+        return data_->tellg();
     }
     return 0;
 }
 
 void File::add_data(const std::vector<uint8_t>& data_to_add) {
-    if (!data) {
-        data = std::make_shared<std::stringstream>();
+    if (!data_) {
+        data_ = std::make_shared<std::stringstream>();
     }
     
-    std::streampos off = data->tellg();
-    data->seekg(0, std::ios::end);
+    std::streampos off = data_->tellg();
+    data_->seekg(0, std::ios::end);
     
     std::string data_str(data_to_add.begin(), data_to_add.end());
-    *data << data_str;
+    *data_ << data_str;
     
-    data->seekg(off, std::ios::beg);
-    bytes_written += data_to_add.size();
+    data_->seekg(off, std::ios::beg);
+    bytes_written_ += data_to_add.size();
 }
 
 void File::remove_data() {
-    data = std::make_shared<std::stringstream>("");
+    data_ = std::make_shared<std::stringstream>("");
 }
 
 bool File::is_directory() {
-    return is_dir;
+    return is_dir_;
 }
 
 std::shared_ptr<std::stringstream> File::handle_file_data() {
-    auto pit = config.find("path");
-    if (pit != config.end() && !pit->second.empty()) {
+    auto pit = config_.find("path");
+    if (pit != config_.end() && !pit->second.empty()) {
         std::string rpath = normalize_response_path(pit->second);
         std::ifstream f(rpath, std::ios::binary);
         if (f.is_open()) {
@@ -236,9 +236,9 @@ std::shared_ptr<std::stringstream> File::handle_file_data() {
     }
     
     // Support byte_fill!
-    auto bit = config.find("byte_val");
-    auto sit = config.find("byte_fill_size");
-    if (bit != config.end() && sit != config.end()) {
+    auto bit = config_.find("byte_val");
+    auto sit = config_.find("byte_fill_size");
+    if (bit != config_.end() && sit != config_.end()) {
         std::string bval = bit->second;
         int sz = std::stoi(sit->second);
         if (sz > 0) {
@@ -256,41 +256,41 @@ std::shared_ptr<std::stringstream> File::handle_file_data() {
 }
 
 // Pipe implementation
-//uint32_t Pipe::curr_handle = 0x400;
+//uint32_t Pipe::curr_handle_ = 0x400;
 
 Pipe::Pipe(void* emu, const std::string& name, const std::string& mode, int num_instances, 
            size_t out_size, size_t in_size, const std::map<std::string, std::string>& config)
-    : File(emu, name, config), name(name), mode(mode), num_instances(num_instances), 
-      out_size(out_size), in_size(in_size) {
+    : File(emu, name, config), name_(name), mode_(mode), num_instances_(num_instances), 
+      out_size_(out_size), in_size_(in_size) {
     
 }
 
 // FileManager implementation
 FileManager::FileManager(const speakeasy::SpeakeasyConfig& lconfig, void* emu)
-    : config(lconfig), emu(emu) {
-    std::string cmd = config.command_line;
+    : config_(lconfig), emu_(emu) {
+    std::string cmd = config_.command_line;
     auto space = cmd.find(' ');
-    emulated_binname = (space != std::string::npos) ? cmd.substr(0, space) : cmd;
+    emulated_binname_ = (space != std::string::npos) ? cmd.substr(0, space) : cmd;
 }
 
 uint32_t FileManager::file_create_mapping(uint32_t hfile, const std::string& name, size_t size, int prot) {
     if (hfile != 0 && hfile != (uint32_t)-1) {
         auto f = get_file_from_handle(hfile);
-        auto fm = std::make_shared<FileMap>(emu, name, size, prot, f ? f.get() : nullptr);
+        auto fm = std::make_shared<FileMap>(emu_, name, size, prot, f ? f.get() : nullptr);
         uint32_t hnd = fm->get_handle();
-        file_maps[hnd] = fm;
+        file_maps_[hnd] = fm;
         return hnd;
     } else {
-        auto fm = std::make_shared<FileMap>(emu, name, size, prot, nullptr);
+        auto fm = std::make_shared<FileMap>(emu_, name, size, prot, nullptr);
         uint32_t hnd = fm->get_handle();
-        file_maps[hnd] = fm;
+        file_maps_[hnd] = fm;
         return hnd;
     }
 }
 
 std::vector<std::string> FileManager::walk_files() {
     std::vector<std::string> paths;
-    for (const auto& f : config.filesystem.files) {
+    for (const auto& f : config_.filesystem.files) {
         if (!f.emu_path.empty()) {
             paths.push_back(f.emu_path);
         }
@@ -300,22 +300,22 @@ std::vector<std::string> FileManager::walk_files() {
 
 std::vector<std::shared_ptr<File>> FileManager::get_dropped_files() {
     std::vector<std::shared_ptr<File>> dropped;
-    for (auto& f : files) {
+    for (auto& f : files_) {
         if (f->get_size() > 0) dropped.push_back(f);
     }
     return dropped;
 }
 
 std::shared_ptr<FileMap> FileManager::get_mapping_from_handle(uint32_t handle) {
-    auto it = file_maps.find(handle);
-    if (it != file_maps.end()) {
+    auto it = file_maps_.find(handle);
+    if (it != file_maps_.end()) {
         return it->second;
     }
     return nullptr;
 }
 
 std::shared_ptr<FileMap> FileManager::get_mapping_from_addr(uint64_t addr) {
-    for (auto& pair : file_maps) {
+    for (auto& pair : file_maps_) {
         auto& fmap = pair.second;
         for (auto& view_pair : fmap->get_views()) {
             auto& base = view_pair.first;
@@ -328,29 +328,29 @@ std::shared_ptr<FileMap> FileManager::get_mapping_from_addr(uint64_t addr) {
 }
 
 std::shared_ptr<File> FileManager::get_file_from_handle(uint32_t handle) {
-    auto it = file_handles.find(handle);
-    if (it != file_handles.end()) {
+    auto it = file_handles_.find(handle);
+    if (it != file_handles_.end()) {
         return it->second;
     }
     return nullptr;
 }
 
 std::shared_ptr<Pipe> FileManager::get_pipe_from_handle(uint32_t handle) {
-    auto it = pipe_handles.find(handle);
-    if (it != pipe_handles.end()) {
+    auto it = pipe_handles_.find(handle);
+    if (it != pipe_handles_.end()) {
         return it->second;
     }
     return nullptr;
 }
 
 std::shared_ptr<File> FileManager::get_file_from_path(const std::string& path) {
-    if (!files.empty() && !emulated_binname.empty() &&
-        path.find(emulated_binname) != std::string::npos)
-        return files[0];
+    if (!files_.empty() && !emulated_binname_.empty() &&
+        path.find(emulated_binname_) != std::string::npos)
+        return files_[0];
 
     std::string norm_path = path;
     if (!is_absolute(norm_path)) {
-        std::string cwd = config.current_dir;
+        std::string cwd = config_.current_dir;
         if (!cwd.empty() && cwd.back() != '\\' && cwd.back() != '/') {
             cwd += "\\";
         }
@@ -360,7 +360,7 @@ std::shared_ptr<File> FileManager::get_file_from_path(const std::string& path) {
     std::string norm_path_lower = norm_path;
     std::transform(norm_path_lower.begin(), norm_path_lower.end(), norm_path_lower.begin(), ::tolower);
 
-    for (auto& f : files) {
+    for (auto& f : files_) {
         std::string fpath = f->get_path();
         fpath = clean_path(fpath);
         std::transform(fpath.begin(), fpath.end(), fpath.begin(), ::tolower);
@@ -370,7 +370,7 @@ std::shared_ptr<File> FileManager::get_file_from_path(const std::string& path) {
 }
 
 std::vector<std::shared_ptr<File>> FileManager::get_all_files() {
-    return files;
+    return files_;
 }
 
 std::vector<uint8_t> FileManager::handle_file_data(const std::map<std::string, std::string>& fconf) {
@@ -411,25 +411,25 @@ std::shared_ptr<File> FileManager::add_existing_file(const std::string& path,
     Register an existing file already included in the emulation space
     (with data)
     */
-    std::shared_ptr<File> f = std::make_shared<File>(emu, path, std::map<std::string, std::string>(), data);
-    files.push_back(f);
+    std::shared_ptr<File> f = std::make_shared<File>(emu_, path, std::map<std::string, std::string>(), data);
+    files_.push_back(f);
     return f;
 }
 
 std::shared_ptr<File> FileManager::create_file(const std::string& path) {
     auto existing = get_file_from_path(path);
     if (existing) {
-        files.erase(std::remove(files.begin(), files.end(), existing), files.end());
+        files_.erase(std::remove(files_.begin(), files_.end(), existing), files_.end());
     }
-    auto f = std::make_shared<File>(emu, path);
-    files.push_back(f);
+    auto f = std::make_shared<File>(emu_, path);
+    files_.push_back(f);
     return f;
 }
 
 bool FileManager::delete_file(const std::string& path) {
     auto f = get_file_from_path(path);
     if (f) {
-        files.erase(std::remove(files.begin(), files.end(), f), files.end());
+        files_.erase(std::remove(files_.begin(), files_.end(), f), files_.end());
         return true;
     }
     return false;
@@ -439,7 +439,7 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
     // Resolve relative paths against the current directory
     std::string norm_path = path;
     if (!is_absolute(norm_path)) {
-        std::string cwd = config.current_dir;
+        std::string cwd = config_.current_dir;
         if (!cwd.empty() && cwd.back() != '\\' && cwd.back() != '/') {
             cwd += "\\";
         }
@@ -449,7 +449,7 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
     norm_path = clean_path(norm_path);
 
     // See if we have a handler for this exact file in config
-    for (const auto& f : config.filesystem.files) {
+    for (const auto& f : config_.filesystem.files) {
         if (f.mode == "full_path") {
             if (wildcard_match(f.emu_path, norm_path)) {
                 // Populate/create a map entry in our cache and return a pointer
@@ -459,19 +459,19 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
                 entry["byte_fill_size"] = std::to_string(f.byte_fill.size);
                 entry["mode"] = f.mode;
                 entry["emu_path"] = f.emu_path;
-                emu_file_configs[norm_path] = entry;
-                return &emu_file_configs[norm_path];
+                emu_file_configs_[norm_path] = entry;
+                return &emu_file_configs_[norm_path];
             }
         }
     }
 
     // Check if we can load the contents of a decoy DLL
     std::string decoy_dir;
-    int arch = static_cast<BinaryEmulator*>(emu)->get_arch();
+    int arch = static_cast<BinaryEmulator*>(emu_)->get_arch();
     if (arch == speakeasy::arch::ARCH_X86) {
-        decoy_dir = config.modules.module_directory_x86;
+        decoy_dir = config_.modules.module_directory_x86;
     } else {
-        decoy_dir = config.modules.module_directory_x64;
+        decoy_dir = config_.modules.module_directory_x64;
     }
 
     // Get extension of norm_path
@@ -482,7 +482,7 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
     }
 
     // User modules
-    for (const auto& m : config.modules.user_modules) {
+    for (const auto& m : config_.modules.user_modules) {
         if (wildcard_match(m->path, norm_path)) {
             std::map<std::string, std::string> entry;
             std::string ddir = decoy_dir;
@@ -490,13 +490,13 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
                 ddir += "\\";
             }
             entry["path"] = ddir + m->name + ext;
-            emu_file_configs[norm_path] = entry;
-            return &emu_file_configs[norm_path];
+            emu_file_configs_[norm_path] = entry;
+            return &emu_file_configs_[norm_path];
         }
     }
 
     // System modules
-    for (const auto& m : config.modules.system_modules) {
+    for (const auto& m : config_.modules.system_modules) {
         if (wildcard_match(m->path, norm_path)) {
             std::map<std::string, std::string> entry;
             std::string ddir = decoy_dir;
@@ -504,8 +504,8 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
                 ddir += "\\";
             }
             entry["path"] = ddir + m->name + ext;
-            emu_file_configs[norm_path] = entry;
-            return &emu_file_configs[norm_path];
+            emu_file_configs_[norm_path] = entry;
+            return &emu_file_configs_[norm_path];
         }
     }
 
@@ -513,7 +513,7 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
     std::string ext_name = (ext.length() > 1) ? ext.substr(1) : "";
     while (!ext_name.empty() && ext_name.back() == '.') ext_name.pop_back();
 
-    for (const auto& f : config.filesystem.files) {
+    for (const auto& f : config_.filesystem.files) {
         if (f.mode == "by_ext") {
             std::string ext_lower = ext_name;
             std::transform(ext_lower.begin(), ext_lower.end(), ext_lower.begin(), ::tolower);
@@ -526,14 +526,14 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
                 entry["byte_fill_size"] = std::to_string(f.byte_fill.size);
                 entry["mode"] = f.mode;
                 entry["emu_path"] = f.emu_path;
-                emu_file_configs[norm_path] = entry;
-                return &emu_file_configs[norm_path];
+                emu_file_configs_[norm_path] = entry;
+                return &emu_file_configs_[norm_path];
             }
         }
     }
 
     // Finally, do we have a catch-all default handler?
-    for (const auto& f : config.filesystem.files) {
+    for (const auto& f : config_.filesystem.files) {
         if (f.mode == "default") {
             std::map<std::string, std::string> entry;
             entry["path"] = f.path;
@@ -541,8 +541,8 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
             entry["byte_fill_size"] = std::to_string(f.byte_fill.size);
             entry["mode"] = f.mode;
             entry["emu_path"] = f.emu_path;
-            emu_file_configs[norm_path] = entry;
-            return &emu_file_configs[norm_path];
+            emu_file_configs_[norm_path] = entry;
+            return &emu_file_configs_[norm_path];
         }
     }
 
@@ -554,9 +554,9 @@ uint32_t FileManager::pipe_open(const std::string& path, const std::string& mode
     auto fconf = get_emu_file(path);
     std::map<std::string, std::string> cfg;
     if (fconf) cfg = *fconf;
-    auto p = std::make_shared<Pipe>(emu, path, mode, num_instances, out_size, in_size, cfg);
+    auto p = std::make_shared<Pipe>(emu_, path, mode, num_instances, out_size, in_size, cfg);
     uint32_t hnd = p->get_handle();
-    pipe_handles[hnd] = p;
+    pipe_handles_[hnd] = p;
     return hnd;
 }
 
@@ -572,18 +572,18 @@ bool FileManager::does_file_exist(const std::string& path) {
 }
 
 std::shared_ptr<KernelObject> FileManager::get_object_from_handle(uint32_t handle) {
-    auto obj_it = file_maps.find(handle);
-    if (obj_it != file_maps.end()) {
+    auto obj_it = file_maps_.find(handle);
+    if (obj_it != file_maps_.end()) {
         return obj_it->second;
     }
     
-    auto pipe_it = pipe_handles.find(handle);
-    if (pipe_it != pipe_handles.end()) {
+    auto pipe_it = pipe_handles_.find(handle);
+    if (pipe_it != pipe_handles_.end()) {
         return pipe_it->second;
     }
     
-    auto file_it = file_handles.find(handle);
-    if (file_it != file_handles.end()) {
+    auto file_it = file_handles_.find(handle);
+    if (file_it != file_handles_.end()) {
         return file_it->second;
     }
     
@@ -596,21 +596,21 @@ uint32_t FileManager::file_open(const std::string& path, bool create, bool trunc
     if (create) {
         auto f = create_file(path);
         hnd = f->get_handle();
-        file_handles[hnd] = f;
+        file_handles_[hnd] = f;
     } else {
         auto f = get_file_from_path(path);
         if (f) {
             auto dup = f->duplicate();
             hnd = dup->get_handle();
-            file_handles[hnd] = dup;
+            file_handles_[hnd] = dup;
             return hnd;
         }
         auto fconf = get_emu_file(path);
         if (!fconf) return hnd;
-        auto newf = std::make_shared<File>(emu, path, *fconf);
-        files.push_back(newf);
+        auto newf = std::make_shared<File>(emu_, path, *fconf);
+        files_.push_back(newf);
         hnd = newf->get_handle();
-        file_handles[hnd] = newf;
+        file_handles_[hnd] = newf;
     }
     return hnd;
 }

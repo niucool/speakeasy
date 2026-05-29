@@ -38,11 +38,11 @@ public:
 // Represents a memory mapped file
 class FileMap : public KernelObject {
 private:
-    std::string name;
-    void* backed_file;
-    std::map<uint64_t, std::shared_ptr<MapView>> views;
-    size_t size;
-    int prot;
+    std::string name_;
+    void* backed_file_;
+    std::map<uint64_t, std::shared_ptr<MapView>> views_;
+    size_t size_;
+    int prot_;
 
 public:
     // Constructor
@@ -53,18 +53,18 @@ public:
     int get_prot();
     void* get_backed_file();
     void add_view(uint64_t base, uint64_t offset, size_t size, int protect);
-    std::map<uint64_t, std::shared_ptr<MapView>>& get_views() { return views; }
+    std::map<uint64_t, std::shared_ptr<MapView>>& get_views() { return views_; }
 };
 
 // Base class for an emulated file
 class File : public KernelObject {
 protected:
-    std::string path;
-    std::shared_ptr<std::stringstream> data;
-    size_t bytes_written;
-    uint64_t curr_offset;
-    bool is_dir;
-    std::map<std::string, std::string> config;
+    std::string path_;
+    std::shared_ptr<std::stringstream> data_;
+    size_t bytes_written_;
+    uint64_t curr_offset_;
+    bool is_dir_;
+    std::map<std::string, std::string> config_;
 
 public:
     // Constructor
@@ -88,12 +88,12 @@ public:
 // Emulated named pipe objects
 class Pipe : public File {
 private:
-    static uint32_t curr_handle;
-    std::string name;
-    std::string mode;
-    int num_instances;
-    size_t out_size;
-    size_t in_size;
+    static uint32_t curr_handle_;
+    std::string name_;
+    std::string mode_;
+    int num_instances_;
+    size_t out_size_;
+    size_t in_size_;
 
 public:
     // Constructor
@@ -105,18 +105,18 @@ public:
 // Manages file system activity during emulation
 class FileManager {
 private:
-    std::map<uint32_t, std::shared_ptr<File>> file_handles;
-    std::map<uint32_t, std::shared_ptr<Pipe>> pipe_handles;
-    std::map<uint32_t, std::shared_ptr<FileMap>> file_maps;
+    std::map<uint32_t, std::shared_ptr<File>> file_handles_;
+    std::map<uint32_t, std::shared_ptr<Pipe>> pipe_handles_;
+    std::map<uint32_t, std::shared_ptr<FileMap>> file_maps_;
 
-    const speakeasy::SpeakeasyConfig& config;
-    std::map<std::string, std::string> file_config;
-    void* emu;
-    std::string emulated_binname;
-    std::vector<std::shared_ptr<File>> files;
+    const speakeasy::SpeakeasyConfig& config_;
+    std::map<std::string, std::string> file_config_;
+    void* emu_;
+    std::string emulated_binname_;
+    std::vector<std::shared_ptr<File>> files_;
 
     // Cache to store generated configurations for emulated files
-    std::map<std::string, std::map<std::string, std::string>> emu_file_configs;
+    std::map<std::string, std::map<std::string, std::string>> emu_file_configs_;
 
 public:
     // Constructor

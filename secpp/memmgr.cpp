@@ -11,8 +11,8 @@
 MemMap::MemMap(uint64_t base, uint64_t size, const std::string& tag, uint32_t prot,
                uint32_t flags, uint64_t block_base, uint64_t block_size,
                bool shared, std::shared_ptr<Process> process)
-    : base(base), size(size), prot(prot), flags(flags), shared(shared),
-      free(false), process(process), block_base(block_base), block_size(block_size) {
+    : base_(base), size_(size), prot_(prot), flags_(flags), shared_(shared),
+      free_(false), process_(process), block_base_(block_base), block_size_(block_size) {
 
     std::string base_addr_tag = ".0x" + std::to_string(base);
     std::string new_tag = tag;
@@ -29,7 +29,7 @@ MemMap::MemMap(uint64_t base, uint64_t size, const std::string& tag, uint32_t pr
                 c = '_';
             }
         }
-        this->tag = new_tag;
+        this->tag_ = new_tag;
     }
 }
 
@@ -37,64 +37,64 @@ MemMap::MemMap(uint64_t base, uint64_t size, const std::string& tag, uint32_t pr
  * Set the tag for the memory mapping
  */
 void MemMap::update_tag(const std::string& new_tag) {
-    this->tag = new_tag;
+    this->tag_ = new_tag;
 }
 
 /**
  * Get the process object associated with a memory map
  */
 std::shared_ptr<Process> MemMap::get_process() const {
-    return this->process;
+    return this->process_;
 }
 
 /**
  * Set the process object associated with a memory map
  */
 void MemMap::set_process(std::shared_ptr<Process> process) {
-    this->process = process;
+    this->process_ = process;
 }
 
 /**
  * Get the tag for the memory mapping
  */
 std::string MemMap::get_tag() const {
-    return this->tag;
+    return this->tag_;
 }
 
 /**
  * Get the memory permissions for a map
  */
 uint32_t MemMap::get_prot() const {
-    return this->prot;
+    return this->prot_;
 }
 
 /**
  * Get the memory flags for a map
  */
 uint32_t MemMap::get_flags() const {
-    return this->flags;
+    return this->flags_;
 }
 
 /**
  * Get the byte size for the current memory mapping
  */
 uint64_t MemMap::get_size() const {
-    return this->size;
+    return this->size_;
 }
 
 /**
  * Get the base address (lowest possible address) of the current memory map
  */
 uint64_t MemMap::get_base() const {
-    return this->base;
+    return this->base_;
 }
 
 uint64_t MemMap::get_block_base() const {
-    return this->block_base;
+    return this->block_base_;
 }
 
 uint64_t MemMap::get_block_size() const {
-    return this->block_size;
+    return this->block_size_;
 }
 
 
@@ -102,28 +102,28 @@ uint64_t MemMap::get_block_size() const {
  * Set the current mapping to be in an allocated state
  */
 void MemMap::set_alloc() {
-    this->free = false;
+    this->free_ = false;
 }
 
 /**
  * Set the current mapping to be in a free state
  */
 void MemMap::set_free() {
-    this->free = true;
+    this->free_ = true;
 }
 
 /**
  * Return the alloc state of a memory block
  */
 bool MemMap::is_free() const {
-    return this->free;
+    return this->free_;
 }
 
 /**
  * Equality operator
  */
 bool MemMap::operator==(const MemMap& other) const {
-    return other.base == this->base;
+    return other.base_ == this->base_;
 }
 
 /**
@@ -137,8 +137,8 @@ bool MemMap::operator!=(const MemMap& other) const {
  * Constructor for MemoryManager
  */
 MemoryManager::MemoryManager() 
-    : block_base(0), block_size(0), block_offset(0), page_size(0x1000), 
-      keep_memory_on_free(false), emu_eng(nullptr), hooks(nullptr), current_process(nullptr) {
+    : block_base_(0), block_size_(0), block_offset_(0), page_size_(0x1000), 
+      keep_memory_on_free_(false), emu_eng_(nullptr), hooks_(nullptr), current_process_(nullptr) {
 }
 
 /**
@@ -153,7 +153,7 @@ void MemoryManager::_hook_mem_map_dispatch(std::shared_ptr<MemMap> mm) {
  * Get current process
  */
 std::shared_ptr<Process> MemoryManager::get_current_process() {
-    return this->current_process;
+    return this->current_process_;
 }
 
 /**
@@ -168,29 +168,29 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
     }
 
     if (base == 0) { // nullptr equivalent
-        if (size < page_size && size % page_size) {
-            uint64_t addr = this->block_base + this->block_offset;
+        if (size < page_size_ && size % page_size_) {
+            uint64_t addr = this->block_base_ + this->block_offset_;
             uint64_t pad_size = 0x10 - (size % 0x10);
             uint64_t adjusted_size = size + pad_size;
             
-            if (!this->block_base || ((addr + adjusted_size) > this->block_base + this->page_size)) {
-                auto block = get_valid_ranges(this->page_size);
-                this->block_base = block.first;
-                this->block_size = block.second;
+            if (!this->block_base_ || ((addr + adjusted_size) > this->block_base_ + this->page_size_)) {
+                auto block = get_valid_ranges(this->page_size_);
+                this->block_base_ = block.first;
+                this->block_size_ = block.second;
 
                 // Assuming emu_eng has a mem_map method
                 // this->emu_eng->mem_map(this->block_base, this->block_size);
-                this->block_offset = 0;
-                addr = this->block_base + this->block_offset;
+                this->block_offset_ = 0;
+                addr = this->block_base_ + this->block_offset_;
             }
 
-            this->block_offset += adjusted_size;
+            this->block_offset_ += adjusted_size;
             base = addr;
 
             auto mm = std::make_shared<MemMap>(base, adjusted_size, tag, perms, flags,
-                                               this->block_base, this->block_size, shared, process);
+                                               this->block_base_, this->block_size_, shared, process);
             
-            this->maps.push_back(mm);
+            this->maps_.push_back(mm);
             _hook_mem_map_dispatch(mm);
             return base;
         }
@@ -200,8 +200,8 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
     base = block.first;
     uint64_t blockSize = block.second;
 
-    uint64_t actual_block_size = this->block_size;
-    if (blockSize > this->block_size) {
+    uint64_t actual_block_size = this->block_size_;
+    if (blockSize > this->block_size_) {
         actual_block_size = blockSize;
     }
     
@@ -210,7 +210,7 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
     
     // Assuming emu_eng has a mem_map method
     // this->emu_eng->mem_map(base, blockSize, perms);
-    this->maps.push_back(mm);
+    this->maps_.push_back(mm);
     _hook_mem_map_dispatch(mm);
     return base;
 }
@@ -224,7 +224,7 @@ void MemoryManager::mem_free(uint64_t base) {
         mm->set_free();
 
         // If we want to freeze memory, just return
-        if (this->keep_memory_on_free) {
+        if (this->keep_memory_on_free_) {
             return;
         }
 
@@ -245,13 +245,13 @@ void MemoryManager::mem_free(uint64_t base) {
         }
         
         if (all_free) {
-            this->block_base = 0;
+            this->block_base_ = 0;
             mem_unmap(mm->get_block_base(), mm->get_block_size());
             for (const auto& m : ml) {
                 // Remove from maps vector
-                auto it = std::find(this->maps.begin(), this->maps.end(), m);
-                if (it != this->maps.end()) {
-                    this->maps.erase(it);
+                auto it = std::find(this->maps_.begin(), this->maps_.end(), m);
+                if (it != this->maps_.end()) {
+                    this->maps_.erase(it);
                 }
             }
         }
@@ -341,7 +341,7 @@ void MemoryManager::_mem_unmap_region(uint64_t base, uint64_t size) {
  * Get the "MemMap" object associated with a specific address
  */
 std::shared_ptr<MemMap> MemoryManager::get_address_map(uint64_t address) {
-    for (const auto& m : this->maps) {
+    for (const auto& m : this->maps_) {
         if (m->get_base() <= address && address <= (m->get_base() + m->get_size()) - 1) {
             return m;
         }
@@ -353,7 +353,7 @@ std::shared_ptr<MemMap> MemoryManager::get_address_map(uint64_t address) {
  * Get the "MemMap" object that was only reserved for a specific address
  */
 std::shared_ptr<MemMap> MemoryManager::get_reserve_map(uint64_t address) {
-    for (const auto& m : this->mem_reserves) {
+    for (const auto& m : this->mem_reserves_) {
         if (m->get_base() <= address && address <= (m->get_base() + m->get_size()) - 1) {
             return m;
         }
@@ -378,7 +378,7 @@ bool MemoryManager::is_address_valid(uint64_t address) {
  * Get the tag for a supplied memory address
  */
 std::string MemoryManager::get_address_tag(uint64_t address) {
-    for (const auto& m : this->maps) {
+    for (const auto& m : this->maps_) {
         if (address >= m->get_base() && address <= (m->get_base() + m->get_size()) - 1) {
             return m->get_tag();
         }
@@ -398,9 +398,9 @@ uint64_t MemoryManager::mem_reserve(uint64_t size, uint64_t base, uint32_t perms
     }
 
     auto mm = std::make_shared<MemMap>(base, size, tag, perms, flags, 
-                                       base, this->block_size, shared);
+                                       base, this->block_size_, shared);
 
-    this->mem_reserves.push_back(mm);
+    this->mem_reserves_.push_back(mm);
     return base;
 }
 
@@ -421,17 +421,17 @@ void MemoryManager::purge_memory() {
  * Get the listing of current memory maps
  */
 std::vector<std::shared_ptr<MemMap>> MemoryManager::get_mem_maps() {
-    return this->maps;
+    return this->maps_;
 }
 
 /**
  * Map a previously reserved block of memory
  */
 uint64_t MemoryManager::mem_map_reserve(uint64_t mapped_base) {
-    for (auto it = this->mem_reserves.begin(); it != this->mem_reserves.end(); ++it) {
+    for (auto it = this->mem_reserves_.begin(); it != this->mem_reserves_.end(); ++it) {
         auto r = *it;
         if (mapped_base == r->get_base()) {
-            this->mem_reserves.erase(it);
+            this->mem_reserves_.erase(it);
             return mem_map(r->get_size(), r->get_base(), r->get_prot(), r->get_tag());
         }
     }
@@ -466,23 +466,23 @@ std::vector<std::vector<uint64_t>> MemoryManager::get_runs(const std::vector<uin
  * Optionally, a base address can be specified to test if it can be used
  */
 std::pair<uint64_t, uint64_t> MemoryManager::get_valid_ranges(uint64_t size, uint64_t addr) {
-    uint64_t page_size = this->page_size;
-
+    uint64_t page_size = this->page_size_;
+ 
     // mem_map needs to be page aligned
     uint64_t total = size;
-
+ 
     // alloced address needs to also be on a page boundary
     if (addr == 0) { // nullptr equivalent
         addr = page_size;
     }
     uint64_t base = addr - (addr % page_size);
-
+ 
     if (total < page_size) {
         total = page_size;
     } else if (total % page_size) {
         total += (page_size - (total % page_size));
     }
-
+ 
     std::vector<uint64_t> curr;
     for (const auto& m : get_mem_regions()) {
         uint64_t start = std::get<0>(m);
@@ -491,18 +491,18 @@ std::pair<uint64_t, uint64_t> MemoryManager::get_valid_ranges(uint64_t size, uin
             curr.push_back(i);
         }
     }
-
+ 
     // Add reserved memory so we don't accidentally allocate it
-    for (const auto& res : this->mem_reserves) {
+    for (const auto& res : this->mem_reserves_) {
         for (uint64_t i = res->get_base(); i < (res->get_base() + res->get_size()); i += page_size) {
             curr.push_back(i);
         }
     }
-
+ 
     // Sort and remove duplicates
     std::sort(curr.begin(), curr.end());
     curr.erase(std::unique(curr.begin(), curr.end()), curr.end());
-
+ 
     int attempts = 9999;
     while (attempts > 0) {
         // This is a simplified version - full implementation would require
@@ -510,11 +510,11 @@ std::pair<uint64_t, uint64_t> MemoryManager::get_valid_ranges(uint64_t size, uin
         break; // Placeholder
         attempts--;
     }
-
+ 
     if (attempts == 0) {
         throw std::runtime_error("Failed to allocate emulator memory");
     }
-
+ 
     // Return a placeholder result
     return std::make_pair(base, total);
 }

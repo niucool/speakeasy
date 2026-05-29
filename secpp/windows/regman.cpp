@@ -7,7 +7,7 @@
 #include <cstring>
 
 // Static member initialization
-uint32_t RegKey::curr_handle = 0x180;
+uint32_t RegKey::curr_handle_ = 0x180;
 
 //  Simple base64 encoder (for REG_BINARY normalization) 
 namespace {
@@ -50,8 +50,8 @@ bool string_is_numeric(const std::string& s) {
 
 // RegValue implementation
 RegValue::RegValue(const std::string& name, int val_type, const std::string& data)
-    : name(name), val_type(val_type) {
-    this->data = normalize_value(val_type, data);
+    : name_(name), val_type_(val_type) {
+    this->data_ = normalize_value(val_type, data);
 }
 
 std::string RegValue::normalize_value(int vtype, const std::string& vdata) {
@@ -95,40 +95,40 @@ std::string RegValue::normalize_value(int vtype, const std::string& vdata) {
 }
 
 std::string RegValue::get_name() {
-    return name;
+    return name_;
 }
 
 int RegValue::get_type() {
-    return val_type;
+    return val_type_;
 }
 
 std::string RegValue::get_data() {
-    return data;
+    return data_;
 }
 
 // RegKey implementation
-RegKey::RegKey(const std::string& path) : path(path) {
+RegKey::RegKey(const std::string& path) : path_(path) {
     // Constructor
 }
 
 uint32_t RegKey::get_handle() {
-    uint32_t hkey = RegKey::curr_handle;
-    RegKey::curr_handle += 4;
+    uint32_t hkey = RegKey::curr_handle_;
+    RegKey::curr_handle_ += 4;
     return hkey;
 }
 
 std::string RegKey::get_path() {
-    return path;
+    return path_;
 }
 
 std::shared_ptr<RegValue> RegKey::create_value(const std::string& name, int val_type, const std::string& value) {
     std::shared_ptr<RegValue> val = std::make_shared<RegValue>(name, val_type, value);
-    values.push_back(val);
+    values_.push_back(val);
     return val;
 }
 
 std::vector<std::shared_ptr<RegValue>> RegKey::get_values() {
-    return values;
+    return values_;
 }
 
 std::shared_ptr<RegValue> RegKey::get_value(const std::string& val_name) {
@@ -137,7 +137,7 @@ std::shared_ptr<RegValue> RegKey::get_value(const std::string& val_name) {
         name = "default";
     }
     
-    for (auto& v : values) {
+    for (auto& v : values_) {
         std::string v_name = v->get_name();
         std::string lname = name;
         std::string lvname = v_name;
@@ -152,7 +152,7 @@ std::shared_ptr<RegValue> RegKey::get_value(const std::string& val_name) {
 }
 
 // RegistryManager implementation
-RegistryManager::RegistryManager(const speakeasy::RegistryConfig& config) : config(config) {
+RegistryManager::RegistryManager(const speakeasy::RegistryConfig& config) : config_(config) {
     // Initialize default registry keys matching Python's regdefs.get_hkey_type
     std::vector<uint32_t> hkeys = {HKEY_CLASSES_ROOT, HKEY_CURRENT_USER,
                                    HKEY_LOCAL_MACHINE, HKEY_USERS};
@@ -161,7 +161,7 @@ RegistryManager::RegistryManager(const speakeasy::RegistryConfig& config) : conf
         std::string path = get_hkey_type(hk);
         if (!path.empty()) {
             auto key = create_key(path);
-            reg_handles[hk] = key;
+            reg_handles_[hk] = key;
         }
     }
 }
@@ -189,8 +189,8 @@ std::string RegistryManager::normalize_reg_path(const std::string& path) {
 }
 
 std::shared_ptr<RegKey> RegistryManager::get_key_from_handle(uint32_t handle) {
-    auto it = reg_handles.find(handle);
-    if (it != reg_handles.end()) {
+    auto it = reg_handles_.find(handle);
+    if (it != reg_handles_.end()) {
         return it->second;
     }
     return nullptr;
@@ -233,7 +233,7 @@ std::shared_ptr<RegKey> RegistryManager::get_key_from_path(const std::string& pa
     std::transform(lower_normalized_path.begin(), lower_normalized_path.end(), 
                    lower_normalized_path.begin(), ::tolower);
     
-    for (auto& key : keys) {
+    for (auto& key : keys_) {
         std::string key_path = key->get_path();
         std::transform(key_path.begin(), key_path.end(), key_path.begin(), ::tolower);
         
@@ -249,7 +249,7 @@ bool RegistryManager::is_key_a_parent_key(const std::string& path) {
     std::string lower_path = path;
     std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::tolower);
     
-    for (auto& key : keys) {
+    for (auto& key : keys_) {
         std::string key_path = key->get_path();
         std::transform(key_path.begin(), key_path.end(), key_path.begin(), ::tolower);
         
@@ -264,7 +264,7 @@ std::vector<std::string> RegistryManager::get_subkeys(std::shared_ptr<RegKey> ke
     std::string parent_path = key->get_path();
     std::vector<std::string> subkeys;
     
-    for (auto& k : keys) {
+    for (auto& k : keys_) {
         std::string test_path = k->get_path();
         std::string lower_test_path = test_path;
         std::string lower_parent_path = parent_path;
@@ -310,11 +310,11 @@ std::shared_ptr<RegKey> RegistryManager::get_key_from_config(const std::string& 
     //    !config["registry"].is_object() || !config["registry"].contains("keys")) {
     //    return nullptr;
     //}
-    if(config.keys.empty()) {
+    if(config_.keys.empty()) {
         return nullptr;
     }
     
-    const auto& keys_arr = config.keys;
+    const auto& keys_arr = config_.keys;
     
     std::string lower_path = path;
     std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::tolower);
@@ -363,7 +363,7 @@ std::shared_ptr<RegKey> RegistryManager::create_key(const std::string& path) {
     }
 
     key = std::make_shared<RegKey>(normalized_path);
-    keys.push_back(key);
+    keys_.push_back(key);
     return key;
 }
 
@@ -376,7 +376,7 @@ uint32_t RegistryManager::open_key(const std::string& path, bool create) {
     std::shared_ptr<RegKey> key = get_key_from_path(normalized_path);
     if (key) {
         hnd = key->get_handle();
-        reg_handles[hnd] = key;
+        reg_handles_[hnd] = key;
         return hnd;
     }
 
@@ -384,7 +384,7 @@ uint32_t RegistryManager::open_key(const std::string& path, bool create) {
     key = get_key_from_config(normalized_path);
     if (key) {
         hnd = key->get_handle();
-        reg_handles[hnd] = key;
+        reg_handles_[hnd] = key;
         return hnd;
     }
 
@@ -392,8 +392,8 @@ uint32_t RegistryManager::open_key(const std::string& path, bool create) {
     if (create || is_key_a_parent_key(normalized_path)) {
         key = std::make_shared<RegKey>(normalized_path);
         hnd = key->get_handle();
-        reg_handles[hnd] = key;
-        keys.push_back(key);
+        reg_handles_[hnd] = key;
+        keys_.push_back(key);
     }
     return hnd;
 }

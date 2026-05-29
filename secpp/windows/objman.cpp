@@ -44,22 +44,22 @@ static inline WindowsEmulator* WE(void* raw) {
 // Console
 // 
 
-int Console::curr_handle = 0x340;
+int Console::curr_handle_ = 0x340;
 
-Console::Console() : handle(get_handle()), window(0) {}
+Console::Console() : handle_(get_handle()), window_(0) {}
 
 int Console::get_handle() {
-    int tmp = Console::curr_handle;
-    Console::curr_handle += 4;
+    int tmp = Console::curr_handle_;
+    Console::curr_handle_ += 4;
     return tmp;
 }
 
 void Console::set_window(int window) {
-    this->window = window;
+    this->window_ = window;
 }
 
 int Console::get_window() {
-    return this->window;
+    return this->window_;
 }
 
 // 
@@ -77,46 +77,46 @@ SEH::Frame::Frame(void* entry, void* scope_table, std::vector<void*> records)
 }
 
 SEH::SEH()
-    : context(nullptr), context_address(0), record(nullptr),
-      last_func(nullptr), last_exception_code(0),
-      exception_ptrs(0), handler_ret_val(nullptr) {}
+    : context_(nullptr), context_address_(0), record_(nullptr),
+      last_func_(nullptr), last_exception_code_(0),
+      exception_ptrs_(0), handler_ret_val_(nullptr) {}
 
 void SEH::set_context(void* context, int address) {
-    this->context = context;
-    this->context_address = address;
+    this->context_ = context;
+    this->context_address_ = address;
 }
 
 void* SEH::get_context() {
-    return this->context;
+    return this->context_;
 }
 
 void SEH::set_last_func(void* func) {
-    this->last_func = func;
+    this->last_func_ = func;
 }
 
 void SEH::set_record(void* record, int address) {
     (void)address;
-    this->record = record;
+    this->record_ = record;
 }
 
 void SEH::set_current_frame(Frame frame) {
     // Replace the frames list with just this frame (or push it).
     // Python code does not have an explicit set_current_frame, but
     // the method exists in the C++ API  push it onto the frame stack.
-    this->frames.push_back(frame);
+    this->frames_.push_back(frame);
 }
 
 std::vector<SEH::Frame> SEH::get_frames() {
-    return this->frames;
+    return this->frames_;
 }
 
 void SEH::clear_frames() {
-    this->frames.clear();
+    this->frames_.clear();
 }
 
 void SEH::add_frame(void* entry, void* scope_table, std::vector<void*> records) {
     Frame frame(entry, scope_table, records);
-    this->frames.push_back(frame);
+    this->frames_.push_back(frame);
 }
 
 // 
@@ -127,10 +127,10 @@ int KernelObject::curr_handle = 0x220;
 int KernelObject::curr_id = 0x400;
 
 KernelObject::KernelObject(void* emu)
-    : emu(emu), address(0), object(nullptr),
-      ref_cnt(0), arch(0), id(0) {
+    : emu_(emu), address_(0), object_(nullptr),
+      ref_cnt(0), arch_(0), id(0) {
     if (emu) {
-        arch = BE(emu)->get_arch();
+        arch_ = BE(emu)->get_arch();
     }
     this->id = KernelObject::curr_id;
     KernelObject::curr_id += 4;
@@ -141,8 +141,8 @@ int KernelObject::sizeof_obj(void* obj) {
         auto* es = static_cast<EmuStruct*>(obj);
         return static_cast<int>(es->sizeof_obj());
     }
-    if (object) {
-        auto* es = static_cast<EmuStruct*>(object);
+    if (object_) {
+        auto* es = static_cast<EmuStruct*>(object_);
         return static_cast<int>(es->sizeof_obj());
     }
     return 0;
@@ -158,8 +158,8 @@ void* KernelObject::get_bytes(void* obj) {
         auto* buf = new std::vector<uint8_t>(std::move(bytes));
         return buf;
     }
-    if (object) {
-        auto* es = static_cast<EmuStruct*>(object);
+    if (object_) {
+        auto* es = static_cast<EmuStruct*>(object_);
         auto bytes = es->get_bytes();
         auto* buf = new std::vector<uint8_t>(std::move(bytes));
         return buf;
@@ -169,11 +169,11 @@ void* KernelObject::get_bytes(void* obj) {
 
 KernelObject KernelObject::read_back() {
     // Python: data = emu.mem_read(address, sizeof()); object.cast(data)
-    if (emu && address && object) {
+    if (emu_ && address_ && object_) {
         size_t sz = sizeof_obj();
         if (sz > 0) {
-            auto data = BE(emu)->mem_read(static_cast<uint64_t>(address), sz);
-            auto* es = static_cast<EmuStruct*>(object);
+            auto data = BE(emu_)->mem_read(static_cast<uint64_t>(address_), sz);
+            auto* es = static_cast<EmuStruct*>(object_);
             es->from_bytes(data);
         }
     }
@@ -182,11 +182,11 @@ KernelObject KernelObject::read_back() {
 
 void KernelObject::write_back() {
     // Python: data = get_bytes(); if data and address: emu.mem_write(address, data)
-    if (!object || !address) return;
-    auto* es = static_cast<EmuStruct*>(object);
+    if (!object_ || !address_) return;
+    auto* es = static_cast<EmuStruct*>(object_);
     auto data = es->get_bytes();
     if (!data.empty()) {
-        BE(emu)->mem_write(static_cast<uint64_t>(address), data);
+        BE(emu_)->mem_write(static_cast<uint64_t>(address_), data);
     }
 }
 
@@ -201,8 +201,8 @@ void KernelObject::set_id(int oid) {
 std::string KernelObject::get_class_name() {
     // Python: return self.object.__class__.__name__
     // In C++ we lack reflection; use the object's mem_tag as a best-effort.
-    if (object) {
-        auto* es = static_cast<EmuStruct*>(object);
+    if (object_) {
+        auto* es = static_cast<EmuStruct*>(object_);
         return es->get_mem_tag();
     }
     return "KernelObject";
@@ -227,16 +227,16 @@ std::vector<void*> Driver::ldr_entries;
 
 Driver::Driver(void* emu)
     : KernelObject(emu),
-      pe(nullptr), on_unload(nullptr), unload_called(false),
+      pe_(nullptr), on_unload_(nullptr), unload_called_(false),
       reg_path_ptr(0) {
     // Python: self.object = self.nt_types.DRIVER_OBJECT(emu.get_ptr_size())
     // For now we create a generic EmuStruct placeholder.
     // When ntoskrnl::DRIVER_OBJECT is ported, replace with:
     //   object = new ntoskrnl::DRIVER_OBJECT(BE(emu)->get_ptr_size());
-    object = new EmuStruct();
+    object_ = new EmuStruct();
 
     // Python: mj_funcs = [None] * (ddk.IRP_MJ_MAXIMUM_FUNCTION + 1)
-    mj_funcs.resize(IRP_MJ_MAXIMUM_FUNCTION + 1, nullptr);
+    mj_funcs_.resize(IRP_MJ_MAXIMUM_FUNCTION + 1, nullptr);
 }
 
 void Driver::create_reg_path(const std::string& name) {
@@ -254,10 +254,10 @@ void Driver::create_reg_path(const std::string& name) {
 
     // Python: us = UNICODE_STRING(ptr_size); size = sizeof(us) + len(buf)
     // For now, allocate a simple block: UNICODE_STRING overhead + buffer
-    size_t us_overhead = (BE(emu)->get_ptr_size() == 8) ? 16 : 12;  // rough UNICODE_STRING size
+    size_t us_overhead = (BE(emu_)->get_ptr_size() == 8) ? 16 : 12;  // rough UNICODE_STRING size
     size_t total_size = us_overhead + buf_size;
 
-    uint64_t addr = BE(emu)->mem_map(total_size, 0, 4 /* RW */,
+    uint64_t addr = BE(emu_)->mem_map(total_size, 0, 4 /* RW */,
                                       "emu.object." + name + ".reg_path");
 
     // Write the buffer right after the header
@@ -267,7 +267,7 @@ void Driver::create_reg_path(const std::string& name) {
         raw_buf.push_back(static_cast<uint8_t>(c & 0xFF));
         raw_buf.push_back(static_cast<uint8_t>((c >> 8) & 0xFF));
     }
-    BE(emu)->mem_write(buf_addr, raw_buf);
+    BE(emu_)->mem_write(buf_addr, raw_buf);
 
     this->reg_path_ptr = static_cast<int>(addr);
 }
@@ -282,7 +282,7 @@ std::string Driver::get_basename() {
 void* Driver::init_driver_section() {
     // Python: create LdrDataTableEntry, link it into ldr_entries list.
     // Simulate LDR_DATA_TABLE_ENTRY by allocating memory and writing basic fields.
-    int ptr_sz = (arch == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
+    int ptr_sz = (arch_ == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
 
     // LDR_DATA_TABLE_ENTRY field offsets (EmuStruct sequential layout, no padding):
     //   InLoadOrderLinks (LIST_ENTRY = 2*ptr_sz) ........ offset 0
@@ -300,16 +300,16 @@ void* Driver::init_driver_section() {
     ldte_struct_size += 4 + 2;                   // Flags + LoadCount
 
     // Build tag
-    std::string mem_tag = "emu.object." + name + ".DriverSection";
-    uint64_t addr = BE(emu)->mem_map(ldte_struct_size, 0, 4, mem_tag);
+    std::string mem_tag = "emu.object." + name_ + ".DriverSection";
+    uint64_t addr = BE(emu_)->mem_map(ldte_struct_size, 0, 4, mem_tag);
 
     // Get PE info if available
     uint64_t dll_base = 0;
     uint64_t entry_point = 0;
     uint32_t image_size = 0;
 
-    if (pe) {
-        auto img = pe;
+    if (pe_) {
+        auto img = pe_;
         dll_base = img->base;
         entry_point = img->base + img->ep;
         image_size = static_cast<uint32_t>(img->image_size);
@@ -334,7 +334,7 @@ void* Driver::init_driver_section() {
         buf[si_off + i] = static_cast<uint8_t>((image_size >> (i * 8)) & 0xFF);
 
     // Write the buffer to emulated memory
-    BE(emu)->mem_write(addr, buf);
+    BE(emu_)->mem_write(addr, buf);
 
     // Track in static ldr_entries list
     ldr_entries.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(addr)));
@@ -344,7 +344,7 @@ void* Driver::init_driver_section() {
 
 void Driver::init_driver_object(const std::string& name, std::shared_ptr<speakeasy::RuntimeModule> pe, bool is_decoy) {
     // Python: initialize DRIVER_OBJECT fields
-    this->pe = pe;
+    this->pe_ = pe;
 
     // Python: drvobj.Type = 4; drvobj.Size = sizeof(); drvobj.DeviceObject = 0; drvobj.Flags = 2
     // These fields live on the EmuStruct subclass.  For now we skip setting them
@@ -356,7 +356,7 @@ void Driver::init_driver_object(const std::string& name, std::shared_ptr<speakea
     // Python: write bytes, call create_reg_path, init_driver_section
 
     if (!name.empty()) {
-        this->name = name;
+        this->name_ = name;
         this->basename = name;
         // Extract basename after last backslash
         auto pos = name.rfind('\\');
@@ -379,16 +379,16 @@ KernelObject Driver::read_back() {
     //   DriverName(2+2+Ptr) + HardwareDatabase(Ptr) + FastIoDispatch(Ptr) +
     //   DriverInit(Ptr) + DriverStartIo(Ptr) + DriverUnload(Ptr)
     // MajorFunction offset = 16 + 10*ptr_sz
-    int ptr_sz = (arch == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
+    int ptr_sz = (arch_ == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
     uint64_t mf_offset = 16 + 10 * static_cast<uint64_t>(ptr_sz);
 
-    if (emu && address) {
+    if (emu_ && address_) {
         size_t mf_count = static_cast<size_t>(IRP_MJ_MAXIMUM_FUNCTION) + 1;
         size_t mf_size = mf_count * static_cast<size_t>(ptr_sz);
-        auto data = BE(emu)->mem_read(static_cast<uint64_t>(address) + mf_offset, mf_size);
+        auto data = BE(emu_)->mem_read(static_cast<uint64_t>(address_) + mf_offset, mf_size);
 
-        mj_funcs.resize(mf_count, nullptr);
-        for (size_t i = 0; i < mf_count && i < mj_funcs.size(); ++i) {
+        mj_funcs_.resize(mf_count, nullptr);
+        for (size_t i = 0; i < mf_count && i < mj_funcs_.size(); ++i) {
             uint64_t func_addr = 0;
             for (int j = 0; j < ptr_sz; ++j) {
                 size_t idx = i * static_cast<size_t>(ptr_sz) + static_cast<size_t>(j);
@@ -396,19 +396,19 @@ KernelObject Driver::read_back() {
                     func_addr |= static_cast<uint64_t>(data[idx]) << (j * 8);
                 }
             }
-            mj_funcs[i] = reinterpret_cast<void*>(static_cast<uintptr_t>(func_addr));
+            mj_funcs_[i] = reinterpret_cast<void*>(static_cast<uintptr_t>(func_addr));
         }
 
         // Read DriverUnload (right before MajorFunction)
         uint64_t unload_offset = 16 + 9 * static_cast<uint64_t>(ptr_sz);
-        auto unload_data = BE(emu)->mem_read(
-            static_cast<uint64_t>(address) + unload_offset,
+        auto unload_data = BE(emu_)->mem_read(
+            static_cast<uint64_t>(address_) + unload_offset,
             static_cast<size_t>(ptr_sz));
         uint64_t unload_addr = 0;
         for (int j = 0; j < ptr_sz && static_cast<size_t>(j) < unload_data.size(); ++j) {
             unload_addr |= static_cast<uint64_t>(unload_data[j]) << (j * 8);
         }
-        on_unload = reinterpret_cast<void*>(static_cast<uintptr_t>(unload_addr));
+        on_unload_ = reinterpret_cast<void*>(static_cast<uintptr_t>(unload_addr));
     }
 
     return *this;
@@ -419,22 +419,22 @@ KernelObject Driver::read_back() {
 // 
 
 Device::Device(void* emu)
-    : KernelObject(emu), file_object(nullptr), driver(nullptr) {
+    : KernelObject(emu), file_object_(nullptr), driver_(nullptr) {
     // Python: devobj = DEVICE_OBJECT(ptr_size)
     // devobj.Type = 0x3; devobj.Size = sizeof(devobj); devobj.ReferenceCount = 1
     // self.object = devobj
-    object = new EmuStruct();
+    object_ = new EmuStruct();
 }
 
 void* Device::get_parent_driver() {
-    return this->driver;
+    return this->driver_;
 }
 
 void Device::init_device(const std::string& name, uint32_t dev_type,
                           uint32_t chars, void* drv) {
     (void)dev_type; (void)chars;
-    this->name = name;
-    this->driver = drv;
+    this->name_ = name;
+    this->driver_ = drv;
 }
 
 // 
@@ -445,7 +445,7 @@ FileObject::FileObject(void* emu)
     : KernelObject(emu) {
     // Python: fileobj = FILE_OBJECT(ptr_size); fileobj.Type = 0x5; fileobj.Size = sizeof()
     // self.object = fileobj; self.address = emu.mem_map(sizeof(), tag=...)
-    object = new EmuStruct();
+    object_ = new EmuStruct();
 }
 
 // 
@@ -456,7 +456,7 @@ IoStackLocation::IoStackLocation(void* emu)
     : KernelObject(emu) {
     // Python: object = IO_STACK_LOCATION(ptr_size)
     // address = emu.mem_map(sizeof() * 2, tag=...)  # reserve two slots
-    object = new EmuStruct();
+    object_ = new EmuStruct();
 }
 
 // 
@@ -466,12 +466,12 @@ IoStackLocation::IoStackLocation(void* emu)
 Irp::Irp(void* emu)
     : KernelObject(emu) {
     // Python: object = IRP(ptr_size); address = emu.mem_map(sizeof(), tag=...)
-    object = new EmuStruct();
+    object_ = new EmuStruct();
 
     // Create and add an IoStackLocation
     IoStackLocation ios(emu);
     ios.write_back();
-    stack_locations.push_back(ios);
+    stack_locations_.push_back(ios);
 
     // Python: object.Tail.Overlay.CurrentStackLocation = ios.address + ios.sizeof()
     // object.Type = 0x6; object.Size = sizeof()
@@ -481,10 +481,10 @@ Irp::Irp(void* emu)
 }
 
 IoStackLocation Irp::get_curr_stack_loc() {
-    if (stack_locations.empty()) {
+    if (stack_locations_.empty()) {
         return IoStackLocation(nullptr);
     }
-    return stack_locations[0];
+    return stack_locations_[0];
 }
 
 // 
@@ -493,45 +493,45 @@ IoStackLocation Irp::get_curr_stack_loc() {
 
 Thread::Thread(void* emu, int stack_base, int stack_commit)
     : KernelObject(emu),
-      ctx(nullptr), modified_pc(false), teb(nullptr),
-      suspend_count(0), token(nullptr), last_error(0),
-      stack_base(stack_base), stack_commit(stack_commit) {
+      ctx_(nullptr), modified_pc_(false), teb_(nullptr),
+      suspend_count_(0), token_(nullptr), last_error_(0),
+      stack_base_(stack_base), stack_commit_(stack_commit) {
     // Python: object = ETHREAD(ptr_size)
     // address = emu.mem_map(sizeof(), tag=...)
     // object.Data = b"\xff" * sizeof()
     // ctx = emu.get_thread_context()
     // write_back()
-    object = new EmuStruct();
+    object_ = new EmuStruct();
 
     // Allocate thread context
-    if (emu) {
-        ctx = static_cast<WindowsEmulator*>(emu)->get_thread_context();
+    if (emu_) {
+        ctx_ = static_cast<WindowsEmulator*>(emu_)->get_thread_context();
     }
 
     write_back();
 }
 
 void Thread::queue_message(void* msg) {
-    this->message_queue.push_back(msg);
+    this->message_queue_.push_back(msg);
 }
 
 SEH Thread::get_seh() {
-    return this->seh;
+    return this->seh_;
 }
 
 void* Thread::get_context() {
-    if (this->ctx) {
-        return this->ctx;
+    if (this->ctx_) {
+        return this->ctx_;
     }
-    if (emu) {
-        return static_cast<WindowsEmulator*>(emu)->get_thread_context();
+    if (emu_) {
+        return static_cast<WindowsEmulator*>(emu_)->get_thread_context();
     }
     return nullptr;
 }
 
 void Thread::set_context(void* ctx) {
-    if (this->ctx && emu) {
-        int arch = BE(emu)->get_arch();
+    if (this->ctx_ && emu_) {
+        int arch = BE(emu_)->get_arch();
         if (arch == speakeasy::arch::ARCH_AMD64) {
             // Compare Rip to detect PC modification
             // This requires a typed context structure; for now skip the comparison.
@@ -540,65 +540,65 @@ void Thread::set_context(void* ctx) {
             // Compare Eip
         }
     }
-    this->ctx = ctx;
+    this->ctx_ = ctx;
 }
 
 void Thread::init_teb(int teb_addr, int peb_addr) {
-    if (!this->teb) {
-        this->teb = std::make_shared<TEB>(emu, teb_addr);
+    if (!this->teb_) {
+        this->teb_ = std::make_shared<TEB>(emu_, teb_addr);
     }
 
-    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb->get_object());
-    teb_struct->NtTib.StackBase = this->stack_base;
+    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb_->get_object());
+    teb_struct->NtTib.StackBase = this->stack_base_;
     teb_struct->NtTib.Self = teb_addr;
-    teb_struct->NtTib.StackLimit = this->stack_commit;
+    teb_struct->NtTib.StackLimit = this->stack_commit_;
     teb_struct->ProcessEnvironmentBlock = peb_addr;
-    this->teb->write_back();
+    this->teb_->write_back();
 }
 
 void Thread::set_last_error(int code) {
-    this->last_error = code;
+    this->last_error_ = code;
 }
 
 int Thread::get_last_error() {
-    return this->last_error;
+    return this->last_error_;
 }
 
 std::vector<void*> Thread::get_tls() {
-    return this->tls;
+    return this->tls_;
 }
 
 void Thread::set_tls(const std::vector<void*>& tls) {
-    this->tls = tls;
+    this->tls_ = tls;
 }
 
 std::vector<void*> Thread::get_fls() {
-    return this->fls;
+    return this->fls_;
 }
 
 void Thread::set_fls(const std::vector<void*>& fls) {
-    this->fls = fls;
+    this->fls_ = fls;
 }
 
 void* Thread::get_token() {
-    return this->token;
+    return this->token_;
 }
 
 void Thread::init_tls(int tls_dir, const std::string& modname) {
-    if (!emu || !this->teb) return;
+    if (!emu_ || !this->teb_) return;
 
-    int ptrsz = BE(emu)->get_ptr_size();
-    uint64_t tls_dirp = BE(emu)->mem_map(ptrsz, 0, 4, "emu.tls." + modname);
+    int ptrsz = BE(emu_)->get_ptr_size();
+    uint64_t tls_dirp = BE(emu_)->mem_map(ptrsz, 0, 4, "emu.tls." + modname);
 
     std::vector<uint8_t> tls_data(ptrsz, 0);
     for (int i = 0; i < ptrsz; ++i) {
         tls_data[i] = static_cast<uint8_t>((static_cast<unsigned int>(tls_dir) >> (i * 8)) & 0xFF);
     }
-    BE(emu)->mem_write(tls_dirp, tls_data);
+    BE(emu_)->mem_write(tls_dirp, tls_data);
 
-    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb->get_object());
+    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb_->get_object());
     teb_struct->ThreadLocalStoragePointer = tls_dirp;
-    this->teb->write_back();
+    this->teb_->write_back();
 }
 
 // 
@@ -607,7 +607,7 @@ void Thread::init_tls(int tls_dir, const std::string& modname) {
 
 Token::Token(void* emu)
     : KernelObject(emu) {
-    object = new EmuStruct();
+    object_ = new EmuStruct();
 }
 
 // 
@@ -616,13 +616,13 @@ Token::Token(void* emu)
 PEB::PEB(void* emu, uint64_t addr)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object = new speakeasy::defs::nt::PEB(ptr_sz);
+    object_ = new speakeasy::defs::nt::PEB(ptr_sz);
     if (!addr) {
-        address = static_cast<int>(
+        address_ = static_cast<int>(
             BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
         );
     } else {
-        address = static_cast<int>(addr);
+        address_ = static_cast<int>(addr);
     }
 }
 
@@ -632,11 +632,11 @@ PEB::PEB(void* emu, uint64_t addr)
 TEB::TEB(void* emu, uint64_t addr)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object = new speakeasy::defs::nt::TEB(ptr_sz);
+    object_ = new speakeasy::defs::nt::TEB(ptr_sz);
     if (addr) {
-        address = static_cast<int>(addr);
+        address_ = static_cast<int>(addr);
     } else {
-        address = static_cast<int>(
+        address_ = static_cast<int>(
             BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
         );
     }
@@ -648,8 +648,8 @@ TEB::TEB(void* emu, uint64_t addr)
 PebLdrData::PebLdrData(void* emu)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object = new speakeasy::defs::nt::PEB_LDR_DATA(ptr_sz);
-    address = 0;
+    object_ = new speakeasy::defs::nt::PEB_LDR_DATA(ptr_sz);
+    address_ = 0;
 }
 
 // 
@@ -658,13 +658,13 @@ PebLdrData::PebLdrData(void* emu)
 LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, const std::string& tag)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object = new speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY(ptr_sz);
+    object_ = new speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY(ptr_sz);
 
     int size = static_cast<int>(sizeof_obj());
     size += static_cast<int>((dllname.length() + 1) * 2);
 
     std::string tag_str = tag.empty() ? get_mem_tag() : tag;
-    address = static_cast<int>(
+    address_ = static_cast<int>(
         BE(emu)->mem_map(size, 0, 4, tag_str)
     );
 }
@@ -675,7 +675,7 @@ LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, cons
 RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* proc)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object = new speakeasy::defs::nt::RTL_USER_PROCESS_PARAMETERS(ptr_sz);
+    object_ = new speakeasy::defs::nt::RTL_USER_PROCESS_PARAMETERS(ptr_sz);
 
     std::string proc_path = proc->path + '\0';
     std::string proc_cmdline = proc->cmdline + '\0';
@@ -708,11 +708,11 @@ RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* pro
     int string_data_size = static_cast<int>(path_utf16.size() + cmd_utf16.size() + dir_utf16.size() + desk_utf16.size());
     int size = static_cast<int>(sizeof_obj()) + string_data_size;
 
-    address = static_cast<int>(
+    address_ = static_cast<int>(
         BE(emu)->mem_map(size, 0, 4, proc->get_mem_tag() + ".ProcessParameters")
     );
 
-    uint64_t offset = static_cast<uint64_t>(address) + sizeof_obj();
+    uint64_t offset = static_cast<uint64_t>(address_) + sizeof_obj();
     BE(emu)->mem_write(offset, path_utf16);
     uint64_t path_addr = offset;
     offset += path_utf16.size();
@@ -728,7 +728,7 @@ RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* pro
     BE(emu)->mem_write(offset, desk_utf16);
     uint64_t desktop_addr = offset;
 
-    auto* param = static_cast<speakeasy::defs::nt::RTL_USER_PROCESS_PARAMETERS*>(object);
+    auto* param = static_cast<speakeasy::defs::nt::RTL_USER_PROCESS_PARAMETERS*>(object_);
     param->MaximumLength = size;
     param->Length = size;
     param->Flags = 1;
@@ -762,21 +762,21 @@ RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* pro
 IDT::IDT(void* emu)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object = new speakeasy::defs::nt::IDT(ptr_sz);
-    address = static_cast<int>(
+    object_ = new speakeasy::defs::nt::IDT(ptr_sz);
+    address_ = static_cast<int>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
 }
 
 void IDT::init_descriptors() {
-    int ptr_sz = BE(emu)->get_ptr_size();
+    int ptr_sz = BE(emu_)->get_ptr_size();
     speakeasy::defs::nt::DESCRIPTOR_TABLE tbl(ptr_sz);
 
-    auto km = WE(emu)->get_mod_by_name("ntoskrnl");
+    auto km = WE(emu_)->get_mod_by_name("ntoskrnl");
     uint64_t kbase = km ? km->base : 0x80000000;
 
-    uint64_t descs = BE(emu)->mem_map(tbl.sizeof_obj(), 0, 4, get_mem_tag() + ".idt_entries");
-    auto* idt_obj = static_cast<speakeasy::defs::nt::IDT*>(object);
+    uint64_t descs = BE(emu_)->mem_map(tbl.sizeof_obj(), 0, 4, get_mem_tag() + ".idt_entries");
+    auto* idt_obj = static_cast<speakeasy::defs::nt::IDT*>(object_);
     idt_obj->Limit = 0xFFF;
     idt_obj->Descriptors = descs;
 
@@ -793,7 +793,7 @@ void IDT::init_descriptors() {
         }
     }
 
-    BE(emu)->mem_write(descs, tbl.get_bytes());
+    BE(emu_)->mem_write(descs, tbl.get_bytes());
     write_back();
 }
 
@@ -802,8 +802,8 @@ void IDT::init_descriptors() {
 // 
 Event::Event(void* emu)
     : KernelObject(emu) {
-    object = new speakeasy::defs::nt::KEVENT();
-    address = static_cast<int>(
+    object_ = new speakeasy::defs::nt::KEVENT();
+    address_ = static_cast<int>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
 }
@@ -813,8 +813,8 @@ Event::Event(void* emu)
 // 
 Mutant::Mutant(void* emu)
     : KernelObject(emu) {
-    object = new speakeasy::defs::nt::MUTANT();
-    address = static_cast<int>(
+    object_ = new speakeasy::defs::nt::MUTANT();
+    address_ = static_cast<int>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
 }
@@ -837,40 +837,40 @@ Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
       peb(nullptr), peb_ldr_data(nullptr), is_peb_active(false),
       path(path), base(basel) {
 
-    object = new EmuStruct();
+    object_ = new EmuStruct();
 
-    if (emu) {
+    if (emu_) {
         int sz = sizeof_obj();
         if (sz > 0) {
-            address = static_cast<int>(
-                BE(emu)->mem_map(sz, 0xE0000000, 1, get_mem_tag())
+            address_ = static_cast<int>(
+                BE(emu_)->mem_map(sz, 0xE0000000, 1, get_mem_tag())
             );
         }
 
-        int arch = BE(emu)->get_arch();
+        int arch = BE(emu_)->get_arch();
         uint64_t list_entry_addr = 0;
         if (arch == speakeasy::arch::ARCH_X86) {
-            list_entry_addr = static_cast<uint64_t>(address) + 0x88;
+            list_entry_addr = static_cast<uint64_t>(address_) + 0x88;
         } else if (arch == speakeasy::arch::ARCH_AMD64) {
-            list_entry_addr = static_cast<uint64_t>(address) + 0x188;
+            list_entry_addr = static_cast<uint64_t>(address_) + 0x188;
         }
         if (list_entry_addr) {
             std::vector<uint8_t> le_data;
-            int ptr_sz = BE(emu)->get_ptr_size();
+            int ptr_sz = BE(emu_)->get_ptr_size();
             for (int i = 0; i < ptr_sz; ++i) {
                 le_data.push_back(static_cast<uint8_t>((list_entry_addr >> (i * 8)) & 0xFF));
             }
-            BE(emu)->mem_write(list_entry_addr, le_data);
-            BE(emu)->mem_write(list_entry_addr + ptr_sz, le_data);
+            BE(emu_)->mem_write(list_entry_addr, le_data);
+            BE(emu_)->mem_write(list_entry_addr + ptr_sz, le_data);
         }
 
         stdin_handle = 0xF000 + 1;
         stdout_handle = 0xF000 + 2;
         stderr_handle = 0xF000 + 3;
 
-        peb = std::make_shared<PEB>(emu);
-        peb_ldr_data = std::make_shared<PebLdrData>(emu);
-        set_process_parameters(emu);
+        peb = std::make_shared<PEB>(emu_);
+        peb_ldr_data = std::make_shared<PebLdrData>(emu_);
+        set_process_parameters(emu_);
     }
 }
 
@@ -963,20 +963,20 @@ void Process::set_user_modules(std::vector<std::shared_ptr<speakeasy::RuntimeMod
 }
 
 void Process::new_thread() {
-    auto t = std::make_shared<Thread>(emu);
+    auto t = std::make_shared<Thread>(emu_);
     threads.push_back(t);
 }
 
 void Process::add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module) {
-    if (!emu || !peb_ldr_data || !peb) return;
+    if (!emu_ || !peb_ldr_data || !peb) return;
 
-    auto* be = BE(emu);
+    auto* be = BE(emu_);
     int ptr_sz = be->get_ptr_size();
 
     speakeasy::defs::nt::LIST_ENTRY list_type(ptr_sz);
     size_t list_sz = list_type.sizeof_obj();
 
-    auto ldte = std::make_shared<LdrDataTableEntry>(emu, module->emu_path);
+    auto ldte = std::make_shared<LdrDataTableEntry>(emu_, module->emu_path);
     auto* ldte_struct = static_cast<speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY*>(ldte->get_object());
 
     std::shared_ptr<LdrDataTableEntry> prev;
@@ -1092,16 +1092,16 @@ void Process::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& m
 // ObjectManager
 // 
 
-ObjectManager::ObjectManager(void* emu) : emu(emu) {}
+ObjectManager::ObjectManager(void* emu) : emu_(emu) {}
 
 void ObjectManager::add_symlink(const std::string& link, const std::string& dev) {
-    this->symlinks.push_back(std::make_pair(link, dev));
+    this->symlinks_.push_back(std::make_pair(link, dev));
 }
 
 template<typename T>
 std::shared_ptr<T> ObjectManager::new_object() {
     // Python: T obj = T(emu); obj.set_id(new_id()); return add_object(obj)
-    std::shared_ptr<T> obj = std::make_shared<T>(emu);
+    std::shared_ptr<T> obj = std::make_shared<T>(emu_);
     obj->set_id(new_id());
     add_object(obj);
     return obj;
@@ -1113,15 +1113,15 @@ template std::shared_ptr<Mutant> ObjectManager::new_object<Mutant>();
 
 std::shared_ptr<KernelObject> ObjectManager::add_object(std::shared_ptr<KernelObject> obj) {
     // Python: self.objects[obj.id] = obj; return obj
-    objects[obj->get_id()] = obj;
+    objects_[obj->get_id()] = obj;
     return obj;
 }
 
 void ObjectManager::remove_object(std::shared_ptr<KernelObject> obj) {
     // Python: del self.objects[obj.id]
-    auto it = objects.find(obj->get_id());
-    if (it != objects.end()) {
-        objects.erase(it);
+    auto it = objects_.find(obj->get_id());
+    if (it != objects_.end()) {
+        objects_.erase(it);
     }
 }
 
@@ -1150,7 +1150,7 @@ uint64_t ObjectManager::new_id() {
 
 std::shared_ptr<KernelObject> ObjectManager::get_object_from_addr(uint64_t addr) {
     // Python: iterate objects, return one whose address matches
-    for (auto& [id, obj] : objects) {
+    for (auto& [id, obj] : objects_) {
         (void)id;
         if (obj->get_id() == addr) {  // fallback: match by id
             return obj;
@@ -1160,8 +1160,8 @@ std::shared_ptr<KernelObject> ObjectManager::get_object_from_addr(uint64_t addr)
 }
 
 std::shared_ptr<KernelObject> ObjectManager::get_object_from_id(uint64_t id) {
-    auto it = objects.find(id);
-    if (it != objects.end()) {
+    auto it = objects_.find(id);
+    if (it != objects_.end()) {
         return it->second;
     }
     return nullptr;
@@ -1169,7 +1169,7 @@ std::shared_ptr<KernelObject> ObjectManager::get_object_from_id(uint64_t id) {
 
 std::shared_ptr<KernelObject> ObjectManager::get_object_from_name(const std::string& name, bool check_symlinks) {
     // Python: iterate objects, return one with matching name
-    for (auto& [id, obj] : objects) {
+    for (auto& [id, obj] : objects_) {
         (void)id;
         std::string obj_name = obj->get_obj_name();
         if (!obj_name.empty()) {
@@ -1184,7 +1184,7 @@ std::shared_ptr<KernelObject> ObjectManager::get_object_from_name(const std::str
         }
     }
     if (check_symlinks) {
-        for (auto& sl : symlinks) {
+        for (auto& sl : symlinks_) {
             std::string lsl = sl.first;
             std::string lname = name;
             std::transform(lsl.begin(), lsl.end(), lsl.begin(), ::tolower);
@@ -1199,7 +1199,7 @@ std::shared_ptr<KernelObject> ObjectManager::get_object_from_name(const std::str
 
 std::shared_ptr<KernelObject> ObjectManager::get_object_from_handle(uint64_t handle) {
     // Python: iterate objects, return one with matching handle in handles list
-    for (auto& [id, obj] : objects) {
+    for (auto& [id, obj] : objects_) {
         (void)id;
         for (int h : obj->handles) {
             if (h == handle) {

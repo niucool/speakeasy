@@ -22,16 +22,16 @@ namespace common {
  */
 class MemMap {
 private:
-    uint64_t base;
-    uint64_t size;
-    std::string tag;
-    uint32_t prot;
-    uint32_t flags;
-    bool shared;
-    bool free;
-    std::shared_ptr<Process> process;
-    uint64_t block_base;
-    uint64_t block_size;
+    uint64_t base_;
+    uint64_t size_;
+    std::string tag_;
+    uint32_t prot_;
+    uint32_t flags_;
+    bool shared_;
+    bool free_;
+    std::shared_ptr<Process> process_;
+    uint64_t block_base_;
+    uint64_t block_size_;
 
 public:
     /**
@@ -96,7 +96,7 @@ public:
      */
     bool is_free() const;
 
-    bool is_shared() const { return shared; }
+    bool is_shared() const { return shared_; }
 
     uint64_t get_block_base() const;
     uint64_t get_block_size() const;
@@ -111,18 +111,18 @@ public:
  */
 class MemoryManager {
 private:
-    std::vector<std::shared_ptr<MemMap>> maps;
-    std::vector<std::shared_ptr<MemMap>> mem_reserves;
-    uint64_t block_base;
-    uint64_t block_size;
-    uint64_t block_offset;
-    uint64_t page_size;
-    bool keep_memory_on_free;
+    std::vector<std::shared_ptr<MemMap>> maps_;
+    std::vector<std::shared_ptr<MemMap>> mem_reserves_;
+    uint64_t block_base_;
+    uint64_t block_size_;
+    uint64_t block_offset_;
+    uint64_t page_size_;
+    bool keep_memory_on_free_;
 
     // Assuming these would be defined elsewhere
-    void* emu_eng;
-    void* hooks;
-    std::shared_ptr<Process> current_process;
+    void* emu_eng_;
+    void* hooks_;
+    std::shared_ptr<Process> current_process_;
 
     /**
      * Dispatch memory map hooks

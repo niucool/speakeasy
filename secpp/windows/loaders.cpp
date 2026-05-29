@@ -387,7 +387,7 @@ std::string PeLoader::get_prot_string(uint32_t perms) {
 
 //  RuntimeModule 
 
-RuntimeModule::RuntimeModule(std::shared_ptr<speakeasy::LoadedImage> image) : _image(image) {
+RuntimeModule::RuntimeModule(std::shared_ptr<speakeasy::LoadedImage> image) : _image_(image) {
     if (!image) return;
     base = image->base;
     image_size = image->image_size;

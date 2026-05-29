@@ -50,57 +50,57 @@ using ModuleLevel = std::pair<std::map<std::string, ApiLevel>, bool>;
 // Generic emulator class for binary code
 class BinaryEmulator : public MemoryManager {
 private:
-    uint64_t inst_count;
-    uint64_t curr_instr_size;
-    void* disasm_eng;
-    bool builtin_hooks_set;
+    uint64_t inst_count_;
+    uint64_t curr_instr_size_;
+    void* disasm_eng_;
+    bool builtin_hooks_set_;
 protected:
-    uint64_t page_size;
-    uint64_t stack_base;
-    EmuEngine* emu_eng;
-    std::vector<void*> maps;
+    uint64_t page_size_;
+    uint64_t stack_base_;
+    EmuEngine* emu_eng_;
+    std::vector<void*> maps_;
     ModuleLevel api_hooks_{};
     std::map<int, std::vector<Hook*>> hooks_;
     
-    std::shared_ptr<Profiler> profiler;
-    double runtime;
-    std::string emu_version;
+    std::shared_ptr<Profiler> profiler_;
+    double runtime_;
+    std::string emu_version_;
     
     // -- Python member mapping --
     // self.arch -> arch_        self.ptr_size -> ptr_size_
-    // self.emu_eng -> emu_eng   self.profiler -> profiler
-    // self.hooks -> api_hooks_ + hooks_       self.runtime -> runtime
-    // self.osversion -> osversion             self.env -> env
-    // self.domain -> domain     self.hostname -> hostname
-    // self.modules -> modules (subclass)      self.input -> input (subclass)
+    // self.emu_eng -> emu_eng_   self.profiler -> profiler_
+    // self.hooks -> api_hooks_ + hooks_       self.runtime -> runtime_
+    // self.osversion -> osversion_             self.env -> env_
+    // self.domain -> domain_     self.hostname -> hostname_
+    // self.modules -> modules_ (subclass)      self.input -> input (subclass)
     // Config fields
-    std::map<std::string, std::string> osversion;
+    std::map<std::string, std::string> osversion_;
 protected:
-    const speakeasy::SpeakeasyConfig& config;
-    std::map<std::string, std::string> env;
-    std::map<std::string, std::string> user_config;
+    const speakeasy::SpeakeasyConfig& config_;
+    std::map<std::string, std::string> env_;
+    std::map<std::string, std::string> user_config_;
 private:
-    std::string domain;
-    std::string hostname;
-    std::vector<std::string> symlinks;
+    std::string domain_;
+    std::string hostname_;
+    std::vector<std::string> symlinks_;
     //std::map<std::string, std::string> config_modules;
     //std::vector<std::string> config_system_modules;
     //std::vector<std::string> config_processes;
     //std::vector<std::string> config_user_modules;
     //std::map<std::string, std::string> config_analysis;
-    int max_instructions;
-    int timeout;
-    int max_api_count;
+    int max_instructions_;
+    int timeout_;
+    int max_api_count_;
     int arch_;
     int ptr_size_;
-    std::map<std::string, std::string> exceptions;
-    std::vector<std::string> drive_config;
-    std::vector <std::shared_ptr<speakeasy::Module>> modules;
-    std::map<std::string, std::string> filesystem_config;
-    bool keep_memory_on_free;
-    std::map<std::string, std::string> network_config;
-    std::vector<std::string> network_adapters;
-    std::string command_line;
+    std::map<std::string, std::string> exceptions_;
+    std::vector<std::string> drive_config_;
+    std::vector <std::shared_ptr<speakeasy::Module>> modules_;
+    std::map<std::string, std::string> filesystem_config_;
+    bool keep_memory_on_free_;
+    std::map<std::string, std::string> network_config_;
+    std::vector<std::string> network_adapters_;
+    std::string command_line_;
 
 public:
     // Constructor

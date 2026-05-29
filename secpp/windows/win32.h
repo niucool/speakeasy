@@ -55,18 +55,18 @@ class Run;
  */
 class Win32Emulator : public WindowsEmulator {
 private:
-    int last_error;
-    uint64_t peb_addr;
-    std::vector<std::tuple<uint64_t, size_t, std::string>> heap_allocs;
-    std::vector<std::string> argv;
-    std::shared_ptr<SessionManager> sessman;
-    std::shared_ptr<COM> com;
-    std::string command_line;
-    std::string file_name;
-    std::string mod_name;
-    std::string bin_base_name;
-    uint64_t stack_base;
-    std::map<std::string,std::string> input;
+    int last_error_;
+    uint64_t peb_addr_;
+    std::vector<std::tuple<uint64_t, size_t, std::string>> heap_allocs_;
+    std::vector<std::string> argv_;
+    std::shared_ptr<SessionManager> sessman_;
+    std::shared_ptr<COM> com_;
+    std::string command_line_;
+    std::string file_name_;
+    std::string mod_name_;
+    std::string bin_base_name_;
+    uint64_t stack_base_;
+    std::map<std::string,std::string> input_;
     //std::vector<nlohmann::json> config_processes;
     //std::vector<nlohmann::json> config_system_modules;
     //std::vector<nlohmann::json> config_user_modules;

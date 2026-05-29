@@ -108,8 +108,8 @@ public:
     // Constructed from a LoadedImage; the image pointer must remain valid.
     explicit RuntimeModule(std::shared_ptr<speakeasy::LoadedImage> image);
 
-    std::shared_ptr<speakeasy::LoadedImage> image() { return _image; }
-    const std::shared_ptr<speakeasy::LoadedImage> image() const { return _image; }
+    std::shared_ptr<speakeasy::LoadedImage> image() { return _image_; }
+    const std::shared_ptr<speakeasy::LoadedImage> image() const { return _image_; }
 
     // Type checks (Python: 129-139)
     bool is_exe() const;
@@ -147,7 +147,7 @@ public:
     std::string to_string() const;
 
 private:
-    std::shared_ptr<speakeasy::LoadedImage> _image;
+    std::shared_ptr<speakeasy::LoadedImage> _image_;
 };
 
 //  PE Loader 

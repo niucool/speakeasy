@@ -13,21 +13,21 @@
 // Python binemu.py:59-78 doc: "Base class for emulating binaries\n\nSubclasses must define the following attributes:\n    arch: Architecture constant (e.g., ARCH_X86, ARCH_AMD64)\n    modules: List of loaded modules\n    input: Input metadata dictionary (or None)"
 // Constructor
 BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg)
-    : config(cfg), stack_base(0), page_size(0), inst_count(0), curr_instr_size(0),
-      disasm_eng(nullptr), builtin_hooks_set(false), emu_eng(nullptr),
-      runtime(0) {
+    : config_(cfg), stack_base_(0), page_size_(0), inst_count_(0), curr_instr_size_(0),
+      disasm_eng_(nullptr), builtin_hooks_set_(false), emu_eng_(nullptr),
+      runtime_(0) {
     
     // Python binemu.py:59-78: __init__ -- initializes all member state
     // TODO: Python also calls _parse_config inside __init__; C++ calls after init list
-    max_instructions = -1;
-    timeout = 0;
-    max_api_count = 5000;
+    max_instructions_ = -1;
+    timeout_ = 0;
+    max_api_count_ = 5000;
     arch_ = speakeasy::arch::ARCH_X86;
     ptr_size_ = 4;
-    keep_memory_on_free = false;
+    keep_memory_on_free_ = false;
     
-    profiler = std::make_shared<Profiler>();
-    emu_version = get_emu_version();
+    profiler_ = std::make_shared<Profiler>();
+    emu_version_ = get_emu_version();
     
     _parse_config(cfg);
 }
@@ -46,21 +46,21 @@ void BinaryEmulator::log_exception(const std::string& msg) {
 
 std::shared_ptr<Profiler> BinaryEmulator::get_profiler() {
     // Python binemu.py:80-84 doc: "Get the current event profiler object (if any)"
-    return profiler;
+    return profiler_;
 }
 
 speakeasy::Report BinaryEmulator::get_report() {
     // Python binemu.py:86-92 doc: "Get the emulation report for all runs that were executed"
-    if (profiler) {
-        return profiler->get_report();
+    if (profiler_) {
+        return profiler_->get_report();
     }
     // Return empty map if no profiler
     return speakeasy::Report();
 }
 
 std::string BinaryEmulator::get_json_report_string() {
-    // Python binemu.py:94-100 doc: "Get the emulation report ... formatted as a JSON string"
-    if (profiler) {
+    // Python binemu.py:94-100 doc: "Get the emulation report for all runs that were executed formatted as a JSON string"
+    if (profiler_) {
         return get_report().to_json_string();
     }
     // Return empty string if no profiler
@@ -71,31 +71,31 @@ void BinaryEmulator::_parse_config(const speakeasy::SpeakeasyConfig& cfg) {
     // Python binemu.py:102-116 doc: "Parse the config to be used for emulation"
     // TODO: Python also initializes self.emu_eng from EMU_ENGINES lookup table
     //       C++ defers engine creation to WindowsEmulator::load_image
-    timeout = cfg.timeout;
-    max_api_count = cfg.max_api_count;
-    keep_memory_on_free = cfg.keep_memory_on_free;
-    command_line = cfg.command_line;
+    timeout_ = cfg.timeout;
+    max_api_count_ = cfg.max_api_count;
+    keep_memory_on_free_ = cfg.keep_memory_on_free;
+    command_line_ = cfg.command_line;
 
     // Populate osversion map
-    osversion["name"]   = cfg.os_ver.name;
-    osversion["major"]  = std::to_string(cfg.os_ver.major);
-    osversion["minor"]  = std::to_string(cfg.os_ver.minor);
-    osversion["build"]  = std::to_string(cfg.os_ver.build);
+    osversion_["name"]   = cfg.os_ver.name;
+    osversion_["major"]  = std::to_string(cfg.os_ver.major);
+    osversion_["minor"]  = std::to_string(cfg.os_ver.minor);
+    osversion_["build"]  = std::to_string(cfg.os_ver.build);
 
     // Populate user_config map
-    user_config["name"]     = cfg.user.name;
-    user_config["is_admin"] = cfg.user.is_admin ? "1" : "0";
+    user_config_["name"]     = cfg.user.name;
+    user_config_["is_admin"] = cfg.user.is_admin ? "1" : "0";
 
     // Populate network_config map
-    network_config["hostname"] = cfg.hostname;
-    network_config["domain"]   = cfg.domain;
+    network_config_["hostname"] = cfg.hostname;
+    network_config_["domain"]   = cfg.domain;
     for (const auto& [name, ip] : cfg.network.dns.names) {
-        network_config[name] = ip;
+        network_config_[name] = ip;
     }
 
     // Drive config
     for (const auto& drv : cfg.drives) {
-        drive_config.push_back(drv.root_path);
+        drive_config_.push_back(drv.root_path);
     }
 }
 
@@ -106,7 +106,7 @@ std::string BinaryEmulator::get_emu_version() {
 
 std::map<std::string, std::string> BinaryEmulator::get_os_version() {
     // Get version of the OS being emulated
-    return osversion;
+    return osversion_;
 }
 
 std::string BinaryEmulator::get_osver_string() {
@@ -127,17 +127,17 @@ std::string BinaryEmulator::get_osver_string() {
 
 std::string BinaryEmulator::get_domain() {
     // Get domain of the machine being emulated
-    return config.domain;
+    return config_.domain;
 }
 
 std::string BinaryEmulator::get_hostname() {
     // Get hostname of the machine being emulated
-    return hostname;
+    return hostname_;
 }
 
 std::map<std::string, std::string> BinaryEmulator::get_user() {
     // Get the current emulated user properties
-    return user_config;
+    return user_config_;
 }
 
 template<typename T>
@@ -161,11 +161,11 @@ std::vector<uint8_t> BinaryEmulator::get_bytes(T obj) {
 void BinaryEmulator::stop() {
     // Python binemu.py:149-156 doc: "Stop emulation completely"
     // Stops emu_eng and profiler run clock
-    if (emu_eng) {
-        emu_eng->stop();
+    if (emu_eng_) {
+        emu_eng_->stop();
     }
-    if (profiler) {
-        profiler->stop_run_clock();
+    if (profiler_) {
+        profiler_->stop_run_clock();
     }
 }
 
@@ -174,16 +174,16 @@ void BinaryEmulator::start(uint64_t addr, size_t size) {
     // Sets hooks, starts profiler clock, runs emu_eng->start with timeout
     set_hooks();
     _set_emu_hooks();
-    if (profiler) {
-        profiler->set_start_time();
+    if (profiler_) {
+        profiler_->set_start_time();
     }
     try {
-        if (emu_eng) {
-            emu_eng->start(addr, timeout, max_instructions);
+        if (emu_eng_) {
+            emu_eng_->start(addr, timeout_, max_instructions_);
         }
     } catch (const std::exception& e) {
-        if (profiler) {
-            profiler->log_error(e.what());
+        if (profiler_) {
+            profiler_->log_error(e.what());
         }
         on_emu_complete();
     }
@@ -191,22 +191,22 @@ void BinaryEmulator::start(uint64_t addr, size_t size) {
 
 std::map<std::string, std::string> BinaryEmulator::get_network_config() {
     // Get the network settings specified in the network section of the config file
-    return network_config;
+    return network_config_;
 }
 
 std::vector<std::string> BinaryEmulator::get_network_adapters() {
     // Get the network adapters specified in the network section of the config file
-    return network_adapters;
+    return network_adapters_;
 }
 
 std::map<std::string, std::string> BinaryEmulator::get_filesystem_config() {
     // Get the filesystem settings specified in the filesystem section of the config file
-    return filesystem_config;
+    return filesystem_config_;
 }
 
 std::vector<std::string> BinaryEmulator::get_drive_config() {
     // Get the drive settings specified in the drives section of the config file
-    return drive_config;
+    return drive_config_;
 }
 
 void BinaryEmulator::reg_write(const std::string& reg, uint64_t val) {
@@ -221,8 +221,8 @@ void BinaryEmulator::reg_write(const std::string& reg, uint64_t val) {
 void BinaryEmulator::reg_write(int reg, uint64_t val) {
     // Python binemu.py:174-185 doc: "Write a value to an emulated cpu register"
     // String variant uses speakeasy::arch::REG_LOOKUP (Python: e_arch.REG_LOOKUP)
-    if (emu_eng) {
-        emu_eng->reg_write(reg, val);
+    if (emu_eng_) {
+        emu_eng_->reg_write(reg, val);
     }
 }
 
@@ -239,9 +239,9 @@ uint64_t BinaryEmulator::reg_read(const std::string& reg) {
 uint64_t BinaryEmulator::reg_read(int reg) {
     // Python binemu.py:187-198 doc: "Read a value from an emulated cpu register"
     // String variant uses speakeasy::arch::REG_LOOKUP
-    if (emu_eng) {
+    if (emu_eng_) {
         uint64_t val = 0;
-        emu_eng->reg_read(reg, &val);
+        emu_eng_->reg_read(reg, &val);
         return val;
     }
     return 0;
@@ -560,7 +560,7 @@ void BinaryEmulator::eval_emu_var() {
 std::shared_ptr<speakeasy::Module> BinaryEmulator::get_module_from_addr(uint64_t addr) {
     // Python binemu.py:811-820 doc: "If the supplied address belongs to a module, return it"
     // TODO: 'modules' is a WindowsEmulator member, not BinaryEmulator move this to WindowsEmulator
-    for (auto& mod : modules) {
+    for (auto& mod : modules_) {
         if (addr >= mod->base && addr <= mod->base + mod->image_size) {
             return mod;
         }
@@ -611,7 +611,7 @@ ApiHook BinaryEmulator::add_api_hook(std::function<void()> cb, const std::string
     }
 
     if (!emu) emu = this;
-    ApiHook hook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, ml, fl, argc, call_conv);
+    ApiHook hook(emu, emu_eng_, [cb]() -> bool { cb(); return true; }, ml, fl, argc, call_conv);
 
     ApiLevel ad = {{}, wa};
     ad.first[fl].push_back(hook);
@@ -627,7 +627,7 @@ ApiHook BinaryEmulator::add_api_hook(std::function<void()> cb, const std::string
     }
     api_hooks_.second = pwm | wm;
 
-    if (emu_eng) hook.add();
+    if (emu_eng_) hook.add();
     return hook;
 }
 
@@ -635,9 +635,9 @@ CodeHook BinaryEmulator::add_code_hook(std::function<void()> cb, uint64_t begin,
                                         std::map<std::string, std::string> ctx, BinaryEmulator* emu) {
     // Python binemu.py:897-919 doc: "Add a hook that will fire for every CPU instruction"
     if (!emu) emu = this;
-    auto* h = new CodeHook(emu, emu_eng, [cb](void* emu_ptr, uint64_t addr, uint32_t size) -> bool { cb(); return true; }, begin, end);
+    auto* h = new CodeHook(emu, emu_eng_, [cb](void* emu_ptr, uint64_t addr, uint32_t size) -> bool { cb(); return true; }, begin, end);
     hooks_[HOOK_CODE].push_back(h);
-    if (emu_eng) h->add();
+    if (emu_eng_) h->add();
     return *h;
 }
 
@@ -645,7 +645,7 @@ DynCodeHook BinaryEmulator::add_dyn_code_hook(std::function<void()> cb,
                                                std::vector<std::string> ctx, BinaryEmulator* emu) {
     // Python binemu.py:948-968 doc: "Add a hook that will fire when dynamically generated/copied code is executed"
     if (!emu) emu = this;
-    auto* h = new DynCodeHook(emu, emu_eng, [cb]() -> bool { cb(); return true; });
+    auto* h = new DynCodeHook(emu, emu_eng_, [cb]() -> bool { cb(); return true; });
     hooks_[HOOK_DYN_CODE].push_back(h);
     return *h;
 }
@@ -654,9 +654,9 @@ ReadMemHook BinaryEmulator::add_mem_read_hook(std::function<void()> cb, uint64_t
                                                BinaryEmulator* emu) {
     // Python binemu.py:970-992 doc: "Add a hook that will fire for memory reads"
     if (!emu) emu = this;
-    auto* h = new ReadMemHook(emu, emu_eng, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, begin, end);
+    auto* h = new ReadMemHook(emu, emu_eng_, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, begin, end);
     hooks_[HOOK_MEM_READ].push_back(h);
-    if (emu_eng) h->add();
+    if (emu_eng_) h->add();
     return *h;
 }
 
@@ -664,9 +664,9 @@ WriteMemHook BinaryEmulator::add_mem_write_hook(std::function<void()> cb, uint64
                                                   BinaryEmulator* emu) {
     // Python binemu.py:994-1016 doc: "Add a hook that will fire for memory writes"
     if (!emu) emu = this;
-    auto* h = new WriteMemHook(emu, emu_eng, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, begin, end);
+    auto* h = new WriteMemHook(emu, emu_eng_, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, begin, end);
     hooks_[HOOK_MEM_WRITE].push_back(h);
-    if (emu_eng) h->add();
+    if (emu_eng_) h->add();
     return *h;
 }
 
@@ -674,9 +674,9 @@ MapMemHook BinaryEmulator::add_mem_map_hook(std::function<void()> cb, uint64_t b
                                              BinaryEmulator* emu) {
     // Python binemu.py:1018-1040 doc: "Add a hook that will fire for memory maps"
     if (!emu) emu = this;
-    auto* h = new MapMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, begin, end);
+    auto* h = new MapMemHook(emu, emu_eng_, [cb]() -> bool { cb(); return true; }, begin, end);
     hooks_[HOOK_MEM_MAP].push_back(h);
-    if (emu_eng) h->add();
+    if (emu_eng_) h->add();
     return *h;
 }
 
@@ -684,7 +684,7 @@ InvalidMemHook BinaryEmulator::add_mem_invalid_hook(std::function<void()> cb, Bi
     // Python binemu.py:1056-1076 doc: "Add a hook that will fire for invalid memory access"
     // Injects dispatch hook as first element; user hooks follow
     if (!emu) emu = this;
-    auto* hook = new InvalidMemHook(emu, emu_eng, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, false);
+    auto* hook = new InvalidMemHook(emu, emu_eng_, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, false);
     auto& hl = hooks_[HOOK_MEM_INVALID];
     // Dispatch hook injection is deferred : InvalidMemHook only accepts std::function<bool()>.
     // The dispatch wrapper (_hook_mem_invalid_dispatch) would need a 4-arg callback signature,
@@ -692,7 +692,7 @@ InvalidMemHook BinaryEmulator::add_mem_invalid_hook(std::function<void()> cb, Bi
     // directly without the dispatch wrapper. When the hook system is extended to support
     // multi-arg native hooks, re-enable this block.
     hl.push_back(hook);
-    if (emu_eng) hook->add();
+    if (emu_eng_) hook->add();
     return *hook;
 }
 
@@ -700,9 +700,9 @@ InterruptHook BinaryEmulator::add_interrupt_hook(std::function<void()> cb,
                                                   std::vector<std::string> ctx, BinaryEmulator* emu) {
     // Python binemu.py:1078-1100 doc: "Add a hook that will fire for software interrupts"
     if (!emu) emu = this;
-    auto* h = new InterruptHook(emu, emu_eng, [cb](void* emu_ptr, int num) -> bool { cb(); return true; });
+    auto* h = new InterruptHook(emu, emu_eng_, [cb](void* emu_ptr, int num) -> bool { cb(); return true; });
     hooks_[HOOK_INTERRUPT].push_back(h);
-    if (emu_eng) h->add();
+    if (emu_eng_) h->add();
     return *h;
 }
 
@@ -746,9 +746,9 @@ InstructionHook BinaryEmulator::add_instruction_hook(std::function<void()> cb, u
                           std::vector<std::string> ctx, BinaryEmulator* emu, void* insn) {
     // Python binemu.py:1102-1124 doc: "Add a hook that will fire for IN, SYSCALL, or SYSENTER instructions"
     if (!emu) emu = this;
-    auto* h = new InstructionHook(emu, emu_eng, [cb](void* emu_ptr) -> bool { cb(); return true; }, {}, true, insn);
+    auto* h = new InstructionHook(emu, emu_eng_, [cb](void* emu_ptr) -> bool { cb(); return true; }, {}, true, insn);
     hooks_[HOOK_INSN].push_back(h);
-    if (emu_eng) h->add();
+    if (emu_eng_) h->add();
     return *h;
 }
 
@@ -756,9 +756,9 @@ InvalidInstructionHook BinaryEmulator::add_invalid_instruction_hook(std::functio
                                          std::vector<std::string> ctx, BinaryEmulator* emu) {
     // Python binemu.py:1126-1147 doc: "Add a hook that will fire for invalid instruction attempts"
     if (!emu) emu = this;
-    auto* h = new InvalidInstructionHook(emu, emu_eng, [cb](void* emu_ptr) -> bool { cb(); return true; });
+    auto* h = new InvalidInstructionHook(emu, emu_eng_, [cb](void* emu_ptr) -> bool { cb(); return true; });
     hooks_[HOOK_INSN_INVALID].push_back(h);
-    if (emu_eng) h->add();
+    if (emu_eng_) h->add();
     return *h;
 }
 
@@ -797,6 +797,27 @@ std::vector<uint64_t> BinaryEmulator::get_func_argv(int callconv, int argc) {
         }
     }
     return argv;
+}
+
+
+uint64_t BinaryEmulator::get_pc() {
+    // Python binemu.py:542-552 doc: "Get the value of the current program counter"
+    int arch = get_arch();
+    if (arch == speakeasy::arch::ARCH_AMD64)
+        return reg_read(static_cast<int>(speakeasy::arch::REG_RIP));
+    else
+        return reg_read(static_cast<int>(speakeasy::arch::REG_EIP));
+}
+
+void BinaryEmulator::set_pc(uint64_t addr) {
+    // Python binemu.py:554-563 doc: "Set the value of the current program counter"
+    int arch = get_arch();
+    int reg = (arch == speakeasy::arch::ARCH_AMD64) ?
+              static_cast<int>(speakeasy::arch::REG_RIP) :
+              static_cast<int>(speakeasy::arch::REG_EIP);
+    if (emu_eng_) {
+        emu_eng_->reg_write(reg, addr);
+    }
 }
 
 void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_value, int conv) {
@@ -1114,23 +1135,3 @@ std::vector<std::tuple<int, std::string>> BinaryEmulator::get_unicode_strings(
     return result;
 }
 
-
-uint64_t BinaryEmulator::get_pc() {
-    // Python binemu.py:542-552 doc: "Get the value of the current program counter"
-    int arch = get_arch();
-    if (arch == speakeasy::arch::ARCH_AMD64)
-        return reg_read(static_cast<int>(speakeasy::arch::REG_RIP));
-    else
-        return reg_read(static_cast<int>(speakeasy::arch::REG_EIP));
-}
-
-void BinaryEmulator::set_pc(uint64_t addr) {
-    // Python binemu.py:554-563 doc: "Set the value of the current program counter"
-    int arch = get_arch();
-    int reg = (arch == speakeasy::arch::ARCH_AMD64) ?
-              static_cast<int>(speakeasy::arch::REG_RIP) :
-              static_cast<int>(speakeasy::arch::REG_EIP);
-    if (emu_eng) {
-        emu_eng->reg_write(reg, addr);
-    }
-}

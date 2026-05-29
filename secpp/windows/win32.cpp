@@ -13,9 +13,9 @@
 Win32Emulator::Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::vector<std::string>& argv,
                              bool debug, void* logger, void* exit_event)
     : WindowsEmulator(cfg, logger, exit_event, debug),
-      last_error(0), peb_addr(0), argv(argv) {
-    com = std::make_shared<COM>(cfg);
-    sessman = std::make_shared<SessionManager>(cfg);
+      last_error_(0), peb_addr_(0), argv_(argv) {
+    com_ = std::make_shared<COM>(cfg);
+    sessman_ = std::make_shared<SessionManager>(cfg);
 }
 
 // Python win32.py:44
@@ -28,14 +28,14 @@ std::vector<std::string> Win32Emulator::get_argv() {
     std::vector<std::string> out;
     std::string argv0 = "";
     
-    if (!this->argv.empty()) {
+    if (!this->argv_.empty()) {
         for (auto m : modules) {
             auto img = m->image();
             if (!img->emu_path.empty()) argv0 = img->emu_path;
             else argv0 = img->name;
         }
         out.push_back(argv0);
-        out.insert(out.end(), this->argv.begin(), this->argv.end());
+        out.insert(out.end(), this->argv_.begin(), this->argv_.end());
     } else if (!command_line.empty()) {
         std::istringstream iss(command_line);
         std::string token;
@@ -51,7 +51,7 @@ std::vector<std::string> Win32Emulator::get_argv() {
 //     Set the last error code for the current thread
 //     """
 void Win32Emulator::set_last_error(int code) {
-    last_error = code;
+    last_error_ = code;
 }
 
 // Python win32.py:107
@@ -60,7 +60,7 @@ void Win32Emulator::set_last_error(int code) {
 //     Get the last error code for the current thread
 //     """
 int Win32Emulator::get_last_error() {
-    return last_error;
+    return last_error_;
 }
 
 // Python win32.py:114
@@ -70,7 +70,7 @@ int Win32Emulator::get_last_error() {
 //     windows, and session isolation
 //     """
 std::shared_ptr<SessionManager> Win32Emulator::get_session_manager() {
-    return sessman;
+    return sessman_;
 }
 
 // Python win32.py:121
@@ -103,7 +103,7 @@ void Win32Emulator::remove_vectored_exception_handler(uint64_t handler) {
 // def get_processes(self):
 std::vector<void*> Win32Emulator::get_processes() {
     if (processes.size() <= 1) {
-        init_processes(config.processes);
+        init_processes(config_.processes);
     }
     std::vector<void*> result;
     result.reserve(processes.size());
@@ -175,7 +175,7 @@ std::shared_ptr<speakeasy::RuntimeModule> Win32Emulator::load_module(const std::
     auto pe = load_pe(path, file_data);
     if (!pe) return nullptr;
     
-    pe->name = mod_name;
+    pe->name = mod_name_;
     pe->emu_path = emu_path;
     
     if (!arch) { 
@@ -184,11 +184,11 @@ std::shared_ptr<speakeasy::RuntimeModule> Win32Emulator::load_module(const std::
     }
     
     // Set function args
-    set_func_args(stack_base, get_ret_address(), {});
+    set_func_args(stack_base_, get_ret_address(), {});
     
     // Track input metadata
-    if (!input.empty()) {
-        input["image_base"] = std::to_string(pe->base);
+    if (!input_.empty()) {
+        input_["image_base"] = std::to_string(pe->base);
     }
     
     return pe;
@@ -341,17 +341,17 @@ void Win32Emulator::_init_name(const std::string& path, const std::vector<uint8_
     if (data.empty()) {
         // Extract filename from path (platform independent)
         size_t lastSlash = path.find_last_of("/\\");
-        file_name = (lastSlash == std::string::npos) ? path : path.substr(lastSlash + 1);
+        file_name_ = (lastSlash == std::string::npos) ? path : path.substr(lastSlash + 1);
         
-        size_t lastDot = file_name.find_last_of('.');
-        mod_name = (lastDot == std::string::npos) ? file_name : file_name.substr(0, lastDot);
+        size_t lastDot = file_name_.find_last_of('.');
+        mod_name_ = (lastDot == std::string::npos) ? file_name_ : file_name_.substr(0, lastDot);
     } else {
-        mod_name = "unknown_hash";
-        file_name = mod_name + ".exe";
+        mod_name_ = "unknown_hash";
+        file_name_ = mod_name_ + ".exe";
     }
     // Extract base name
-    size_t lastSlash = file_name.find_last_of("/\\");
-    bin_base_name = (lastSlash == std::string::npos) ? file_name : file_name.substr(lastSlash + 1);
+    size_t lastSlash = file_name_.find_last_of("/\\");
+    bin_base_name_ = (lastSlash == std::string::npos) ? file_name_ : file_name_.substr(lastSlash + 1);
 }
 
 // Python win32.py:368
@@ -385,7 +385,7 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
 //     """
 void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t offset) {
     auto stack_info = alloc_stack(stack_commit);
-    stack_base = std::get<0>(stack_info);
+    stack_base_ = std::get<0>(stack_info);
     auto run = std::make_shared<Run>();
     run->type = "shellcode";
     run->start_addr = sc_addr + offset;
@@ -422,9 +422,9 @@ void Win32Emulator::alloc_peb(std::shared_ptr<Process> proc) {
 
     auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
     peb_struct->ImageBaseAddress = proc->base;
-    peb_struct->OSMajorVersion = config.os_ver.major;
-    peb_struct->OSMinorVersion = config.os_ver.minor;
-    peb_struct->OSBuildNumber = config.os_ver.build;
+    peb_struct->OSMajorVersion = config_.os_ver.major;
+    peb_struct->OSMinorVersion = config_.os_ver.minor;
+    peb_struct->OSBuildNumber = config_.os_ver.build;
     peb->write_back();
 
     _ensure_core_dlls_loaded();
@@ -450,9 +450,9 @@ void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
     _setup_gdt(my_arch);
     setup_user_shared_data();
     set_ptr_size(this->arch);
-    peb_addr = (my_arch == 32) ? fs_addr + 0x30 : gs_addr + 0x60;
+    peb_addr_ = (my_arch == 32) ? fs_addr + 0x30 : gs_addr + 0x60;
 
-    for (auto&symlink : config.symlinks) {
+    for (auto&symlink : config_.symlinks) {
         std::string link = symlink.name;
         std::string target = symlink.target;
         if (!link.empty() && !target.empty()) {
@@ -461,7 +461,7 @@ void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
         }
     }
     //_ensure_core_dlls_loaded();
-    init_sys_modules(config.modules.system_modules);
+    init_sys_modules(config_.modules.system_modules);
     _init_user_modules_from_config();
     //set_hooks();
 }
@@ -503,7 +503,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::init_sys_m
 //     """
 void* Win32Emulator::init_container_process() {
     // Python win32.py:572-587  create a process to host shellcode or DLLs
-    for (auto& p : config.processes) {
+    for (auto& p : config_.processes) {
         if (p.is_main_exe) {
             std::string name = p.name.empty() ? "" : p.name;
             std::string emu_path = p.path.empty() ? "" : p.path;
@@ -604,9 +604,9 @@ void Win32Emulator::on_run_complete() {
     if (curr_run) {
         curr_run->ret_val = reinterpret_cast<void*>(static_cast<uintptr_t>(get_return_val()));
     }
-    if (profiler) {
+    if (profiler_) {
         // Record dropped files - win32 Python uses get_dropped_files()
-        profiler->record_dropped_files_event(curr_run, get_dropped_files());
+        profiler_->record_dropped_files_event(curr_run, get_dropped_files());
         _capture_memory_layout();
     }
     _exec_next_run();
@@ -619,7 +619,7 @@ void Win32Emulator::on_run_complete() {
 //     """
 uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {
     uint64_t addr = mem_map(size, 0ULL, PERM_MEM_RW, "api.heap." + heap);
-    heap_allocs.push_back({addr, size, heap});
+    heap_allocs_.push_back({addr, size, heap});
     return addr;
 }
 
@@ -682,19 +682,19 @@ std::string Win32Emulator::_make_emu_path(const std::string& path, const std::ve
     (void)path; (void)data;
     std::string cd = get_cd();
     if (!cd.empty() && cd.back() != '\\') cd += '\\';
-    // Extract basename from file_name
+    // Extract basename from file_name_
     std::string base;
-    auto pos = file_name.find_last_of("/\\");
-    base = (pos != std::string::npos) ? file_name.substr(pos + 1) : file_name;
+    auto pos = file_name_.find_last_of("/\\");
+    base = (pos != std::string::npos) ? file_name_.substr(pos + 1) : file_name_;
     return cd + base;
 }
 
 // Python win32.py:194
 // def _set_input_metadata(self, path, data):
 void Win32Emulator::_set_input_metadata(const std::string& path, const std::vector<uint8_t>& data) {
-    if (!profiler) return;
+    if (!profiler_) return;
     
-    input.clear();
+    input_.clear();
     try {
         PeFile pe(path, data, IMPORT_HOOK_ADDR, 4, "", true);
         std::string pe_type = "unknown";
@@ -715,20 +715,20 @@ void Win32Emulator::_set_input_metadata(const std::string& path, const std::vect
         
         std::string hash_val = pe._hash_pe(path, data);
         
-        input["path"] = path;
-        input["sha256"] = hash_val;
-        input["size"] = std::to_string(data.size());
-        input["arch"] = arch_str;
-        input["filetype"] = pe_type;
-        input["emu_version"] = get_emu_version();
-        input["os_run"] = get_osver_string();
+        input_["path"] = path;
+        input_["sha256"] = hash_val;
+        input_["size"] = std::to_string(data.size());
+        input_["arch"] = arch_str;
+        input_["filetype"] = pe_type;
+        input_["emu_version"] = get_emu_version();
+        input_["os_run"] = get_osver_string();
     } catch (...) {
-        input["path"] = path;
-        input["size"] = std::to_string(data.size());
-        input["emu_version"] = get_emu_version();
-        input["os_run"] = get_osver_string();
+        input_["path"] = path;
+        input_["size"] = std::to_string(data.size());
+        input_["emu_version"] = get_emu_version();
+        input_["os_run"] = get_osver_string();
     }
-    profiler->add_input_metadata(input);
+    profiler_->add_input_metadata(input_);
 }
 
 // Python win32.py:500
@@ -810,7 +810,7 @@ void Win32Emulator::_init_user_modules_from_config() {
     using speakeasy::Module;
     
     std::shared_ptr<ProcessEntry> proc_mod;
-    for (auto& p : config.processes) {
+    for (auto& p : config_.processes) {
         if (p.is_main_exe) {
             proc_mod = std::make_shared<ProcessEntry>(p);
             break;
@@ -831,10 +831,10 @@ void Win32Emulator::_init_user_modules_from_config() {
         mod->image_size = 0;
         all_user_mods.push_back(mod);
         all_user_mods.insert(all_user_mods.end(),
-            config.modules.user_modules.begin(),
-            config.modules.user_modules.end());
+            config_.modules.user_modules.begin(),
+            config_.modules.user_modules.end());
     } else {
-        all_user_mods = config.modules.user_modules;
+        all_user_mods = config_.modules.user_modules;
     }
     init_user_modules(all_user_mods);
 }

@@ -676,21 +676,21 @@ DecoyModule::DecoyModule(const std::string& path, const std::vector<uint8_t>& da
                          bool fast_load, uint64_t base, const std::string& emu_path,
                          bool is_jitted)
     : PeFile(path, data, 0xFEEDFACE, 4, emu_path, fast_load),
-      decoy_base(base), decoy_path(path), base_name(emu_path), is_jitted(is_jitted), data(data) {
+      decoy_base_(base), decoy_path_(path), base_name_(emu_path), is_jitted_(is_jitted), data_(data) {
     this->base = base;
     set_emu_path(emu_path);
 }
 
 std::string DecoyModule::get_emu_path() {
-    if (!decoy_path.empty()) return decoy_path;
+    if (!decoy_path_.empty()) return decoy_path_;
     std::string p = emu_path;
     if (p.empty()) p = get_base_name() + ".dll";
     return p;
 }
 
-uint64_t DecoyModule::get_base() { return decoy_base ? decoy_base : base; }
+uint64_t DecoyModule::get_base() { return decoy_base_ ? decoy_base_ : base; }
 bool DecoyModule::is_decoy() { return true; }
-std::string DecoyModule::get_base_name() { return base_name; }
+std::string DecoyModule::get_base_name() { return base_name_; }
 
 std::vector<uint8_t> DecoyModule::get_memory_mapped_image(uint64_t max_virtual_address, uint64_t base_addr) {
     return PeFile::get_memory_mapped_image(max_virtual_address, base_addr);
@@ -755,7 +755,7 @@ static inline uint32_t align_up(uint32_t val, uint32_t align) {
 
 JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const std::vector<std::string>& export_names)
     : PeFile("", {}, 0xFEEDFACE, 4, "", true),
-      pattern_size(arch == 32 ? 4 : 8) {
+      pattern_size_(arch == 32 ? 4 : 8) {
     this->arch = arch;
     this->base = base;
     

@@ -240,11 +240,11 @@ public:
 // Class that represents "decoy" modules that are loaded into emulated memory
 class DecoyModule : public PeFile {
 private:
-    uint64_t decoy_base;
-    std::string decoy_path;
-    std::string base_name;
-    bool is_jitted;
-    std::vector<uint8_t> data;
+    uint64_t decoy_base_;
+    std::string decoy_path_;
+    std::string base_name_;
+    bool is_jitted_;
+    std::vector<uint8_t> data_;
 
 public:
     // Constructor
@@ -265,7 +265,7 @@ public:
 // Class used to rapidly assemble a decoy PE that will only contain an export table
 class JitPeFile : public PeFile {
 private:
-    int pattern_size;
+    int pattern_size_;
 
 public:
     // Constructor

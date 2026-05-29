@@ -21,9 +21,9 @@ class RegistryEmuError;
 // Represents a registry value
 class RegValue {
 private:
-    std::string name;
-    int val_type;
-    std::string data;
+    std::string name_;
+    int val_type_;
+    std::string data_;
 
 public:
     // Constructor
@@ -39,9 +39,9 @@ public:
 // Represents a registry key
 class RegKey {
 private:
-    static uint32_t curr_handle;
-    std::string path;
-    std::vector<std::shared_ptr<RegValue>> values;
+    static uint32_t curr_handle_;
+    std::string path_;
+    std::vector<std::shared_ptr<RegValue>> values_;
 
 public:
     // Constructor
@@ -58,10 +58,10 @@ public:
 // Manages the emulation of the windows registry. This includes creating keys, subkeys and values
 class RegistryManager {
 private:
-    std::map<uint32_t, std::shared_ptr<RegKey>> reg_handles;
-    std::vector<std::shared_ptr<RegKey>> keys;
-    const speakeasy::RegistryConfig& config;
-    std::vector<std::string> reg_tree;
+    std::map<uint32_t, std::shared_ptr<RegKey>> reg_handles_;
+    std::vector<std::shared_ptr<RegKey>> keys_;
+    const speakeasy::RegistryConfig& config_;
+    std::vector<std::string> reg_tree_;
 
 public:
     // Constructor

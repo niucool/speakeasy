@@ -21,9 +21,9 @@ class BinaryEmulator;
  */
 class Console {
 private:
-    static int curr_handle;
-    int handle;
-    int window;
+    static int curr_handle_;
+    int handle_;
+    int window_;
 
 public:
     Console();
@@ -63,14 +63,14 @@ public:
     };
 
 private:
-    void* context;
-    int context_address;
-    void* record;
-    std::vector<Frame> frames;
-    void* last_func;
-    int last_exception_code;
-    int exception_ptrs;
-    void* handler_ret_val;
+    void* context_;
+    int context_address_;
+    void* record_;
+    std::vector<Frame> frames_;
+    void* last_func_;
+    int last_exception_code_;
+    int exception_ptrs_;
+    void* handler_ret_val_;
 
 public:
     SEH();
@@ -89,11 +89,11 @@ public:
  */
 class KernelObject {
 protected:
-    void* emu;
-    uint64_t address;
-    std::string name;
-    void* object;
-    int arch;
+    void* emu_;
+    uint64_t address_;
+    std::string name_;
+    void* object_;
+    int arch_;
 
 public:
     static int curr_handle;
@@ -104,8 +104,8 @@ public:
 
 public:
     KernelObject(void* emu);
-    KernelObject() : emu(nullptr), address(0), object(nullptr),
-                     ref_cnt(0), arch(0), id(0) {
+    KernelObject() : emu_(nullptr), address_(0), object_(nullptr),
+                     ref_cnt(0), arch_(0), id(0) {
         id = KernelObject::curr_id;
         KernelObject::curr_id += 4;
     }
@@ -120,11 +120,11 @@ public:
     std::string get_class_name();
     std::string get_mem_tag();
     int get_handle();
-    virtual std::string get_obj_name() const { return name; }
-    virtual void set_obj_name(const std::string namel) { name = namel; }
-    void* get_object() const { return object; }
-    uint64_t get_address() const { return address; }
-    void set_address(uint64_t addr) { address = addr; }
+    virtual std::string get_obj_name() const { return name_; }
+    virtual void set_obj_name(const std::string namel) { name_ = namel; }
+    void* get_object() const { return object_; }
+    uint64_t get_address() const { return address_; }
+    void set_address(uint64_t addr) { address_ = addr; }
 };
 
 /**
@@ -132,10 +132,10 @@ public:
  */
 class Driver : public KernelObject {
 private:
-    std::shared_ptr<speakeasy::RuntimeModule> pe;
-    std::vector<void*> mj_funcs;
-    void* on_unload;
-    bool unload_called;
+    std::shared_ptr<speakeasy::RuntimeModule> pe_;
+    std::vector<void*> mj_funcs_;
+    void* on_unload_;
+    bool unload_called_;
 public:
     std::vector<void*> devices;
     int reg_path_ptr;
@@ -164,8 +164,8 @@ public:
  */
 class Device : public KernelObject {
 private:
-    void* file_object;
-    void* driver;
+    void* file_object_;
+    void* driver_;
 
 public:
     Device(void* emu);
@@ -195,7 +195,7 @@ public:
  */
 class Irp : public KernelObject {
 private:
-    std::vector<IoStackLocation> stack_locations;
+    std::vector<IoStackLocation> stack_locations_;
 
 public:
     Irp(void* emu);
@@ -265,19 +265,19 @@ public:
  */
 class Thread : public KernelObject {
 private:
-    void* ctx;
-    bool modified_pc;
-    std::shared_ptr<TEB> teb;
-    SEH seh;
-    std::vector<void*> tls;
-    std::vector<void*> message_queue;
-    std::vector<void*> fls;
-    int suspend_count;
-    void* token;
-    int last_error;
-    int stack_base;
-    int stack_commit;
-    std::shared_ptr<Process> process;
+    void* ctx_;
+    bool modified_pc_;
+    std::shared_ptr<TEB> teb_;
+    SEH seh_;
+    std::vector<void*> tls_;
+    std::vector<void*> message_queue_;
+    std::vector<void*> fls_;
+    int suspend_count_;
+    void* token_;
+    int last_error_;
+    int stack_base_;
+    int stack_commit_;
+    std::shared_ptr<Process> process_;
 
 public:
     Thread(void* emu, int stack_base = 0, int stack_commit = 0);
@@ -287,10 +287,10 @@ public:
     SEH get_seh();
     void* get_context();
     void set_context(void* ctx);
-    std::shared_ptr<Process> get_process() { return process; }
-    void set_process(std::shared_ptr<Process> proc) { process = proc; } 
+    std::shared_ptr<Process> get_process() { return process_; }
+    void set_process(std::shared_ptr<Process> proc) { process_ = proc; } 
     void init_teb(int teb_addr, int peb_addr);
-    std::shared_ptr<TEB> get_teb() { return teb; }
+    std::shared_ptr<TEB> get_teb() { return teb_; }
     void set_last_error(int code);
     int get_last_error();
     std::vector<void*> get_tls();
@@ -372,9 +372,9 @@ public:
  */
 class ObjectManager {
 private:
-    void* emu;
-    std::map<uint64_t, std::shared_ptr<KernelObject>> objects;
-    std::vector<std::pair<std::string, std::string>> symlinks;
+    void* emu_;
+    std::map<uint64_t, std::shared_ptr<KernelObject>> objects_;
+    std::vector<std::pair<std::string, std::string>> symlinks_;
 
 public:
     ObjectManager(void* emu);
