@@ -635,7 +635,7 @@ CodeHook BinaryEmulator::add_code_hook(std::function<void()> cb, uint64_t begin,
                                         std::map<std::string, std::string> ctx, BinaryEmulator* emu) {
     // Python binemu.py:897-919 doc: "Add a hook that will fire for every CPU instruction"
     if (!emu) emu = this;
-    auto* h = new CodeHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, begin, end);
+    auto* h = new CodeHook(emu, emu_eng, [cb](void* emu_ptr, uint64_t addr, uint32_t size) -> bool { cb(); return true; }, begin, end);
     hooks_[HOOK_CODE].push_back(h);
     if (emu_eng) h->add();
     return *h;
@@ -654,7 +654,7 @@ ReadMemHook BinaryEmulator::add_mem_read_hook(std::function<void()> cb, uint64_t
                                                BinaryEmulator* emu) {
     // Python binemu.py:970-992 doc: "Add a hook that will fire for memory reads"
     if (!emu) emu = this;
-    auto* h = new ReadMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, begin, end);
+    auto* h = new ReadMemHook(emu, emu_eng, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, begin, end);
     hooks_[HOOK_MEM_READ].push_back(h);
     if (emu_eng) h->add();
     return *h;
@@ -664,7 +664,7 @@ WriteMemHook BinaryEmulator::add_mem_write_hook(std::function<void()> cb, uint64
                                                   BinaryEmulator* emu) {
     // Python binemu.py:994-1016 doc: "Add a hook that will fire for memory writes"
     if (!emu) emu = this;
-    auto* h = new WriteMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, begin, end);
+    auto* h = new WriteMemHook(emu, emu_eng, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, begin, end);
     hooks_[HOOK_MEM_WRITE].push_back(h);
     if (emu_eng) h->add();
     return *h;
@@ -684,7 +684,7 @@ InvalidMemHook BinaryEmulator::add_mem_invalid_hook(std::function<void()> cb, Bi
     // Python binemu.py:1056-1076 doc: "Add a hook that will fire for invalid memory access"
     // Injects dispatch hook as first element; user hooks follow
     if (!emu) emu = this;
-    auto* hook = new InvalidMemHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, false);
+    auto* hook = new InvalidMemHook(emu, emu_eng, [cb](void* emu_ptr, int access, uint64_t addr, uint32_t size, uint64_t value) -> bool { cb(); return true; }, false);
     auto& hl = hooks_[HOOK_MEM_INVALID];
     // Dispatch hook injection is deferred : InvalidMemHook only accepts std::function<bool()>.
     // The dispatch wrapper (_hook_mem_invalid_dispatch) would need a 4-arg callback signature,
@@ -700,7 +700,7 @@ InterruptHook BinaryEmulator::add_interrupt_hook(std::function<void()> cb,
                                                   std::vector<std::string> ctx, BinaryEmulator* emu) {
     // Python binemu.py:1078-1100 doc: "Add a hook that will fire for software interrupts"
     if (!emu) emu = this;
-    auto* h = new InterruptHook(emu, emu_eng, [cb]() -> bool { cb(); return true; });
+    auto* h = new InterruptHook(emu, emu_eng, [cb](void* emu_ptr, int num) -> bool { cb(); return true; });
     hooks_[HOOK_INTERRUPT].push_back(h);
     if (emu_eng) h->add();
     return *h;
@@ -746,7 +746,7 @@ InstructionHook BinaryEmulator::add_instruction_hook(std::function<void()> cb, u
                           std::vector<std::string> ctx, BinaryEmulator* emu, void* insn) {
     // Python binemu.py:1102-1124 doc: "Add a hook that will fire for IN, SYSCALL, or SYSENTER instructions"
     if (!emu) emu = this;
-    auto* h = new InstructionHook(emu, emu_eng, [cb]() -> bool { cb(); return true; }, {}, true, insn);
+    auto* h = new InstructionHook(emu, emu_eng, [cb](void* emu_ptr) -> bool { cb(); return true; }, {}, true, insn);
     hooks_[HOOK_INSN].push_back(h);
     if (emu_eng) h->add();
     return *h;
@@ -756,7 +756,7 @@ InvalidInstructionHook BinaryEmulator::add_invalid_instruction_hook(std::functio
                                          std::vector<std::string> ctx, BinaryEmulator* emu) {
     // Python binemu.py:1126-1147 doc: "Add a hook that will fire for invalid instruction attempts"
     if (!emu) emu = this;
-    auto* h = new InvalidInstructionHook(emu, emu_eng, [cb]() -> bool { cb(); return true; });
+    auto* h = new InvalidInstructionHook(emu, emu_eng, [cb](void* emu_ptr) -> bool { cb(); return true; });
     hooks_[HOOK_INSN_INVALID].push_back(h);
     if (emu_eng) h->add();
     return *h;

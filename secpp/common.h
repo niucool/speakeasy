@@ -42,6 +42,15 @@ const int INVAL_PERM_MEM_READ = 2005;
 // Forward declarations
 class EmuEngine;
 
+using ApiCallback = std::function<bool()>;
+using DynCodeCallback = std::function<bool()>;
+using CodeCallback = std::function<bool(void* emu, uint64_t addr, uint32_t size)>;
+using MemAccessCallback = std::function<bool(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value)>;
+using MemCallback = std::function<bool(void* emu, int access, uint64_t addr, uint32_t size, int64_t value)>;
+using IntrCallback = std::function<bool(void* emu, int num)>;
+using InsnCallback = std::function<bool(void* emu)>;
+using MapMemCallback = std::function<bool()>;
+
 /**
  * Get the supplied path in relation to the package root
  */
@@ -52,7 +61,6 @@ std::string normalize_package_path(const std::string& path);
  *
  * @param container  opaque context pointer (BinaryEmulator* or Speakeasy*)
  * @param emu_eng    emulation engine object
- * @param cb         callback function (returns true to stop further hooks)
  */
 class Hook {
 protected:
@@ -65,8 +73,7 @@ protected:
     std::vector<void*> ctx;
 
 public:
-    Hook(void* container, EmuEngine* emu_eng, 
-         std::function<bool()> cb, 
+    Hook(void* container, EmuEngine* emu_eng,
          const std::vector<void*>& ctx = {},
          bool native_hook = false);
 
@@ -75,22 +82,27 @@ public:
     void enable();
     void disable();
 
-    static bool _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx = {});
-    static bool _wrap_intr_cb(void* emu, int num, const std::vector<void*>& ctx = {});
-    static bool _wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx = {});
-    static bool _wrap_syscall_insn_cb(void* emu, const std::vector<void*>& ctx = {});
-    static bool _wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx);
-    static bool _wrap_mem_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
-    static bool _wrap_mem_invalid_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
-    static bool _wrap_insn_cb(void* emu, const std::vector<void*>& ctx = {});
-    static bool _wrap_invalid_insn_cb(void* emu, const std::vector<void*>& ctx = {});
+    //static bool _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, const std::vector<void*>& ctx = {});
+    //static bool _wrap_in_insn_cb(void* emu, uint32_t port, int size, const std::vector<void*>& ctx = {});
+    //static bool _wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx);
+    //static bool _wrap_mem_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
+    //static bool _wrap_mem_invalid_cb(void* emu, int access, uint64_t addr, uint32_t size, int64_t value, const std::vector<void*>& ctx = {});
+    //static bool _wrap_insn_cb(void* emu, const std::vector<void*>& ctx = {});
+
+    //virtual bool invoke_code(void* emu, uint64_t addr, uint32_t size) { (void)emu; (void)addr; (void)size; return true; }
+    //virtual bool invoke_intr(void* emu, int num) { (void)emu; (void)num; return true; }
+    //virtual bool invoke_in_insn(void* emu, uint32_t port, int size) { (void)emu; (void)port; (void)size; return true; }
+    //virtual bool invoke_syscall_insn(void* emu) { (void)emu; return true; }
+    //virtual bool invoke_memory_access(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value) { (void)emu; (void)access; (void)addr; (void)size; (void)value; return true; }
+    //virtual bool invoke_mem(void* emu, int access, uint64_t addr, uint32_t size, int64_t value) { (void)emu; (void)access; (void)addr; (void)size; (void)value; return true; }
+    //virtual bool invoke_mem_invalid(void* emu, int access, uint64_t addr, uint32_t size, int64_t value) { (void)emu; (void)access; (void)addr; (void)size; (void)value; return true; }
+    //virtual bool invoke_insn(void* emu) { (void)emu; return true; }
+    //virtual bool invoke_invalid_insn(void* emu) { (void)emu; return true; }
 
     bool is_enabled() const { return enabled; }
     bool is_added() const { return added; }
     int get_handle() const { return handle; }
     virtual void add();
-
-    std::function<bool()> cb;
 };
 
 /** Hook that fires when a specific API is called (e.g. kernel32.CreateFile) */
@@ -100,10 +112,11 @@ private:
     std::string api_name;
     int argc;
     void* call_conv;
+    ApiCallback cb;
 
 public:
-    ApiHook(void* container, EmuEngine* emu_eng, 
-            std::function<bool()> cb, 
+    ApiHook(void* container, EmuEngine* emu_eng,
+            ApiCallback cb,
             const std::string& module = "",
             const std::string& api_name = "",
             int argc = 0,
@@ -112,9 +125,11 @@ public:
 
 /** Hook that fires when dynamically created/copied code is executed */
 class DynCodeHook : public Hook {
+private:
+        DynCodeCallback cb;
 public:
-    DynCodeHook(void* container, EmuEngine* emu_eng, 
-                std::function<bool()> cb, 
+    DynCodeHook(void* container, EmuEngine* emu_eng,
+                DynCodeCallback cb,
                 const std::vector<void*>& ctx = {});
 };
 
@@ -123,45 +138,63 @@ class CodeHook : public Hook {
 private:
     uint64_t begin;
     uint64_t end;
+    CodeCallback cb;
 
 public:
-    CodeHook(void* container, EmuEngine* emu_eng, 
-             std::function<bool()> cb, 
-             uint64_t begin = 1, 
-             uint64_t end = 0, 
+    CodeHook(void* container, EmuEngine* emu_eng,
+             CodeCallback cb,
+             uint64_t begin = 1,
+             uint64_t end = 0,
              const std::vector<void*>& ctx = {},
              bool native_hook = true);
     void add();
+
+    static bool _wrap_code_cb(void* emu, uint64_t addr, uint32_t size, void* ctx);
+
+    bool invoke(void* emu, uint64_t addr, uint32_t size);
 };
 
-/** Hook that fires each time a valid chunk of memory is read from */
-class ReadMemHook : public Hook {
-private:
+class MemHook : public Hook {
+protected:
     uint64_t begin;
     uint64_t end;
+    MemAccessCallback cb;
+    int access_type;  // e.g. HOOK_MEM_READ, HOOK_MEM_WRITE, HOOK_MEM_INVALID
 
 public:
-    ReadMemHook(void* container, EmuEngine* emu_eng, 
-                std::function<bool()> cb, 
-                uint64_t begin = 1, 
-                uint64_t end = 0, 
+    MemHook(void* container, EmuEngine* emu_eng,
+        MemAccessCallback cb,
+        uint64_t begin = 1,
+        uint64_t end = 0,
+        bool native_hook = true);
+
+    static bool _wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx);
+
+    virtual void add();
+    virtual bool invoke(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value);
+};
+
+
+/** Hook that fires each time a valid chunk of memory is read from */
+class ReadMemHook : public MemHook {
+
+public:
+    ReadMemHook(void* container, EmuEngine* emu_eng,
+                MemAccessCallback cb,
+                uint64_t begin = 1,
+                uint64_t end = 0,
                 bool native_hook = true);
-    void add();
 };
 
 /** Hook that fires each time a valid chunk of memory is written to */
-class WriteMemHook : public Hook {
-private:
-    uint64_t begin;
-    uint64_t end;
+class WriteMemHook : public MemHook {
 
 public:
-    WriteMemHook(void* container, EmuEngine* emu_eng, 
-                 std::function<bool()> cb, 
-                 uint64_t begin = 1, 
-                 uint64_t end = 0, 
+    WriteMemHook(void* container, EmuEngine* emu_eng,
+                 MemAccessCallback cb,
+                 uint64_t begin = 1,
+                 uint64_t end = 0,
                  bool native_hook = true);
-    void add();
 };
 
 /** Hook that fires each time a chunk of memory is mapped */
@@ -169,56 +202,76 @@ class MapMemHook : public Hook {
 private:
     uint64_t begin;
     uint64_t end;
+    MapMemCallback cb;
 
 public:
-    MapMemHook(void* container, EmuEngine* emu_eng, 
-               std::function<bool()> cb, 
-               uint64_t begin = 1, 
+    MapMemHook(void* container, EmuEngine* emu_eng,
+               MapMemCallback cb,
+               uint64_t begin = 1,
                uint64_t end = 0);
     void add();
 };
 
 /** Hook that fires each time an invalid chunk of memory is accessed */
-class InvalidMemHook : public Hook {
+class InvalidMemHook : public MemHook {
+
 public:
-    InvalidMemHook(void* container, EmuEngine* emu_eng, 
-                   std::function<bool()> cb, 
+    InvalidMemHook(void* container, EmuEngine* emu_eng,
+                   MemAccessCallback cb,
                    bool native_hook = false);
-    void add();
 };
 
 /** Hook that fires each time a software interrupt is triggered */
 class InterruptHook : public Hook {
+private:
+    IntrCallback cb;
+
 public:
-    InterruptHook(void* container, EmuEngine* emu_eng, 
-                  std::function<bool()> cb, 
+    InterruptHook(void* container, EmuEngine* emu_eng,
+                  IntrCallback cb,
                   const std::vector<void*>& ctx = {},
                   bool native_hook = true);
+
+    static bool _wrap_intr_cb(void* emu, int num, void* ctx);
+
     void add();
+    bool invoke(void* emu, int num);
 };
 
 /** Hook for specific CPU instructions (IN, OUT, SYSCALL, SYSENTER) */
 class InstructionHook : public Hook {
 private:
     void* insn;
+    InsnCallback cb;
 
 public:
-    InstructionHook(void* container, EmuEngine* emu_eng, 
-                    std::function<bool()> cb, 
+    InstructionHook(void* container, EmuEngine* emu_eng,
+                    InsnCallback cb,
                     const std::vector<void*>& ctx = {},
                     bool native_hook = true,
                     void* insn = nullptr);
+
+    static bool _wrap_syscall_insn_cb(void* emu, void* ctx);
+
     void add();
+    bool invoke(void* emu);
 };
 
 /** Hook that fires every time an invalid instruction is attempted */
 class InvalidInstructionHook : public Hook {
+private:
+    InsnCallback cb;
+
 public:
-    InvalidInstructionHook(void* container, EmuEngine* emu_eng, 
-                           std::function<bool()> cb, 
+    InvalidInstructionHook(void* container, EmuEngine* emu_eng,
+                           InsnCallback cb,
                            const std::vector<void*>& ctx = {},
                            bool native_hook = true);
+
+    static bool _wrap_invalid_insn_cb(void* emu, void* ctx);
+
     void add();
+    bool invoke(void* emu);
 };
 
 #endif // COMMON_H
