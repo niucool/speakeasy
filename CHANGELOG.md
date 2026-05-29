@@ -10,6 +10,7 @@
 #### Changed
 
 - **secpp**: 对核心类、管理器类、基础仿真器类及用户态仿真器类中的所有 `private`/`protected` 成员变量进行了系统性的重构，在变量末尾统一追加下划线 `_`（包含：`BinaryEmulator`、`Win32Emulator`、`Console`、`SEH`、`KernelObject`、`Driver`、`Device`、`Irp`、`Thread`、`ObjectManager`、`FileMap`、`File`、`Pipe`、`FileManager`、`RegValue`·、`RegKey`、`RegistryManager` 等类中的所有私有/受保护成员）。完全消除了成员变量在构造函数初始化列表、Getter/Setter 接口以及继承子类中被 shadowing 遮蔽编译警告（MSVC `C4458`）的安全隐患，规范并统一了 C++ 代码风格，确保在 `/W4` 警告级别下编译零警告。
+- **secpp**: 将 `BinaryEmulator` 内持有的 CPU 指令与内存读写 Hook 容器类型由裸指针 `std::map<int, std::vector<Hook*>>` 重构升级为智能指针 `std::map<int, std::vector<std::shared_ptr<Hook>>>`。这一现代化重构消除了原先由于在仿真器生命周期结束时未手动释放 Hook 对象而造成的潜在内存泄漏问题，全面规范了 C++ 代码的生命周期管理，使其符合 RAII 最佳实践。
 
 #### Fixed
 

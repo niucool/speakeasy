@@ -241,14 +241,13 @@ speakeasy::Report Speakeasy::get_report() { return emu->get_report(); }
 
 std::string Speakeasy::get_json_report() { return emu->get_report().to_json_string(); }
 
-void* Speakeasy::add_api_hook(std::function<void()> cb, const std::string& module, 
+std::shared_ptr<ApiHook> Speakeasy::add_api_hook(ApiCallback cb, const std::string& module,
                              const std::string& api_name, int argc, const std::string& call_conv) {
     if (!emu) {
         api_hooks.emplace_back(cb, module, api_name, argc, call_conv); // call_conv string stored
         return nullptr;
     }
-    emu->add_api_hook(cb, module, api_name, argc, nullptr, (BinaryEmulator*)this);
-    return nullptr;  // call_conv deferred
+    return emu->add_api_hook(cb, module, api_name, argc, nullptr, (BinaryEmulator*)this);
 }
 
 void Speakeasy::resume(uint64_t addr, int count) { emu->resume(addr, count); }
@@ -259,73 +258,94 @@ void Speakeasy::shutdown() { if (emu) { delete emu; emu = nullptr; } }
 
 void Speakeasy::call(uint64_t addr, const std::vector<void*>& params) { (void)addr; (void)params; }
 
-void* Speakeasy::add_code_hook(std::function<void()> cb, uint64_t begin, uint64_t end, const std::map<std::string, std::string>& ctx) {
-    if (!emu) { code_hooks.emplace_back(cb, begin, end, ctx); return nullptr; }
-    emu->add_code_hook(cb, begin, end, ctx, (BinaryEmulator*)this);
-    return nullptr;
+std::shared_ptr<CodeHook> Speakeasy::add_code_hook(CodeCallback cb, uint64_t begin, uint64_t end, const std::map<std::string, std::string>& ctx) {
+    if (!emu) { 
+        code_hooks.emplace_back(cb, begin, end, ctx); 
+        return nullptr; 
+    }
+    return emu->add_code_hook(cb, begin, end, ctx, emu);
 }
 
-void* Speakeasy::add_dyn_code_hook(std::function<void()> cb, const std::map<std::string, std::string>& ctx) {
-    if (!emu) { dyn_code_hooks.emplace_back(cb, ctx); return nullptr; }
-    std::vector<std::string> ctx_vec;
-    for (auto& [k, v] : ctx) ctx_vec.push_back(k + "=" + v);
-    emu->add_dyn_code_hook(cb, ctx_vec, (BinaryEmulator*)this);
-    return nullptr;
+std::shared_ptr<DynCodeHook> Speakeasy::add_dyn_code_hook(DynCodeCallback cb, const std::map<std::string, std::string>& ctx) {
+    if (!emu) { 
+        dyn_code_hooks.emplace_back(cb, ctx); 
+        return nullptr; 
+    }
+    return emu->add_dyn_code_hook(cb, {});
 }
 
-void* Speakeasy::add_mem_read_hook(std::function<void()> cb, uint64_t begin, uint64_t end) {
-    if (!emu) { mem_read_hooks.emplace_back(cb, begin, end); return nullptr; }
-    emu->add_mem_read_hook(cb, begin, end, (BinaryEmulator*)this);
-    return nullptr;
+std::shared_ptr<ReadMemHook> Speakeasy::add_mem_read_hook(MemAccessCallback cb, uint64_t begin, uint64_t end) {
+    if (!emu) { 
+        mem_read_hooks.emplace_back(cb, begin, end); 
+        return nullptr; 
+    }
+    return emu->add_mem_read_hook(cb, begin, end, emu);
 }
 
-void* Speakeasy::add_mem_write_hook(std::function<void()> cb, uint64_t begin, uint64_t end) {
-    if (!emu) { mem_write_hooks.emplace_back(cb, begin, end); return nullptr; }
-    emu->add_mem_write_hook(cb, begin, end, (BinaryEmulator*)this);
-    return nullptr;
+std::shared_ptr<WriteMemHook> Speakeasy::add_mem_write_hook(MemAccessCallback cb, uint64_t begin, uint64_t end) {
+    if (!emu) { 
+        mem_write_hooks.emplace_back(cb, begin, end); 
+        return nullptr; 
+    }
+    return emu->add_mem_write_hook(cb, begin, end, emu);
 }
 
-void* Speakeasy::add_IN_instruction_hook(std::function<void()> cb, uint64_t begin, uint64_t end) {
-    if (!emu) { mem_write_hooks.emplace_back(cb, begin, end); return nullptr; }
-    emu->add_instruction_hook(cb, begin, end, {}, (BinaryEmulator*)this, (void*)(uintptr_t)218);
-    return nullptr;
+std::shared_ptr<InstructionHook> Speakeasy::add_IN_instruction_hook(InsnCallback cb, uint64_t begin, uint64_t end) {
+    if (!emu) { 
+        mem_write_hooks.emplace_back(cb, begin, end); 
+        return nullptr; 
+    }
+    return emu->add_instruction_hook(cb, begin, end, {}, emu, (void*)(uintptr_t)218);
 }
 
-void* Speakeasy::add_SYSCALL_instruction_hook(std::function<void()> cb, uint64_t begin, uint64_t end) {
-    if (!emu) { mem_write_hooks.emplace_back(cb, begin, end); return nullptr; }
-    emu->add_instruction_hook(cb, begin, end, {}, (BinaryEmulator*)this, (void*)(uintptr_t)700);
-    return nullptr;
+std::shared_ptr<InstructionHook> Speakeasy::add_SYSCALL_instruction_hook(InsnCallback cb, uint64_t begin, uint64_t end) {
+    if (!emu) { 
+        mem_write_hooks.emplace_back(cb, begin, end); 
+        return nullptr; 
+    }
+    return emu->add_instruction_hook(cb, begin, end, {}, emu, (void*)(uintptr_t)700);
 }
 
-void* Speakeasy::add_invalid_instruction_hook(std::function<void()> cb, const std::vector<void*>& ctx) {
-    if (!emu) { invalid_insn_hooks.emplace_back(cb, ctx); return nullptr; } // ctx type mismatch
-    std::vector<std::string> ctx_str;
-    for (auto p : ctx) ctx_str.push_back(std::to_string((uintptr_t)p));
-    emu->add_invalid_instruction_hook(cb, ctx_str);
-    return nullptr;
+std::shared_ptr<InvalidInstructionHook> Speakeasy::add_invalid_instruction_hook(InsnCallback cb, const std::vector<void*>& ctx) {
+    if (!emu) { 
+        invalid_insn_hooks.emplace_back(cb, ctx); 
+        return nullptr; 
+    } // ctx type mismatch
+    return emu->add_invalid_instruction_hook(cb, {}, emu);
 }
 
-void* Speakeasy::add_mem_invalid_hook(std::function<void()> cb) {
-    if (!emu) { mem_invalid_hooks.emplace_back(cb); return nullptr; }
-    // cb type mismatch: emu expects bool(void*,int,uint64_t,size_t,uint64_t,void*)
-    return nullptr;
+std::shared_ptr<InvalidMemHook> Speakeasy::add_mem_invalid_hook(MemAccessCallback cb) {
+    if (!emu) { 
+        mem_invalid_hooks.emplace_back(cb); 
+        return nullptr; 
+    }
+    return emu->add_mem_invalid_hook(cb, (BinaryEmulator*)this);
 }
 
-void* Speakeasy::add_interrupt_hook(std::function<void()> cb, const std::map<std::string, std::string>& ctx) {
-    if (!emu) { interrupt_hooks.emplace_back(cb, ctx); return nullptr; }
-    // cb type mismatch
-    return nullptr;
+std::shared_ptr<InterruptHook> Speakeasy::add_interrupt_hook(IntrCallback cb, const std::map<std::string, std::string>& ctx) {
+    if (!emu) { 
+        interrupt_hooks.emplace_back(cb, ctx); 
+        return nullptr; 
+    }
+    return emu->add_interrupt_hook(cb, {}, (BinaryEmulator*)this);
 }
 
-void* Speakeasy::add_mem_map_hook(std::function<void()> cb, uint64_t begin, uint64_t end) {
-    if (!emu) { mem_map_hooks.emplace_back(cb, begin, end); return nullptr; }
-    emu->add_mem_map_hook(cb, begin, end, (BinaryEmulator*)this);
-    return nullptr;
+std::shared_ptr<MapMemHook> Speakeasy::add_mem_map_hook(MapMemCallback cb, uint64_t begin, uint64_t end) {
+    if (!emu) { 
+        mem_map_hooks.emplace_back(cb, begin, end); 
+        return nullptr; 
+    }
+    return emu->add_mem_map_hook(cb, begin, end, (BinaryEmulator*)this);
 }
 
-void* Speakeasy::get_registry_key(int handle, const std::string& path) { (void)handle; (void)path; return nullptr; }
+void* Speakeasy::get_registry_key(int handle, const std::string& path) { 
+    (void)handle; (void)path; return nullptr; 
+}
+
 void* Speakeasy::get_address_map(uint64_t addr) { (void)addr; return nullptr; }
+
 std::vector<void*> Speakeasy::get_user_modules() { return {}; }
+
 std::vector<void*> Speakeasy::get_sys_modules() { return {}; }
 
 uint64_t Speakeasy::mem_alloc(size_t size, uint64_t base, const std::string& tag) {
@@ -339,6 +359,7 @@ std::vector<uint8_t> Speakeasy::mem_read(uint64_t addr, size_t size) {
 }
 
 void Speakeasy::mem_write(uint64_t addr, const std::vector<uint8_t>& data) { emu->mem_write(addr, data); }
+
 void* Speakeasy::mem_cast(void* obj, uint64_t addr) { (void)obj; (void)addr; return nullptr; }
 
 uint64_t Speakeasy::reg_read(const std::string& reg) {

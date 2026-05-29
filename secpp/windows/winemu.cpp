@@ -31,12 +31,12 @@ WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* lo
       run_complete(false), emu_complete(false),
       curr_exception_code(0), prev_pc(0), unhandled_exception_filter(0),
       fs_addr(0), gs_addr(0) {
-    regman = std::make_shared<RegistryManager>(config.registry);
-    fileman = std::make_shared<FileManager>(config, this);
-    netman = std::make_shared<NetworkManager>(config.network);
-    driveman = std::make_shared<DriveManager>(config.drives);
+    regman = std::make_shared<RegistryManager>(config_.registry);
+    fileman = std::make_shared<FileManager>(config_, this);
+    netman = std::make_shared<NetworkManager>(config_.network);
+    driveman = std::make_shared<DriveManager>(config_.drives);
     cryptman = std::make_shared<CryptoManager>();
-    hammer = std::make_shared<ApiHammer>(this, config);
+    hammer = std::make_shared<ApiHammer>(this, config_);
 }
 
 //  Bootstrap 
@@ -169,9 +169,9 @@ void WindowsEmulator::enable_code_hook() {
 // def disable_code_hook(self):
 //     """Remove the transient code hook."""
 void WindowsEmulator::disable_code_hook() {
-    if (tmp_code_hook && emu_eng) {
+    if (tmp_code_hook && emu_eng_) {
         for (auto h : uc_hooks_) {
-            uc_hook_del(emu_eng->get_engine(), h);
+            uc_hook_del(emu_eng_->get_engine(), h);
         }
         uc_hooks_.clear();
         tmp_code_hook = nullptr;
@@ -429,15 +429,15 @@ std::tuple<uint64_t, uint64_t> WindowsEmulator::_setup_gdt(int arch) {
     }
 
     // Write GDTR base address and segment selectors
-    if (emu_eng) {
+    if (emu_eng_) {
         uint64_t gdtr_base = gdt_base;
-        emu_eng->reg_write(speakeasy::arch::REG_GDTR, gdtr_base);
+        emu_eng_->reg_write(speakeasy::arch::REG_GDTR, gdtr_base);
         // DS selector (index 16, Ring3)
-        emu_eng->reg_write(speakeasy::arch::REG_DS, create_selector(16, GDT_FLAGS::Ring3));
+        emu_eng_->reg_write(speakeasy::arch::REG_DS, create_selector(16, GDT_FLAGS::Ring3));
         // CS selector (index 17, Ring3)
-        emu_eng->reg_write(speakeasy::arch::REG_CS, create_selector(17, GDT_FLAGS::Ring3));
+        emu_eng_->reg_write(speakeasy::arch::REG_CS, create_selector(17, GDT_FLAGS::Ring3));
         // SS selector (index 18, Ring0)
-        emu_eng->reg_write(speakeasy::arch::REG_SS, create_selector(18, GDT_FLAGS::Ring0));
+        emu_eng_->reg_write(speakeasy::arch::REG_SS, create_selector(18, GDT_FLAGS::Ring0));
     }
 
     // Architecture-specific FS/GS segments
@@ -455,9 +455,9 @@ std::tuple<uint64_t, uint64_t> WindowsEmulator::_setup_gdt(int arch) {
         uint8_t access = GDT_ACCESS_BITS::Data | GDT_ACCESS_BITS::DataWritable | GDT_ACCESS_BITS::Ring3;
         make_entry(19, fs_base, access);
 
-        if (emu_eng) {
+        if (emu_eng_) {
             uint64_t fs_sel = create_selector(19, GDT_FLAGS::Ring3);
-            emu_eng->reg_write(speakeasy::arch::REG_FS, fs_sel);
+            emu_eng_->reg_write(speakeasy::arch::REG_FS, fs_sel);
         }
     } else if (speakeasy::arch::ARCH_AMD64 == arch) {
         // GS Segment needed for PEB access at gs:[0x60]
@@ -470,9 +470,9 @@ std::tuple<uint64_t, uint64_t> WindowsEmulator::_setup_gdt(int arch) {
         uint8_t access = GDT_ACCESS_BITS::Data | GDT_ACCESS_BITS::DataWritable | GDT_ACCESS_BITS::Ring3;
         make_entry(15, gs_base, access, SEG_SIZE);
 
-        if (emu_eng) {
+        if (emu_eng_) {
             uint64_t gs_sel = create_selector(15, GDT_FLAGS::Ring3);
-            emu_eng->reg_write(speakeasy::arch::REG_GS, gs_sel);
+            emu_eng_->reg_write(speakeasy::arch::REG_GS, gs_sel);
         }
     }
 
@@ -724,16 +724,16 @@ void WindowsEmulator::start() {
 
     // Get timeout from config
     uint64_t timeout_usec = 0;
-    if (config.timeout > 0) {
-        timeout_usec = static_cast<uint64_t>(config.timeout) * 1000000ULL;
+    if (config_.timeout > 0) {
+        timeout_usec = static_cast<uint64_t>(config_.timeout) * 1000000ULL;
     }
 
     // Start profiler timer
-    if (profiler) {
-        profiler->set_start_time();
+    if (profiler_) {
+        profiler_->set_start_time();
     }
 
-    int max_instr = config.max_api_count;
+    int max_instr = config_.max_api_count;
     if (max_instr <= 0) max_instr = 0;
 
     while (true) {
@@ -744,14 +744,14 @@ void WindowsEmulator::start() {
             }
 
             // Begin emulation via engine (synchronous)
-            if (emu_eng && curr_run) {
-                uc_err err = emu_eng->start(curr_run->start_addr, timeout_usec,
+            if (emu_eng_ && curr_run) {
+                uc_err err = emu_eng_->start(curr_run->start_addr, timeout_usec,
                                              static_cast<size_t>(max_instr));
                 if (err != UC_ERR_OK) {
                     // Check for timeout after execution
-                    if (profiler && timeout_usec > 0 &&
-                        profiler->get_run_time() > static_cast<double>(config.timeout)) {
-                        log_error("* Timeout of " + std::to_string(config.timeout) + " sec(s) reached.");
+                    if (profiler_ && timeout_usec > 0 &&
+                        profiler_->get_run_time() > static_cast<double>(config_.timeout)) {
+                        log_error("* Timeout of " + std::to_string(config_.timeout) + " sec(s) reached.");
                     } else {
                         // Non-OK result: try next run via on_run_complete
                         on_run_complete();
@@ -764,9 +764,9 @@ void WindowsEmulator::start() {
                 }
 
                 // Check timeout after successful emulation
-                if (profiler && timeout_usec > 0 &&
-                    profiler->get_run_time() > static_cast<double>(config.timeout)) {
-                    log_error("* Timeout of " + std::to_string(config.timeout) + " sec(s) reached.");
+                if (profiler_ && timeout_usec > 0 &&
+                    profiler_->get_run_time() > static_cast<double>(config_.timeout)) {
+                    log_error("* Timeout of " + std::to_string(config_.timeout) + " sec(s) reached.");
                 }
             }
         } catch (const std::exception& e) {
@@ -790,8 +790,8 @@ void WindowsEmulator::start() {
 // def resume(self, addr, count=-1):
 //     """Resume emulation at the specified address."""
 void WindowsEmulator::resume(uint64_t addr, int count) {
-    if (emu_eng) {
-        emu_eng->start(addr, count, 0);
+    if (emu_eng_) {
+        emu_eng_->start(addr, count, 0);
     }
 }
 
@@ -850,8 +850,8 @@ void WindowsEmulator::kill_process(std::shared_ptr<Process> proc) {
 // def get_system_root(self):
 //     """Get the path of the "SYSTEMROOT" environment variable"""
 std::string WindowsEmulator::get_system_root() {
-    auto it = env.find("systemroot");
-    std::string root = (it != env.end()) ? it->second : "C:\\WINDOWS\\system32";
+    auto it = env_.find("systemroot");
+    std::string root = (it != env_.end()) ? it->second : "C:\\WINDOWS\\system32";
     if (!root.empty() && root.back() != '\\') root += '\\';
     return root;
 }
@@ -861,8 +861,8 @@ std::string WindowsEmulator::get_system_root() {
 //     """Get the path of the "WINDIR" environment variable"""
 
 std::string WindowsEmulator::get_windows_dir() {
-    auto it = env.find("windir");
-    std::string dir = (it != env.end()) ? it->second : "C:\\WINDOWS";
+    auto it = env_.find("windir");
+    std::string dir = (it != env_.end()) ? it->second : "C:\\WINDOWS";
     if (!dir.empty() && dir.back() != '\\') dir += '\\';
     return dir;
 }
@@ -873,8 +873,8 @@ std::string WindowsEmulator::get_windows_dir() {
 
 std::string WindowsEmulator::get_cd() {
     if (cd.empty()) {
-        auto it = env.find("cd");
-        cd = (it != env.end()) ? it->second : "C:\\WINDOWS\\system32";
+        auto it = env_.find("cd");
+        cd = (it != env_.end()) ? it->second : "C:\\WINDOWS\\system32";
         if (!cd.empty() && cd.back() != '\\') cd += '\\';
     }
     return cd;
@@ -886,7 +886,7 @@ std::string WindowsEmulator::get_cd() {
 
 void WindowsEmulator::set_cd(const std::string& path) { cd = path; }
 
-std::map<std::string, std::string> WindowsEmulator::get_env() { return env; }
+std::map<std::string, std::string> WindowsEmulator::get_env() { return env_; }
 
 // Python winemu.py:1179
 // def set_env(self, var, val):
@@ -895,7 +895,7 @@ std::map<std::string, std::string> WindowsEmulator::get_env() { return env; }
 void WindowsEmulator::set_env(const std::string& var, const std::string& val) {
     std::string key = var;
     for (auto& c : key) c = static_cast<char>(std::tolower(c));
-    env[key] = val;
+    env_[key] = val;
 }
 
 // Python winemu.py:1213
@@ -1154,11 +1154,11 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     }
 
     //  Initialize emulation engine if needed (Python 1006-1008) 
-    if (!emu_eng) {
+    if (!emu_eng_) {
         int eng_arch = valid_arch ? img->arch : speakeasy::arch::ARCH_X86;
         int mode = (img->arch == 64) ? speakeasy::arch::BITS_64 : speakeasy::arch::BITS_32;
-        emu_eng = new EmuEngine();
-        emu_eng->init_engine(eng_arch, mode);
+        emu_eng_ = new EmuEngine();
+        emu_eng_->init_engine(eng_arch, mode);
     }
     if (!ptr_size) ptr_size = 4;
 
@@ -1321,7 +1321,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     }
 
     //  String profiling for primary modules (Python 1120-1124) 
-    if (is_primary && profiler && config.analysis.strings && !img->regions.empty()) {
+    if (is_primary && profiler_ && config_.analysis.strings && !img->regions.empty()) {
         auto& raw = img->regions[0].data;
         if (!raw.empty()) {
             auto ansi_strs = get_ansi_strings(raw);
@@ -1329,8 +1329,8 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
             std::vector<std::string> ansi_only, uni_only;
             for (auto& [offset, s] : ansi_strs) ansi_only.push_back(s);
             for (auto& [offset, s] : uni_strs) uni_only.push_back(s);
-            profiler->set_strings("ansi", ansi_only);
-            profiler->set_strings("unicode", uni_only);
+            profiler_->set_strings("ansi", ansi_only);
+            profiler_->set_strings("unicode", uni_only);
         }
     }
 
@@ -1338,10 +1338,10 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     modules.push_back(mod);
 
     //  Allocate stack for primary image (Python 1128-1130) 
-    if (is_primary && stack_base == 0 && img->stack_size > 0) {
+    if (is_primary && stack_base_ == 0 && img->stack_size > 0) {
         size_t stack_size = img->stack_size;  // use image_size as default (stack_size field not on C++ LoadedImage)
         auto [sb, sp] = alloc_stack(stack_size);
-        stack_base = sb;
+        stack_base_ = sb;
     }
 
     //  Run one-time setup (Python 1132-1135) 
@@ -1829,7 +1829,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_mo
 //     """Get the current thread CPU context"""
 void* WindowsEmulator::get_thread_context(std::shared_ptr<Thread> thread) {
     (void)thread;
-    if (!emu_eng) return nullptr;
+    if (!emu_eng_) return nullptr;
 
     // Allocate memory for a CONTEXT structure
     size_t ctx_size = (get_arch() == speakeasy::arch::ARCH_AMD64) ? 1232 : 716;
@@ -1895,7 +1895,7 @@ void* WindowsEmulator::get_thread_context(std::shared_ptr<Thread> thread) {
 //     """Set the current thread CPU context"""
 void WindowsEmulator::load_thread_context(void* ctx, std::shared_ptr<Thread> thread) {
     (void)thread;
-    if (!emu_eng || !ctx) return;
+    if (!emu_eng_ || !ctx) return;
 
     uint64_t ctx_addr = reinterpret_cast<uint64_t>(ctx);
     size_t ctx_size = (get_arch() == speakeasy::arch::ARCH_AMD64) ? 1232 : 716;
@@ -2287,10 +2287,10 @@ void WindowsEmulator::handle_import_data(const std::string& mod, const std::stri
 //     """Log an API call with its arguments and return value."""
 void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
                                uint64_t rv, const std::vector<uint64_t>& argv) {
-    if (profiler) {
+    if (profiler_) {
         std::vector<std::string> str_argv;
         for (auto a : argv) str_argv.push_back("0x" + speakeasy::hex_str(a));
-        profiler->log_api(curr_run, pc, api, reinterpret_cast<void*>(rv), str_argv);
+        profiler_->log_api(curr_run, pc, api, reinterpret_cast<void*>(rv), str_argv);
     }
 }
 
@@ -3036,9 +3036,9 @@ void* WindowsEmulator::dev_ioctl(uint32_t ctl_code, void* in_buf,
 
 // Python winemu.py: (Unicorn engine binding)
 void WindowsEmulator::_register_code_hook(void* callback, uint64_t begin, uint64_t end) {
-    if (!emu_eng) return;
+    if (!emu_eng_) return;
     uc_hook hh = 0;
-    uc_err err = uc_hook_add(emu_eng->get_engine(), &hh, UC_HOOK_CODE,
+    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_CODE,
                               callback, static_cast<void*>(this), begin, end);
     if (err == UC_ERR_OK) {
         uc_hooks_.push_back(hh);
@@ -3048,9 +3048,9 @@ void WindowsEmulator::_register_code_hook(void* callback, uint64_t begin, uint64
 
 // Python winemu.py: (Unicorn engine binding)
 void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
-    if (!emu_eng) return;
+    if (!emu_eng_) return;
     uc_hook hh = 0;
-    uc_err err = uc_hook_add(emu_eng->get_engine(), &hh, UC_HOOK_MEM_READ,
+    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_MEM_READ,
                               callback, static_cast<void*>(this), 1, 0);
     (void)hook_type;
     if (err == UC_ERR_OK) {

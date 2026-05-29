@@ -41,15 +41,16 @@ const int INVAL_PERM_MEM_READ = 2005;
 
 // Forward declarations
 class EmuEngine;
+class MemMap;
 
-using ApiCallback = std::function<bool()>;
-using DynCodeCallback = std::function<bool()>;
+using ApiCallback = std::function<bool(void* emu, const std::string& api, void* orig, std::vector<uint64_t> argv)>;
+using DynCodeCallback = std::function<bool(std::shared_ptr<MemMap> mm)>;
 using CodeCallback = std::function<bool(void* emu, uint64_t addr, uint32_t size)>;
 using MemAccessCallback = std::function<bool(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value)>;
 using MemCallback = std::function<bool(void* emu, int access, uint64_t addr, uint32_t size, int64_t value)>;
 using IntrCallback = std::function<bool(void* emu, int num)>;
 using InsnCallback = std::function<bool(void* emu)>;
-using MapMemCallback = std::function<bool()>;
+using MapMemCallback = std::function<bool(void* emu, uint64_t addr, uint32_t size, const std::string& tag, int64_t prot, int64_t flags)>;
 
 /**
  * Get the supplied path in relation to the package root
@@ -131,6 +132,7 @@ public:
     DynCodeHook(void* container, EmuEngine* emu_eng,
                 DynCodeCallback cb,
                 const std::vector<void*>& ctx = {});
+    bool invoke(std::shared_ptr<MemMap> mm);
 };
 
 /** Hook that fires for every CPU instruction in a range */
@@ -210,6 +212,7 @@ public:
                uint64_t begin = 1,
                uint64_t end = 0);
     void add();
+    bool invoke();
 };
 
 /** Hook that fires each time an invalid chunk of memory is accessed */

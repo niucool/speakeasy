@@ -44,7 +44,7 @@
 // API_LEVEL  = tuple[dict[str, list[ApiHook]], WILDCARD_FLAG]
 // MODULE_LEVEL = tuple[dict[str, API_LEVEL], WILDCARD_FLAG]
 
-using ApiLevel = std::pair<std::map<std::string, std::vector<ApiHook>>, bool>;
+using ApiLevel = std::pair<std::map<std::string, std::vector<std::shared_ptr<ApiHook>>>, bool>;
 using ModuleLevel = std::pair<std::map<std::string, ApiLevel>, bool>;
 
 // Generic emulator class for binary code
@@ -60,7 +60,7 @@ protected:
     EmuEngine* emu_eng_;
     std::vector<void*> maps_;
     ModuleLevel api_hooks_{};
-    std::map<int, std::vector<Hook*>> hooks_;
+    std::map<int, std::vector<std::shared_ptr<Hook>>> hooks_;
     
     std::shared_ptr<Profiler> profiler_;
     double runtime_;
@@ -247,13 +247,13 @@ public:
     
     // Hook management methods (Python:822-1147)
     // Python binemu.py:822-852 doc: "If an API hook has been set, return it here"
-    std::vector<ApiHook> get_api_hooks(const std::string& mod_name, const std::string& func_name);
+    std::vector<std::shared_ptr<ApiHook>> get_api_hooks(const std::string& mod_name, const std::string& func_name);
     // Python binemu.py:854-895 doc: "Add an API level hook (e.g. kernel32.CreateFile) here"
-    ApiHook add_api_hook(std::function<void()> cb, const std::string& module = "", 
+    std::shared_ptr<ApiHook> add_api_hook(ApiCallback cb, const std::string& module = "",
                          const std::string& api_name = "", int argc = 0, 
                          void* call_conv = nullptr, BinaryEmulator* emu = nullptr);
     // Python binemu.py:897-919 doc: "Add a hook that will fire for every CPU instruction"
-    CodeHook add_code_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0, 
+    std::shared_ptr<CodeHook> add_code_hook(CodeCallback cb, uint64_t begin = 1, uint64_t end = 0,
                            std::map<std::string, std::string> ctx = {}, BinaryEmulator* emu = nullptr);
     // Python binemu.py:1042-1054 doc: "This handler will dispatch other invalid memory hooks"
     void _dynamic_code_cb(BinaryEmulator* emu, uint64_t addr, size_t size, 
@@ -261,30 +261,30 @@ public:
     // Python binemu.py:931-946 doc: "Set the top level dispatch hook for dynamic code execution"
     void _set_dyn_code_hook(uint64_t addr, size_t size, std::map<std::string, std::string> ctx = {});
     // Python binemu.py:948-968 doc: "Add a hook that will fire when dynamically generated/copied code is executed"
-    DynCodeHook add_dyn_code_hook(std::function<void()> cb, std::vector<std::string> ctx = {}, 
+    std::shared_ptr<DynCodeHook> add_dyn_code_hook(DynCodeCallback cb, std::vector<std::string> ctx = {},
                                   BinaryEmulator* emu = nullptr);
     // Python binemu.py:970-992 doc: "Add a hook that will fire for memory reads"
-    ReadMemHook add_mem_read_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0, 
+    std::shared_ptr<ReadMemHook> add_mem_read_hook(MemAccessCallback cb, uint64_t begin = 1, uint64_t end = 0,
                                   BinaryEmulator* emu = nullptr);
     // Python binemu.py:994-1016 doc: "Add a hook that will fire for memory writes"
-    WriteMemHook add_mem_write_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0, 
+    std::shared_ptr<WriteMemHook> add_mem_write_hook(MemAccessCallback cb, uint64_t begin = 1, uint64_t end = 0,
                                     BinaryEmulator* emu = nullptr);
     // Python binemu.py:1018-1040 doc: "Add a hook that will fire for memory maps"
-    MapMemHook add_mem_map_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0, 
+    std::shared_ptr<MapMemHook> add_mem_map_hook(MapMemCallback cb, uint64_t begin = 1, uint64_t end = 0,
                                 BinaryEmulator* emu = nullptr);
-    bool _hook_mem_invalid_dispatch(BinaryEmulator* emu, int access, uint64_t address, 
-                                    size_t size, uint64_t value, std::map<std::string, std::string> ctx);
+    bool _hook_mem_invalid_dispatch(void* emu, int access, uint64_t address, 
+                                    uint32_t size, uint64_t value);
     // Python binemu.py:1056-1076 doc: "Add a hook that will fire for invalid memory access"
-    InvalidMemHook add_mem_invalid_hook(std::function<void()> cb, BinaryEmulator* emu = nullptr);
+    std::shared_ptr<InvalidMemHook> add_mem_invalid_hook(MemAccessCallback cb, BinaryEmulator* emu = nullptr);
     // Python binemu.py:1078-1100 doc: "Add a hook that will fire for software interrupts"
-    InterruptHook add_interrupt_hook(std::function<void()> cb, std::vector<std::string> ctx = {}, 
+    std::shared_ptr<InterruptHook> add_interrupt_hook(IntrCallback cb, std::vector<std::string> ctx = {},
                                      BinaryEmulator* emu = nullptr);
     // Python binemu.py:1102-1124 doc: "Add a hook that will fire for IN, SYSCALL, or SYSENTER instructions"
-    InstructionHook add_instruction_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0, 
-                                         std::vector<std::string> ctx = {}, BinaryEmulator* emu = nullptr, 
+    std::shared_ptr<InstructionHook> add_instruction_hook(InsnCallback cb, uint64_t begin = 1, uint64_t end = 0,
+                                        std::vector<std::string> ctx = {}, BinaryEmulator* emu = nullptr,
                                          void* insn = nullptr);
     // Python binemu.py:1126-1147 doc: "Add a hook that will fire for invalid instruction attempts"
-    InvalidInstructionHook add_invalid_instruction_hook(std::function<void()> cb, 
+    std::shared_ptr<InvalidInstructionHook> add_invalid_instruction_hook(InsnCallback cb,
                                                         std::vector<std::string> ctx = {}, 
                                                         BinaryEmulator* emu = nullptr);
     

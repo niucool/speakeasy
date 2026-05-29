@@ -32,19 +32,21 @@ private:
     void* logger;
     speakeasy::SpeakeasyConfig config;
     Win32Emulator* emu;
-    std::vector<std::tuple<std::function<void()>, std::string, std::string, int, std::string>> api_hooks;
-    std::vector<std::tuple<std::function<void()>, uint64_t, uint64_t, std::map<std::string, std::string>>> code_hooks;
-    std::vector<std::tuple<std::function<void()>, std::map<std::string, std::string>>> dyn_code_hooks;
-    std::vector<std::tuple<std::function<void()>, std::vector<void*>>> invalid_insn_hooks;
-    std::vector<std::tuple<std::function<void()>, uint64_t, uint64_t>> mem_read_hooks;
+
+    std::vector<std::tuple<ApiCallback, std::string, std::string, int, std::string>> api_hooks;
+    std::vector<std::tuple<CodeCallback, uint64_t, uint64_t, std::map<std::string, std::string>>> code_hooks;
+    std::vector<std::tuple<DynCodeHook, std::map<std::string, std::string>>> dyn_code_hooks;
+    std::vector<std::tuple<InvalidInstructionHook, std::vector<void*>>> invalid_insn_hooks;
+    std::vector<std::tuple<ReadMemHook, uint64_t, uint64_t>> mem_read_hooks;
+    std::vector<std::tuple<WriteMemHook, uint64_t, uint64_t>> mem_write_hooks;
+    std::vector<std::tuple<InvalidMemHook>> mem_invalid_hooks;
+    std::vector<std::tuple<InterruptHook, std::map<std::string, std::string>>> interrupt_hooks;
+    std::vector<std::tuple<MapMemHook, uint64_t, uint64_t>> mem_map_hooks;
+
+    std::vector<std::string> loaded_bins;
     std::vector<std::string> argv;
     void* exit_event;
     bool debug;
-    std::vector<std::string> loaded_bins;
-    std::vector<std::tuple<std::function<void()>, uint64_t, uint64_t>> mem_write_hooks;
-    std::vector<std::tuple<std::function<void()>>> mem_invalid_hooks;
-    std::vector<std::tuple<std::function<void()>, std::map<std::string, std::string>>> interrupt_hooks;
-    std::vector<std::tuple<std::function<void()>, uint64_t, uint64_t>> mem_map_hooks;
 
     /**
      * Init the emulator config
@@ -127,7 +129,7 @@ public:
     /**
      * Set a callback to fire when a specified API is called during emulation
      */
-    void* add_api_hook(std::function<void()> cb, const std::string& module = "", 
+    std::shared_ptr<ApiHook> add_api_hook(ApiCallback cb, const std::string& module = "",
                        const std::string& api_name = "", int argc = 0, 
                        const std::string& call_conv = "");
     
@@ -154,49 +156,49 @@ public:
     /**
      * Set a callback to fire for every CPU instruction that is emulated
      */
-    void* add_code_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0, 
+    std::shared_ptr<CodeHook> add_code_hook(CodeCallback cb, uint64_t begin = 1, uint64_t end = 0,
                         const std::map<std::string, std::string>& ctx = {});
     
     /**
      * Set a callback to fire when dynamically generated/copied code is executed
      */
-    void* add_dyn_code_hook(std::function<void()> cb, 
+    std::shared_ptr<DynCodeHook> add_dyn_code_hook(DynCodeCallback cb,
                            const std::map<std::string, std::string>& ctx = {});
     
     /**
      * Set a callback to fire when a memory address is read from
      */
-    void* add_mem_read_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0);
+    std::shared_ptr<ReadMemHook> add_mem_read_hook(MemAccessCallback cb, uint64_t begin = 1, uint64_t end = 0);
     
     /**
      * Set a callback to fire when a memory address is written to
      */
-    void* add_mem_write_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0);
+    std::shared_ptr<WriteMemHook> add_mem_write_hook(MemAccessCallback cb, uint64_t begin = 1, uint64_t end = 0);
     
     /**
      * Set a callback to fire when an IN instruction executes
      */
-    void* add_IN_instruction_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0);
+    std::shared_ptr<InstructionHook> add_IN_instruction_hook(InsnCallback cb, uint64_t begin = 1, uint64_t end = 0);
     
     /**
      * Set a callback to fire when a SYSCALL / SYSENTER instruction executes
      */
-    void* add_SYSCALL_instruction_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0);
+    std::shared_ptr<InstructionHook> add_SYSCALL_instruction_hook(InsnCallback cb, uint64_t begin = 1, uint64_t end = 0);
     
     /**
      * Set a callback to fire when an invalid instruction is attempted to be executed
      */
-    void* add_invalid_instruction_hook(std::function<void()> cb, const std::vector<void*>& ctx = {});
+    std::shared_ptr<InvalidInstructionHook> add_invalid_instruction_hook(InsnCallback cb, const std::vector<void*>& ctx = {});
     
     /**
      * Get a callback for when a memory access violation occurs
      */
-    void* add_mem_invalid_hook(std::function<void()> cb);
+    std::shared_ptr<InvalidMemHook> add_mem_invalid_hook(MemAccessCallback cb);
     
     /**
      * Get a callback for software interrupts
      */
-    void* add_interrupt_hook(std::function<void()> cb, 
+    std::shared_ptr<InterruptHook> add_interrupt_hook(IntrCallback cb,
                             const std::map<std::string, std::string>& ctx = {});
     
     /**
@@ -370,7 +372,7 @@ public:
     /**
      * Set a callback to fire when a memory address is mapped
      */
-    void* add_mem_map_hook(std::function<void()> cb, uint64_t begin = 1, uint64_t end = 0);
+    std::shared_ptr<MapMemHook> add_mem_map_hook(MapMemCallback cb, uint64_t begin = 1, uint64_t end = 0);
     
     /**
      * Creates a memory dump archive package of the emulated sample

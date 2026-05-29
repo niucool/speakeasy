@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <filesystem>
 
+#include "memmgr.h"
+
 /**
  * Get the supplied path in relation to the package root
  */
@@ -113,6 +115,13 @@ DynCodeHook::DynCodeHook(void* container, EmuEngine* emu_eng,
     : Hook(container, emu_eng, ctx), cb(cbl) {
 }
 
+bool DynCodeHook::invoke(std::shared_ptr<MemMap> mm) {
+    if (cb) {
+        return cb(mm);
+    }
+    return true;
+}
+
 /**
  * Constructor for CodeHook
  */
@@ -203,7 +212,7 @@ ReadMemHook::ReadMemHook(void* container, EmuEngine* emu_eng,
                          uint64_t begin, 
                          uint64_t end, 
                          bool native_hook)
-    : MemHook(container, emu_eng, {}, native_hook) {
+    : MemHook(container, emu_eng, cb, begin, end, native_hook) {
     access_type = HOOK_MEM_READ;
 }
 
@@ -215,7 +224,7 @@ WriteMemHook::WriteMemHook(void* container, EmuEngine* emu_eng,
                            uint64_t begin, 
                            uint64_t end, 
                            bool native_hook)
-    : MemHook(container, emu_eng, {}, native_hook) {
+    : MemHook(container, emu_eng, cb, begin, end, native_hook) {
     access_type = HOOK_MEM_WRITE;
 }
 
@@ -223,10 +232,10 @@ WriteMemHook::WriteMemHook(void* container, EmuEngine* emu_eng,
  * Constructor for MapMemHook
  */
 MapMemHook::MapMemHook(void* container, EmuEngine* emu_eng, 
-                       MapMemCallback cb, 
-                       uint64_t begin, 
-                       uint64_t end)
-    : Hook(container, emu_eng), begin(begin), end(end), cb(cb) {
+                       MapMemCallback cbl, 
+                       uint64_t beginl, 
+                       uint64_t endl)
+    : Hook(container, emu_eng), begin(beginl), end(endl), cb(cbl) {
 }
 
 /**
@@ -237,13 +246,20 @@ void MapMemHook::add() {
     enabled = true;
 }
 
+bool MapMemHook::invoke() {
+   if (cb) {
+        return cb();
+   }
+   return true;
+}
+
 /**
  * Constructor for InvalidMemHook
  */
 InvalidMemHook::InvalidMemHook(void* container, EmuEngine* emu_eng, 
                                MemAccessCallback cb, 
                                bool native_hook)
-    : MemHook(container, emu_eng, {}, native_hook) {
+    : MemHook(container, emu_eng, cb, 1, 0, native_hook) {
     access_type = HOOK_MEM_INVALID;
 }
 
