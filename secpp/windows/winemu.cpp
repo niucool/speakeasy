@@ -192,17 +192,18 @@ void WindowsEmulator::set_hooks() {
 //     """Unmap reserved memory space so we can handle events (e.g. import APIs, entry point returns, etc.)"""
 void WindowsEmulator::_set_emu_hooks() {
     if (!emu_hooks_set) {
-        mem_map(EMU_RESERVE_SIZE, EMU_RETURN_ADDR, PERM_MEM_RW);
+        try {
+            mem_unmap(EMU_RETURN_ADDR, EMU_RESERVE_SIZE);
+        } catch (...) {}
         emu_hooks_set = true;
     }
 }
 
-// Python winemu.py:259
-// def _unset_emu_hooks(self):
-//     """Re-map reserved memory space to catch import API calls and return events."""
 void WindowsEmulator::_unset_emu_hooks() {
     if (emu_hooks_set) {
-        mem_unmap(EMU_RETURN_ADDR, EMU_RESERVE_SIZE);
+        try {
+            mem_map(EMU_RESERVE_SIZE, EMU_RETURN_ADDR, PERM_MEM_RW, "emu.reserved");
+        } catch (...) {}
         emu_hooks_set = false;
     }
 }
@@ -3202,9 +3203,8 @@ void WindowsEmulator::_register_code_hook(void* callback, uint64_t begin, uint64
 void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
     if (!emu_eng_) return;
     uc_hook hh = 0;
-    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_MEM_READ,
+    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, hook_type,
                               callback, static_cast<void*>(this), 1, 0);
-    (void)hook_type;
     if (err == UC_ERR_OK) {
         uc_hooks_.push_back(hh);
     }
@@ -3216,6 +3216,13 @@ void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
 // def _get_exception_list(self):
 //     """Retrieves the exception handler list for the current thread"""
 uint64_t WindowsEmulator::_get_exception_list() {
+    auto t = get_current_thread();
+    if (t) {
+        auto teb = t->get_teb();
+        if (teb) {
+            return read_ptr(teb->get_address());
+        }
+    }
     uint64_t teb = (ptr_size == 4) ? fs_addr : gs_addr;
     return (teb != 0) ? read_ptr(teb) : 0;
 }
@@ -3234,4 +3241,8 @@ void WindowsEmulator::_map_faulting_page_for_exception(uint64_t faulting_address
     }
     mem_map(page_size, fakeout, PERM_MEM_RW, "emu.seh.fault_page");
     tmp_maps.push_back({fakeout, page_size});
+}
+
+std::tuple<uint64_t, uint64_t> WindowsEmulator::get_reserved_ranges() {
+    return {EMU_RESERVED, EMU_RESERVED + EMU_RESERVE_SIZE};
 }

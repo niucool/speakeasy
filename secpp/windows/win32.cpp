@@ -456,6 +456,7 @@ void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
     this->arch = my_arch;
     _setup_gdt(my_arch);
     setup_user_shared_data();
+    mem_map(EMU_RESERVE_SIZE, EMU_RESERVED, PERM_MEM_RW, "emu.reserved");
     set_ptr_size(my_arch);
     peb_addr_ = (my_arch == 32) ? fs_addr + 0x30 : gs_addr + 0x60;
 
