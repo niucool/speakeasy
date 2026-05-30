@@ -48,6 +48,7 @@
 #include "driveman.h"
 #include "cryptman.h"
 #include "hammer.h"
+#include "ioman.h"
 
 #include "errors.h"
 #include "../config.h"
@@ -183,6 +184,8 @@ protected:
     std::shared_ptr<ApiHammer> hammer = nullptr;
     std::shared_ptr<WindowsApi> api = nullptr;
     std::shared_ptr<ObjectManager> om = nullptr;     // ObjectManager
+    std::shared_ptr<speakeasy::IoManager> ioman = nullptr;     // ObjectManager
+
     void* wintypes = nullptr;
 
     //  Helper 
@@ -342,7 +345,7 @@ public:
     // Python winemu.py:285
     // def file_create_mapping(self, hfile, name, size, prot):
     //     """Create a memory mapping for an emulated file"""
-    void* file_create_mapping(void* hfile, const std::string& name,
+    uint32_t file_create_mapping(void* hfile, const std::string& name,
                               size_t size, int prot);
     // Python winemu.py:291
     // def file_get(self, handle):
@@ -383,19 +386,19 @@ public:
     // Python winemu.py:351
     // def reg_open_key(self, path, create=False):
     //     """Open or create a registry key in the emulation space"""
-    void* reg_open_key(const std::string& path, bool create = false);
+    uint32_t reg_open_key(const std::string& path, bool create = false);
     // Python winemu.py:357
     // def reg_get_subkeys(self, hkey):
     //     """Get subkeys for a given registry key"""
-    std::vector<std::string> reg_get_subkeys(void* hkey);
+    std::vector<std::string> reg_get_subkeys(std::shared_ptr<RegKey> hkey);
     // Python winemu.py:363
     // def reg_get_key(self, handle=0, path=""):
     //     """Get registry key by path or handle"""
-    void* reg_get_key(int handle = 0, const std::string& path = "");
+    std::shared_ptr<RegKey> reg_get_key(int handle = 0, const std::string& path = "");
     // Python winemu.py:371
     // def reg_create_key(self, path):
     //     """Create a registry key"""
-    void* reg_create_key(const std::string& path);
+    std::shared_ptr<RegKey> reg_create_key(const std::string& path);
 
     //  Run control 
     // Python winemu.py:386
@@ -769,8 +772,7 @@ public:
     // Python winemu.py:333
     // def dev_ioctl(self, arch, dev, ioctl, inbuf):
     //     """Dispatch a device I/O control request to the I/O manager."""
-    void* dev_ioctl(uint32_t ctl_code, void* in_buf, size_t in_len,
-                    void* out_buf, size_t out_len);
+    std::pair<uint32_t, std::vector<uint8_t>> dev_ioctl(int arch, Device* dev, uint32_t ioctl_code, const std::vector<uint8_t>& inbuf);
 
     //  Process / thread creation 
     // Python winemu.py:1226

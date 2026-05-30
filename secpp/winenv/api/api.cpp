@@ -43,7 +43,7 @@ static inline BinaryEmulator* binemu(void* raw) {
 
 //  Static member 
 
-std::string ApiHandler::name = "";
+std::string ApiHandler::class_name = "";
 
 //  Constructor 
 
@@ -411,7 +411,7 @@ void* ApiHandler::file_open(const std::string& path, bool create) {
     return winemu(emu)->file_open(path, create);
 }
 
-void* ApiHandler::file_create_mapping(void* hfile, const std::string& in_name, size_t size, int prot) {
+uint32_t ApiHandler::file_create_mapping(void* hfile, const std::string& in_name, size_t size, int prot) {
     return winemu(emu)->file_create_mapping(hfile, in_name, size, prot);
 }
 
@@ -427,15 +427,15 @@ bool ApiHandler::does_file_exist(const std::string& path) {
 // Registry Management (delegates to WindowsEmulator)
 // 
 
-void* ApiHandler::reg_open_key(const std::string& path, bool create) {
+uint32_t ApiHandler::reg_open_key(const std::string& path, bool create) {
     return winemu(emu)->reg_open_key(path, create);
 }
 
-void* ApiHandler::reg_get_key(int handle) {
+std::shared_ptr<RegKey> ApiHandler::reg_get_key(int handle) {
     return winemu(emu)->reg_get_key(handle);
 }
 
-std::vector<std::string> ApiHandler::reg_get_subkeys(void* hkey) {
+std::vector<std::string> ApiHandler::reg_get_subkeys(std::shared_ptr<RegKey> hkey) {
     return winemu(emu)->reg_get_subkeys(hkey);
 }
 

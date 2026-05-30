@@ -37,6 +37,7 @@ WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* lo
     driveman = std::make_shared<DriveManager>(config_.drives);
     cryptman = std::make_shared<CryptoManager>();
     hammer = std::make_shared<ApiHammer>(this, config_);
+    ioman = std::make_shared<speakeasy::IoManager>();
 }
 
 //  Bootstrap 
@@ -579,34 +580,31 @@ bool WindowsEmulator::does_file_exist(const std::string& path) {
 // Python winemu.py:351
 // def reg_open_key(self, path, create=False):
 //     """Open or create a registry key in the emulation space"""
-void* WindowsEmulator::reg_open_key(const std::string& path, bool create) {
+uint32_t WindowsEmulator::reg_open_key(const std::string& path, bool create) {
     if (regman) {
-        uint32_t h = regman->open_key(path, create);
-        return reinterpret_cast<void*>(static_cast<uintptr_t>(h));
+        return regman->open_key(path, create);
     }
-    return nullptr;
+    return 0;
 }
 
 // Python winemu.py:363
 // def reg_get_key(self, handle=0, path=""):
 //     """Get registry key by path or handle"""
-void* WindowsEmulator::reg_get_key(int handle, const std::string& path) {
+std::shared_ptr<RegKey> WindowsEmulator::reg_get_key(int handle, const std::string& path) {
     if (!regman) return nullptr;
     std::shared_ptr<RegKey> key;
     if (handle != 0)
-        key = regman->get_key_from_handle(static_cast<uint32_t>(handle));
+        return regman->get_key_from_handle(static_cast<uint32_t>(handle));
     else if (!path.empty())
-        key = regman->get_key_from_path(path);
-    return key ? reinterpret_cast<void*>(key.get()) : nullptr;
+        return regman->get_key_from_path(path);
 }
 
 // Python winemu.py:371
 // def reg_create_key(self, path):
 //     """Create a registry key"""
-void* WindowsEmulator::reg_create_key(const std::string& path) {
+std::shared_ptr<RegKey> WindowsEmulator::reg_create_key(const std::string& path) {
     if (regman) {
-        auto key = regman->create_key(path);
-        return key ? reinterpret_cast<void*>(key.get()) : nullptr;
+        return regman->create_key(path);
     }
     return nullptr;
 }
@@ -3065,14 +3063,14 @@ void* WindowsEmulator::pipe_get(int handle) {
 // Python winemu.py:285
 // def file_create_mapping(self, hfile, name, size, prot):
 //     """Create a memory mapping for an emulated file"""
-void* WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
+uint32_t WindowsEmulator::file_create_mapping(void* hfile, const std::string& name,
                                             size_t size, int prot) {
     if (fileman) {
         uint32_t handle = fileman->file_create_mapping(
             static_cast<uint32_t>(reinterpret_cast<uintptr_t>(hfile)), name, size, prot);
-        (void)handle;
+        return handle;
     }
-    return nullptr;
+    return 0;
 }
 
 //  Manager accessors 
@@ -3104,21 +3102,19 @@ std::shared_ptr<DriveManager> WindowsEmulator::get_drive_manager()   { return dr
 // Python winemu.py:357
 // def reg_get_subkeys(self, hkey):
 //     """Get subkeys for a given registry key"""
-std::vector<std::string> WindowsEmulator::reg_get_subkeys(void* hkey) {
-    (void)hkey;
-    // RegistryManager::get_subkeys accepts shared_ptr<RegKey>  adapter needed
-    return {};
+std::vector<std::string> WindowsEmulator::reg_get_subkeys(std::shared_ptr<RegKey> hkey) {
+    if (!regman || !hkey) return {};
+
+    return regman->get_subkeys(hkey);
 }
 
 
 // Python winemu.py:333
 // def dev_ioctl(self, arch, dev, ioctl, inbuf):
 //     """Dispatch a device I/O control request to the I/O manager."""
-void* WindowsEmulator::dev_ioctl(uint32_t ctl_code, void* in_buf,
-                                  size_t in_len, void* out_buf, size_t out_len) {
-    (void)in_buf; (void)in_len; (void)out_buf; (void)out_len;
+std::pair<uint32_t, std::vector<uint8_t>> WindowsEmulator::dev_ioctl(int arch, Device* dev, uint32_t ioctl_code, const std::vector<uint8_t>& inbuf) {
     // Dispatch to kernel-mode IRP handler via IoManager
-    return reinterpret_cast<void*>(static_cast<uintptr_t>(ctl_code));
+    return ioman->dev_ioctl(arch, dev, ioctl_code, inbuf);
 }
 
 

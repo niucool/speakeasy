@@ -16,6 +16,7 @@
 // Forward declarations
 class WindowsEmulator;
 class BinaryEmulator;
+class RegKey;
 
 // Structure to hold function hook information
 struct ApiHookInfo {
@@ -59,7 +60,7 @@ public:
     void add_data(const std::string& name, std::function<void()> func);
 
     // Static member for class name
-    static std::string name;
+    static std::string class_name;
 
     // Destructor
     virtual ~ApiHandler() = default;
@@ -156,14 +157,14 @@ public:
     
     // File management methods
     void* file_open(const std::string& path, bool create = false);
-    void* file_create_mapping(void* hfile, const std::string& name, size_t size, int prot);
+    uint32_t file_create_mapping(void* hfile, const std::string& name, size_t size, int prot);
     void* file_get(int handle);
     bool does_file_exist(const std::string& path);
     
     // Registry management methods
-    void* reg_open_key(const std::string& path, bool create = false);
-    void* reg_get_key(int handle);
-    std::vector<std::string> reg_get_subkeys(void* hkey);
+    uint32_t reg_open_key(const std::string& path, bool create = false);
+    std::shared_ptr<RegKey> reg_get_key(int handle);
+    std::vector<std::string> reg_get_subkeys(std::shared_ptr<RegKey> hkey);
     
     // Encoding methods
     std::string get_encoding(int char_width);

@@ -849,8 +849,10 @@ uint64_t Ntdll::NtDeviceIoControlFile(void* emu, const std::string&, int,
     (void)file_handle; (void)in_buf; (void)in_len; (void)out_buf; (void)out_len;
 
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
-    wemu->dev_ioctl(ctl_code, reinterpret_cast<void*>(in_buf), in_len,
-                    reinterpret_cast<void*>(out_buf), out_len);
+
+    //TODO:
+    //wemu->dev_ioctl(wemu->get_ptr_size(), ctl_code, reinterpret_cast<void*>(in_buf), in_len,
+    //                reinterpret_cast<void*>(out_buf), out_len);
 
     if (io_status_ptr != 0) {
         write_u32(emu, io_status_ptr, NT_SUCCESS);
@@ -1189,10 +1191,11 @@ uint64_t Ntdll::NtCreateKey(void* emu, const std::string&, int,
     // If path starts with \Registry\Machine\, use HKLM
     // If starts with \Registry\User\, use HKCU
     // etc.
-    void* hkey = wemu->reg_open_key(full_path, true);
-    if (!hkey) {
-        hkey = wemu->reg_create_key(full_path);
-    }
+    // TODO
+    uint32_t hkey = wemu->reg_open_key(full_path, true);
+    //if (!hkey) {
+    //    hkey = wemu->reg_create_key(full_path);
+    //}
 
     if (!hkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
@@ -1245,7 +1248,7 @@ uint64_t Ntdll::NtOpenKey(void* emu, const std::string&, int,
         full_path = key_path;
     }
 
-    void* hkey = wemu->reg_open_key(full_path, false);
+    uint32_t hkey = wemu->reg_open_key(full_path, false);
     if (!hkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
     //TODO:
