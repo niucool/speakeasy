@@ -447,9 +447,10 @@ void Win32Emulator::set_unhandled_exception_handler(uint64_t handler_addr) {
 void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
     om = std::make_shared<ObjectManager>(this);
     int my_arch = get_arch();
+    this->arch = my_arch;
     _setup_gdt(my_arch);
     setup_user_shared_data();
-    set_ptr_size(this->arch);
+    set_ptr_size(my_arch);
     peb_addr_ = (my_arch == 32) ? fs_addr + 0x30 : gs_addr + 0x60;
 
     for (auto&symlink : config_.symlinks) {

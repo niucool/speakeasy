@@ -24,6 +24,18 @@
   - `test_porting_winemu.cpp`：验证多级多线程调度中 PEB/TEB 的动态链表链接与错误转储上下文分类。
 - **tests**: 彻底移除了原有庞大的 `test_porting.cpp` 以杜绝用例重复，重新配置 CMake 并编译运行，全票通过了所有拆分后的 108 项端口测试用例。
 
+#### Fixed
+
+- **secpp**: 修复了 `BinaryEmulator` 的核心参数处理和调用约定（Calling Conventions）漏洞，使其完全同 Python 层对齐：
+  - **`set_func_args`**：修复了在 `home_space=false` 时，误跳过前 4 个 AMD64 寄存器参数设置的严重 Bug。
+  - **`get_func_argv`**：修复了从栈上抓取 AMD64 堆栈参数时出现的指针尺寸偏移差错（将起始偏移对齐至 `RSP+0x20+ptr_size`）；支持了 x86 下 `CALL_CONV_FASTCALL` 寄存器参数与 stack 参数的协同抓取；支持了 AMD64 下 float 实参在 `XMM0-XMM3` 寄存器中的读取。
+  - **`do_call_return`**：修复了当未明确指定返回地址（`ret_addr=0`）时，未自动弹栈（pop return address）导致 PC 被设置至错误的栈指针值以及栈溢出的严重缺陷。
+  - **`set_ptr_size`**：引入了对不支持的硬件架构抛出类型匹配异常 `EmuException` 的拦截检查，防止潜在的隐式 32-bit 回退。
+  - **`reg_read/reg_write`**：对于不合法的寄存器字符串传入，由原本的静默忽略/返回 0 修正为规范抛出 `EmuException`。
+  - **`read_mem_string`**：限制并校验字符宽度 `width` 仅能在 `1`（UTF-8）和 `2`（UTF-16LE）中，并修正了宽字符转码的内存遍历越界细节，彻底对齐 Python 解码行为。
+  - **`get_stack_trace`/`format_stack`**：对栈内存 Jun 物理读取流程增加了越界/失效捕获（`try-catch`），从而避免由于未映射内存的读取异常中断调用栈解析，确保发生崩溃时测试和排错流的弹性。
+  - **`Win32Emulator::setup`**：修复了在初始化过程中未同步本端 `this->arch` 到 `my_arch`，直接向 `set_ptr_size` 传递零值造成 `"Unsupported architecture"` 异常而引发仿真奔溃的严重 Bug。
+
 ### 2026-05-29
 
 #### Added

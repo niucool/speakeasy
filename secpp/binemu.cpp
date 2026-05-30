@@ -1,5 +1,6 @@
  // binemu.cpp
 #include "binemu.h"
+#include "helper.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -194,11 +195,12 @@ std::vector<std::string> BinaryEmulator::get_drive_config() {
 
 void BinaryEmulator::reg_write(const std::string& reg, uint64_t val) {
     // Python binemu.py:174-185: use central REG_LOOKUP table
-    std::string lower = reg;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    std::string lower = speakeasy::to_lower(reg);
     auto it = speakeasy::arch::REG_LOOKUP.find(lower);
     if (it != speakeasy::arch::REG_LOOKUP.end())
         reg_write(it->second, val);
+    else
+        throw EmuException("Invalid register name: " + reg);
 }
 
 void BinaryEmulator::reg_write(int reg, uint64_t val) {
@@ -211,12 +213,11 @@ void BinaryEmulator::reg_write(int reg, uint64_t val) {
 
 uint64_t BinaryEmulator::reg_read(const std::string& reg) {
     // Python binemu.py:187-198: use central REG_LOOKUP table
-    std::string lower = reg;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    std::string lower = speakeasy::to_lower(reg);
     auto it = speakeasy::arch::REG_LOOKUP.find(lower);
     if (it != speakeasy::arch::REG_LOOKUP.end())
         return reg_read(it->second);
-    return 0;
+    throw EmuException("Invalid register name: " + reg);
 }
 
 uint64_t BinaryEmulator::reg_read(int reg) {
@@ -424,7 +425,15 @@ std::vector<std::string> BinaryEmulator::get_stack_trace(int num_ptrs) {
     char buf[128];
     for (int i = 0; i < num_ptrs; ++i) {
         uint64_t addr = sp + i * ps;
-        auto data = mem_read(addr, ps);
+        std::vector<uint8_t> data;
+        try {
+            data = mem_read(addr, ps);
+        } catch (...) {
+            break;
+        }
+        if (data.size() < static_cast<size_t>(ps)) {
+            break;
+        }
         uint64_t val = 0;
         for (size_t j = 0; j < data.size(); ++j)
             val |= static_cast<uint64_t>(data[j]) << (j * 8);
@@ -439,7 +448,6 @@ std::vector<std::string> BinaryEmulator::get_stack_trace(int num_ptrs) {
                      static_cast<unsigned long long>(val), tag.c_str());
         }
         trace.push_back(buf);
-        sp += ps;
     }
     return trace;
 }
@@ -453,7 +461,15 @@ std::vector<std::tuple<uint64_t, uint64_t, std::string>> BinaryEmulator::format_
     int ps = get_ptr_size() > 0 ? get_ptr_size() : 4;
     for (int i = 0; i < num_ptrs; ++i) {
         uint64_t addr = sp + i * ps;
-        auto data = mem_read(addr, ps);
+        std::vector<uint8_t> data;
+        try {
+            data = mem_read(addr, ps);
+        } catch (...) {
+            break;
+        }
+        if (data.size() < static_cast<size_t>(ps)) {
+            break;
+        }
         uint64_t val = 0;
         for (size_t j = 0; j < data.size(); ++j)
             val |= static_cast<uint64_t>(data[j]) << (j * 8);
@@ -564,8 +580,8 @@ std::shared_ptr<speakeasy::Module> BinaryEmulator::get_module_from_addr(uint64_t
 std::vector<std::shared_ptr<ApiHook>> BinaryEmulator::get_api_hooks(const std::string& mod_name, const std::string& func_name) {
     // Python binemu.py:822-852 doc: "If an API hook has been set, return it here"
     // Two-level fnmatch: module name wildcard + api name wildcard
-    std::string ml = mod_name; std::transform(ml.begin(), ml.end(), ml.begin(), ::tolower);
-    std::string fl = func_name; std::transform(fl.begin(), fl.end(), fl.begin(), ::tolower);
+    std::string ml = speakeasy::to_lower(mod_name);
+    std::string fl = speakeasy::to_lower(func_name);
 
     const auto& [mdict, wmod] = api_hooks_;
     std::vector<const ApiLevel*> cand;
@@ -594,8 +610,8 @@ std::shared_ptr<ApiHook> BinaryEmulator::add_api_hook(ApiCallback cb, const std:
     // Python binemu.py:854-895 doc: "Add an API level hook (e.g. kernel32.CreateFile) here"
     // FIFO ordering: all hooks in chain are called, last hook's return value used
     // Wildcard detection: ?, *, [, ] in module/api name triggers fnmatch matching
-    std::string ml = module; std::transform(ml.begin(), ml.end(), ml.begin(), ::tolower);
-    std::string fl = api_name; std::transform(fl.begin(), fl.end(), fl.begin(), ::tolower);
+    std::string ml = speakeasy::to_lower(module);
+    std::string fl = speakeasy::to_lower(api_name);
 
     bool wm = false, wa = false;
     for (const char* w : {"?", "*", "[", "]"}) {
@@ -738,8 +754,10 @@ void BinaryEmulator::set_func_args(uint64_t stack_addr, uint64_t ret_addr,
     size_t arg_idx = 0;
 
     // x64: first 4 args in registers
-    if (arch == 64 && home_space) {
-        sp -= 0x20;  // shadow space
+    if (arch == 64) {
+        if (home_space) {
+            sp -= 0x20;  // shadow space
+        }
         static const int x64_arg_regs[] = {
             speakeasy::arch::REG_RCX,
             speakeasy::arch::REG_RDX,
@@ -795,19 +813,25 @@ std::vector<uint64_t> BinaryEmulator::get_func_argv(int callconv, int argc) {
     std::vector<uint64_t> argv;
     int arch = get_arch();
     int nargs = argc;
-    (void)callconv;
 
     if (arch == 64) {
-        // x64: rcx, rdx, r8, r9
+        // x64: RCX, RDX, R8, R9 or XMM0, XMM1, XMM2, XMM3 for float
         static const int x64_regs[] = {
             speakeasy::arch::REG_RCX,
             speakeasy::arch::REG_RDX,
             speakeasy::arch::REG_R8,
             speakeasy::arch::REG_R9
         };
-        uint64_t sp = get_stack_ptr() + 0x20;
+        static const int x64_float_regs[] = {
+            speakeasy::arch::REG_XMM0,
+            speakeasy::arch::REG_XMM1,
+            speakeasy::arch::REG_XMM2,
+            speakeasy::arch::REG_XMM3
+        };
+        const int* regs = (callconv == speakeasy::arch::CALL_CONV_FLOAT) ? x64_float_regs : x64_regs;
+        uint64_t sp = get_stack_ptr() + 0x20 + get_ptr_size();
         for (int i = 0; i < 4 && nargs > 0; ++i) {
-            argv.push_back(reg_read(x64_regs[i]));
+            argv.push_back(reg_read(regs[i]));
             --nargs;
         }
         // Stack args
@@ -819,9 +843,21 @@ std::vector<uint64_t> BinaryEmulator::get_func_argv(int callconv, int argc) {
             argv.push_back(val);
         }
     } else {
-        // x86: all on stack
+        // x86: FASTCALL uses ECX, EDX. Others all on stack
+        int reg_args = 0;
+        static const int x86_fastcall_regs[] = {
+            speakeasy::arch::REG_ECX,
+            speakeasy::arch::REG_EDX
+        };
+        if (callconv == speakeasy::arch::CALL_CONV_FASTCALL) {
+            for (int i = 0; i < 2 && nargs > 0; ++i) {
+                argv.push_back(reg_read(x86_fastcall_regs[i]));
+                --nargs;
+                reg_args++;
+            }
+        }
         uint64_t sp = get_stack_ptr() + 4;  // skip ret addr
-        for (int i = 0; i < argc; ++i) {
+        for (int i = 0; i < nargs; ++i) {
             auto data = mem_read(sp + i * 4, 4);
             uint64_t val = 0;
             for (size_t j = 0; j < data.size(); ++j)
@@ -878,10 +914,12 @@ void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_va
 
     uint64_t stk_ptr = reg_read(sp_reg);
 
-    if (ret_addr != 0) {
+    if (ret_addr == 0) {
+        ret_addr = pop_stack();
+    } else {
         reg_write(sp_reg, stk_ptr + get_ptr_size());
-        set_pc(ret_addr);
     }
+    set_pc(ret_addr);
     reg_write(ret_reg, ret_value);
 
     // Cleanup the stack
@@ -916,6 +954,9 @@ std::string BinaryEmulator::get_arch_name() {
 
 void BinaryEmulator::set_ptr_size(int arch) {
     // Python binemu.py:800-809 doc: "Set the current pointer size used in the emulator"
+    if (arch != speakeasy::arch::ARCH_AMD64 && arch != speakeasy::arch::ARCH_X86) {
+        throw EmuException("Unsupported architecture");
+    }
     int ps = (arch == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
     ptr_size_ = ps;
 }
@@ -929,6 +970,9 @@ int BinaryEmulator::get_ptr_size() {
 
 std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max_chars) {
     // Python binemu.py:657-685 doc: "Read a string from emulated memory"
+    if (width != 1 && width != 2) {
+        throw EmuException("Invalid width for string: " + std::to_string(width));
+    }
     // Supports width=1 (UTF-8) and width=2 (UTF-16LE) decoding
     std::vector<uint8_t> raw;
     for (int i = 0; max_chars == 0 || i < max_chars; ++i) {
@@ -947,28 +991,21 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
             uint16_t ch = static_cast<uint16_t>(raw[i]) | (static_cast<uint16_t>(raw[i+1]) << 8);
             if (ch == 0) break;
             // Python binemu.py:681-684 : .decode('utf-16le', 'ignore') : best-effort
-            if ((ch >= 0x20 && ch <= 0x7e) || ch == '\t' || ch == '\n' || ch == '\r') {
+            if (ch < 0x80) {
                 result += static_cast<char>(ch);
-            } else if (ch >= 0x80) {
-                // Pass through high codepoints as UTF-8 multibyte
-                if (ch < 0x800) {
-                    result += static_cast<char>(0xC0 | (ch >> 6));
-                    result += static_cast<char>(0x80 | (ch & 0x3F));
-                } else {
-                    result += static_cast<char>(0xE0 | (ch >> 12));
-                    result += static_cast<char>(0x80 | ((ch >> 6) & 0x3F));
-                    result += static_cast<char>(0x80 | (ch & 0x3F));
-                }
+            } else if (ch < 0x800) {
+                result += static_cast<char>(0xC0 | (ch >> 6));
+                result += static_cast<char>(0x80 | (ch & 0x3F));
+            } else {
+                result += static_cast<char>(0xE0 | (ch >> 12));
+                result += static_cast<char>(0x80 | ((ch >> 6) & 0x3F));
+                result += static_cast<char>(0x80 | (ch & 0x3F));
             }
-            // else: control chars ignored (matches Python 'ignore' error mode)
         }
         return result;
     }
     // width == 1: UTF-8 / ASCII filtering
-    std::string result;
-    for (auto b : raw) {
-        if (b >= 0x20 || b == '\t' || b == '\n' || b == '\r') result += static_cast<char>(b);
-    }
+    std::string result(raw.begin(), raw.end());
     return result;
 }
 
