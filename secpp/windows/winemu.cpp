@@ -2983,8 +2983,7 @@ std::string WindowsEmulator::_resolve_module_offset(uint64_t addr) {
 // def _resolve_region_info(self, addr: int) -> RegionInfo | None:
 //     """Return a RegionInfo for the region containing addr, or None if unmapped."""
 std::shared_ptr<speakeasy::RegionInfo> WindowsEmulator::_resolve_region_info(uint64_t addr) {
-    for (auto* m : maps_) {
-        auto* mem_map_ptr = static_cast<MemMap*>(m);
+    for (auto& mem_map_ptr : maps_) {
         if (mem_map_ptr && mem_map_ptr->get_base() <= addr && addr <= (mem_map_ptr->get_base() + mem_map_ptr->get_size() - 1)) {
             auto ri = std::make_shared<speakeasy::RegionInfo>();
             ri->tag = mem_map_ptr->get_tag().empty() ? "unknown" : mem_map_ptr->get_tag();
@@ -3002,9 +3001,7 @@ std::shared_ptr<speakeasy::RegionInfo> WindowsEmulator::_resolve_region_info(uin
 //     """Return up to `count` nearest memory regions to an unmapped address."""
 std::vector<speakeasy::RegionInfo> WindowsEmulator::_find_nearby_regions(uint64_t addr, int count) {
     std::vector<std::pair<uint64_t, speakeasy::RegionInfo>> distances;
-    for (auto* m : maps_) {
-        auto* mem_map_ptr = static_cast<MemMap*>(m);
-        if (!mem_map_ptr) continue;
+    for (auto& mem_map_ptr : maps_) {
         uint64_t base = mem_map_ptr->get_base();
         uint64_t size = mem_map_ptr->get_size();
         uint64_t end = base + size - 1;

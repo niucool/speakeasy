@@ -25,7 +25,7 @@ inline const std::string MEM_ALLOC     = "mem_alloc";
 inline const std::string MEM_WRITE     = "mem_write";
 inline const std::string MEM_READ      = "mem_read";
 inline const std::string MEM_PROTECT   = "mem_protect";
-inline const std::string MEM_FREE      = "mem_free";
+inline const std::string MEM_FREE_STR = "mem_free";
 inline const std::string MODULE_LOAD   = "module_load";
 inline const std::string THREAD_INJECT = "thread_inject";
 inline const std::string THREAD_CREATE = "thread_create";
@@ -198,7 +198,7 @@ struct MemFreeEvent : Event {
     std::string base;
     std::string size;
 
-    MemFreeEvent() { event = MEM_FREE; }
+    MemFreeEvent() { event = MEM_FREE_STR; }
 
     nlohmann::json to_json() const override {
         nlohmann::json j = Event::to_json();
@@ -454,7 +454,7 @@ inline std::unique_ptr<Event> make_event(const std::string& event_type) {
     if (event_type == MEM_WRITE)        return std::make_unique<MemWriteEvent>();
     if (event_type == MEM_READ)         return std::make_unique<MemReadEvent>();
     if (event_type == MEM_PROTECT)      return std::make_unique<MemProtectEvent>();
-    if (event_type == MEM_FREE)         return std::make_unique<MemFreeEvent>();
+    if (event_type == MEM_FREE_STR)         return std::make_unique<MemFreeEvent>();
     if (event_type == MODULE_LOAD)      return std::make_unique<ModuleLoadEvent>();
     if (event_type == THREAD_CREATE)    return std::make_unique<ThreadCreateEvent>();
     if (event_type == THREAD_INJECT)    return std::make_unique<ThreadInjectEvent>();

@@ -54,13 +54,14 @@ private:
     uint64_t curr_instr_size_;
     void* disasm_eng_;
     bool builtin_hooks_set_;
+
 protected:
-    uint64_t page_size_;
-    uint64_t stack_base_;
-    EmuEngine* emu_eng_;
-    std::vector<void*> maps_;
+    //uint64_t page_size_;
+    uint64_t stack_base_ = 0;
+    //EmuEngine* emu_eng_;
+    //std::vector<void*> maps_;
     ModuleLevel api_hooks_{};
-    std::map<int, std::vector<std::shared_ptr<Hook>>> hooks_;
+    //std::map<int, std::vector<std::shared_ptr<Hook>>> hooks_;
     
     std::shared_ptr<Profiler> profiler_;
     double runtime_;

@@ -138,7 +138,7 @@ bool MemMap::operator!=(const MemMap& other) const {
  */
 MemoryManager::MemoryManager() 
     : block_base_(0), block_size_(0), block_offset_(0), page_size_(0x1000), 
-      keep_memory_on_free_(false), emu_eng_(nullptr), hooks_(nullptr), current_process_(nullptr) {
+      keep_memory_on_free_(false), emu_eng_(nullptr), current_process_(nullptr) {
 }
 
 /**

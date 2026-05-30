@@ -166,7 +166,7 @@ std::string emulate_binary(const std::string& target_path,
         } else {
             //  PE module mode (Python: load_module + run_module) 
             auto module = se.load_module(target_path);
-            se.run_module(module, true, emulate_children);
+            se.run_module(module, false, emulate_children);
         }
 
         report = se.get_json_report();

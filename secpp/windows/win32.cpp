@@ -315,9 +315,13 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
         p->path = module->emu_path;
         p->base = module->base;
         curr_process = p;
+        om->add_object(p);
         processes.push_back(p);
+        auto& mm = get_address_map(module->base);
+        if (mm)
+            mm->set_process(current_process_);
     }
-    auto t = std::make_shared<Thread>(this);
+    auto t = std::make_shared<Thread>(this, stack_base_, module->stack_commit);
     
     if (curr_process) 
         curr_process->threads.push_back(t);
@@ -384,6 +388,7 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
 //     Begin emulating position independent code (i.e. shellcode) to prepare for emulation
 //     """
 void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t offset) {
+    // TODO:
     auto stack_info = alloc_stack(stack_commit);
     stack_base_ = std::get<0>(stack_info);
     auto run = std::make_shared<Run>();
