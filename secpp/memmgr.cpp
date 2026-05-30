@@ -178,8 +178,9 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
                 this->block_base_ = block.first;
                 this->block_size_ = block.second;
 
-                // Assuming emu_eng has a mem_map method
-                // this->emu_eng->mem_map(this->block_base, this->block_size);
+                if (this->emu_eng_) {
+                    this->emu_eng_->mem_map(this->block_base_, this->block_size_);
+                }
                 this->block_offset_ = 0;
                 addr = this->block_base_ + this->block_offset_;
             }
@@ -208,8 +209,9 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
     auto mm = std::make_shared<MemMap>(base, blockSize, tag, perms, flags, 
                                        base, actual_block_size, shared, process);
     
-    // Assuming emu_eng has a mem_map method
-    // this->emu_eng->mem_map(base, blockSize, perms);
+    if (this->emu_eng_) {
+        this->emu_eng_->mem_map(base, blockSize, perms);
+    }
     this->maps_.push_back(mm);
     _hook_mem_map_dispatch(mm);
     return base;
@@ -300,41 +302,47 @@ int64_t MemoryManager::mem_remap(uint64_t from, uint64_t to) {
  * Free a block of emulated memory
  */
 void MemoryManager::mem_unmap(uint64_t base, uint64_t size) {
-    // Assuming emu_eng has a mem_unmap method
-    // this->emu_eng->mem_unmap(base, size);
+    if (this->emu_eng_) {
+        this->emu_eng_->mem_unmap(base, size);
+    }
 }
 
 /**
  * Write bytes into the emulated address space
  */
 void MemoryManager::mem_write(uint64_t addr, const std::vector<uint8_t>& data) {
-    // Assuming emu_eng has a mem_write method
-    // this->emu_eng->mem_write(addr, data);
+    if (this->emu_eng_) {
+        this->emu_eng_->mem_write(addr, data.data(), data.size());
+    }
 }
 
 /**
  * Read bytes from the emulated address space
  */
 std::vector<uint8_t> MemoryManager::mem_read(uint64_t addr, uint64_t size) {
-    // Assuming emu_eng has a mem_read method
-    // return this->emu_eng->mem_read(addr, size);
-    return std::vector<uint8_t>(size, 0); // Placeholder
+    std::vector<uint8_t> data(size);
+    if (this->emu_eng_) {
+        this->emu_eng_->mem_read(addr, data.data(), size);
+    }
+    return data;
 }
 
 /**
  * Change memory protections
  */
 void MemoryManager::mem_protect(uint64_t addr, uint64_t size, uint32_t perms) {
-    // Assuming emu_eng has a mem_protect method
-    // this->emu_eng->mem_protect(addr, size, perms);
+    if (this->emu_eng_) {
+        this->emu_eng_->mem_protect(addr, size, perms);
+    }
 }
 
 /**
  * Remove an entire memory region that may not have blocks allocated within it
  */
 void MemoryManager::_mem_unmap_region(uint64_t base, uint64_t size) {
-    // Assuming emu_eng has a mem_unmap method
-    // this->emu_eng->mem_unmap(base, size);
+    if (this->emu_eng_) {
+        this->emu_eng_->mem_unmap(base, size);
+    }
 }
 
 /**
@@ -442,21 +450,40 @@ uint64_t MemoryManager::mem_map_reserve(uint64_t mapped_base) {
  * Get the current regions of mapped memory
  */
 std::vector<std::tuple<uint64_t, uint64_t, uint32_t>> MemoryManager::get_mem_regions() {
-    // Assuming emu_eng has a mem_regions method
-    // return this->emu_eng->mem_regions();
-    return {}; // Placeholder
+    std::vector<std::tuple<uint64_t, uint64_t, uint32_t>> regions;
+    if (!this->emu_eng_) return regions;
+    uc_mem_region* uc_regions = nullptr;
+    uint32_t count = 0;
+    uc_err err = this->emu_eng_->mem_regions(&uc_regions, &count);
+    if (err == UC_ERR_OK && uc_regions) {
+        for (uint32_t i = 0; i < count; ++i) {
+            regions.push_back(std::make_tuple(uc_regions[i].begin, uc_regions[i].end, uc_regions[i].perms));
+        }
+        uc_free(uc_regions);
+    }
+    return regions;
 }
 
 /**
  * Get runs of memory pages
  */
 std::vector<std::vector<uint64_t>> MemoryManager::get_runs(const std::vector<uint64_t>& i) {
-    // Simplified implementation - would need more complex logic to match Python version
     std::vector<std::vector<uint64_t>> result;
-    if (!i.empty()) {
-        std::vector<uint64_t> run;
-        run.push_back(i[0]);
-        result.push_back(run);
+    if (i.empty()) return result;
+    
+    std::vector<uint64_t> current_run;
+    current_run.push_back(i[0]);
+    for (size_t idx = 1; idx < i.size(); ++idx) {
+        if (i[idx] - i[idx - 1] == page_size_) {
+            current_run.push_back(i[idx]);
+        } else {
+            result.push_back(current_run);
+            current_run.clear();
+            current_run.push_back(i[idx]);
+        }
+    }
+    if (!current_run.empty()) {
+        result.push_back(current_run);
     }
     return result;
 }
@@ -505,9 +532,21 @@ std::pair<uint64_t, uint64_t> MemoryManager::get_valid_ranges(uint64_t size, uin
  
     int attempts = 9999;
     while (attempts > 0) {
-        // This is a simplified version - full implementation would require
-        // more complex set operations like in the Python version
-        break; // Placeholder
+        bool overlap = false;
+        for (uint64_t p = base; p < base + total; p += page_size) {
+            if (std::binary_search(curr.begin(), curr.end(), p)) {
+                overlap = true;
+                break;
+            }
+        }
+        if (!overlap) {
+            break;
+        }
+        if (attempts % 10 == 0) {
+            base += page_size * 1000;
+        } else {
+            base += total;
+        }
         attempts--;
     }
  
@@ -515,6 +554,5 @@ std::pair<uint64_t, uint64_t> MemoryManager::get_valid_ranges(uint64_t size, uin
         throw std::runtime_error("Failed to allocate emulator memory");
     }
  
-    // Return a placeholder result
     return std::make_pair(base, total);
 }
