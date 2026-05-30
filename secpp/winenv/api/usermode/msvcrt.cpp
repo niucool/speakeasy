@@ -1048,7 +1048,51 @@ uint64_t Msvcrt::_CxxThrowException(void* e, const std::string&, int, const std:
 }
 
 uint64_t Msvcrt::_except_handler4_common(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
-    (void)e; (void)a;
+    if (a.size() < 6) return 0;
+    uint64_t cookie_ptr = a[0];
+    uint64_t cookie_func = a[1];
+    uint64_t record = a[2];
+    uint64_t frame = a[3];
+    uint64_t context = a[4];
+    uint64_t dispatch_ctx = a[5];
+    (void)cookie_func;
+    (void)dispatch_ctx;
+
+    auto cookie_bytes = be(e)->mem_read(cookie_ptr, 4);
+    uint32_t cookie = 0;
+    if (cookie_bytes.size() >= 4) {
+        cookie = static_cast<uint32_t>(read_le(cookie_bytes, 0, 4));
+    }
+
+    auto thread = we(e)->get_current_thread();
+    if (!thread) return 0;
+
+    SEH& seh = thread->get_seh();
+    seh.set_context(reinterpret_cast<void*>(static_cast<uintptr_t>(context)), static_cast<int>(context));
+    seh.get_record_ref() = reinterpret_cast<void*>(static_cast<uintptr_t>(record));
+    seh.clear_frames();
+
+    uint64_t curr_frame = frame;
+    while (curr_frame != 0 && curr_frame != 0xFFFFFFFF) {
+        uint32_t next = static_cast<uint32_t>(be(e)->read_ptr(curr_frame));
+        uint32_t scope_table_enc = static_cast<uint32_t>(be(e)->read_ptr(curr_frame + 8));
+        uint32_t try_level = static_cast<uint32_t>(be(e)->read_ptr(curr_frame + 12));
+
+        uint32_t scope_table = scope_table_enc ^ cookie;
+        int32_t tl = static_cast<int32_t>(try_level);
+        if (tl == -2) tl = 0;
+
+        uint64_t scope_record_offset = scope_table + 16 + 12 * tl;
+
+        seh.add_frame(
+            reinterpret_cast<void*>(static_cast<uintptr_t>(curr_frame)),
+            reinterpret_cast<void*>(static_cast<uintptr_t>(scope_table)),
+            { reinterpret_cast<void*>(static_cast<uintptr_t>(scope_record_offset)) }
+        );
+
+        curr_frame = next;
+    }
+
     return 0;
 }
 

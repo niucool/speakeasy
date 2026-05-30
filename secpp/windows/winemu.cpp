@@ -2092,6 +2092,16 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
 
     // Call the SEH handler
     curr_exception_code = except_code;
+
+    // Retrieve thread and SEH context
+    auto thread = get_current_thread();
+    if (thread) {
+        SEH& seh = thread->get_seh();
+        seh.get_last_exception_code_ref() = static_cast<int>(except_code);
+        void* ctx = get_thread_context(thread);
+        seh.set_context(ctx, static_cast<int>(reinterpret_cast<uintptr_t>(ctx)));
+    }
+
     call(handler);  // Jump to the handler
     return true;
 }
@@ -2101,9 +2111,76 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
 // def _continue_seh_x86(self):
 //     """Get the next exception handler while processing SEH"""
 void WindowsEmulator::_continue_seh_x86() {
-    // After SEH handler returns, EIP should be set by the handler
-    // The handler typically calls RtlRestoreContext or similar
-    set_pc(0);  // Placeholder  actual EIP from handler context
+    auto thread = get_current_thread();
+    if (!thread) {
+        on_run_complete();
+        return;
+    }
+
+    SEH& seh = thread->get_seh();
+    uint32_t sp = static_cast<uint32_t>(get_stack_ptr());
+    uint32_t ret_val = static_cast<uint32_t>(get_return_val());
+
+    if (seh.get_handler_ret_val_ref() == nullptr) {
+        seh.get_handler_ret_val_ref() = reinterpret_cast<void*>(static_cast<uintptr_t>(ret_val));
+    }
+
+    void* ctx = seh.get_context_ref();
+    if (seh.get_context_address_ref() != 0) {
+        ctx = reinterpret_cast<void*>(static_cast<uintptr_t>(seh.get_context_address_ref()));
+    }
+
+    // Always restore thread context
+    load_thread_context(ctx, thread);
+
+    for (auto& frame : seh.get_frames_ref()) {
+        if (!frame.searched) {
+            if (frame.scope_records.empty()) continue;
+            auto& scope_record = frame.scope_records[0];
+
+            uint64_t rec_addr = reinterpret_cast<uint64_t>(scope_record.record);
+            uint32_t filter_func = static_cast<uint32_t>(read_ptr(rec_addr + 4));
+            uint32_t handler_address = static_cast<uint32_t>(read_ptr(rec_addr + 8));
+
+            if (!scope_record.filter_called && filter_func != 0) {
+                set_func_args(sp, SEH_RETURN_ADDR, {});
+                set_pc(filter_func);
+                seh.get_last_func_ref() = reinterpret_cast<void*>(static_cast<uintptr_t>(filter_func));
+                scope_record.filter_called = true;
+                return;
+            }
+
+            if (ret_val == 1 /* EXCEPTION_EXECUTE_HANDLER */ ||
+                filter_func == 0 ||
+                filter_func == 0xFFFFFFFF) {
+                if (!scope_record.handler_called) {
+                    set_pc(handler_address);
+                    seh.get_last_func_ref() = reinterpret_cast<void*>(static_cast<uintptr_t>(handler_address));
+                    scope_record.handler_called = true;
+                    return;
+                }
+            } else if (ret_val == 0xFFFFFFFF /* EXCEPTION_CONTINUE_EXECUTION */) {
+                void* ctx_to_load = seh.get_context_ref();
+                load_thread_context(ctx_to_load, thread);
+                uint32_t eip = static_cast<uint32_t>(read_ptr(reinterpret_cast<uint64_t>(ctx_to_load) + 0x98));
+                set_pc(eip);
+                return;
+            } else if (ret_val == 0 /* EXCEPTION_CONTINUE_SEARCH */) {
+                // pass
+            }
+
+            frame.searched = true;
+        }
+    }
+
+    if (ret_val == 0 /* EXCEPTION_CONTINUE_SEARCH */ && seh.get_frames_ref().empty()) {
+        void* ctx_to_load = seh.get_context_ref();
+        uint32_t eip = static_cast<uint32_t>(read_ptr(reinterpret_cast<uint64_t>(ctx_to_load) + 0x98));
+        set_pc(eip);
+        return;
+    }
+
+    on_run_complete();
 }
 
 

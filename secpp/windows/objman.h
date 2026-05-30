@@ -82,6 +82,15 @@ public:
     std::vector<Frame> get_frames();
     void clear_frames();
     void add_frame(void* entry, void* scope_table, std::vector<void*> records);
+
+    void*& get_context_ref() { return context_; }
+    int& get_context_address_ref() { return context_address_; }
+    void*& get_record_ref() { return record_; }
+    std::vector<Frame>& get_frames_ref() { return frames_; }
+    void*& get_last_func_ref() { return last_func_; }
+    int& get_last_exception_code_ref() { return last_exception_code_; }
+    int& get_exception_ptrs_ref() { return exception_ptrs_; }
+    void*& get_handler_ret_val_ref() { return handler_ret_val_; }
 };
 
 /**
@@ -284,7 +293,7 @@ public:
     Thread() : KernelObject(nullptr) {}
 
     void queue_message(void* msg);
-    SEH get_seh();
+    SEH& get_seh();
     void* get_context();
     void set_context(void* ctx);
     std::shared_ptr<Process> get_process() { return process_; }

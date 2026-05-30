@@ -515,7 +515,7 @@ void Thread::queue_message(void* msg) {
     this->message_queue_.push_back(msg);
 }
 
-SEH Thread::get_seh() {
+SEH& Thread::get_seh() {
     return this->seh_;
 }
 
