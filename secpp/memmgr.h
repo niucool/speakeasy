@@ -6,8 +6,12 @@
 #include <string>
 #include <memory>
 #include <cstdint>
+#include <map>
+
+#include "engines/unicorn_eng.h"
 
 // Forward declarations
+class Hook;
 class Process;
 class MemoryManager;
 
@@ -110,7 +114,7 @@ public:
  * Primitive memory manager used to block OS sized allocation units into something more practical
  */
 class MemoryManager {
-private:
+protected:
     std::vector<std::shared_ptr<MemMap>> maps_;
     std::vector<std::shared_ptr<MemMap>> mem_reserves_;
     uint64_t block_base_;
@@ -120,8 +124,8 @@ private:
     bool keep_memory_on_free_;
 
     // Assuming these would be defined elsewhere
-    void* emu_eng_;
-    void* hooks_;
+    EmuEngine* emu_eng_;
+    std::map<int, std::vector<std::shared_ptr<Hook>>> hooks_;
     std::shared_ptr<Process> current_process_;
 
     /**

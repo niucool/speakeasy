@@ -500,7 +500,8 @@ Thread::Thread(void* emu, int stack_base, int stack_commit)
     // object.Data = b"\xff" * sizeof()
     // ctx = emu.get_thread_context()
     // write_back()
-    object_ = new EmuStruct();
+    object_ = new speakeasy::defs::nt::ETHREAD();
+    address_ = static_cast<WindowsEmulator*>(emu_)->mem_map(sizeof_obj());
 
     // Allocate thread context
     if (emu_) {
