@@ -5,6 +5,25 @@
 
 ## [Unreleased]
 
+### 2026-05-30
+
+#### Changed
+
+- **tests**: 将综合测试套件 `test_porting.cpp` 进行了拆分，细化重构成 12 个独立的测试源文件，分别测试各个关键类和模块以提升测试的颗粒度：
+  - `test_porting_struct.cpp`：验证 `EmuStruct` 字节布局与 SFINAE 多态序列化。
+  - `test_porting_config.cpp`：验证 `SpeakeasyConfig` 缺省值、合并与 JSON 序列化。
+  - `test_porting_module_name.cpp`：验证模块名称大小写转换与后缀截断的规范化逻辑。
+  - `test_porting_profiler.cpp`：验证 `Profiler` 的进程、文件与注册表访问追踪记录。
+  - `test_porting_volumes.cpp`：验证文件卷映射语法解析与目录展开。
+  - `test_porting_artifact_store.cpp`：验证 `ArtifactStore` 的基本存取、去重与清理操作。
+  - `test_porting_memmgr.cpp`：验证虚拟内存映射与保留页生命周期。
+  - `test_porting_ntdefs.cpp`：验证 NT 内核基础数据结构的内存布局。
+  - `test_porting_loaders.cpp`：验证运行时驱动/可执行文件分类与诱饵模块的匹配逻辑。
+  - `test_porting_jitpe.cpp`：验证 `JitPeFile` 对 32/64 位诱饵 PE 部分的动态自组装行为。
+  - `test_porting_pefile.cpp`：验证真实 PE 的 TLS 回调枚举与基址重定位偏移修正。
+  - `test_porting_winemu.cpp`：验证多级多线程调度中 PEB/TEB 的动态链表链接与错误转储上下文分类。
+- **tests**: 彻底移除了原有庞大的 `test_porting.cpp` 以杜绝用例重复，重新配置 CMake 并编译运行，全票通过了所有拆分后的 108 项端口测试用例。
+
 ### 2026-05-29
 
 #### Added
