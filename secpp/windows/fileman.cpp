@@ -1,5 +1,6 @@
 // fileman.cpp
 #include "fileman.h"
+#include "../helper.h"
 #include "../binemu.h"
 #include <algorithm>
 #include <cctype>
@@ -357,13 +358,12 @@ std::shared_ptr<File> FileManager::get_file_from_path(const std::string& path) {
         norm_path = cwd + norm_path;
     }
     norm_path = clean_path(norm_path);
-    std::string norm_path_lower = norm_path;
-    std::transform(norm_path_lower.begin(), norm_path_lower.end(), norm_path_lower.begin(), ::tolower);
+    std::string norm_path_lower = speakeasy::to_lower(norm_path);
 
     for (auto& f : files_) {
         std::string fpath = f->get_path();
         fpath = clean_path(fpath);
-        std::transform(fpath.begin(), fpath.end(), fpath.begin(), ::tolower);
+        fpath = speakeasy::to_lower(fpath);
         if (fpath == norm_path_lower) return f;
     }
     return nullptr;
@@ -515,10 +515,8 @@ std::map<std::string, std::string>* FileManager::get_emu_file(const std::string&
 
     for (const auto& f : config_.filesystem.files) {
         if (f.mode == "by_ext") {
-            std::string ext_lower = ext_name;
-            std::transform(ext_lower.begin(), ext_lower.end(), ext_lower.begin(), ::tolower);
-            std::string f_ext_lower = f.ext;
-            std::transform(f_ext_lower.begin(), f_ext_lower.end(), f_ext_lower.begin(), ::tolower);
+             std::string ext_lower = speakeasy::to_lower(ext_name);
+             std::string f_ext_lower = speakeasy::to_lower(f.ext);
             if (ext_lower == f_ext_lower) {
                 std::map<std::string, std::string> entry;
                 entry["path"] = f.path;

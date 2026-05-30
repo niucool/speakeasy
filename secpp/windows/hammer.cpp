@@ -8,6 +8,7 @@
 // to short-circuit future calls.
 
 #include "hammer.h"
+#include "../helper.h"
 #include <algorithm>
 #include <cctype>
 #include <iostream>
@@ -26,8 +27,7 @@ const std::vector<std::string> _default_api_hammer_allowlist = {
 std::set<std::string> _lowercase_set(const std::vector<std::string>& tt) {
     std::set<std::string> result;
     for (const std::string& bb : tt) {
-        std::string lower_bb = bb;
-        std::transform(lower_bb.begin(), lower_bb.end(), lower_bb.begin(), ::tolower);
+        std::string lower_bb = speakeasy::to_lower(bb);
         result.insert(lower_bb);
     }
     return result;
@@ -60,8 +60,7 @@ bool ApiHammer::is_allowed_api(const std::string& apiname) {
     Returns true if the given apiname is one we don't want to use api hammering
     mitigation for
     */
-    std::string lower_apiname = apiname;
-    std::transform(lower_apiname.begin(), lower_apiname.end(), lower_apiname.begin(), ::tolower);
+    std::string lower_apiname = speakeasy::to_lower(apiname);
     return allow_list.find(lower_apiname) != allow_list.end();
 }
 

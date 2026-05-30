@@ -25,6 +25,7 @@
 #ifndef WINEMU_H
 #define WINEMU_H
 
+#include "../helper.h"
 #include <string>
 #include <vector>
 #include <map>
@@ -838,8 +839,7 @@ inline std::string WindowsEmulator::normalize_mod_name(const std::string& name) 
     auto dot = name.find_last_of('.');
     std::string base = (dot != std::string::npos) ? name.substr(0, dot) : name;
     // lowercase
-    for (auto& c : base) c = static_cast<char>(std::tolower(c));
-    return base;
+    return speakeasy::to_lower(base);
 }
 
 #endif // WINEMU_H

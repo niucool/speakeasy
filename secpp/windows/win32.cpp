@@ -1,5 +1,6 @@
 // win32.cpp
 #include "win32.h"
+#include "../helper.h"
 #include <algorithm>
 #include <cstring>
 #include <sstream>
@@ -706,7 +707,7 @@ void Win32Emulator::_set_input_metadata(const std::string& path, const std::vect
             std::string ext;
             auto dot = path.find_last_of('.');
             if (dot != std::string::npos) ext = path.substr(dot);
-            for (auto& c : ext) c = (char)tolower(c);
+            ext = speakeasy::to_lower(ext);
             if (ext == ".exe") pe_type = "exe";
             else pe_type = "dll";
         }
@@ -746,10 +747,8 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::_ordered_p
     for (auto m : mods) {
         auto img = m;
         // Check if this is an EXE: not a driver and has an .exe extension or was loaded as main module
-        std::string lname = img->name;
-        for (auto& c : lname) c = (char)tolower(c);
-        std::string lemu = img->emu_path;
-        for (auto& c : lemu) c = (char)tolower(c);
+        std::string lname = speakeasy::to_lower(img->name);
+        std::string lemu = speakeasy::to_lower(img->emu_path);
         
         bool is_exe_mod = false;
         if (!img->is_driver()) {

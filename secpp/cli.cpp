@@ -8,6 +8,7 @@
 #include "version.h"
 #include "volumes.h"
 #include "config.h"
+#include "helper.h"
 #include <algorithm>
 #include <cctype>
 #include <iostream>
@@ -156,9 +157,7 @@ std::string emulate_binary(const std::string& target_path,
 
         if (is_raw) {
             //  Shellcode mode (Python: load_shellcode + run_shellcode) 
-            std::string resolved_arch = arch.empty() ? "x86" : arch;
-            std::transform(resolved_arch.begin(), resolved_arch.end(),
-                           resolved_arch.begin(), ::tolower);
+            std::string resolved_arch = arch.empty() ? "x86" : to_lower(arch);
             if (resolved_arch == "amd64") resolved_arch = "x64";
 
             uint64_t sc_addr = se.load_shellcode(target_path, resolved_arch);

@@ -1,5 +1,6 @@
 // regman.cpp
 #include "regman.h"
+#include "../helper.h"
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
@@ -138,11 +139,8 @@ std::shared_ptr<RegValue> RegKey::get_value(const std::string& val_name) {
     }
     
     for (auto& v : values_) {
-        std::string v_name = v->get_name();
-        std::string lname = name;
-        std::string lvname = v_name;
-        std::transform(lname.begin(), lname.end(), lname.begin(), ::tolower);
-        std::transform(lvname.begin(), lvname.end(), lvname.begin(), ::tolower);
+        std::string lname = speakeasy::to_lower(name);
+        std::string lvname = speakeasy::to_lower(v->get_name());
         
         if (lname == lvname) {
             return v;
@@ -172,11 +170,8 @@ std::string RegistryManager::normalize_reg_path(const std::string& path) {
         std::vector<std::string> roots = {"\\registry\\machine\\", "hklm\\"};
         for (const std::string& r : roots) {
             if (path.length() >= r.length()) {
-                std::string lower_path = path;
-                std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::tolower);
-                
-                std::string lower_r = r;
-                std::transform(lower_r.begin(), lower_r.end(), lower_r.begin(), ::tolower);
+                std::string lower_path = speakeasy::to_lower(path);
+                std::string lower_r = speakeasy::to_lower(r);
                 
                 if (lower_path.substr(0, lower_r.length()) == lower_r) {
                     new_path = "HKEY_LOCAL_MACHINE\\" + path.substr(r.length());
@@ -229,13 +224,10 @@ static bool path_matches(const std::string& pattern, const std::string& str) {
 
 std::shared_ptr<RegKey> RegistryManager::get_key_from_path(const std::string& path) {
     std::string normalized_path = normalize_reg_path(path);
-    std::string lower_normalized_path = normalized_path;
-    std::transform(lower_normalized_path.begin(), lower_normalized_path.end(), 
-                   lower_normalized_path.begin(), ::tolower);
+    std::string lower_normalized_path = speakeasy::to_lower(normalized_path);
     
     for (auto& key : keys_) {
-        std::string key_path = key->get_path();
-        std::transform(key_path.begin(), key_path.end(), key_path.begin(), ::tolower);
+        std::string key_path = speakeasy::to_lower(key->get_path());
         
         // fnmatch-style matching: check if key path matches the pattern
         if (path_matches(lower_normalized_path, key_path)) {
@@ -246,12 +238,10 @@ std::shared_ptr<RegKey> RegistryManager::get_key_from_path(const std::string& pa
 }
 
 bool RegistryManager::is_key_a_parent_key(const std::string& path) {
-    std::string lower_path = path;
-    std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::tolower);
+    std::string lower_path = speakeasy::to_lower(path);
     
     for (auto& key : keys_) {
-        std::string key_path = key->get_path();
-        std::transform(key_path.begin(), key_path.end(), key_path.begin(), ::tolower);
+        std::string key_path = speakeasy::to_lower(key->get_path());
         
         if (key_path.substr(0, lower_path.length()) == lower_path) {
             return true;
@@ -266,12 +256,8 @@ std::vector<std::string> RegistryManager::get_subkeys(std::shared_ptr<RegKey> ke
     
     for (auto& k : keys_) {
         std::string test_path = k->get_path();
-        std::string lower_test_path = test_path;
-        std::string lower_parent_path = parent_path;
-        std::transform(lower_test_path.begin(), lower_test_path.end(), 
-                       lower_test_path.begin(), ::tolower);
-        std::transform(lower_parent_path.begin(), lower_parent_path.end(), 
-                       lower_parent_path.begin(), ::tolower);
+        std::string lower_test_path = speakeasy::to_lower(test_path);
+        std::string lower_parent_path = speakeasy::to_lower(parent_path);
         
         if (lower_test_path.substr(0, lower_parent_path.length()) == lower_parent_path) {
             std::string sub = test_path.substr(parent_path.length());
@@ -316,14 +302,10 @@ std::shared_ptr<RegKey> RegistryManager::get_key_from_config(const std::string& 
     
     const auto& keys_arr = config_.keys;
     
-    std::string lower_path = path;
-    std::transform(lower_path.begin(), lower_path.end(), lower_path.begin(), ::tolower);
+    std::string lower_path = speakeasy::to_lower(path);
     
     for (const auto& key_entry : keys_arr) {
-        std::string key_path = key_entry.path;
-        std::string lower_key_path = key_path;
-        std::transform(lower_key_path.begin(), lower_key_path.end(), 
-                       lower_key_path.begin(), ::tolower);
+        std::string lower_key_path = speakeasy::to_lower(key_entry.path);
         
         if (lower_key_path == lower_path) {
             auto new_key = std::make_shared<RegKey>(path);

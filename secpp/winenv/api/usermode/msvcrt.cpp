@@ -1,5 +1,6 @@
 // msvcrt.cpp  msvcrt.dll handler (~120 APIs, real implementations)
 #include "msvcrt.h"
+#include "../../../helper.h"
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -271,10 +272,8 @@ uint64_t Msvcrt::_stricmp(void* e, const std::string&, int, const std::vector<ui
     uint64_t s1 = a.size() > 0 ? a[0] : 0;
     uint64_t s2 = a.size() > 1 ? a[1] : 0;
     if (!s1 || !s2) return (s1 == s2) ? 0 : 1;
-    std::string str1 = be(e)->read_mem_string(s1, 1);
-    std::string str2 = be(e)->read_mem_string(s2, 1);
-    std::transform(str1.begin(), str1.end(), str1.begin(), ::tolower);
-    std::transform(str2.begin(), str2.end(), str2.begin(), ::tolower);
+    std::string str1 = speakeasy::to_lower(be(e)->read_mem_string(s1, 1));
+    std::string str2 = speakeasy::to_lower(be(e)->read_mem_string(s2, 1));
     return (str1 == str2) ? 0 : 1;
 }
 
@@ -287,10 +286,8 @@ uint64_t Msvcrt::_strnicmp(void* e, const std::string&, int, const std::vector<u
     uint64_t s2    = a.size() > 1 ? a[1] : 0;
     size_t   count = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
     if (!s1 || !s2) return (s1 == s2) ? 0 : 1;
-    std::string str1 = be(e)->read_mem_string(s1, 1, static_cast<int>(count));
-    std::string str2 = be(e)->read_mem_string(s2, 1, static_cast<int>(count));
-    std::transform(str1.begin(), str1.end(), str1.begin(), ::tolower);
-    std::transform(str2.begin(), str2.end(), str2.begin(), ::tolower);
+    std::string str1 = speakeasy::to_lower(be(e)->read_mem_string(s1, 1, static_cast<int>(count)));
+    std::string str2 = speakeasy::to_lower(be(e)->read_mem_string(s2, 1, static_cast<int>(count)));
     return (str1 == str2) ? 0 : 1;
 }
 
@@ -328,8 +325,7 @@ uint64_t Msvcrt::strrchr(void* e, const std::string&, int, const std::vector<uin
 uint64_t Msvcrt::_strlwr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
     uint64_t str = a.empty() ? 0 : a[0];
     if (!str) return 0;
-    std::string s = be(e)->read_mem_string(str, 1);
-    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+    std::string s = speakeasy::to_lower(be(e)->read_mem_string(str, 1));
     be(e)->write_mem_string(s, str, 1);
     return str;
 }
@@ -452,10 +448,8 @@ uint64_t Msvcrt::_wcsicmp(void* e, const std::string&, int, const std::vector<ui
     uint64_t s1 = a.size() > 0 ? a[0] : 0;
     uint64_t s2 = a.size() > 1 ? a[1] : 0;
     if (!s1 || !s2) return (s1 == s2) ? 0 : 1;
-    std::string ws1 = be(e)->read_mem_string(s1, 2);
-    std::string ws2 = be(e)->read_mem_string(s2, 2);
-    std::transform(ws1.begin(), ws1.end(), ws1.begin(), ::tolower);
-    std::transform(ws2.begin(), ws2.end(), ws2.begin(), ::tolower);
+    std::string ws1 = speakeasy::to_lower(be(e)->read_mem_string(s1, 2));
+    std::string ws2 = speakeasy::to_lower(be(e)->read_mem_string(s2, 2));
     return (ws1 == ws2) ? 0 : 1;
 }
 
@@ -1183,10 +1177,8 @@ uint64_t Msvcrt::_wcsnicmp(void* e, const std::string&, int, const std::vector<u
     uint64_t s2    = a.size() > 1 ? a[1] : 0;
     size_t   count = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
     if (!s1 || !s2) return 1;
-    std::string ws1 = be(e)->read_mem_string(s1, 2, static_cast<int>(count));
-    std::string ws2 = be(e)->read_mem_string(s2, 2, static_cast<int>(count));
-    std::transform(ws1.begin(), ws1.end(), ws1.begin(), ::tolower);
-    std::transform(ws2.begin(), ws2.end(), ws2.begin(), ::tolower);
+    std::string ws1 = speakeasy::to_lower(be(e)->read_mem_string(s1, 2, static_cast<int>(count)));
+    std::string ws2 = speakeasy::to_lower(be(e)->read_mem_string(s2, 2, static_cast<int>(count)));
     return (ws1 == ws2) ? 0 : 1;
 }
 

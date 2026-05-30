@@ -14,6 +14,7 @@
 // should be replaced with typed pointers.
 
 #include "objman.h"
+#include "../helper.h"
 
 #include <algorithm>
 #include <cstring>
@@ -274,9 +275,7 @@ void Driver::create_reg_path(const std::string& name) {
 
 std::string Driver::get_basename() {
     // Python: return self.basename.lower()
-    std::string lower = this->basename;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-    return lower;
+    return speakeasy::to_lower(this->basename);
 }
 
 void* Driver::init_driver_section() {
@@ -1174,10 +1173,8 @@ std::shared_ptr<KernelObject> ObjectManager::get_object_from_name(const std::str
         std::string obj_name = obj->get_obj_name();
         if (!obj_name.empty()) {
             // Case-insensitive comparison
-            std::string lname = name;
-            std::string lobj_name = obj_name;
-            std::transform(lname.begin(), lname.end(), lname.begin(), ::tolower);
-            std::transform(lobj_name.begin(), lobj_name.end(), lobj_name.begin(), ::tolower);
+            std::string lname = speakeasy::to_lower(name);
+            std::string lobj_name = speakeasy::to_lower(obj_name);
             if (lobj_name == lname) {
                 return obj;
             }
@@ -1185,10 +1182,8 @@ std::shared_ptr<KernelObject> ObjectManager::get_object_from_name(const std::str
     }
     if (check_symlinks) {
         for (auto& sl : symlinks_) {
-            std::string lsl = sl.first;
-            std::string lname = name;
-            std::transform(lsl.begin(), lsl.end(), lsl.begin(), ::tolower);
-            std::transform(lname.begin(), lname.end(), lname.begin(), ::tolower);
+            std::string lsl = speakeasy::to_lower(sl.first);
+            std::string lname = speakeasy::to_lower(name);
             if (lsl == lname) {
                 return get_object_from_name(sl.second, false);
             }

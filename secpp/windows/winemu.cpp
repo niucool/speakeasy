@@ -4,6 +4,7 @@
 // Each function definition below includes its Python line number.
 
 #include "winemu.h"
+#include "../helper.h"
 #include "binemu.h"
 #include "profiler.h"
 #include "../config.h"
@@ -891,9 +892,7 @@ std::map<std::string, std::string> WindowsEmulator::get_env() { return env_; }
 //     """Set an environment variable (key lowercased)."""
 
 void WindowsEmulator::set_env(const std::string& var, const std::string& val) {
-    std::string key = var;
-    for (auto& c : key) c = static_cast<char>(std::tolower(c));
-    env_[key] = val;
+    env_[speakeasy::to_lower(var)] = val;
 }
 
 // Python winemu.py:1213
@@ -1027,18 +1026,16 @@ uint64_t WindowsEmulator::_alloc_sentinel() {
 //     """Find a loaded module by name (case-insensitive)."""
 
 std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_by_name(const std::string& name) {
-    std::string nl = name;
-    for (auto& c : nl) c = static_cast<char>(std::tolower(c));
+    std::string nl = speakeasy::to_lower(name);
 
     for (auto m : modules) {
         auto pe = m;
-        std::string base = pe->get_base_name();
-        for (auto& c : base) c = static_cast<char>(std::tolower(c));
+        std::string base = speakeasy::to_lower(pe->get_base_name());
         if (base == nl) return m;
         std::string epath = pe->emu_path;
         auto pos = epath.find_last_of("/\\");
         if (pos != std::string::npos) epath = epath.substr(pos + 1);
-        for (auto& c : epath) c = static_cast<char>(std::tolower(c));
+        epath = speakeasy::to_lower(epath);
         if (epath == nl) return m;
     }
     return nullptr;
@@ -1606,8 +1603,7 @@ std::shared_ptr<Thread> WindowsEmulator::create_thread(uint64_t addr, void* ctx,
 // def get_native_module_path(self, mod_name=""):
 //     """Get the full filesystem path of a default decoy that is supplied by speakeasy"""
 std::string WindowsEmulator::get_native_module_path(const std::string& mod_name) {
-    std::string name = mod_name;
-    for (auto& c : name) c = static_cast<char>(std::tolower(c));
+    std::string name = speakeasy::to_lower(mod_name);
 
     const char* subdir = (arch == speakeasy::arch::ARCH_AMD64) ? "amd64" : "x86";
     fs::path decoy_path = fs::path("secpp") / "winenv" / "decoys" / subdir;
@@ -1619,7 +1615,7 @@ std::string WindowsEmulator::get_native_module_path(const std::string& mod_name)
             std::string base = fn;
             auto dot = base.find_last_of('.');
             if (dot != std::string::npos) base = base.substr(0, dot);
-            for (auto& c : base) c = static_cast<char>(std::tolower(c));
+            base = speakeasy::to_lower(base);
             if (base == name) return entry.path().string();
         }
     }
@@ -2223,11 +2219,10 @@ std::tuple<std::string, std::string> WindowsEmulator::normalize_import_miss(
     std::string nname = name;
 
     if (ndll.size() > 4) {
-        auto ext = ndll.substr(ndll.size() - 4);
-        for (auto& c : ext) c = static_cast<char>(std::tolower(c));
+        auto ext = speakeasy::to_lower(ndll.substr(ndll.size() - 4));
         if (ext == ".dll") ndll = ndll.substr(0, ndll.size() - 4);
     }
-    for (auto& c : ndll) c = static_cast<char>(std::tolower(c));
+    ndll = speakeasy::to_lower(ndll);
 
     std::string alt_name;
     if (!nname.empty() && (nname.back() == 'A' || nname.back() == 'W')) {
@@ -2265,8 +2260,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
     uint64_t call_pc = (prev_pc != 0) ? prev_pc : oret;
 
     // Normalize module name
-    std::string dll_norm = dll;
-    for (auto& c : dll_norm) c = static_cast<char>(std::tolower(c));
+    std::string dll_norm = speakeasy::to_lower(dll);
     if (dll_norm.size() > 4 && dll_norm.substr(dll_norm.size() - 4) == ".dll")
         dll_norm = dll_norm.substr(0, dll_norm.size() - 4);
 

@@ -1,5 +1,6 @@
 // winapi.cpp
 #include "winapi.h"
+#include "../../helper.h"
 #include "api.h"
 #include "api_handler_registry.h"
 #include "../../winenv/arch.h"
@@ -31,8 +32,7 @@ WindowsApi::WindowsApi(Emulator* emu) : emu(emu) {
 
 ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {
     // Use the ApiHandlerRegistry to find and create API handlers
-    std::string lower_name = mod_name;
-    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
+    std::string lower_name = speakeasy::to_lower(mod_name);
 
     // Check if already loaded
     auto it = mods.find(lower_name);
@@ -53,8 +53,7 @@ ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {
     // Fallback: iterate all registered handlers and match by name
     auto all_handlers = ApiHandlerRegistry::get_all_handlers();
     for (const auto& [name, factory] : all_handlers) {
-        std::string reg_name = name;
-        std::transform(reg_name.begin(), reg_name.end(), reg_name.begin(), ::tolower);
+        std::string reg_name = speakeasy::to_lower(name);
         if (reg_name == lower_name) {
             handler = factory(emu);
             if (handler) {
@@ -73,8 +72,7 @@ ApiHandler* WindowsApi::load_api_handler(const std::string& mod_name) {
 std::tuple<ApiHandler*, void*> WindowsApi::get_data_export_handler(const std::string& mod_name,
                                                                    const std::string& exp_name) {
     // Find the module handler
-    std::string key = mod_name;
-    std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+    std::string key = speakeasy::to_lower(mod_name);
 
     auto mod_it = mods.find(key);
     ApiHandler* mod = (mod_it != mods.end()) ? mod_it->second : nullptr;
@@ -102,8 +100,7 @@ std::tuple<ApiHandler*, void*> WindowsApi::get_data_export_handler(const std::st
 std::tuple<ApiHandler*, void*> WindowsApi::get_export_func_handler(const std::string& mod_name,
                                                                    const std::string& exp_name) {
     // Find the module handler
-    std::string key = mod_name;
-    std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+    std::string key = speakeasy::to_lower(mod_name);
 
     auto mod_it = mods.find(key);
     ApiHandler* mod = (mod_it != mods.end()) ? mod_it->second : nullptr;

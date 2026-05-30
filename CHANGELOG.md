@@ -23,6 +23,7 @@
   - `test_porting_pefile.cpp`：验证真实 PE 的 TLS 回调枚举与基址重定位偏移修正。
   - `test_porting_winemu.cpp`：验证多级多线程调度中 PEB/TEB 的动态链表链接与错误转储上下文分类。
 - **tests**: 彻底移除了原有庞大的 `test_porting.cpp` 以杜绝用例重复，重新配置 CMake 并编译运行，全票通过了所有拆分后的 108 项端口测试用例。
+- **secpp**: 创建了通用的工具文件 `secpp/helper.h` 与 `secpp/helper.cpp`，实现了高效的字符串大小写转换接口 `speakeasy::to_lower` 与 `speakeasy::to_upper`。重构了 `BinaryEmulator` 中的大量 `std::transform` C-style 转换，全部采用新封装的统一 Helper 接口，提升了代码的复用度与可读性。
 
 #### Fixed
 

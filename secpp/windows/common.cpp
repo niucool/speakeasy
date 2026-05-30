@@ -1,5 +1,6 @@
 // common.cpp  Windows emulation common utilities
 #include "common.h"
+#include "../helper.h"
 #include "struct.h"
 #include <algorithm>
 #include <sstream>
@@ -44,15 +45,11 @@ bool save_vector_to_file(const std::string& filename, const std::vector<uint8_t>
     return true;
 }
 
-static std::string to_lower(const std::string& s) {
-    std::string r = s;
-    std::transform(r.begin(), r.end(), r.begin(), ::tolower);
-    return r;
-}
+
 
 std::string normalize_dll_name(const std::string& name) {
     std::string ret = name;
-    std::string lower = to_lower(name);
+    std::string lower = speakeasy::to_lower(name);
     auto startswith = [&](const std::string& prefix) {
         return lower.substr(0, std::min(lower.size(), prefix.size())) == prefix;
     };
@@ -446,7 +443,7 @@ bool PeFile::is_driver() {
         for (auto& [addr, imp] : imports) {
             (void)addr;
             if (std::find(sys_dlls.begin(), sys_dlls.end(),
-                          to_lower(std::get<0>(imp))) != sys_dlls.end())
+                          speakeasy::to_lower(std::get<0>(imp))) != sys_dlls.end())
                 return true;
         }
     }
@@ -457,7 +454,7 @@ bool PeFile::is_dotnet() {
     for (auto& [addr, imp] : imports) {
         (void)addr;
         auto& [dll, func] = imp;
-        if (to_lower(dll) == "mscoree" &&
+        if (speakeasy::to_lower(dll) == "mscoree" &&
             (func == "_CorExeMain" || func == "_CorDllMain"))
             return true;
     }

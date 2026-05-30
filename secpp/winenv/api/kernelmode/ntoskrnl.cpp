@@ -1,5 +1,6 @@
 // ntoskrnl.cpp  Windows NT Kernel handler (implemented, ~154 APIs)
 #include "ntoskrnl.h"
+#include "../../../helper.h"
 
 #include <cstdint>
 #include <cstring>
@@ -886,8 +887,8 @@ uint64_t Ntoskrnl::_stricmp(void* e, const std::string&, int, const std::vector<
     auto cs2 = read_ansi_string_ptr(e, s2);
     
     // Case insensitive
-    std::transform(cs1.begin(), cs1.end(), cs1.begin(), ::tolower);
-    std::transform(cs2.begin(), cs2.end(), cs2.begin(), ::tolower);
+    cs1 = speakeasy::to_lower(cs1);
+    cs2 = speakeasy::to_lower(cs2);
     
     if (cs1 == cs2) return 0;
     return (cs1 < cs2) ? -1 : 1;

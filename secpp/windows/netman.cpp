@@ -1,5 +1,6 @@
 // netman.cpp
 #include "netman.h"
+#include "../helper.h"
 #include "../common.h"
 #include <algorithm>
 #include <fstream>
@@ -52,8 +53,7 @@ void Socket::fill_recv_queue(const nlohmann::json& responses) {
     if (!responses.is_array()) return;
 
     for (const auto& resp : responses) {
-        std::string mode = resp.value("mode", "");
-        std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+        std::string mode = speakeasy::to_lower(resp.value("mode", ""));
         if (mode == "default") {
             std::string default_resp_path = resp.value("path", "");
             if (!default_resp_path.empty()) {
@@ -125,9 +125,7 @@ WininetRequest::WininetRequest(std::shared_ptr<WininetSession> session, const st
     if (verb.empty()) {
         this->verb = "get";
     } else {
-        this->verb = verb;
-        // Convert to lowercase
-        std::transform(this->verb.begin(), this->verb.end(), this->verb.begin(), ::tolower);
+        this->verb = speakeasy::to_lower(verb);
     }
 
     this->objname = objname;
@@ -246,16 +244,13 @@ std::shared_ptr<std::stringstream> WininetRequest::get_response() {
     std::string default_resp_path;
 
     for (const auto& res : resps) {
-        std::string verb = res.verb;
-        std::string verb_lower = verb;
-        std::transform(verb_lower.begin(), verb_lower.end(), verb_lower.begin(), ::tolower);
+        std::string verb_lower = speakeasy::to_lower(res.verb);
 
         if (verb_lower == this->verb) {
             auto& resp_files = res.files;
             if (!resp_files.empty()) {
                 for (const auto& file : resp_files) {
-                    std::string mode = file.mode;
-                    std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+                    std::string mode = speakeasy::to_lower(file.mode);
 
                     if (mode == "by_ext") {
                         std::string ext = file.ext;
@@ -275,8 +270,8 @@ std::shared_ptr<std::stringstream> WininetRequest::get_response() {
                         if (!obj_ext_clean.empty() && obj_ext_clean[0] == '.') {
                             obj_ext_clean = obj_ext_clean.substr(1);
                         }
-                        std::transform(ext_clean.begin(), ext_clean.end(), ext_clean.begin(), ::tolower);
-                        std::transform(obj_ext_clean.begin(), obj_ext_clean.end(), obj_ext_clean.begin(), ::tolower);
+                        ext_clean = speakeasy::to_lower(ext_clean);
+                        obj_ext_clean = speakeasy::to_lower(obj_ext_clean);
 
                         if (ext_clean == obj_ext_clean) {
                             std::string path = file.path;
@@ -421,13 +416,11 @@ std::string NetworkManager::name_lookup(const std::string& domain) {
     }
 
     // Convert domain to lowercase for lookup
-    std::string domain_lower = domain;
-    std::transform(domain_lower.begin(), domain_lower.end(), domain_lower.begin(), ::tolower);
+    std::string domain_lower = speakeasy::to_lower(domain);
 
     // Do we have an IP for this name?
     for (auto& it : names) {
-        std::string name_lower = it.name;
-        std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
+        std::string name_lower = speakeasy::to_lower(it.name);
         if (name_lower == domain_lower) {
             return it.ip;
         }

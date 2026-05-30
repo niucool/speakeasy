@@ -10,6 +10,7 @@
 // or 1 for BOOL success. GetLastError/SetLastError track error codes.
 
 #include "kernel32.h"
+#include "../../../helper.h"
 
 #include <cstring>
 #include <cstdlib>
@@ -930,7 +931,7 @@ static uint64_t do_load_library(void* emu, uint64_t name_ptr, int cw) {
     if (!name_ptr) return 0;
     std::string lib = be(emu)->read_mem_string(name_ptr, cw);
     if (lib.empty()) return 0;
-    for (auto& c : lib) c = static_cast<char>(std::tolower(c));
+    lib = speakeasy::to_lower(lib);
     auto dot = lib.rfind(".dll");
     if (dot != std::string::npos) lib = lib.substr(0, dot);
     void* mod = we(emu)->load_library(lib);
@@ -1005,13 +1006,12 @@ uint64_t Kernel32::GetModuleHandleA(void* emu, const std::string&, int,
     }
     std::string name = be(emu)->read_mem_string(mod_name_ptr, 1);
     if (name.empty()) return 0;
-    for (auto& c : name) c = static_cast<char>(std::tolower(c));
+    name = speakeasy::to_lower(name);
     auto dot = name.rfind(".dll");
     if (dot != std::string::npos) name = name.substr(0, dot);
     auto mods = we(emu)->get_peb_modules();
     for (auto& mod : mods) {
-        std::string mname = mod->get_base_name();
-        for (auto& c : mname) c = static_cast<char>(std::tolower(c));
+        std::string mname = speakeasy::to_lower(mod->get_base_name());
         auto mdot = mname.rfind(".dll");
         if (mdot != std::string::npos) mname = mname.substr(0, mdot);
         if (mname == name) {
@@ -1033,14 +1033,13 @@ uint64_t Kernel32::GetModuleHandleW(void* emu, const std::string&, int,
     }
     std::string name = be(emu)->read_mem_string(mod_name_ptr, 2);
     if (name.empty()) return 0;
-    for (auto& c : name) c = static_cast<char>(std::tolower(c));
+    name = speakeasy::to_lower(name);
     auto dot = name.rfind(".dll");
     if (dot != std::string::npos) name = name.substr(0, dot);
     auto mods = we(emu)->get_peb_modules();
     for (auto m : mods) {
         auto mod = m;
-        std::string mname = mod->get_base_name();
-        for (auto& c : mname) c = static_cast<char>(std::tolower(c));
+        std::string mname = speakeasy::to_lower(mod->get_base_name());
         auto mdot = mname.rfind(".dll");
         if (mdot != std::string::npos) mname = mname.substr(0, mdot);
         if (mname == name) {

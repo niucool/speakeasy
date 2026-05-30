@@ -7,6 +7,7 @@
 #include "windows/fileman.h"
 #include <nlohmann/json.hpp>
 #include "picosha2.h"
+#include "helper.h"
 #include <cmath>
 #include <cctype>
 
@@ -235,8 +236,7 @@ void Profiler::log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string&
     run->num_apis += 1;
 
     // Build lowercase version for hash
-    std::string lower_name = name;
-    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
+    std::string lower_name = to_lower(name);
 
     if (std::find(run->unique_apis.begin(), run->unique_apis.end(), name) == run->unique_apis.end()) {
         run->api_hash_data += lower_name;

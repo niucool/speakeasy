@@ -1,5 +1,6 @@
 // shlwapi.cpp  shlwapi.dll handler (real implementations)
 #include "shlwapi.h"
+#include "../../../helper.h"
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -223,10 +224,8 @@ uint64_t Shlwapi::StrStrI(void* e, const std::string&, int, const std::vector<ui
     }
 
     // Case-insensitive comparison
-    std::string hay_lower = _hay;
-    std::string needle_lower = _needle;
-    for (auto& c : hay_lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    for (auto& c : needle_lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    std::string hay_lower = speakeasy::to_lower(_hay);
+    std::string needle_lower = speakeasy::to_lower(_needle);
 
     size_t ret = hay_lower.find(needle_lower);
     if (ret != std::string::npos) {
@@ -267,10 +266,8 @@ uint64_t Shlwapi::StrCmpI(void* e, const std::string&, int, const std::vector<ui
     std::string s2 = be(e)->read_mem_string(psz2, 1);
 
     // Case-insensitive comparison
-    std::string s1_lower = s1;
-    std::string s2_lower = s2;
-    for (auto& c : s1_lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    for (auto& c : s2_lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    std::string s1_lower = speakeasy::to_lower(s1);
+    std::string s2_lower = speakeasy::to_lower(s2);
 
     return (s1_lower == s2_lower) ? 0 : 1;
 }

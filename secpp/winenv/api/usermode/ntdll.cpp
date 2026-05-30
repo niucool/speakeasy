@@ -7,6 +7,7 @@
 //   sync objects, threads, and utility functions.
 
 #include "ntdll.h"
+#include "../../../helper.h"
 
 #include <cstring>
 #include <chrono>
@@ -1955,8 +1956,7 @@ uint64_t Ntdll::LdrLoadDll(void* emu, const std::string&, int,
     std::string norm_name;
     auto dot = dll_name.find_last_of('.');
     std::string base = (dot != std::string::npos) ? dll_name.substr(0, dot) : dll_name;
-    for (auto& c : base) c = static_cast<char>(std::tolower(c));
-    norm_name = base + ".dll";
+    norm_name = speakeasy::to_lower(base) + ".dll";
 
     void* hmod = wemu->load_library(norm_name);
     if (!hmod) {
