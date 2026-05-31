@@ -175,6 +175,26 @@ inline std::string hex_str(uint64_t value, bool prefix = true) {
     return oss.str();
 }
 
+/** Directly cast a POD structure from a byte buffer at offset. */
+template <typename T>
+inline T cast_from_bytes(const std::vector<uint8_t>& buf, size_t offset = 0) {
+    if (offset + sizeof(T) > buf.size()) {
+        throw EmuStructException("Buffer too small to cast POD type");
+    }
+    T val;
+    std::memcpy(&val, buf.data() + offset, sizeof(T));
+    return val;
+}
+
+/** Directly cast and write a POD structure to a byte buffer at offset. */
+template <typename T>
+inline void cast_to_bytes(std::vector<uint8_t>& buf, size_t offset, const T& val) {
+    if (offset + sizeof(T) > buf.size()) {
+        buf.resize(offset + sizeof(T));
+    }
+    std::memcpy(buf.data() + offset, &val, sizeof(T));
+}
+
 } // namespace speakeasy
 
 #endif // SPEAKEASY_STRUCT_H

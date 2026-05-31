@@ -182,11 +182,13 @@ public:
      * Write bytes into the emulated address space
      */
     void mem_write(uint64_t addr, const std::vector<uint8_t>& data);
+    void mem_write(uint64_t addr, const void* data, size_t size);
 
     /**
      * Read bytes from the emulated address space
      */
     std::vector<uint8_t> mem_read(uint64_t addr, uint64_t size);
+    void mem_read(uint64_t addr, void* out_data, size_t size);
 
     /**
      * Change memory protections

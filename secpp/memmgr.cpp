@@ -311,8 +311,12 @@ void MemoryManager::mem_unmap(uint64_t base, uint64_t size) {
  * Write bytes into the emulated address space
  */
 void MemoryManager::mem_write(uint64_t addr, const std::vector<uint8_t>& data) {
+    mem_write(addr, data.data(), data.size());
+}
+
+void MemoryManager::mem_write(uint64_t addr, const void* data, size_t size) {
     if (this->emu_eng_) {
-        this->emu_eng_->mem_write(addr, data.data(), data.size());
+        this->emu_eng_->mem_write(addr, data, size);
     }
 }
 
@@ -321,10 +325,14 @@ void MemoryManager::mem_write(uint64_t addr, const std::vector<uint8_t>& data) {
  */
 std::vector<uint8_t> MemoryManager::mem_read(uint64_t addr, uint64_t size) {
     std::vector<uint8_t> data(size);
-    if (this->emu_eng_) {
-        this->emu_eng_->mem_read(addr, data.data(), size);
-    }
+    mem_read(addr, data.data(), size);
     return data;
+}
+
+void MemoryManager::mem_read(uint64_t addr, void* out_data, size_t size) {
+    if (this->emu_eng_) {
+        this->emu_eng_->mem_read(addr, out_data, size);
+    }
 }
 
 /**
