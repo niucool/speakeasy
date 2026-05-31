@@ -1029,15 +1029,17 @@ uint64_t WindowsEmulator::_alloc_sentinel() {
 std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_by_name(const std::string& name) {
     std::string nl = speakeasy::to_lower(name);
 
-    for (auto m : modules) {
-        auto pe = m;
-        std::string base = speakeasy::to_lower(pe->get_base_name());
-        if (base == nl) return m;
-        std::string epath = pe->emu_path;
-        auto pos = epath.find_last_of("/\\");
-        if (pos != std::string::npos) epath = epath.substr(pos + 1);
-        epath = speakeasy::to_lower(epath);
-        if (epath == nl) return m;
+    for (auto pe : modules) {
+        fs::path full_path = pe->emu_path;
+
+        // 1. Get the filename (equivalent to ntpath.basename)
+        fs::path mod_name = full_path.filename();
+
+        // 2. Strip the final extension (equivalent to os.path.splitext[0])
+        std::string base_name = mod_name.stem().string();
+
+        if (speakeasy::to_lower(mod_name.string()) == nl || speakeasy::to_lower(base_name) == nl)
+            return pe;
     }
     return nullptr;
 }
@@ -1663,28 +1665,69 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_module_by_name(c
     std::string ep = emu_path;
     if (ep.empty()) {
         ep = cd.empty() ? "C:\\Windows\\system32\\" : cd;
+        if (!ep.empty() && ep.back() != '\\' && ep.back() != '/') {
+            ep += "\\";
+        }
         ep += name + ".dll";
     }
 
     std::string native_path = get_native_module_path(name);
-    // Use speakeasy::PeLoader to parse and map the PE
+    std::shared_ptr<speakeasy::LoadedImage> img = nullptr;
+
+    // Priority 1: Native PE file on disk
     if (!native_path.empty()) {
         try {
-            speakeasy::PeLoader loader(native_path, std::vector<uint8_t>{});
-            auto img = loader.make_image();
-            auto result = load_image(img);
-            return result;
-        } catch (...) {}
+            speakeasy::PeLoader loader(native_path, std::vector<uint8_t>{}, static_cast<int>(base), ep);
+            img = loader.make_image();
+        } catch (...) {
+            // Fall through if native PE parsing failed
+        }
     }
-    // Fallback: try using the emu_path as data source
-    if (!ep.empty()) {
+
+    // Priority 2: API handler (JIT PE synthetic image)
+    if (!img) {
+        auto handler = api ? api->load_api_handler(name) : nullptr;
+        if (handler) {
+            // Special case: ntdll also loads ntoskrnl handler for Zw/Nt stubs
+            if (name == "ntdll" && api) {
+                auto nt_handler = api->load_api_handler("ntoskrnl");
+                if (nt_handler) {
+                    // Attach nt_handler to the ntdll handler if supported in C++
+                }
+            }
+
+            speakeasy::ApiModuleLoader api_loader(name, handler, get_arch(), base, ep);
+            try {
+                img = api_loader.make_image();
+            } catch (...) {}
+        }
+    }
+
+    // Priority 3: Fallback PE file (default_exe template)
+    if (!img) {
+        std::string fallback_path = get_native_module_path("default_exe");
+        if (!fallback_path.empty()) {
+            try {
+                speakeasy::PeLoader loader(fallback_path, std::vector<uint8_t>{}, static_cast<int>(base), ep);
+                img = loader.make_image();
+            } catch (...) {}
+        }
+    }
+
+    // Priority 4: Decoy placeholder stub for PEB visibility
+    if (!img) {
         try {
-            speakeasy::PeLoader loader(ep, std::vector<uint8_t>{});
-            auto img = loader.make_image();
-            auto result = load_image(img);
-            return result;
+            speakeasy::DecoyLoader decoy(name, base, ep, 0x1000);
+            img = decoy.make_image();
         } catch (...) {}
     }
+
+    if (img) {
+        img->name = name;
+        img->emu_path = ep;
+        return load_image(img);
+    }
+
     return nullptr;
 }
 

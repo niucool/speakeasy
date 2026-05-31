@@ -493,7 +493,7 @@ IoStackLocation Irp::get_curr_stack_loc() {
 Thread::Thread(void* emu, int stack_base, int stack_commit)
     : KernelObject(emu),
       ctx_(nullptr), modified_pc_(false), teb_(nullptr),
-      suspend_count_(0), token_(nullptr), last_error_(0),
+      suspend_count_(0), token_(emu), last_error_(0),
       stack_base_(stack_base), stack_commit_(stack_commit) {
     // Python: object = ETHREAD(ptr_size)
     // address = emu.mem_map(sizeof(), tag=...)
@@ -530,14 +530,34 @@ void* Thread::get_context() {
 }
 
 void Thread::set_context(void* ctx) {
-    if (this->ctx_ && emu_) {
+    if (this->ctx_ && emu_ && ctx) {
         int arch = BE(emu_)->get_arch();
+        uint64_t old_ctx_addr = reinterpret_cast<uint64_t>(this->ctx_);
+        uint64_t new_ctx_addr = reinterpret_cast<uint64_t>(ctx);
         if (arch == speakeasy::arch::ARCH_AMD64) {
-            // Compare Rip to detect PC modification
-            // This requires a typed context structure; for now skip the comparison.
-            (void)arch;
+            // CONTEXT is 1232 bytes
+            // RIP is at offset 0x140 (8 bytes)
+            auto old_buf = BE(emu_)->mem_read(old_ctx_addr + 0x140, 8);
+            auto new_buf = BE(emu_)->mem_read(new_ctx_addr + 0x140, 8);
+            if (old_buf.size() == 8 && new_buf.size() == 8) {
+                uint64_t old_rip = speakeasy::read_le(old_buf, 0, 8);
+                uint64_t new_rip = speakeasy::read_le(new_buf, 0, 8);
+                if (old_rip != new_rip) {
+                    this->modified_pc_ = true;
+                }
+            }
         } else if (arch == speakeasy::arch::ARCH_X86) {
-            // Compare Eip
+            // CONTEXT is 716 bytes
+            // EIP is at offset 0x98 (4 bytes)
+            auto old_buf = BE(emu_)->mem_read(old_ctx_addr + 0x98, 4);
+            auto new_buf = BE(emu_)->mem_read(new_ctx_addr + 0x98, 4);
+            if (old_buf.size() == 4 && new_buf.size() == 4) {
+                uint32_t old_eip = static_cast<uint32_t>(speakeasy::read_le(old_buf, 0, 4));
+                uint32_t new_eip = static_cast<uint32_t>(speakeasy::read_le(new_buf, 0, 4));
+                if (old_eip != new_eip) {
+                    this->modified_pc_ = true;
+                }
+            }
         }
     }
     this->ctx_ = ctx;
@@ -554,6 +574,13 @@ void Thread::init_teb(int teb_addr, int peb_addr) {
     teb_struct->NtTib.StackLimit = this->stack_commit_;
     teb_struct->ProcessEnvironmentBlock = peb_addr;
     this->teb_->write_back();
+}
+
+std::shared_ptr<TEB> Thread::get_teb() {
+    if (this->teb_) {
+        this->teb_->read_back();
+    }
+    return this->teb_;
 }
 
 void Thread::set_last_error(int code) {
@@ -580,8 +607,8 @@ void Thread::set_fls(const std::vector<void*>& fls) {
     this->fls_ = fls;
 }
 
-void* Thread::get_token() {
-    return this->token_;
+Token* Thread::get_token() {
+    return &this->token_;
 }
 
 void Thread::init_tls(int tls_dir, const std::string& modname) {
@@ -878,7 +905,7 @@ std::shared_ptr<PEB> Process::get_peb() {
     return this->peb;
 }
 
-void Process::set_peb_ldr_address(int addr) {
+void Process::set_peb_ldr_address(uint64_t addr) {
     if (!peb || !peb_ldr_data) return;
     auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
     peb_struct->Ldr = addr;
@@ -907,8 +934,8 @@ std::string Process::get_desktop_name() {
     return "WinSta0\\Default";
 }
 
-void* Process::get_token() {
-    return reinterpret_cast<void*>(&this->token);
+Token* Process::get_token() {
+    return &this->token;
 }
 
 int Process::get_std_handle(int dev) {

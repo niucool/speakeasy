@@ -5,10 +5,30 @@
 
 ## [Unreleased]
 
-### 2026-05-30
+### 2026-05-31
 
 #### Changed
 
+- **secpp**: 补全并重构了对象管理器中 `Thread` (ETHREAD) 类的 C++ 移植实现，并修复了线程特异性的 `last_error` 错误路由：
+  - **Thread 结构与属性对齐**：在 `objman.h` 中将 `Token` 的定义移动到 `Thread` 之上，支持了由 `Thread` 以值类型持有 `Token token_` 成员（与 Python 中的 `self.token = Token(...)` 初始化一致），并增加了 `modified_pc_`、`suspend_count_`、`stack_base_`、`stack_commit_` 和 `get_tid()` 等关键属性的获取/修改接口。
+  - **RIP/EIP 修改检测**：重构了 `Thread::set_context(void* ctx)`。当设置新的 CPU 上下文时，会提取新老上下文中的指令指针（x64 的 `RIP` 偏移 0x140，x86 的 `EIP` 偏移 0x98）进行对比。若存在修改，则自动设置 `modified_pc_ = true`，用于准确驱动调度器流程。
+  - **TEB 自动读回同步**：在 `Thread::get_teb()` 中引入了 `teb_->read_back()` 调用，保证从 `Thread` 读取 TEB 时，它在仿真层物理内存中的全部最新改动能被正确、自动地拉取和同步到宿主 C++ 结构中。
+  - **线程特异性错误码路由**：重构了 `Win32Emulator::set_last_error` 和 `Win32Emulator::get_last_error`。如果有活动线程运行，错误码将被自动路由存取在当前线程特有的 `last_error_` 中，而当无当前线程时则自动回退至全局 `last_error_`（完美复制 Python 层多线程模拟时的错误码隔离行为）。
+- **tests**: 在 `test_porting_winemu.cpp` 中新增了 3 个专项测试，覆盖了 Thread 上下文 PC 修改触发、TEB 读回自动同步以及多线程下 `last_error` 隔离存取和降级逻辑，使测试用例数由 112 完美增至 115 且全票通过。
+- **secpp**: 重构并完整同步了 `WindowsEmulator::load_module_by_name` 加载优先级链，使其与 Python 端设计完全一致：
+  - **多优先级装载链**：依次支持 Priority 1 (Native PE 装载)、Priority 2 (API 关联 JIT PE 动态装载)、Priority 3 (Default Fallback PE 模板装载) 与 Priority 4 (Decoy 占位装载)，保证外部模块及库在仿真环境内可被鲁棒查找并挂载。
+  - **模块仿真路径修正**：修复了在最终成功装载模块映像时，未重写 `LoadedImage::emu_path` 导致宿主和访客侧基名查询不一致的潜在 Bug。
+- **tests**: 在 `test_porting_winemu.cpp` 中扩展了 `LoadModuleByNamePriorities` 专项单元测试，验证了 API 模块的 JIT 组装以及缺省诱饵的自动分类逻辑，确保测试用例由 115 增至 **116** 并全票通过。
+
+### 2026-05-30
+
+#### Changed
+ 
+- **secpp**: 重构了结构体工具库 `secpp/struct.h` 与内存管理器 `secpp/memmgr.h` / `secpp/memmgr.cpp` 以提升在高频仿真过程中的读写性能：
+  - **零拷贝内存访问**：为 `MemoryManager` 引入了 `mem_write(uint64_t addr, const void* data, size_t size)` 和 `mem_read(uint64_t addr, void* out_data, size_t size)` 原生指针重载，完全规避了原有基于 `std::vector` 临时内存分配产生的多余深拷贝和运行时开销，并将原有向量接口委托于新接口实现。
+  - **直接 POD 结构体转换**：在 `struct.h` 中引入了 `speakeasy::cast_from_bytes<T>` 和 `speakeasy::cast_to_bytes<T>` 高性能模板函数，使得开发人员能够在一行代码中零开销地对任意 POD 结构体进行序列化与反序列化，无需手动逐字段硬编码大端/小端字节填充。
+- **tests**: 在 `test_porting_struct.cpp` 和 `test_porting_memmgr.cpp` 中新增了全面的单元测试用例，覆盖验证了原生指针零拷贝操作以及 POD 结构体直接强转的准确性。
+- **secpp**: 修复了 Windows 仿真环境下 `ddk.h` 中 `PASSIVE_LEVEL` / `DISPATCH_LEVEL` / `STATUS_*` / `IRP_MJ_*` 与 MSVC/Windows SDK 内置宏发生命名冲突而无法在特定包含顺序下顺利编译的重大兼容性阻碍。
 - **tests**: 将综合测试套件 `test_porting.cpp` 进行了拆分，细化重构成 12 个独立的测试源文件，分别测试各个关键类和模块以提升测试的颗粒度：
   - `test_porting_struct.cpp`：验证 `EmuStruct` 字节布局与 SFINAE 多态序列化。
   - `test_porting_config.cpp`：验证 `SpeakeasyConfig` 缺省值、合并与 JSON 序列化。

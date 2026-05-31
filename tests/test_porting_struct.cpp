@@ -103,3 +103,39 @@ TEST(StructLayoutTest, PolymorphicStructSerialization) {
     EXPECT_EQ(bytes[3], 0xCC);
     EXPECT_EQ(bytes[4], 0xAB); // filled byte
 }
+
+#pragma pack(push, 1)
+struct SimplePod {
+    uint32_t a;
+    uint16_t b;
+    uint8_t c;
+};
+#pragma pack(pop)
+
+TEST(StructLayoutTest, DirectPodCastTest) {
+    SimplePod pod;
+    pod.a = 0xAABBCCDD;
+    pod.b = 0x1122;
+    pod.c = 0x99;
+
+    std::vector<uint8_t> buf;
+    // Serialize POD to buffer
+    cast_to_bytes(buf, 0, pod);
+    ASSERT_EQ(buf.size(), sizeof(SimplePod));
+
+    // Verify raw byte ordering
+    EXPECT_EQ(buf[0], 0xDD);
+    EXPECT_EQ(buf[3], 0xAA);
+    EXPECT_EQ(buf[4], 0x22);
+    EXPECT_EQ(buf[5], 0x11);
+    EXPECT_EQ(buf[6], 0x99);
+
+    // Deserialize back and assert correctness
+    auto deserialized = cast_from_bytes<SimplePod>(buf, 0);
+    EXPECT_EQ(deserialized.a, 0xAABBCCDD);
+    EXPECT_EQ(deserialized.b, 0x1122);
+    EXPECT_EQ(deserialized.c, 0x99);
+
+    // Test offset validation out of bounds throws
+    EXPECT_THROW(cast_from_bytes<SimplePod>(buf, 1), EmuStructException);
+}

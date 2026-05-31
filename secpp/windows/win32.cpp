@@ -52,7 +52,12 @@ std::vector<std::string> Win32Emulator::get_argv() {
 //     Set the last error code for the current thread
 //     """
 void Win32Emulator::set_last_error(int code) {
-    last_error_ = code;
+    auto t = get_current_thread();
+    if (t) {
+        t->set_last_error(code);
+    } else {
+        last_error_ = code;
+    }
 }
 
 // Python win32.py:107
@@ -61,6 +66,10 @@ void Win32Emulator::set_last_error(int code) {
 //     Get the last error code for the current thread
 //     """
 int Win32Emulator::get_last_error() {
+    auto t = get_current_thread();
+    if (t) {
+        return t->get_last_error();
+    }
     return last_error_;
 }
 
@@ -324,6 +333,7 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
     }
     auto t = std::make_shared<Thread>(this, stack_base_, module->stack_commit);
     
+    om->add_object(t);
     if (curr_process) 
         curr_process->threads.push_back(t);
     curr_thread = t;
@@ -421,7 +431,7 @@ void Win32Emulator::alloc_peb(std::shared_ptr<Process> proc) {
     uint64_t actual_size = 0;
     std::tie(res, actual_size) = get_valid_ranges(size);
     mem_reserve(actual_size, res, PERM_MEM_RW, "emu.struct.PEB_LDR_DATA");
-    proc->set_peb_ldr_address(static_cast<int>(res));
+    proc->set_peb_ldr_address(res);
 
     auto peb = proc->get_peb();
     proc->is_peb_active = true;

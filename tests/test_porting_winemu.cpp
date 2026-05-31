@@ -109,11 +109,157 @@ TEST(ObjmanPortingTest, WinemuErrorContextTriage) {
     emu.setup();
 
     // Verify region info retrieval resolves to null or expected mapped ranges
-    auto region = emu._resolve_region_info(0x1000);
-    EXPECT_EQ(region, nullptr);
+    auto region_unmapped = emu._resolve_region_info(0x9999000);
+    EXPECT_EQ(region_unmapped, nullptr);
+
+    auto region_mapped = emu._resolve_region_info(0x1000);
+    EXPECT_NE(region_mapped, nullptr);
 
     // Verify context triage builder formats summaries faithfully
     auto nearby = emu._find_nearby_regions(0x1000, 2);
     auto summary = emu._build_context_summary("read", 0x401000, 0x1000, "read", "test.exe+0x1000", nullptr, nearby);
     EXPECT_FALSE(summary.empty());
+}
+
+TEST(ObjmanPortingTest, ThreadContextPcModification) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // Create a Process
+    auto proc = std::make_shared<Process>(&emu, nullptr,
+                                         std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{},
+                                         "dummy.exe", "C:\\Windows\\System32\\dummy.exe",
+                                         "", 0x400000, 0);
+    emu.set_current_process(proc);
+
+    // Create a Thread
+    auto thread = std::make_shared<Thread>(&emu, 0x10000, 0x1000);
+    EXPECT_FALSE(thread->get_modified_pc());
+
+    // Retrieve initial context (allocated by constructor)
+    void* ctx = thread->get_context();
+    EXPECT_NE(ctx, nullptr);
+
+    // Allocate a second context for testing and change PC
+    size_t ctx_size = (emu.get_arch() == speakeasy::arch::ARCH_AMD64) ? 1232 : 716;
+    uint64_t new_ctx_addr = emu.mem_map(ctx_size, 0, PERM_MEM_RW, "test.CONTEXT");
+    std::vector<uint8_t> new_ctx_buf(ctx_size, 0xff);
+
+    // Write a different RIP/EIP value into the new context buffer
+    if (emu.get_arch() == speakeasy::arch::ARCH_AMD64) {
+        // RIP at 0x140
+        speakeasy::write_le(new_ctx_buf, 0x140, 0x401050ULL, 8);
+    } else {
+        // EIP at 0x98
+        speakeasy::write_le(new_ctx_buf, 0x98, 0x401050ULL, 4);
+    }
+    emu.mem_write(new_ctx_addr, new_ctx_buf);
+
+    // Set the new context on the thread - it should detect the RIP/EIP modification
+    thread->set_context(reinterpret_cast<void*>(new_ctx_addr));
+    EXPECT_TRUE(thread->get_modified_pc());
+}
+
+TEST(ObjmanPortingTest, TebReadbackIntegration) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // Create a Process and a Thread
+    auto proc = std::make_shared<Process>(&emu, nullptr,
+                                         std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{},
+                                         "dummy.exe", "C:\\Windows\\System32\\dummy.exe",
+                                         "", 0x400000, 0);
+    emu.set_current_process(proc);
+    
+    // stack_base = 0x20000, stack_commit = 0x2000
+    auto thread = std::make_shared<Thread>(&emu, 0x20000, 0x2000);
+    
+    // Initialize TEB
+    uint64_t teb_addr = emu.mem_map(4096, 0, PERM_MEM_RW, "test.TEB");
+    thread->init_teb(static_cast<int>(teb_addr), 0x30000);
+
+    // Verify initial values
+    auto teb = thread->get_teb();
+    ASSERT_NE(teb, nullptr);
+    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(teb->get_object());
+    EXPECT_EQ(teb_struct->NtTib.StackBase, 0x20000);
+    EXPECT_EQ(teb_struct->NtTib.StackLimit, 0x2000);
+
+    // Directly modify TEB's StackLimit in emulation memory
+    std::vector<uint8_t> new_limit_buf(4);
+    speakeasy::write_le(new_limit_buf, 0, 0x5000, 4);
+    // StackLimit is at offset 0x8 for both 32-bit and 64-bit TEB
+    emu.mem_write(teb_addr + 8, new_limit_buf);
+
+    // get_teb() should call read_back() and reflect the update
+    auto teb_updated = thread->get_teb();
+    auto* teb_struct_updated = static_cast<speakeasy::defs::nt::TEB*>(teb_updated->get_object());
+    EXPECT_EQ(teb_struct_updated->NtTib.StackLimit, 0x5000);
+}
+
+TEST(ObjmanPortingTest, ThreadSpecificLastErrorRouting) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // Verify global last error works initially when no thread is active
+    emu.set_last_error(123);
+    EXPECT_EQ(emu.get_last_error(), 123);
+
+    // Create a Process
+    auto proc = std::make_shared<Process>(&emu, nullptr,
+                                         std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{},
+                                         "dummy.exe", "C:\\Windows\\System32\\dummy.exe",
+                                         "", 0x400000, 0);
+    emu.set_current_process(proc);
+
+    // Create a Thread and make it the current thread
+    auto thread = std::make_shared<Thread>(&emu, 0x10000, 0x1000);
+    proc->threads.push_back(thread);
+    emu.set_current_thread(thread);
+
+    // Setting error when thread is active should route to the thread
+    emu.set_last_error(456);
+    EXPECT_EQ(thread->get_last_error(), 456);
+    EXPECT_EQ(emu.get_last_error(), 456);
+
+    // Verify suspend count and stack getters/setters work
+    thread->set_suspend_count(3);
+    EXPECT_EQ(thread->get_suspend_count(), 3);
+    EXPECT_EQ(thread->get_stack_base(), 0x10000);
+    EXPECT_EQ(thread->get_stack_commit(), 0x1000);
+    
+    // Verify token routing
+    void* token = thread->get_token();
+    EXPECT_NE(token, nullptr);
+}
+
+TEST(ObjmanPortingTest, LoadModuleByNamePriorities) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // Create a Process
+    auto proc = std::make_shared<Process>(&emu, nullptr,
+                                         std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{},
+                                         "dummy.exe", "C:\\Windows\\System32\\dummy.exe",
+                                         "", 0x400000, 0);
+    emu.set_current_process(proc);
+
+    // 1. Load an API module (JIT PE synthetic image) - kernel32
+    auto mod_kernel32 = emu.load_module_by_name("kernel32");
+    ASSERT_NE(mod_kernel32, nullptr);
+    EXPECT_EQ(mod_kernel32->get_base_name(), "kernel32.dll");
+    EXPECT_FALSE(mod_kernel32->is_decoy());
+    EXPECT_TRUE(mod_kernel32->is_dll());
+
+    // 2. Load a nonexistent module - should fall back to default_exe template loading
+    auto mod_decoy = emu.load_module_by_name("nonexistent");
+    ASSERT_NE(mod_decoy, nullptr);
+    EXPECT_EQ(mod_decoy->get_base_name(), "nonexistent.dll");
+    // Since default_exe exists in the test config/paths, it resolves as a real template PE (EXE)
+    EXPECT_FALSE(mod_decoy->is_decoy());
+    EXPECT_FALSE(mod_decoy->is_dll());
 }

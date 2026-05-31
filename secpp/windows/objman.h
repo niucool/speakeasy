@@ -270,6 +270,15 @@ public:
 };
 
 /**
+ * Represents a TOKEN object
+ */
+class Token : public KernelObject {
+public:
+    Token(void* emu);
+    Token() : KernelObject(nullptr) {}
+};
+
+/**
  * Represents a Windows ETHREAD object that describes an OS level thread
  */
 class Thread : public KernelObject {
@@ -282,7 +291,7 @@ private:
     std::vector<void*> message_queue_;
     std::vector<void*> fls_;
     int suspend_count_;
-    void* token_;
+    Token token_;
     int last_error_;
     int stack_base_;
     int stack_commit_;
@@ -299,25 +308,28 @@ public:
     std::shared_ptr<Process> get_process() { return process_; }
     void set_process(std::shared_ptr<Process> proc) { process_ = proc; } 
     void init_teb(int teb_addr, int peb_addr);
-    std::shared_ptr<TEB> get_teb() { return teb_; }
+    std::shared_ptr<TEB> get_teb();
     void set_last_error(int code);
     int get_last_error();
     std::vector<void*> get_tls();
     void set_tls(const std::vector<void*>& tls);
     std::vector<void*> get_fls();
     void set_fls(const std::vector<void*>& fls);
-    void* get_token();
+    Token* get_token();
     void init_tls(int tls_dir, const std::string& modname);
+
+    // Getters and setters to align with Python Thread attributes
+    bool get_modified_pc() const { return modified_pc_; }
+    void set_modified_pc(bool val) { modified_pc_ = val; }
+    int get_suspend_count() const { return suspend_count_; }
+    void set_suspend_count(int val) { suspend_count_ = val; }
+    int get_stack_base() const { return stack_base_; }
+    void set_stack_base(int base) { stack_base_ = base; }
+    int get_stack_commit() const { return stack_commit_; }
+    void set_stack_commit(int commit) { stack_commit_ = commit; }
+    int get_tid() const { return id; }
 };
 
-/**
- * Represents a TOKEN object
- */
-class Token : public KernelObject {
-public:
-    Token(void* emu);
-    Token() : KernelObject(nullptr) {}
-};
 
 /**
  * An EPROCESS object used by the Windows kernel to represent a process
@@ -355,12 +367,12 @@ public:
             const std::string& cmdline = "", uint64_t base = 0, int session = 0);
 
     std::shared_ptr<PEB> get_peb();
-    void set_peb_ldr_address(int addr);
+    void set_peb_ldr_address(uint64_t addr);
     void set_process_parameters(void* emu);
     std::shared_ptr<PebLdrData> get_peb_ldr();
     void alloc_console();
     std::string get_desktop_name();
-    void* get_token();
+    Token* get_token();
     int get_std_handle(int dev);
     std::string get_title_name();
     std::shared_ptr<speakeasy::RuntimeModule> get_module();

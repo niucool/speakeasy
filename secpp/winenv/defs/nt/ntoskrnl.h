@@ -300,7 +300,7 @@ struct PEB_LDR_DATA : speakeasy::EmuStruct {
           InInitializationOrderModuleList(ptr_sz) {}
 
     size_t sizeof_obj() const override {
-        return 4 + 4 + ptr_size + 3 * InLoadOrderModuleList.sizeof_obj() + ptr_size + 1 + ptr_size;
+        return 4 + 4 + ptr_size + 3 * InLoadOrderModuleList.sizeof_obj() + ptr_size + 4 + ptr_size;
     }
     std::vector<uint8_t> get_bytes() const override {
         std::vector<uint8_t> b(sizeof_obj(), 0);
@@ -320,7 +320,7 @@ struct PEB_LDR_DATA : speakeasy::EmuStruct {
         std::copy(list_bytes.begin(), list_bytes.end(), b.begin() + off); off += list_sz;
 
         speakeasy::write_le(b, off, EntryInProgress, ptr_size); off += ptr_size;
-        b[off] = ShutdownInProgress; off += 1;
+        b[off] = ShutdownInProgress; off += 4;
         speakeasy::write_le(b, off, ShutdownThreadId, ptr_size);
         return b;
     }
