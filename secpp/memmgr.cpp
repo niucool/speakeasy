@@ -526,6 +526,13 @@ std::pair<uint64_t, uint64_t> MemoryManager::get_valid_ranges(uint64_t size, uin
         }
     }
  
+    // Add already mapped memory
+    for (const auto& m : this->maps_) {
+        for (uint64_t i = m->get_base(); i < (m->get_base() + m->get_size()); i += page_size) {
+            curr.push_back(i);
+        }
+    }
+ 
     // Sort and remove duplicates
     std::sort(curr.begin(), curr.end());
     curr.erase(std::unique(curr.begin(), curr.end()), curr.end());
