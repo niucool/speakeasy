@@ -229,9 +229,17 @@ bool WindowsEmulator::_module_access_hook(void* emu, uint64_t addr,
     (void)emu; (void)size; (void)ctx;
     std::string sym = get_symbol_from_address(addr);
     if (!sym.empty()) {
-        auto [dll, name] = normalize_import_miss("", sym);
-        handle_import_func(dll, name);
-        return true;
+        size_t dot = sym.find('.');
+        if (dot != std::string::npos) {
+            std::string dll = sym.substr(0, dot);
+            std::string name = sym.substr(dot + 1);
+            handle_import_func(dll, name);
+            return true;
+        } else {
+            // Fallback for flat names
+            handle_import_func("", sym);
+            return true;
+        }
     }
     return false;
 }
@@ -791,7 +799,7 @@ void WindowsEmulator::start() {
 //     """Resume emulation at the specified address."""
 void WindowsEmulator::resume(uint64_t addr, int count) {
     if (emu_eng_) {
-        emu_eng_->start(addr, count, 0);
+        emu_eng_->start(addr, 0, static_cast<size_t>(count));
     }
 }
 

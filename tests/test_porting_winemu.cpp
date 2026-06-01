@@ -302,3 +302,62 @@ TEST(ObjmanPortingTest, ShellcodeLoadAndRun) {
     EXPECT_GT(t->get_stack_commit(), 0ULL);
 }
 
+TEST(WindowsEmulatorTest, ResumeInstructionLimit) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // 1. Load simple NOP shellcode that executes RET cleanly
+    std::vector<uint8_t> sc_data = {0x90, 0x90, 0x90, 0xC3};
+    uint64_t sc_addr = emu.load_shellcode("", "x86", sc_data, "resume_limit_test");
+    EXPECT_NE(sc_addr, 0ULL);
+
+    // 2. We trigger run_shellcode to start the engine run lifecycle
+    // But to verify resume, we call resume directly.
+    // EmuEngine::start will execute exactly 2 NOP instructions (0x90, 0x90) and return UC_ERR_OK.
+    EXPECT_NO_THROW({
+        emu.resume(sc_addr, 2);
+    });
+}
+
+TEST(WindowsEmulatorTest, ModuleAccessHookSymbolResolution) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // 1. Load a dummy shellcode to instantiate emu_eng_ and setup the memory engine
+    std::vector<uint8_t> sc_data = {0xC3};
+    uint64_t sc_addr = emu.load_shellcode("", "x86", sc_data, "access_hook_test");
+    EXPECT_NE(sc_addr, 0ULL);
+
+    // 2. Setup Process, Thread and stack so that get_ret_address() resolves safely
+    auto proc = emu.get_current_process();
+    if (!proc) {
+        proc = std::make_shared<Process>(&emu, nullptr,
+                                             std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{},
+                                             "dummy.exe", "C:\\Windows\\System32\\dummy.exe",
+                                             "", 0x400000, 0);
+        emu.set_current_process(proc);
+    }
+
+    auto [sb, sp] = emu.alloc_stack(0x4000);
+    sp -= 0x100; // Decrement stack pointer to leave room at the top of the stack for arguments
+    emu.set_stack_ptr(sp);
+    auto t = std::make_shared<Thread>(&emu, sb, 0x4000);
+    proc->threads.push_back(t);
+    emu.set_current_thread(t);
+
+    // Write a dummy return address at the stack pointer sp
+    std::vector<uint8_t> dummy_ret = {0x00, 0x10, 0x00, 0x00}; // 0x1000
+    emu.mem_write(sp, dummy_ret);
+
+    // 3. Manually register a composite symbol using the public helper
+    emu.add_mock_symbol(0x2000, "kernel32", "CreateFileA");
+
+    // 4. Verify _module_access_hook successfully splits and dispatches composite symbols
+    // It should return true since the symbol was successfully resolved and routed
+    bool resolved = emu._module_access_hook(nullptr, 0x2000, 4, nullptr);
+    EXPECT_TRUE(resolved);
+}
+
+

@@ -9,6 +9,11 @@
 
 #### Changed
 
+- **secpp**: 补全并重构了 Win32 仿真器中 Shellcode 加载 (`load_shellcode`) 与执行 (`run_shellcode`) 的移植实现，并将 `Thread` 类栈基址与提交大小字段全部重构为 `uint64_t` 以防止在 x64 平台下发生截断：
+  - **Thread 栈地址类型提升**：在 `objman.h` 和 `objman.cpp` 中，将 `Thread` 的 `stack_base_` 和 `stack_commit_` 成员以及对应的 Getters/Setters 和 `init_teb` 参数全部由 `int` 提升为 `uint64_t`，避免 64 位平台上的内存地址信息截断，并彻底消除了相关的 MSVC 编译警告。
+  - **Shellcode 规范化装载**：重构了 `load_shellcode` 以支持 `filename` 覆盖。当传入的 `data` 为空时自动退回读取 `path` 的物理文件。引入 `speakeasy::ShellcodeLoader` 对 Shellcode 进行规范化装载，生成带可执行权限 (`PERM_MEM_RWX` / 0x16) 的 `MemoryRegion` 并以 `RuntimeModule` 形式安全挂载至模块管理器中；同时使用 `picosha2` 自动提取 SHA-256 哈希，向 `profiler_` 全面同步装载元数据。
+  - **仿真运行上下文补全**：重构并补全了 `run_shellcode` 的整套指令环境与仿真参数。增加地址范围校验，映射并挂接了 4 个大小为 1024 字节的虚拟参数页（`0x41420000 + i`），配置 `ECX` 寄存器为 1024，并为宿主进程分配 PEB 空间和 TEB 段寄存器（FS/GS）映射，完美对齐了 Python 侧的所有仿真控制流。
+- **tests**: 在 `test_porting_winemu.cpp` 中新增了 `ObjmanPortingTest.ShellcodeLoadAndRun` 专项单元测试，验证了 1 字节 `RET` 指令 Shellcode 的装载、哈希生成、权限转换、栈管理与 clean returns 仿真回路，确保测试用例由 116 增至 **117** 并 100% 通过。
 - **secpp**: 补全并重构了对象管理器中 `Thread` (ETHREAD) 类的 C++ 移植实现，并修复了线程特异性的 `last_error` 错误路由：
   - **Thread 结构与属性对齐**：在 `objman.h` 中将 `Token` 的定义移动到 `Thread` 之上，支持了由 `Thread` 以值类型持有 `Token token_` 成员（与 Python 中的 `self.token = Token(...)` 初始化一致），并增加了 `modified_pc_`、`suspend_count_`、`stack_base_`、`stack_commit_` 和 `get_tid()` 等关键属性的获取/修改接口。
   - **RIP/EIP 修改检测**：重构了 `Thread::set_context(void* ctx)`。当设置新的 CPU 上下文时，会提取新老上下文中的指令指针（x64 的 `RIP` 偏移 0x140，x86 的 `EIP` 偏移 0x98）进行对比。若存在修改，则自动设置 `modified_pc_ = true`，用于准确驱动调度器流程。

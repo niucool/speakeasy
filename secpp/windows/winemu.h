@@ -193,6 +193,10 @@ protected:
     static std::string normalize_mod_name(const std::string& name);
 
 public:
+    void add_mock_symbol(uint64_t address, const std::string& dll, const std::string& name) {
+        symbols[address] = {dll, name};
+    }
+
     // Python winemu.py:73
     // def __init__(self, config, exit_event=None, debug=False, gdb_port=None):
     //     """Initialize the Windows emulator with configuration."""
