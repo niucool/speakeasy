@@ -490,7 +490,7 @@ IoStackLocation Irp::get_curr_stack_loc() {
 // Thread
 // 
 
-Thread::Thread(void* emu, int stack_base, int stack_commit)
+Thread::Thread(void* emu, uint64_t stack_base, uint64_t stack_commit)
     : KernelObject(emu),
       ctx_(nullptr), modified_pc_(false), teb_(nullptr),
       suspend_count_(0), token_(emu), last_error_(0),
@@ -563,9 +563,9 @@ void Thread::set_context(void* ctx) {
     this->ctx_ = ctx;
 }
 
-void Thread::init_teb(int teb_addr, int peb_addr) {
+void Thread::init_teb(uint64_t teb_addr, uint64_t peb_addr) {
     if (!this->teb_) {
-        this->teb_ = std::make_shared<TEB>(emu_, teb_addr);
+        this->teb_ = std::make_shared<TEB>(emu_, static_cast<int>(teb_addr));
     }
 
     auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb_->get_object());

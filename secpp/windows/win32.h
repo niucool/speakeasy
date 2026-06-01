@@ -154,7 +154,7 @@ public:
     
     // Python win32.py:353
     // def _init_name(self, path, data=None, filename=None):
-    void _init_name(const std::string& path, const std::vector<uint8_t>& data = {});
+    void _init_name(const std::string& path, const std::vector<uint8_t>& data = {}, const std::string& filename = "");
     
     // Python win32.py:368
     // def emulate_module(self, path):
@@ -166,7 +166,7 @@ public:
     // Python win32.py:375
     // def load_shellcode(self, path, arch, data=None, filename=None):
     uint64_t load_shellcode(const std::string& path, const std::string& arch,
-                           const std::vector<uint8_t>& data = {});
+                           const std::vector<uint8_t>& data = {}, const std::string& filename = "");
     
     // Python win32.py:418
     // def run_shellcode(self, sc_addr, stack_commit=0x4000, offset=0):

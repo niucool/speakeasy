@@ -263,3 +263,42 @@ TEST(ObjmanPortingTest, LoadModuleByNamePriorities) {
     EXPECT_FALSE(mod_decoy->is_decoy());
     EXPECT_FALSE(mod_decoy->is_dll());
 }
+
+TEST(ObjmanPortingTest, ShellcodeLoadAndRun) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // 1. Create a 1-byte shellcode with a RET instruction (0xC3)
+    std::vector<uint8_t> sc_data = {0xC3};
+
+    // 2. Load the shellcode using load_shellcode with override filename
+    uint64_t sc_addr = emu.load_shellcode("", "x86", sc_data, "my_test_shellcode");
+    EXPECT_NE(sc_addr, 0ULL);
+
+    // 3. Verify the RuntimeModule registration and name
+    auto rtmod = emu.get_mod_from_addr(sc_addr);
+    ASSERT_NE(rtmod, nullptr);
+    EXPECT_EQ(rtmod->name, "my_test_shellcode");
+
+    // 4. Verify permissions of mapped shellcode memory
+    auto mm = emu.get_address_map(sc_addr);
+    ASSERT_NE(mm, nullptr);
+    EXPECT_TRUE(mm->get_prot() & 0x4); // Executable bit is set (PERM_MEM_RWX)
+
+    // 5. Emulate the shellcode. It will execute the RET and cleanly terminate when hitting return_hook.
+    EXPECT_NO_THROW({
+        emu.run_shellcode(sc_addr);
+    });
+
+    // 6. Verify the container process and thread were successfully created
+    EXPECT_NE(emu.get_current_process(), nullptr);
+    EXPECT_NE(emu.get_current_thread(), nullptr);
+
+    // 7. Verify the stack base and commit sizes are valid and not truncated
+    auto t = std::dynamic_pointer_cast<Thread>(emu.get_current_thread());
+    ASSERT_NE(t, nullptr);
+    EXPECT_GT(t->get_stack_base(), 0ULL);
+    EXPECT_GT(t->get_stack_commit(), 0ULL);
+}
+

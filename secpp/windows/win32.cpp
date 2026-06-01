@@ -1,9 +1,12 @@
 // win32.cpp
 #include "win32.h"
+#include "loaders.h"
 #include "../helper.h"
 #include <algorithm>
 #include <cstring>
 #include <sstream>
+#include <fstream>
+#include "picosha2.h"
 #include "../config.h"
 #include "../winenv/defs/nt/ntoskrnl.h"
 
@@ -352,16 +355,21 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
 
 // Python win32.py:353
 // def _init_name(self, path, data=None, filename=None):
-void Win32Emulator::_init_name(const std::string& path, const std::vector<uint8_t>& data) {
-    if (data.empty()) {
+void Win32Emulator::_init_name(const std::string& path, const std::vector<uint8_t>& data, const std::string& filename) {
+    if (!filename.empty()) {
+        size_t lastSlash = filename.find_last_of("/\\");
+        file_name_ = (lastSlash == std::string::npos) ? filename : filename.substr(lastSlash + 1);
+        size_t lastDot = file_name_.find_last_of('.');
+        mod_name_ = (lastDot == std::string::npos) ? file_name_ : file_name_.substr(0, lastDot);
+    } else if (data.empty()) {
         // Extract filename from path (platform independent)
         size_t lastSlash = path.find_last_of("/\\");
         file_name_ = (lastSlash == std::string::npos) ? path : path.substr(lastSlash + 1);
-        
         size_t lastDot = file_name_.find_last_of('.');
         mod_name_ = (lastDot == std::string::npos) ? file_name_ : file_name_.substr(0, lastDot);
     } else {
-        mod_name_ = "unknown_hash";
+        std::string mod_hash = picosha2::hash256_hex_string(data.begin(), data.end());
+        mod_name_ = mod_hash;
         file_name_ = mod_name_ + ".exe";
     }
     // Extract base name
@@ -380,16 +388,61 @@ void Win32Emulator::emulate_module(const std::string& path) {
         run_module(mod);
 }
 
-// Python win32.py:375
+// // Python win32.py:375
 // def load_shellcode(self, path, arch, data=None, filename=None):
 uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::string& arch,
-                                       const std::vector<uint8_t>& data) {
-    _init_name(path, data);
-    this->arch = (arch == "x64" || arch == "amd64") ? 64 : 32;
+                                       const std::vector<uint8_t>& data, const std::string& filename) {
+    _init_name(path, data, filename);
+    int arch_enum = speakeasy::arch::ARCH_X86;
+    if (arch == "x64" || arch == "amd64") {
+        arch_enum = speakeasy::arch::ARCH_AMD64;
+    }
+    this->arch = arch_enum;
+
     std::vector<uint8_t> sc = data;
-    std::string sc_hash = "unknown_hash";
-    uint64_t sc_addr = mem_map(sc.size(), 0ULL, PERM_MEM_RW, "emu.shellcode." + sc_hash);
-    if (!sc.empty()) mem_write(sc_addr, sc);
+    if (sc.empty() && !path.empty()) {
+        std::ifstream file(path, std::ios::binary | std::ios::ate);
+        if (file) {
+            size_t fsize = static_cast<size_t>(file.tellg());
+            file.seekg(0);
+            sc.resize(fsize);
+            file.read(reinterpret_cast<char*>(sc.data()), fsize);
+        }
+    }
+
+    if (sc.empty()) {
+        throw Win32EmuError("Shellcode data is empty or file could not be read");
+    }
+
+    std::string sc_hash = picosha2::hash256_hex_string(sc.begin(), sc.end());
+
+    speakeasy::ShellcodeLoader loader(sc, arch_enum);
+    auto image = loader.make_image();
+    image->name = !filename.empty() ? mod_name_ : sc_hash;
+
+    auto rtmod = load_image(image);
+    uint64_t sc_addr = rtmod->base;
+
+    std::string sc_arch = "unknown";
+    if (arch_enum == speakeasy::arch::ARCH_AMD64) {
+        sc_arch = "x64";
+    } else if (arch_enum == speakeasy::arch::ARCH_X86) {
+        sc_arch = "x86";
+    }
+
+    std::string sc_tag = "emu.shellcode." + sc_hash;
+    if (profiler_) {
+        input_["path"] = path;
+        input_["sha256"] = sc_hash;
+        input_["size"] = std::to_string(sc.size());
+        input_["arch"] = sc_arch;
+        input_["image_base"] = std::to_string(sc_addr);
+        input_["mem_tag"] = sc_tag;
+        input_["emu_version"] = get_emu_version();
+        input_["os_run"] = get_osver_string();
+        profiler_->add_input_metadata(input_);
+    }
+
     return sc_addr;
 }
 
@@ -399,21 +452,67 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
 //     Begin emulating position independent code (i.e. shellcode) to prepare for emulation
 //     """
 void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t offset) {
-    // TODO:
-    auto stack_info = alloc_stack(stack_commit);
-    stack_base_ = std::get<0>(stack_info);
+    bool found_target = false;
+    for (const auto& mod : modules) {
+        if (mod && mod->base == sc_addr) {
+            found_target = true;
+            break;
+        }
+    }
+    if (!found_target) {
+        throw Win32EmuError("Invalid shellcode address");
+    }
+
+    size_t effective_stack = (config_.stack_size > 0) ? static_cast<size_t>(config_.stack_size) : stack_commit;
+    auto [sb, sp] = alloc_stack(effective_stack);
+    stack_base_ = sb;
+
+    set_func_args(stack_base_, return_hook, {0x7000});
+
     auto run = std::make_shared<Run>();
     run->type = "shellcode";
     run->start_addr = sc_addr + offset;
+    run->instr_cnt = 0;
+
+    std::vector<uint64_t> run_args;
+    std::vector<std::string> run_args_strs;
+    for (int i = 0; i < 4; ++i) {
+        uint64_t arg_addr = mem_map(1024, 0x41420000ULL + i, PERM_MEM_RW, "emu.shellcode_arg_" + std::to_string(i));
+        run_args.push_back(arg_addr);
+        run_args_strs.push_back(std::to_string(arg_addr));
+    }
+    run->args_values = run_args;
+    run->args = run_args_strs;
+
+    reg_write(speakeasy::arch::REG_ECX, 1024);
+
     add_run(run);
-    if (processes.empty()) {
+
+    std::shared_ptr<Process> proc = nullptr;
+    void* container = init_container_process();
+    if (container) {
+        proc = curr_process;
+    } else {
         auto p = std::make_shared<Process>(this);
         processes.push_back(p);
         curr_process = p;
+        proc = p;
     }
-    auto t = std::make_shared<Thread>(this);
-    if (curr_process) curr_process->threads.push_back(t);
+
+    auto mm = get_address_map(sc_addr);
+    if (mm) {
+        mm->set_process(proc);
+    }
+
+    auto t = std::make_shared<Thread>(this, stack_base_, stack_commit);
+    if (curr_process) {
+        curr_process->threads.push_back(t);
+    }
     curr_thread = t;
+
+    alloc_peb(curr_process);
+    init_teb(t, curr_process.get());
+
     start();
 }
 

@@ -293,12 +293,12 @@ private:
     int suspend_count_;
     Token token_;
     int last_error_;
-    int stack_base_;
-    int stack_commit_;
+    uint64_t stack_base_;
+    uint64_t stack_commit_;
     std::shared_ptr<Process> process_;
 
 public:
-    Thread(void* emu, int stack_base = 0, int stack_commit = 0);
+    Thread(void* emu, uint64_t stack_base = 0, uint64_t stack_commit = 0);
     Thread() : KernelObject(nullptr) {}
 
     void queue_message(void* msg);
@@ -307,7 +307,7 @@ public:
     void set_context(void* ctx);
     std::shared_ptr<Process> get_process() { return process_; }
     void set_process(std::shared_ptr<Process> proc) { process_ = proc; } 
-    void init_teb(int teb_addr, int peb_addr);
+    void init_teb(uint64_t teb_addr, uint64_t peb_addr);
     std::shared_ptr<TEB> get_teb();
     void set_last_error(int code);
     int get_last_error();
@@ -323,10 +323,10 @@ public:
     void set_modified_pc(bool val) { modified_pc_ = val; }
     int get_suspend_count() const { return suspend_count_; }
     void set_suspend_count(int val) { suspend_count_ = val; }
-    int get_stack_base() const { return stack_base_; }
-    void set_stack_base(int base) { stack_base_ = base; }
-    int get_stack_commit() const { return stack_commit_; }
-    void set_stack_commit(int commit) { stack_commit_ = commit; }
+    uint64_t get_stack_base() const { return stack_base_; }
+    void set_stack_base(uint64_t base) { stack_base_ = base; }
+    uint64_t get_stack_commit() const { return stack_commit_; }
+    void set_stack_commit(uint64_t commit) { stack_commit_ = commit; }
     int get_tid() const { return id; }
 };
 
