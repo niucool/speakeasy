@@ -565,7 +565,7 @@ void Thread::set_context(void* ctx) {
 
 void Thread::init_teb(uint64_t teb_addr, uint64_t peb_addr) {
     if (!this->teb_) {
-        this->teb_ = std::make_shared<TEB>(emu_, static_cast<int>(teb_addr));
+        this->teb_ = std::make_shared<TEB>(emu_, teb_addr);
     }
 
     auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb_->get_object());

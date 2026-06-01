@@ -123,7 +123,7 @@ protected:
     //  Processes 
     std::vector<std::shared_ptr<Process>> processes;
     std::vector<std::shared_ptr<Process>> child_processes;
-    std::shared_ptr<Process> curr_process = nullptr;
+    //std::shared_ptr<Process> curr_process = nullptr;
     std::shared_ptr<Thread> curr_thread = nullptr;
 
     //  Memory / hooks 
@@ -564,7 +564,7 @@ public:
     // Python winemu.py:771
     // def init_teb(self, thread, peb):
     //     """Initialize the Thread Information Block"""
-    void init_teb(std::shared_ptr<Thread> thread, void* peb);
+    void init_teb(std::shared_ptr<Thread> thread, std::shared_ptr<PEB> peb);
     // Python winemu.py:780
     // def init_tls(self, thread):
     //     """Initialize implicit thread local storage. Meant to be called after init_teb."""

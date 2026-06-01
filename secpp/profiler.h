@@ -94,6 +94,7 @@ public:
     std::vector<std::string> unique_apis;                          // Python:109
     std::string api_hash_data;         // Python:110 accumulated lowercase names (SHA-256)
     // Python:111  self.stack: MemAccess | None = None  stored externally
+    MemAccess stack;
     std::deque<uint64_t> exec_cache{4};  // Python:113
     std::deque<uint64_t> read_cache{4};  // Python:114
     std::deque<uint64_t> write_cache{4}; // Python:115

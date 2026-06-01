@@ -9,10 +9,14 @@
 /**
  * Get the supplied path in relation to the package root
  */
-std::string normalize_package_path(const std::string& path) {    const std::string root_var = "$ROOT$";
+std::string normalize_package_path(const std::string& path) {
+    const std::string root_var = "$ROOT$";
     if (path.find(root_var) != std::string::npos) {
-        // In a real implementation, this would get the actual root path
-        std::string root = "/path/to/speakeasy";        std::string result = path;
+        std::string root = "speakeasy";
+        if (!std::filesystem::exists(root)) {
+            root = ".";
+        }
+        std::string result = path;
         size_t pos = result.find(root_var);
         if (pos != std::string::npos) {
             result.replace(pos, root_var.length(), root);

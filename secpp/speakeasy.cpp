@@ -389,7 +389,7 @@ std::vector<void*> Speakeasy::get_user_modules() { return {}; }
 std::vector<void*> Speakeasy::get_sys_modules() { return {}; }
 
 uint64_t Speakeasy::mem_alloc(size_t size, uint64_t base, const std::string& tag) {
-    return emu->mem_map(size, PERM_MEM_READ | PERM_MEM_WRITE, base, tag);
+    return emu->mem_map(size, base, PERM_MEM_READ | PERM_MEM_WRITE, tag);
 }
 
 void Speakeasy::mem_free(uint64_t base) { emu->mem_free(base); }

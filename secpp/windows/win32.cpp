@@ -251,7 +251,7 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
             for (auto& p : processes) {
                 if (p.get() == container) {
                     run->process_context = p;
-                    curr_process = p;
+                    curr_process_ = p;
                     break;
                 }
             }
@@ -327,27 +327,31 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
         auto p = std::make_shared<Process>(this, module);
         p->path = module->emu_path;
         p->base = module->base;
-        curr_process = p;
+        curr_process_ = p;
         om->add_object(p);
         processes.push_back(p);
         auto& mm = get_address_map(module->base);
         if (mm)
-            mm->set_process(current_process_);
+            mm->set_process(curr_process_);
     }
     auto t = std::make_shared<Thread>(this, stack_base_, module->stack_commit);
     
     om->add_object(t);
-    if (curr_process) 
-        curr_process->threads.push_back(t);
+    if (curr_process_)
+        curr_process_->threads.push_back(t);
     curr_thread = t;
-    alloc_peb(curr_process);
-    init_teb(t, curr_process.get());
+
+    if (!run_queue.empty())
+        run_queue[0]->thread = t;
+
+    alloc_peb(curr_process_);
+    init_teb(t, curr_process_->get_peb());
     start();
     while (emulate_children && !child_processes.empty()) {
         auto child = child_processes.front();
         child_processes.erase(child_processes.begin());
         prepare_module_for_emulation(child->pe, all_entrypoints);
-        curr_process = child;
+        curr_process_ = child;
         curr_thread = child->threads[0];  // child process thread deferred
         start();
     }
@@ -491,11 +495,11 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
     std::shared_ptr<Process> proc = nullptr;
     void* container = init_container_process();
     if (container) {
-        proc = curr_process;
+        proc = curr_process_;
     } else {
         auto p = std::make_shared<Process>(this);
         processes.push_back(p);
-        curr_process = p;
+        curr_process_ = p;
         proc = p;
     }
 
@@ -505,13 +509,13 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
     }
 
     auto t = std::make_shared<Thread>(this, stack_base_, stack_commit);
-    if (curr_process) {
-        curr_process->threads.push_back(t);
+    if (curr_process_) {
+        curr_process_->threads.push_back(t);
     }
     curr_thread = t;
 
-    alloc_peb(curr_process);
-    init_teb(t, curr_process.get());
+    alloc_peb(curr_process_);
+    init_teb(t, curr_process_->get_peb());
 
     start();
 }
@@ -633,7 +637,7 @@ void* Win32Emulator::init_container_process() {
             auto proc = std::make_shared<Process>((void *)this, nullptr,
                                      std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{}, name, emu_path,
                                      cmd_line, base, 0);
-            curr_process = proc;
+            curr_process_ = proc;
             processes.push_back(proc);
             return proc.get();
         }

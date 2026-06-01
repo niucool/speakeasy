@@ -19,13 +19,13 @@ EmuEngine::EmuEngine() : name("unicorn"), emu(nullptr), mmap(nullptr) {
 void EmuEngine::init_regs() {
     // x86 registers
     regs[speakeasy::arch::REG_EAX] = UC_X86_REG_EAX;
-    regs[speakeasy::arch::REG_EBX] = speakeasy::arch::REG_EBX;
-    regs[speakeasy::arch::REG_ESP] = speakeasy::arch::REG_ESP;
-    regs[speakeasy::arch::REG_EIP] = speakeasy::arch::REG_EIP;
+    regs[speakeasy::arch::REG_EBX] = UC_X86_REG_EBX;
+    regs[speakeasy::arch::REG_ESP] = UC_X86_REG_ESP;
+    regs[speakeasy::arch::REG_EIP] = UC_X86_REG_EIP;
     regs[speakeasy::arch::REG_EBP] = UC_X86_REG_EBP;
-    regs[speakeasy::arch::REG_ECX] = speakeasy::arch::REG_ECX;
-    regs[speakeasy::arch::REG_EDX] = speakeasy::arch::REG_EDX;
-    regs[speakeasy::arch::REG_EDI] = speakeasy::arch::REG_EDI;
+    regs[speakeasy::arch::REG_ECX] = UC_X86_REG_ECX;
+    regs[speakeasy::arch::REG_EDX] = UC_X86_REG_EDX;
+    regs[speakeasy::arch::REG_EDI] = UC_X86_REG_ESI;
     regs[speakeasy::arch::REG_ESI] = UC_X86_REG_ESI;
     regs[speakeasy::arch::REG_EFLAGS] = UC_X86_REG_EFLAGS;
     

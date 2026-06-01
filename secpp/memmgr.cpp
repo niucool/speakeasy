@@ -138,7 +138,7 @@ bool MemMap::operator!=(const MemMap& other) const {
  */
 MemoryManager::MemoryManager() 
     : block_base_(0), block_size_(0), block_offset_(0), page_size_(0x1000), 
-      keep_memory_on_free_(false), emu_eng_(nullptr), current_process_(nullptr) {
+      keep_memory_on_free_(false), emu_eng_(nullptr), curr_process_(nullptr) {
 }
 
 /**
@@ -153,7 +153,7 @@ void MemoryManager::_hook_mem_map_dispatch(std::shared_ptr<MemMap> mm) {
  * Get current process
  */
 std::shared_ptr<Process> MemoryManager::get_current_process() {
-    return this->current_process_;
+    return this->curr_process_;
 }
 
 /**

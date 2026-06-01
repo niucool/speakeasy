@@ -184,7 +184,7 @@ void WindowsEmulator::disable_code_hook() {
 // def set_hooks(self):
 //     """Reserves memory that will be used to handle events that occur during emulation."""
 void WindowsEmulator::set_hooks() {
-    // Hooks are registered in enable_code_hook / set_mem_tracing_hooks
+    // TODO:
 }
 
 // Python winemu.py:377
@@ -686,18 +686,49 @@ void WindowsEmulator::call(uint64_t addr, const std::vector<std::string>& params
 std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> run) {
     curr_run = run;
 
+    if (profiler_) {
+        profiler_->add_run(run);
+    }
+
     runs.push_back(curr_run);
 
     // Set up stack for return and args
     uint64_t stk_ptr = get_stack_ptr();
     set_func_args(stk_ptr, return_hook, run->args_values);
+    stk_ptr = get_stack_ptr();
 
-    if (run->process_context &&
-        run->process_context != get_current_process()) {
+    std::shared_ptr<MemMap> stk_map = get_address_map(stk_ptr);
+    curr_run->stack.base = stk_map->get_base();
+    curr_run->stack.size = stk_map->get_size();
+
+
+    if (run->process_context) {
         auto proc_sp = run->process_context;
-        if (proc_sp) {
+        if (run->process_context != get_current_process()) {
             alloc_peb(proc_sp);
-            set_current_process(proc_sp);
+        }
+        set_current_process(proc_sp);
+    }
+
+    if (run->thread) {
+        set_current_thread(run->thread);
+    }
+    else if (!kernel_mode) {
+        auto thread = std::make_shared<Thread>(this, stack_base_);
+        om->add_object(thread);
+        if(curr_process_) {
+            thread->set_process(curr_process_);
+            curr_process_->threads.push_back(thread);
+        }
+        run->thread = thread;
+        set_current_thread(thread);
+    }
+
+    if (!kernel_mode) {
+        auto thread = get_current_thread();
+        if (thread) {
+            init_teb(thread, curr_process_->peb);
+            init_tls(thread);
         }
     }
 
@@ -708,7 +739,11 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
     // Unmap reserved region if entry point is there
     if (run->start_addr >= EMU_RESERVED &&
         run->start_addr <= EMU_RESERVED_END) {
-        // mem_unmap(EMU_RESERVED, EMU_RESERVE_SIZE);
+        try {
+            mem_unmap(EMU_RESERVED, EMU_RESERVE_SIZE);
+        }
+        catch (...) {
+        }
         emu_hooks_set = true;
     }
 
@@ -1071,7 +1106,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::get_peb_
 //     """Initialize the Process Environment Block"""
 
 void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeModule>>& user_mods, std::shared_ptr<Process> proc) {
-    std::shared_ptr<Process> process = proc ? proc : curr_process;
+    std::shared_ptr<Process> process = proc ? proc : curr_process_;
     if (!process) return;
 
     if (process->get_peb()) {
@@ -1097,14 +1132,13 @@ void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeMod
 // def init_teb(self, thread, peb):
 //     """Initialize the Thread Information Block"""
 
-void WindowsEmulator::init_teb(std::shared_ptr<Thread> thread, void* peb) {
+void WindowsEmulator::init_teb(std::shared_ptr<Thread> thread, std::shared_ptr<PEB> peb) {
     if (!thread) return;
-    auto* peb_obj = static_cast<Process*>(peb);
-    uint64_t peb_addr_val = (peb_obj && peb_obj->get_peb()) ? peb_obj->get_peb()->get_address() : 0;
+    uint64_t peb_addr_val = peb ? peb->get_address() : 0;
     if (ptr_size == 4) {
-        thread->init_teb(static_cast<int>(fs_addr), static_cast<int>(peb_addr_val));
+        thread->init_teb(fs_addr, static_cast<int>(peb_addr_val));
     } else {
-        thread->init_teb(static_cast<int>(gs_addr), static_cast<int>(peb_addr_val));
+        thread->init_teb(gs_addr, static_cast<int>(peb_addr_val));
     }
 }
 
@@ -1506,12 +1540,12 @@ void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
 //     """Get the current thread that is emulating"""
 
 std::shared_ptr<Thread> WindowsEmulator::get_current_thread() { return curr_thread; }
-std::shared_ptr<Process> WindowsEmulator::get_current_process() { return curr_process; }
+std::shared_ptr<Process> WindowsEmulator::get_current_process() { return curr_process_; }
 // Python winemu.py:664
 // def set_current_process(self, process):
 //     """Set the current process that is emulating"""
 
-void WindowsEmulator::set_current_process(std::shared_ptr<Process> process) { curr_process = process; }
+void WindowsEmulator::set_current_process(std::shared_ptr<Process> process) { curr_process_ = process; }
 // Python winemu.py:670
 // def set_current_thread(self, thread):
 //     """Set the current thread"""
@@ -1616,21 +1650,31 @@ std::shared_ptr<Thread> WindowsEmulator::create_thread(uint64_t addr, void* ctx,
 std::string WindowsEmulator::get_native_module_path(const std::string& mod_name) {
     std::string name = speakeasy::to_lower(mod_name);
 
-    const char* subdir = (arch == speakeasy::arch::ARCH_AMD64) ? "amd64" : "x86";
-    fs::path decoy_path = fs::path("secpp") / "winenv" / "decoys" / subdir;
+    auto get_fp = [](const std::string& dir_path, const std::string& target_name) -> std::string {
+        std::string norm_dir = normalize_package_path(dir_path);
+        fs::path p(norm_dir);
+        if (!fs::exists(p) || !fs::is_directory(p)) return "";
 
-    if (fs::exists(decoy_path)) {
-        for (const auto& entry : fs::directory_iterator(decoy_path)) {
+        for (const auto& entry : fs::directory_iterator(p)) {
             if (!entry.is_regular_file()) continue;
-            std::string fn = entry.path().filename().string();
+            std::string fn = speakeasy::to_lower(entry.path().filename().string());
             std::string base = fn;
             auto dot = base.find_last_of('.');
             if (dot != std::string::npos) base = base.substr(0, dot);
-            base = speakeasy::to_lower(base);
-            if (base == name) return entry.path().string();
+            if (base == target_name) return entry.path().string();
         }
+        return "";
+    };
+
+    const char* dirs_1 = (arch == speakeasy::arch::ARCH_AMD64) ? "amd64" : "x86";
+    std::string mod_dir = (arch == speakeasy::arch::ARCH_AMD64) ? config_.modules.module_directory_x64 : config_.modules.module_directory_x86;
+
+    std::string fp = get_fp(mod_dir, name);
+    if (fp.empty()) {
+        std::string fallback_dir = std::string("$ROOT$/winenv/decoys/") + dirs_1;
+        fp = get_fp(fallback_dir, name);
     }
-    return "";
+    return fp;
 }
 
 
@@ -2949,7 +2993,7 @@ std::shared_ptr<Thread> WindowsEmulator::find_thread_by_ptr(void* thread_ptr) {
 // def get_process_peb(self, process):
 //     """Get the PEB for a given process."""
 void* WindowsEmulator::get_process_peb(void* process) {
-    auto proc_sp = process ? find_process(process) : curr_process;
+    auto proc_sp = process ? find_process(process) : curr_process_;
     if (proc_sp && proc_sp->get_peb()) {
         return reinterpret_cast<void*>(static_cast<uintptr_t>(proc_sp->get_peb()->get_address()));
     }

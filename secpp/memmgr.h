@@ -126,7 +126,7 @@ protected:
     // Assuming these would be defined elsewhere
     EmuEngine* emu_eng_;
     std::map<int, std::vector<std::shared_ptr<Hook>>> hooks_;
-    std::shared_ptr<Process> current_process_;
+    std::shared_ptr<Process> curr_process_;
 
     /**
      * Dispatch memory map hooks

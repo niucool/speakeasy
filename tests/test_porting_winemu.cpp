@@ -360,4 +360,17 @@ TEST(WindowsEmulatorTest, ModuleAccessHookSymbolResolution) {
     EXPECT_TRUE(resolved);
 }
 
+TEST(WindowsEmulatorTest, GetNativeModulePathValidation) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    std::string path_default_exe = emu.get_native_module_path("default_exe");
+    EXPECT_FALSE(path_default_exe.empty());
+    EXPECT_NE(path_default_exe.find("default_exe"), std::string::npos);
+
+    std::string path_empty = emu.get_native_module_path("nonexistent_decoy");
+    EXPECT_TRUE(path_empty.empty());
+}
+
 
