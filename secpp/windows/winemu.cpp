@@ -2317,7 +2317,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         dll_norm = dll_norm.substr(0, dll_norm.size() - 4);
 
     //  Primary handler lookup 
-    ApiHandler* handler_mod = nullptr;
+    std::shared_ptr<ApiHandler> handler_mod = nullptr;
     void* func_ptr = nullptr;
 
     if (api) {

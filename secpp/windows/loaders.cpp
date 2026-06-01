@@ -480,14 +480,15 @@ std::shared_ptr<LoadedImage> ShellcodeLoader::make_image() {
 
 //  ApiModuleLoader 
 
-ApiModuleLoader::ApiModuleLoader(const std::string& name, void* api,
+ApiModuleLoader::ApiModuleLoader(const std::string& name, std::shared_ptr<ApiHandler> api,
                                  int arch, uint64_t base, const std::string& emu_path)
-    : name_(name), api_(api), arch_(arch), base_(base), emu_path_(emu_path) {}
+    : name_(name), api_(api), arch_(arch), base_(base), emu_path_(emu_path) {
+}
 
 std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     std::vector<std::string> all_exports;
     
-    auto* handler = static_cast<ApiHandler*>(api_);
+    auto handler = api_;
     if (handler) {
         const auto& hook_funcs = handler->get_hook_funcs();
         const auto& hook_data = handler->get_hook_data();

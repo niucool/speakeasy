@@ -17,7 +17,7 @@ class Emulator;
  */
 class ApiHandlerRegistry {
 public:
-    using HandlerFactory = std::function<ApiHandler*(Emulator*)>;
+    using HandlerFactory = std::function<std::shared_ptr<ApiHandler>(Emulator*)>;
     
 private:
     static std::map<std::string, HandlerFactory>& get_registry() {
@@ -36,7 +36,7 @@ public:
     /**
      * Create an API handler instance by name
      */
-    static ApiHandler* create_handler(const std::string& name, Emulator* emu) {
+    static std::shared_ptr<ApiHandler> create_handler(const std::string& name, Emulator* emu) {
         auto& registry = get_registry();
         auto it = registry.find(name);
         if (it != registry.end()) {
@@ -58,8 +58,8 @@ public:
  */
 #define REGISTER_API_HANDLER(name, type) \
     namespace { \
-        ApiHandler* create_##type(Emulator* emu) { \
-            return new type(emu); \
+        std::shared_ptr<ApiHandler> create_##type(Emulator* emu) { \
+            return std::make_shared<type>(emu); \
         } \
         struct type##_Registrar { \
             type##_Registrar() { \

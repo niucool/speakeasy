@@ -17,6 +17,8 @@
 
 #include "common.h"
 
+class ApiHandler;  // forward declaration
+
 namespace speakeasy {
 
 //  Data structures 
@@ -67,6 +69,7 @@ struct ImportEntry {
 // };
 
 class Loader;  // forward declaration
+
 struct LoadedImage {
     int arch = 0;                 // 32 or 64
     std::string module_type; // "exe", "dll", "driver", "decoy"
@@ -253,12 +256,12 @@ private:
  */
 class ApiModuleLoader : public Loader {
 public:
-    explicit ApiModuleLoader(const std::string& name, void* api,
+    explicit ApiModuleLoader(const std::string& name, std::shared_ptr<ApiHandler> api,
                              int arch, uint64_t base, const std::string& emu_path);
     std::shared_ptr<LoadedImage> make_image() override;
 private:
     std::string name_;
-    void* api_;
+    std::shared_ptr<ApiHandler> api_;
     int arch_;
     uint64_t base_;
     std::string emu_path_;
