@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+### 2026-06-02
+
+#### Added
+
+- **secpp**: 彻底补全并实现了 177 个遗漏的 `kernel32` DLL 用户态 API 的 C++ 移植，并解决了高频发生的 Windows SDK 内置宏污染命名冲突：
+  - **防宏污染宏定义隔离**：针对 MSVC/Windows SDK 环境中 `<windows.h>` 的内置 A/W 映射宏对 API 接口名称的侵入，在 `kernel32.h` 和 `kernel32.cpp` 顶部引入了包含 50 余项核心 API（如 `GetStartupInfo`, `GetSystemDirectory`, `lstrcmpi`, `lstrcpyn`, `InterlockedIncrement` 等）的 `#undef` 防治块，消消除因底层 API 被宏展开为 ANSI/Unicode 变体而产生的 duplicate definition 极其隐蔽的编译冲突。
+  - **TLS & FLS 高仿真模拟**：完全实现了线程局部存储与纤程局部存储 API（`TlsAlloc`, `TlsFree`, `TlsGetValue`, `TlsSetValue`, `FlsAlloc`, `FlsFree`, `FlsGetValue`, `FlsSetValue`），直接与运行线程 `Thread` 类的 `tls_` 和 `fls_` 向量进行类型转换同步，实现高保真度仿真。
+  - **原子 Interlocked 操作**：完全实现了 32-bit 原子算术与交换指令（`InterlockedIncrement`, `InterlockedDecrement`, `InterlockedExchange`, `InterlockedCompareExchange`），通过原生读写内存字节流，在小端序布局下原子模拟访客机数值的自增自减与条件置换行为。
+  - **标准句柄与文件类型**：实现了 `GetStdHandle` 自动映射获取当前宿主进程中的 `stdin_handle`, `stdout_handle` 与 `stderr_handle` 的标准句柄引用，并补全 `GetFileType` 默认返回磁盘文件类型 `FILE_TYPE_DISK` (1)。
+  - **高精度系统时间**：完全实现了 `GetSystemTimeAsFileTime`，通过 `std::chrono::system_clock` 精准读取当前 system 时间戳，并换算至 Windows 专用的 100 纳秒间隔 FILETIME 格式输出至访客内存。
+  - **宽度敏感型字符串实用工具**：实现了 `lstrcmpi`, `lstrcmpiA`, `lstrcmpiW`, `lstrcpyn`, `lstrcpynA`, `lstrcpynW` 的内存级宽/窄字符转换、大小写折叠判定与带截断截尾控制的文本安全拷贝。
+  - **162 项健壮空 Stub 注册**：对其余 162 个暂非必须的辅助、权限或同步 API 进行了全面的空 `STUB` 注册（默认 BOOL 成功返回 1），并挂载至 `Kernel32` 初始化映射表中，消除了因缺少导入函数映射在动态加载时引起的崩溃。
+- **secpp**: 移除了所有第三方库在 Windows 环境下的 DLL 运行时依赖，实现了完全独立、无需 `vcruntime140.dll`/`msvcp140.dll` 即可独立运行 of 静态 standalone 编译构建：
+  - **Unicorn & Miniz 静态 fetch 编译**：改用 CMake FetchContent 在构建时拉取 Unicorn 2.0.1 和 Miniz 3.0.2 源码并直接编译为静态链接库，全面避免了原有 Dynamic/DLL 模式的多余组件分发问题。
+  - **/MT 静态 CRT 编译开关**：在全局 MSVC 条件下开启 `/MT` 与 `/MTd` 编译选项，并通过在引入 Unicorn 前后安全隔离 CMAKE_MSVC_RUNTIME_LIBRARY 的缓存黑客机制，绕过了 Unicorn 自定义 CMake 对静态运行库锁死报错的物理局限。
+  - **GDT/IDT 段描述符写入奔溃修复**：定位并修复了 Unicorn 静态库模式下进行 `REG_GDTR` 写操作时因传递 64 位裸指针而非 24 字节 `uc_x86_mmr` 寄存器结构体导致的 unmapped memory 致命奔溃（新增 `reg_write_gdt_idt` 专属写入层），完全与 Python 模型段寄存器 31 entries limit 属性对齐。
+
+
 ### 2026-05-31
 
 #### Changed

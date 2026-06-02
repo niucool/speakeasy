@@ -59,6 +59,144 @@ static inline int ptr_sz(void* e) {
 #ifdef RtlZeroMemory
 #undef RtlZeroMemory
 #endif
+#ifdef GetStartupInfo
+#undef GetStartupInfo
+#endif
+#ifdef GetSystemDirectory
+#undef GetSystemDirectory
+#endif
+#ifdef GetTempFileName
+#undef GetTempFileName
+#endif
+#ifdef GetTempPath
+#undef GetTempPath
+#endif
+#ifdef GetTimeFormat
+#undef GetTimeFormat
+#endif
+#ifdef GetVolumeInformation
+#undef GetVolumeInformation
+#endif
+#ifdef GetVolumePathNamesForVolumeName
+#undef GetVolumePathNamesForVolumeName
+#endif
+#ifdef GetWindowsDirectory
+#undef GetWindowsDirectory
+#endif
+#ifdef IsBadStringPtr
+#undef IsBadStringPtr
+#endif
+#ifdef LCMapString
+#undef LCMapString
+#endif
+#ifdef MoveFile
+#undef MoveFile
+#endif
+#ifdef OpenEvent
+#undef OpenEvent
+#endif
+#ifdef OpenWaitableTimer
+#undef OpenWaitableTimer
+#endif
+#ifdef SetConsoleTitle
+#undef SetConsoleTitle
+#endif
+#ifdef SetDllDirectory
+#undef SetDllDirectory
+#endif
+#ifdef VerifyVersionInfo
+#undef VerifyVersionInfo
+#endif
+#ifdef InterlockedIncrement
+#undef InterlockedIncrement
+#endif
+#ifdef InterlockedDecrement
+#undef InterlockedDecrement
+#endif
+#ifdef InterlockedExchange
+#undef InterlockedExchange
+#endif
+#ifdef InterlockedCompareExchange
+#undef InterlockedCompareExchange
+#endif
+#ifdef lstrcmpi
+#undef lstrcmpi
+#endif
+#ifdef lstrcpyn
+#undef lstrcpyn
+#endif
+#ifdef AddAtom
+#undef AddAtom
+#endif
+#ifdef CreateMutexEx
+#undef CreateMutexEx
+#endif
+#ifdef CreateNamedPipe
+#undef CreateNamedPipe
+#endif
+#ifdef CreateWaitableTimerEx
+#undef CreateWaitableTimerEx
+#endif
+#ifdef FindAtom
+#undef FindAtom
+#endif
+#ifdef FindFirstFileEx
+#undef FindFirstFileEx
+#endif
+#ifdef FindFirstVolume
+#undef FindFirstVolume
+#endif
+#ifdef FindNextVolume
+#undef FindNextVolume
+#endif
+#ifdef FindResource
+#undef FindResource
+#endif
+#ifdef FindResourceEx
+#undef FindResourceEx
+#endif
+#ifdef FreeEnvironmentStrings
+#undef FreeEnvironmentStrings
+#endif
+#ifdef GetAtomName
+#undef GetAtomName
+#endif
+#ifdef GetBinaryType
+#undef GetBinaryType
+#endif
+#ifdef GetComputerNameEx
+#undef GetComputerNameEx
+#endif
+#ifdef GetConsoleTitle
+#undef GetConsoleTitle
+#endif
+#ifdef GetDateFormat
+#undef GetDateFormat
+#endif
+#ifdef GetFileAttributesEx
+#undef GetFileAttributesEx
+#endif
+#ifdef GetFullPathName
+#undef GetFullPathName
+#endif
+#ifdef GetLocaleInfo
+#undef GetLocaleInfo
+#endif
+#ifdef GetLongPathName
+#undef GetLongPathName
+#endif
+#ifdef GetModuleHandleEx
+#undef GetModuleHandleEx
+#endif
+#ifdef GetProfileInt
+#undef GetProfileInt
+#endif
+#ifdef GetShortPathName
+#undef GetShortPathName
+#endif
+#ifdef GlobalAddAtom
+#undef GlobalAddAtom
+#endif
 
 //  Windows constants (use K32_ prefix to avoid SDK macro conflicts) 
 static constexpr uint32_t K32_ERR_SUCCESS           = 0;
@@ -207,6 +345,99 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, OutputDebugStringA, 1) REG(Kernel32, GetACP, 0)
     REG(Kernel32, DecodePointer, 1)  REG(Kernel32, EncodePointer, 1)
     REG(Kernel32, IsProcessorFeaturePresent, 1)
+
+    // Statically linked / dynamic-CRT-free missing APIs
+    REG(Kernel32, FlsAlloc, 1)     REG(Kernel32, FlsFree, 1)
+    REG(Kernel32, FlsGetValue, 1)     REG(Kernel32, FlsSetValue, 2)
+    REG(Kernel32, GetFileType, 1)     REG(Kernel32, GetStdHandle, 1)
+    REG(Kernel32, GetSystemTimeAsFileTime, 1)     REG(Kernel32, InterlockedCompareExchange, 3)
+    REG(Kernel32, InterlockedDecrement, 1)     REG(Kernel32, InterlockedExchange, 2)
+    REG(Kernel32, InterlockedIncrement, 1)     REG(Kernel32, TlsAlloc, 0)
+    REG(Kernel32, TlsFree, 1)     REG(Kernel32, TlsGetValue, 1)
+    REG(Kernel32, TlsSetValue, 2)     REG(Kernel32, AcquireSRWLockExclusive, 1)
+    REG(Kernel32, AcquireSRWLockShared, 1)     REG(Kernel32, AddAtom, 1)
+    REG(Kernel32, AddVectoredContinueHandler, 2)     REG(Kernel32, AddVectoredExceptionHandler, 2)
+    REG(Kernel32, AreFileApisANSI, 0)     REG(Kernel32, CheckRemoteDebuggerPresent, 2)
+    REG(Kernel32, CompareFileTime, 2)     REG(Kernel32, ConnectNamedPipe, 2)
+    REG(Kernel32, CreateIoCompletionPort, 4)     REG(Kernel32, CreateMutexEx, 4)
+    REG(Kernel32, CreateNamedPipe, 8)     REG(Kernel32, CreatePipe, 4)
+    REG(Kernel32, CreateProcessInternal, 12)     REG(Kernel32, CreateSemaphoreW, 4)
+    REG(Kernel32, CreateWaitableTimerEx, 4)     REG(Kernel32, CreateWaitableTimerExW, 4)
+    REG(Kernel32, DeleteAtom, 1)     REG(Kernel32, DisconnectNamedPipe, 1)
+    REG(Kernel32, DuplicateHandle, 7)     REG(Kernel32, EnumProcesses, 3)
+    REG(Kernel32, FindAtom, 1)     REG(Kernel32, FindFirstFileEx, 6)
+    REG(Kernel32, FindFirstVolume, 2)     REG(Kernel32, FindNextVolume, 3)
+    REG(Kernel32, FindResource, 3)     REG(Kernel32, FindResourceEx, 4)
+    REG(Kernel32, FindVolumeClose, 1)     REG(Kernel32, FlsGetValue2, 1)
+    REG(Kernel32, FreeEnvironmentStrings, 1)     REG(Kernel32, FreeLibraryAndExitThread, 2)
+    REG(Kernel32, FreeResource, 1)     REG(Kernel32, GetAtomName, 3)
+    REG(Kernel32, GetBinaryType, 2)     REG(Kernel32, GetCPInfo, 2)
+    REG(Kernel32, GetCommProperties, 2)     REG(Kernel32, GetCommTimeouts, 2)
+    REG(Kernel32, GetComputerNameEx, 3)     REG(Kernel32, GetConsoleTitle, 2)
+    REG(Kernel32, GetConsoleWindow, 0)     REG(Kernel32, GetCurrentPackageId, 2)
+    REG(Kernel32, GetDateFormat, 6)     REG(Kernel32, GetEnvironmentStrings, 0)
+    REG(Kernel32, GetErrorMode, 0)     REG(Kernel32, GetFileAttributesEx, 3)
+    REG(Kernel32, GetFileSizeEx, 2)     REG(Kernel32, GetFullPathName, 4)
+    REG(Kernel32, GetHandleInformation, 2)     REG(Kernel32, GetLocaleInfo, 4)
+    REG(Kernel32, GetLogicalDrives, 0)     REG(Kernel32, GetLongPathName, 3)
+    REG(Kernel32, GetMailslotInfo, 5)     REG(Kernel32, GetModuleFileNameExA, 4)
+    REG(Kernel32, GetModuleHandleEx, 3)     REG(Kernel32, GetNativeSystemInfo, 1)
+    REG(Kernel32, GetOEMCP, 0)     REG(Kernel32, GetPhysicallyInstalledSystemMemory, 1)
+    REG(Kernel32, GetProcessAffinityMask, 3)     REG(Kernel32, GetProcessHandleCount, 1)
+    REG(Kernel32, GetProcessVersion, 1)     REG(Kernel32, GetProfileInt, 3)
+    REG(Kernel32, GetShortPathName, 3)     REG(Kernel32, GetStartupInfo, 1)
+    REG(Kernel32, GetStringTypeA, 5)     REG(Kernel32, GetStringTypeW, 4)
+    REG(Kernel32, GetSystemDefaultLCID, 0)     REG(Kernel32, GetSystemDefaultLangID, 0)
+    REG(Kernel32, GetSystemDefaultUILanguage, 0)     REG(Kernel32, GetSystemDirectory, 2)
+    REG(Kernel32, GetSystemFirmwareTable, 4)     REG(Kernel32, GetSystemTimePreciseAsFileTime, 1)
+    REG(Kernel32, GetSystemTimes, 3)     REG(Kernel32, GetTempFileName, 4)
+    REG(Kernel32, GetTempPath, 2)     REG(Kernel32, GetThreadContext, 2)
+    REG(Kernel32, GetThreadId, 1)     REG(Kernel32, GetThreadLocale, 0)
+    REG(Kernel32, GetThreadTimes, 5)     REG(Kernel32, GetThreadUILanguage, 0)
+    REG(Kernel32, GetTickCount64, 0)     REG(Kernel32, GetTimeFormat, 6)
+    REG(Kernel32, GetTimeZoneInformation, 1)     REG(Kernel32, GetUserDefaultLCID, 0)
+    REG(Kernel32, GetUserDefaultLangID, 0)     REG(Kernel32, GetUserDefaultUILanguage, 0)
+    REG(Kernel32, GetVolumeInformation, 8)     REG(Kernel32, GetVolumePathNamesForVolumeName, 4)
+    REG(Kernel32, GetWindowsDirectory, 2)     REG(Kernel32, GlobalAddAtomA, 1)
+    REG(Kernel32, GlobalFlags, 1)     REG(Kernel32, GlobalHandle, 1)
+    REG(Kernel32, GlobalLock, 1)     REG(Kernel32, GlobalMemoryStatus, 1)
+    REG(Kernel32, GlobalMemoryStatusEx, 1)     REG(Kernel32, GlobalSize, 1)
+    REG(Kernel32, GlobalUnlock, 1)     REG(Kernel32, HeapReAlloc, 4)
+    REG(Kernel32, HeapSetInformation, 4)     REG(Kernel32, HeapSize, 3)
+    REG(Kernel32, InitOnceBeginInitialize, 4)     REG(Kernel32, InitializeConditionVariable, 1)
+    REG(Kernel32, InitializeCriticalSectionAndSpinCount, 2)     REG(Kernel32, InitializeCriticalSectionEx, 3)
+    REG(Kernel32, InitializeSListHead, 1)     REG(Kernel32, InitializeSRWLock, 1)
+    REG(Kernel32, IsBadReadPtr, 2)     REG(Kernel32, IsBadStringPtr, 2)
+    REG(Kernel32, IsBadWritePtr, 2)     REG(Kernel32, IsDBCSLeadByte, 1)
+    REG(Kernel32, IsValidCodePage, 1)     REG(Kernel32, IsValidLocale, 2)
+    REG(Kernel32, IsWow64Process, 2)     REG(Kernel32, LCMapString, 6)
+    REG(Kernel32, LCMapStringEx, 9)     REG(Kernel32, LoadResource, 2)
+    REG(Kernel32, LocalLock, 1)     REG(Kernel32, LocalReAlloc, 3)
+    REG(Kernel32, LockResource, 1)     REG(Kernel32, MoveFile, 2)
+    REG(Kernel32, MulDiv, 3)     REG(Kernel32, OpenEvent, 3)
+    REG(Kernel32, OpenWaitableTimer, 3)     REG(Kernel32, PeekNamedPipe, 6)
+    REG(Kernel32, ProcessIdToSessionId, 2)     REG(Kernel32, ReleaseSRWLockExclusive, 1)
+    REG(Kernel32, ReleaseSRWLockShared, 1)     REG(Kernel32, RemoveVectoredExceptionHandler, 1)
+    REG(Kernel32, RtlCaptureContext, 1)     REG(Kernel32, RtlLookupFunctionEntry, 3)
+    REG(Kernel32, RtlUnwind, 4)     REG(Kernel32, SetConsoleCtrlHandler, 2)
+    REG(Kernel32, SetConsoleHistoryInfo, 1)     REG(Kernel32, SetConsoleTitle, 1)
+    REG(Kernel32, SetDefaultDllDirectories, 1)     REG(Kernel32, SetDllDirectory, 1)
+    REG(Kernel32, SetFilePointerEx, 4)     REG(Kernel32, SetHandleCount, 1)
+    REG(Kernel32, SetHandleInformation, 3)     REG(Kernel32, SetPriorityClass, 2)
+    REG(Kernel32, SetProcessPriorityBoost, 2)     REG(Kernel32, SetThreadContext, 2)
+    REG(Kernel32, SetThreadDescription, 2)     REG(Kernel32, SetThreadErrorMode, 2)
+    REG(Kernel32, SetThreadLocale, 1)     REG(Kernel32, SetThreadStackGuarantee, 1)
+    REG(Kernel32, SizeofResource, 2)     REG(Kernel32, SystemTimeToTzSpecificLocalTime, 3)
+    REG(Kernel32, VerSetConditionMask, 3)     REG(Kernel32, VerifyVersionInfo, 3)
+    REG(Kernel32, VirtualAllocExNuma, 6)     REG(Kernel32, WTSGetActiveConsoleSessionId, 0)
+    REG(Kernel32, WaitForSingleObjectEx, 3)     REG(Kernel32, WakeAllConditionVariable, 1)
+    REG(Kernel32, WerGetFlags, 2)     REG(Kernel32, WerSetFlags, 1)
+    REG(Kernel32, Wow64DisableWow64FsRedirection, 1)     REG(Kernel32, Wow64RevertWow64FsRedirection, 1)
+    REG(Kernel32, _lclose, 1)     REG(Kernel32, _llseek, 3)
+    REG(Kernel32, _lopen, 2)     REG(Kernel32, lstrcmpi, 2)
+    REG(Kernel32, lstrcmpiA, 2)     REG(Kernel32, lstrcmpiW, 2)
+    REG(Kernel32, lstrcpyn, 3)
+    REG(Kernel32, lstrcpynA, 3)     REG(Kernel32, lstrcpynW, 3)
     END_API_TABLE
 }
 
@@ -2291,6 +2522,486 @@ uint64_t Kernel32::IsProcessorFeaturePresent(void* emu, const std::string&, int,
         case 0: case 1: return 0;
         default: return 1;
     }
+}
+
+// ==========================================
+//  STUBBED AND FULLY IMPLEMENTED NEW APIs
+// ==========================================
+
+STUB(Kernel32, AcquireSRWLockExclusive)
+STUB(Kernel32, AcquireSRWLockShared)
+STUB(Kernel32, AddAtom)
+STUB(Kernel32, AddVectoredContinueHandler)
+STUB(Kernel32, AddVectoredExceptionHandler)
+STUB(Kernel32, AreFileApisANSI)
+STUB(Kernel32, CheckRemoteDebuggerPresent)
+STUB(Kernel32, CompareFileTime)
+STUB(Kernel32, ConnectNamedPipe)
+STUB(Kernel32, CreateIoCompletionPort)
+STUB(Kernel32, CreateMutexEx)
+STUB(Kernel32, CreateNamedPipe)
+STUB(Kernel32, CreatePipe)
+STUB(Kernel32, CreateProcessInternal)
+STUB(Kernel32, CreateSemaphoreW)
+STUB(Kernel32, CreateWaitableTimerEx)
+STUB(Kernel32, CreateWaitableTimerExW)
+STUB(Kernel32, DeleteAtom)
+STUB(Kernel32, DisconnectNamedPipe)
+STUB(Kernel32, DuplicateHandle)
+STUB(Kernel32, EnumProcesses)
+STUB(Kernel32, FindAtom)
+STUB(Kernel32, FindFirstFileEx)
+STUB(Kernel32, FindFirstVolume)
+STUB(Kernel32, FindNextVolume)
+STUB(Kernel32, FindResource)
+STUB(Kernel32, FindResourceEx)
+STUB(Kernel32, FindVolumeClose)
+STUB(Kernel32, FlsGetValue2)
+STUB(Kernel32, FreeEnvironmentStrings)
+STUB(Kernel32, FreeLibraryAndExitThread)
+STUB(Kernel32, FreeResource)
+STUB(Kernel32, GetAtomName)
+STUB(Kernel32, GetBinaryType)
+STUB(Kernel32, GetCPInfo)
+STUB(Kernel32, GetCommProperties)
+STUB(Kernel32, GetCommTimeouts)
+STUB(Kernel32, GetComputerNameEx)
+STUB(Kernel32, GetConsoleTitle)
+STUB(Kernel32, GetConsoleWindow)
+STUB(Kernel32, GetCurrentPackageId)
+STUB(Kernel32, GetDateFormat)
+STUB(Kernel32, GetEnvironmentStrings)
+STUB(Kernel32, GetErrorMode)
+STUB(Kernel32, GetFileAttributesEx)
+STUB(Kernel32, GetFileSizeEx)
+STUB(Kernel32, GetFullPathName)
+STUB(Kernel32, GetHandleInformation)
+STUB(Kernel32, GetLocaleInfo)
+STUB(Kernel32, GetLogicalDrives)
+STUB(Kernel32, GetLongPathName)
+STUB(Kernel32, GetMailslotInfo)
+STUB(Kernel32, GetModuleFileNameExA)
+STUB(Kernel32, GetModuleHandleEx)
+STUB(Kernel32, GetNativeSystemInfo)
+STUB(Kernel32, GetOEMCP)
+STUB(Kernel32, GetPhysicallyInstalledSystemMemory)
+STUB(Kernel32, GetProcessAffinityMask)
+STUB(Kernel32, GetProcessHandleCount)
+STUB(Kernel32, GetProcessVersion)
+STUB(Kernel32, GetProfileInt)
+STUB(Kernel32, GetShortPathName)
+STUB(Kernel32, GetStartupInfo)
+STUB(Kernel32, GetStringTypeA)
+STUB(Kernel32, GetStringTypeW)
+STUB(Kernel32, GetSystemDefaultLCID)
+STUB(Kernel32, GetSystemDefaultLangID)
+STUB(Kernel32, GetSystemDefaultUILanguage)
+STUB(Kernel32, GetSystemDirectory)
+STUB(Kernel32, GetSystemFirmwareTable)
+STUB(Kernel32, GetSystemTimePreciseAsFileTime)
+STUB(Kernel32, GetSystemTimes)
+STUB(Kernel32, GetTempFileName)
+STUB(Kernel32, GetTempPath)
+STUB(Kernel32, GetThreadContext)
+STUB(Kernel32, GetThreadId)
+STUB(Kernel32, GetThreadLocale)
+STUB(Kernel32, GetThreadTimes)
+STUB(Kernel32, GetThreadUILanguage)
+STUB(Kernel32, GetTickCount64)
+STUB(Kernel32, GetTimeFormat)
+STUB(Kernel32, GetTimeZoneInformation)
+STUB(Kernel32, GetUserDefaultLCID)
+STUB(Kernel32, GetUserDefaultLangID)
+STUB(Kernel32, GetUserDefaultUILanguage)
+STUB(Kernel32, GetVolumeInformation)
+STUB(Kernel32, GetVolumePathNamesForVolumeName)
+STUB(Kernel32, GetWindowsDirectory)
+STUB(Kernel32, GlobalAddAtomA)
+STUB(Kernel32, GlobalFlags)
+STUB(Kernel32, GlobalHandle)
+STUB(Kernel32, GlobalLock)
+STUB(Kernel32, GlobalMemoryStatus)
+STUB(Kernel32, GlobalMemoryStatusEx)
+STUB(Kernel32, GlobalSize)
+STUB(Kernel32, GlobalUnlock)
+STUB(Kernel32, HeapReAlloc)
+STUB(Kernel32, HeapSetInformation)
+STUB(Kernel32, HeapSize)
+STUB(Kernel32, InitOnceBeginInitialize)
+STUB(Kernel32, InitializeConditionVariable)
+STUB(Kernel32, InitializeCriticalSectionAndSpinCount)
+STUB(Kernel32, InitializeCriticalSectionEx)
+STUB(Kernel32, InitializeSListHead)
+STUB(Kernel32, InitializeSRWLock)
+STUB(Kernel32, IsBadReadPtr)
+STUB(Kernel32, IsBadStringPtr)
+STUB(Kernel32, IsBadWritePtr)
+STUB(Kernel32, IsDBCSLeadByte)
+STUB(Kernel32, IsValidCodePage)
+STUB(Kernel32, IsValidLocale)
+STUB(Kernel32, IsWow64Process)
+STUB(Kernel32, LCMapString)
+STUB(Kernel32, LCMapStringEx)
+STUB(Kernel32, LoadResource)
+STUB(Kernel32, LocalLock)
+STUB(Kernel32, LocalReAlloc)
+STUB(Kernel32, LockResource)
+STUB(Kernel32, MoveFile)
+STUB(Kernel32, MulDiv)
+STUB(Kernel32, OpenEvent)
+STUB(Kernel32, OpenWaitableTimer)
+STUB(Kernel32, PeekNamedPipe)
+STUB(Kernel32, ProcessIdToSessionId)
+STUB(Kernel32, ReleaseSRWLockExclusive)
+STUB(Kernel32, ReleaseSRWLockShared)
+STUB(Kernel32, RemoveVectoredExceptionHandler)
+STUB(Kernel32, RtlCaptureContext)
+STUB(Kernel32, RtlLookupFunctionEntry)
+STUB(Kernel32, RtlUnwind)
+STUB(Kernel32, SetConsoleCtrlHandler)
+STUB(Kernel32, SetConsoleHistoryInfo)
+STUB(Kernel32, SetConsoleTitle)
+STUB(Kernel32, SetDefaultDllDirectories)
+STUB(Kernel32, SetDllDirectory)
+STUB(Kernel32, SetFilePointerEx)
+STUB(Kernel32, SetHandleCount)
+STUB(Kernel32, SetHandleInformation)
+STUB(Kernel32, SetPriorityClass)
+STUB(Kernel32, SetProcessPriorityBoost)
+STUB(Kernel32, SetThreadContext)
+STUB(Kernel32, SetThreadDescription)
+STUB(Kernel32, SetThreadErrorMode)
+STUB(Kernel32, SetThreadLocale)
+STUB(Kernel32, SetThreadStackGuarantee)
+STUB(Kernel32, SizeofResource)
+STUB(Kernel32, SystemTimeToTzSpecificLocalTime)
+STUB(Kernel32, VerSetConditionMask)
+STUB(Kernel32, VerifyVersionInfo)
+STUB(Kernel32, VirtualAllocExNuma)
+STUB(Kernel32, WTSGetActiveConsoleSessionId)
+STUB(Kernel32, WaitForSingleObjectEx)
+STUB(Kernel32, WakeAllConditionVariable)
+STUB(Kernel32, WerGetFlags)
+STUB(Kernel32, WerSetFlags)
+STUB(Kernel32, Wow64DisableWow64FsRedirection)
+STUB(Kernel32, Wow64RevertWow64FsRedirection)
+STUB(Kernel32, _lclose)
+STUB(Kernel32, _llseek)
+STUB(Kernel32, _lopen)
+
+// 
+//  TLS APIs
+// 
+
+uint64_t Kernel32::TlsAlloc(void* emu, const std::string&, int,
+                             const std::vector<uint64_t>&) {
+    auto thread = we(emu)->get_current_thread();
+    if (!thread) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0xFFFFFFFF; // TLS_OUT_OF_INDEXES
+    }
+    auto tls = thread->get_tls();
+    tls.push_back(nullptr);
+    thread->set_tls(tls);
+    uint32_t idx = static_cast<uint32_t>(tls.size() - 1);
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return idx;
+}
+
+uint64_t Kernel32::TlsFree(void* emu, const std::string&, int,
+                            const std::vector<uint64_t>&) {
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return 1;
+}
+
+uint64_t Kernel32::TlsGetValue(void* emu, const std::string&, int,
+                                const std::vector<uint64_t>& argv) {
+    uint32_t dwTlsIndex = static_cast<uint32_t>(argv[0]);
+    auto thread = we(emu)->get_current_thread();
+    if (!thread) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0;
+    }
+    auto tls = thread->get_tls();
+    if (dwTlsIndex < tls.size()) {
+        w32(emu)->set_last_error(K32_ERR_SUCCESS);
+        return reinterpret_cast<uint64_t>(tls[dwTlsIndex]);
+    } else {
+        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+}
+
+uint64_t Kernel32::TlsSetValue(void* emu, const std::string&, int,
+                                const std::vector<uint64_t>& argv) {
+    uint32_t dwTlsIndex = static_cast<uint32_t>(argv[0]);
+    uint64_t lpTlsValue = argv[1];
+    auto thread = we(emu)->get_current_thread();
+    if (!thread) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0;
+    }
+    auto tls = thread->get_tls();
+    if (dwTlsIndex < tls.size()) {
+        tls[dwTlsIndex] = reinterpret_cast<void*>(lpTlsValue);
+        thread->set_tls(tls);
+        w32(emu)->set_last_error(K32_ERR_SUCCESS);
+        return 1;
+    } else {
+        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+}
+
+// 
+//  FLS APIs
+// 
+
+uint64_t Kernel32::FlsAlloc(void* emu, const std::string&, int,
+                             const std::vector<uint64_t>&) {
+    auto thread = we(emu)->get_current_thread();
+    if (!thread) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0xFFFFFFFF; // FLS_OUT_OF_INDEXES
+    }
+    auto fls = thread->get_fls();
+    fls.push_back(nullptr);
+    thread->set_fls(fls);
+    uint32_t idx = static_cast<uint32_t>(fls.size() - 1);
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return idx;
+}
+
+uint64_t Kernel32::FlsFree(void* emu, const std::string&, int,
+                            const std::vector<uint64_t>&) {
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return 1;
+}
+
+uint64_t Kernel32::FlsGetValue(void* emu, const std::string&, int,
+                                const std::vector<uint64_t>& argv) {
+    uint32_t dwFlsIndex = static_cast<uint32_t>(argv[0]);
+    auto thread = we(emu)->get_current_thread();
+    if (!thread) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0;
+    }
+    auto fls = thread->get_fls();
+    if (dwFlsIndex < fls.size()) {
+        w32(emu)->set_last_error(K32_ERR_SUCCESS);
+        return reinterpret_cast<uint64_t>(fls[dwFlsIndex]);
+    } else {
+        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+}
+
+uint64_t Kernel32::FlsSetValue(void* emu, const std::string&, int,
+                                const std::vector<uint64_t>& argv) {
+    uint32_t dwFlsIndex = static_cast<uint32_t>(argv[0]);
+    uint64_t lpFlsData = argv[1];
+    auto thread = we(emu)->get_current_thread();
+    if (!thread) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0;
+    }
+    auto fls = thread->get_fls();
+    if (fls.empty()) {
+        fls.push_back(nullptr);
+    }
+    if (dwFlsIndex < fls.size()) {
+        fls[dwFlsIndex] = reinterpret_cast<void*>(lpFlsData);
+        thread->set_fls(fls);
+        w32(emu)->set_last_error(K32_ERR_SUCCESS);
+        return 1;
+    } else {
+        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+}
+
+// 
+//  STANDARD HANDLE & FILE TYPES
+// 
+
+uint64_t Kernel32::GetStdHandle(void* emu, const std::string&, int,
+                                 const std::vector<uint64_t>& argv) {
+    uint32_t nStdHandle = static_cast<uint32_t>(argv[0]);
+    auto proc = we(emu)->get_current_process();
+    if (proc) {
+        return static_cast<uint64_t>(proc->get_std_handle(static_cast<int>(nStdHandle)));
+    }
+    return 0;
+}
+
+uint64_t Kernel32::GetFileType(void* emu, const std::string&, int,
+                                const std::vector<uint64_t>& argv) {
+    (void)emu; (void)argv;
+    return 1; // FILE_TYPE_DISK
+}
+
+// 
+//  SYSTEM TIME
+// 
+
+uint64_t Kernel32::GetSystemTimeAsFileTime(void* emu, const std::string&, int,
+                                            const std::vector<uint64_t>& argv) {
+    uint64_t lpSystemTimeAsFileTime = argv[0];
+    if (lpSystemTimeAsFileTime) {
+        auto now = std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+        uint64_t ft = 116444736000000000ULL + ns / 100;
+        std::vector<uint8_t> ft_bytes(8);
+        write_le(ft_bytes, 0, ft, 8);
+        mm(emu)->mem_write(lpSystemTimeAsFileTime, ft_bytes);
+    }
+    return 0;
+}
+
+// 
+//  INTERLOCKED ATOMIC OPERATIONS
+// 
+
+uint64_t Kernel32::InterlockedIncrement(void* emu, const std::string&, int,
+                                        const std::vector<uint64_t>& argv) {
+    uint64_t addend_ptr = argv[0];
+    if (!addend_ptr) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+    auto val_bytes = mm(emu)->mem_read(addend_ptr, 4);
+    int32_t val = 0;
+    if (val_bytes.size() >= 4) {
+        val = static_cast<int32_t>(read_le(val_bytes, 0, 4));
+    }
+    val += 1;
+    std::vector<uint8_t> out_bytes(4);
+    write_le(out_bytes, 0, static_cast<uint32_t>(val), 4);
+    mm(emu)->mem_write(addend_ptr, out_bytes);
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(static_cast<uint32_t>(val));
+}
+
+uint64_t Kernel32::InterlockedDecrement(void* emu, const std::string&, int,
+                                        const std::vector<uint64_t>& argv) {
+    uint64_t addend_ptr = argv[0];
+    if (!addend_ptr) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+    auto val_bytes = mm(emu)->mem_read(addend_ptr, 4);
+    int32_t val = 0;
+    if (val_bytes.size() >= 4) {
+        val = static_cast<int32_t>(read_le(val_bytes, 0, 4));
+    }
+    val -= 1;
+    std::vector<uint8_t> out_bytes(4);
+    write_le(out_bytes, 0, static_cast<uint32_t>(val), 4);
+    mm(emu)->mem_write(addend_ptr, out_bytes);
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(static_cast<uint32_t>(val));
+}
+
+uint64_t Kernel32::InterlockedExchange(void* emu, const std::string&, int,
+                                       const std::vector<uint64_t>& argv) {
+    uint64_t target_ptr = argv[0];
+    uint32_t value = static_cast<uint32_t>(argv[1]);
+    if (!target_ptr) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+    auto val_bytes = mm(emu)->mem_read(target_ptr, 4);
+    int32_t old_val = 0;
+    if (val_bytes.size() >= 4) {
+        old_val = static_cast<int32_t>(read_le(val_bytes, 0, 4));
+    }
+    std::vector<uint8_t> out_bytes(4);
+    write_le(out_bytes, 0, value, 4);
+    mm(emu)->mem_write(target_ptr, out_bytes);
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(static_cast<uint32_t>(old_val));
+}
+
+uint64_t Kernel32::InterlockedCompareExchange(void* emu, const std::string&, int,
+                                              const std::vector<uint64_t>& argv) {
+    uint64_t dest_ptr = argv[0];
+    uint32_t exchange = static_cast<uint32_t>(argv[1]);
+    uint32_t comperand = static_cast<uint32_t>(argv[2]);
+    if (!dest_ptr) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+    auto val_bytes = mm(emu)->mem_read(dest_ptr, 4);
+    int32_t old_val = 0;
+    if (val_bytes.size() >= 4) {
+        old_val = static_cast<int32_t>(read_le(val_bytes, 0, 4));
+    }
+    if (static_cast<uint32_t>(old_val) == comperand) {
+        std::vector<uint8_t> out_bytes(4);
+        write_le(out_bytes, 0, exchange, 4);
+        mm(emu)->mem_write(dest_ptr, out_bytes);
+    }
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(static_cast<uint32_t>(old_val));
+}
+
+// 
+//  STRING UTILITIES
+// 
+
+uint64_t Kernel32::lstrcmpi(void* emu, const std::string& name, int,
+                             const std::vector<uint64_t>& argv) {
+    uint64_t str1_ptr = argv[0];
+    uint64_t str2_ptr = argv[1];
+    if (!str1_ptr || !str2_ptr) return 1;
+    int cw = (name.back() == 'W') ? 2 : 1;
+    std::string s1 = be(emu)->read_mem_string(str1_ptr, cw);
+    std::string s2 = be(emu)->read_mem_string(str2_ptr, cw);
+    std::string s1_lower = s1;
+    std::string s2_lower = s2;
+    std::transform(s1_lower.begin(), s1_lower.end(), s1_lower.begin(), ::tolower);
+    std::transform(s2_lower.begin(), s2_lower.end(), s2_lower.begin(), ::tolower);
+    if (s1_lower == s2_lower) {
+        return 0;
+    }
+    return (s1_lower < s2_lower) ? -1 : 1;
+}
+
+uint64_t Kernel32::lstrcmpiA(void* emu, const std::string& name, int argc,
+                              const std::vector<uint64_t>& argv) {
+    return lstrcmpi(emu, "lstrcmpiA", argc, argv);
+}
+
+uint64_t Kernel32::lstrcmpiW(void* emu, const std::string& name, int argc,
+                              const std::vector<uint64_t>& argv) {
+    return lstrcmpi(emu, "lstrcmpiW", argc, argv);
+}
+
+uint64_t Kernel32::lstrcpyn(void* emu, const std::string& name, int,
+                             const std::vector<uint64_t>& argv) {
+    uint64_t dst = argv[0];
+    uint64_t src = argv[1];
+    int max_len = static_cast<int>(argv[2]);
+    if (!dst || !src || max_len <= 0) return dst;
+    int cw = (name.back() == 'W') ? 2 : 1;
+    std::string s = be(emu)->read_mem_string(src, cw);
+    if (static_cast<int>(s.size()) >= max_len) {
+        s = s.substr(0, max_len - 1);
+    }
+    s.push_back('\0');
+    be(emu)->write_mem_string(s, dst, cw);
+    return dst;
+}
+
+uint64_t Kernel32::lstrcpynA(void* emu, const std::string& name, int argc,
+                              const std::vector<uint64_t>& argv) {
+    return lstrcpyn(emu, "lstrcpynA", argc, argv);
+}
+
+uint64_t Kernel32::lstrcpynW(void* emu, const std::string& name, int argc,
+                              const std::vector<uint64_t>& argv) {
+    return lstrcpyn(emu, "lstrcpynW", argc, argv);
 }
 
 }} // namespaces
