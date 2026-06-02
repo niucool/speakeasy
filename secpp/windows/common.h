@@ -35,7 +35,7 @@ struct GDT_FLAGS {
 };
 
 // Memory addresses and constants
-const uint32_t IMPORT_HOOK_ADDR = 0xFEEDFACE;
+//const uint32_t IMPORT_HOOK_ADDR = 0xFEEDFACE;
 const uint32_t DEFAULT_LOAD_ADDR = 0x40000;
 // speakeasy::arch::PAGE_SIZE defined in winenv/arch.h
 
@@ -50,7 +50,7 @@ const uint32_t EMU_RETURN_ADDR = EMU_RESERVED;
 const uint32_t EXIT_RETURN_ADDR = EMU_RETURN_ADDR + 1;
 const uint32_t SEH_RETURN_ADDR = EMU_RETURN_ADDR + 4;
 const uint32_t API_CALLBACK_HANDLER_ADDR = EMU_RETURN_ADDR + 8;
-// Note: IMPORT_HOOK_ADDR is redefined here, using the previous definition
+const uint32_t IMPORT_HOOK_ADDR = EMU_RETURN_ADDR + 12;
 
 // Common blank DOS header
 const std::vector<uint8_t> DOS_HEADER =

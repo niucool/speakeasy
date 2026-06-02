@@ -1066,9 +1066,9 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_from_addr(uin
 //     """Allocate a sentinel value for import table hooking."""
 
 uint64_t WindowsEmulator::_alloc_sentinel() {
-    static uint64_t next = virtual_mem_base + 0x10000;
-    uint64_t addr = next;
-    next += static_cast<uint64_t>(ptr_size > 0 ? ptr_size : 4);
+    static uint64_t _next_sentinel = IMPORT_HOOK_ADDR;
+    uint64_t addr = _next_sentinel;
+    _next_sentinel += static_cast<uint64_t>(ptr_size > 0 ? ptr_size : 4);
     return addr;
 }
 

@@ -13,7 +13,7 @@ DEFAULT_CONFIG_DATA = {
     "max_api_count": 10000,
     "stack_size": 0,
     "system": "windows",
-    "analysis": {"memory_tracing": False, "strings": True, "coverage": False},
+    "analysis": {"memory_tracing": True, "strings": True, "coverage": False},
     "keep_memory_on_free": False,
     "exceptions": {"dispatch_handlers": True},
     "os_ver": {"name": "windows", "major": 6, "minor": 1, "build": 7601},
