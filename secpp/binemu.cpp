@@ -606,7 +606,7 @@ std::vector<std::shared_ptr<ApiHook>> BinaryEmulator::get_api_hooks(const std::s
 
 std::shared_ptr<ApiHook> BinaryEmulator::add_api_hook(ApiCallback cb, const std::string& module,
                                        const std::string& api_name, int argc,
-                                       void* call_conv, BinaryEmulator* emu) {
+                                       int call_conv, BinaryEmulator* emu) {
     // Python binemu.py:854-895 doc: "Add an API level hook (e.g. kernel32.CreateFile) here"
     // FIFO ordering: all hooks in chain are called, last hook's return value used
     // Wildcard detection: ?, *, [, ] in module/api name triggers fnmatch matching

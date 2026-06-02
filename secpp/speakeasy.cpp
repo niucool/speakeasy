@@ -287,7 +287,12 @@ std::shared_ptr<ApiHook> Speakeasy::add_api_hook(ApiCallback cb, const std::stri
         api_hooks.emplace_back(cb, module, api_name, argc, call_conv); // call_conv string stored
         return nullptr;
     }
-    return emu->add_api_hook(cb, module, api_name, argc, nullptr, (BinaryEmulator*)this);
+    int conv = speakeasy::arch::CALL_CONV_STDCALL;
+    if (call_conv == "cdecl") conv = speakeasy::arch::CALL_CONV_CDECL;
+    else if (call_conv == "fastcall") conv = speakeasy::arch::CALL_CONV_FASTCALL;
+    else if (call_conv == "float") conv = speakeasy::arch::CALL_CONV_FLOAT;
+    
+    return emu->add_api_hook(cb, module, api_name, argc, conv, (BinaryEmulator*)this);
 }
 
 void Speakeasy::resume(uint64_t addr, int count) { emu->resume(addr, count); }

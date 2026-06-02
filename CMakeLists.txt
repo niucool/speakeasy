@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
-# Inject local overlay ports directory for pe-parse modifications
-# set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_SOURCE_DIR}/ports" CACHE PATH "Overlay ports")
+# Resolve compatibility errors for dependency CMake files requiring < 3.5
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
+# Force static CRT linking on MSVC and set target triplet for vcpkg
+set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "" FORCE)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 project(speakeasy
     VERSION 1.6.1
@@ -50,41 +54,65 @@ FetchContent_Declare(
     GIT_TAG        5.0.1
 )
 
-FetchContent_MakeAvailable(pe-parse capstone)
+# miniz static compilation
+FetchContent_Declare(
+    miniz
+    GIT_REPOSITORY https://github.com/richgel999/miniz.git
+    GIT_TAG        3.0.2
+)
+
+# unicorn static compilation
+set(UNICORN_BUILD_SHARED OFF CACHE BOOL "Build shared library" FORCE)
+set(UNICORN_BUILD_STATIC ON CACHE BOOL "Build static library" FORCE)
+set(UNICORN_ARCHS "x86" CACHE STRING "Architectures to build" FORCE)
+
+FetchContent_Declare(
+    unicorn
+    GIT_REPOSITORY https://github.com/unicorn-engine/unicorn.git
+    GIT_TAG        2.0.1
+)
+
+# Make pe-parse, capstone, and miniz available with CMAKE_MSVC_RUNTIME_LIBRARY fully set
+FetchContent_MakeAvailable(pe-parse capstone miniz)
+
+# Workaround for Unicorn's custom MSVC runtime flag enforcement
+if(MSVC)
+    # Save the original value
+    set(OLD_MSVC_RUNTIME ${CMAKE_MSVC_RUNTIME_LIBRARY})
+    unset(CMAKE_MSVC_RUNTIME_LIBRARY CACHE)
+    unset(CMAKE_MSVC_RUNTIME_LIBRARY)
+    
+    # Append static runtime flag to compiler flags to satisfy Unicorn's check
+    if(OLD_MSVC_RUNTIME MATCHES "Debug")
+        string(APPEND CMAKE_C_FLAGS " /MTd")
+        string(APPEND CMAKE_CXX_FLAGS " /MTd")
+    else()
+        string(APPEND CMAKE_C_FLAGS " /MT")
+        string(APPEND CMAKE_CXX_FLAGS " /MT")
+    endif()
+endif()
+
+# Make unicorn available under the custom compiler flag workaround
+FetchContent_MakeAvailable(unicorn)
+
+if(MSVC)
+    # Restore the standard variable for subsequent projects
+    set(CMAKE_MSVC_RUNTIME_LIBRARY ${OLD_MSVC_RUNTIME} CACHE STRING "MSVC runtime library" FORCE)
+endif()
+
+# Create compatibility aliases for core library target linking
+if(NOT TARGET unicorn::unicorn)
+    add_library(unicorn::unicorn ALIAS unicorn)
+endif()
+
+if(NOT TARGET miniz::miniz)
+    add_library(miniz::miniz ALIAS miniz)
+endif()
 
 # ── Dependencies ──────────────────────────────────────────────
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(plog CONFIG REQUIRED)
 find_package(cxxopts CONFIG REQUIRED)
-find_package(miniz CONFIG REQUIRED)
-
-# unicorn does not ship a CMake config; use pkg-config or manual lookup
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(PC_UNICORN unicorn IMPORTED_TARGET)
-endif()
-
-if(PC_UNICORN_FOUND)
-    # pkg-config found it; create an alias for uniform target name
-    if(NOT TARGET unicorn::unicorn)
-        add_library(unicorn::unicorn ALIAS PkgConfig::PC_UNICORN)
-    endif()
-else()
-    # Manual fallback
-    find_path(UNICORN_INCLUDE_DIRS unicorn/unicorn.h
-        HINTS ${VCPKG_INSTALLED_DIR}/include
-        PATH_SUFFIXES unicorn)
-    find_library(UNICORN_LIBRARIES unicorn
-        HINTS ${VCPKG_INSTALLED_DIR}/lib)
-    if(UNICORN_INCLUDE_DIRS AND UNICORN_LIBRARIES)
-        add_library(unicorn::unicorn STATIC IMPORTED)
-        set_target_properties(unicorn::unicorn PROPERTIES
-            INTERFACE_INCLUDE_DIRECTORIES "${UNICORN_INCLUDE_DIRS}"
-            IMPORTED_LOCATION "${UNICORN_LIBRARIES}")
-    else()
-        message(FATAL_ERROR "unicorn not found. Install via vcpkg: vcpkg install unicorn")
-    endif()
-endif()
 
 
 

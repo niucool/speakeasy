@@ -4,9 +4,8 @@
   "dependencies": [
     "nlohmann-json",
     "plog",
-    "unicorn",
     "cxxopts",
     "gtest",
-    "miniz"
+    "picosha2"
   ]
 }

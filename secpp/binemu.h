@@ -264,9 +264,9 @@ public:
     // Python binemu.py:822-852 doc: "If an API hook has been set, return it here"
     std::vector<std::shared_ptr<ApiHook>> get_api_hooks(const std::string& mod_name, const std::string& func_name);
     // Python binemu.py:854-895 doc: "Add an API level hook (e.g. kernel32.CreateFile) here"
-    std::shared_ptr<ApiHook> add_api_hook(ApiCallback cb, const std::string& module = "",
-                         const std::string& api_name = "", int argc = 0, 
-                         void* call_conv = nullptr, BinaryEmulator* emu = nullptr);
+     std::shared_ptr<ApiHook> add_api_hook(ApiCallback cb, const std::string& module = "",
+                          const std::string& api_name = "", int argc = 0, 
+                          int call_conv = speakeasy::arch::CALL_CONV_STDCALL, BinaryEmulator* emu = nullptr);
     // Python binemu.py:897-919 doc: "Add a hook that will fire for every CPU instruction"
     std::shared_ptr<CodeHook> add_code_hook(CodeCallback cb, uint64_t begin = 1, uint64_t end = 0,
                            std::map<std::string, std::string> ctx = {}, BinaryEmulator* emu = nullptr);
