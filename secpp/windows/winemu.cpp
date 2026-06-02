@@ -2386,7 +2386,8 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         }
     }
 
-    //  Execute handler 
+    std::vector<std::shared_ptr<ApiHook>> hooks = get_api_hooks(dll, name);
+
     if (func_ptr && handler_mod) {
         int conv = speakeasy::arch::CALL_CONV_STDCALL;
         int argc = 4;
@@ -2400,32 +2401,115 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 
         auto argv = get_func_argv(conv, argc);
 
-        if (api) {
+        // Gap A: API Hammering Detection
+        if (hammer) {
+            hammer->handle_import_func(imp_api, conv, argc);
+        }
+
+        uint64_t rv = 0;
+        bool hook_called = false;
+
+        // Gap B: Invoke User API Hooks
+        if (!hooks.empty()) {
+            // Original handler wrapped as callback
+            ApiCallback orig = [this, handler_mod, func_ptr](void* emu, const std::string& api_name, void* orig_ptr, std::vector<uint64_t> args) -> bool {
+                (void)emu; (void)api_name; (void)orig_ptr;
+                std::vector<void*> vptr_argv;
+                for (auto a : args)
+                    vptr_argv.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(a)));
+                void* rv_ptr = api->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
+                uint64_t sub_rv = reinterpret_cast<uintptr_t>(rv_ptr);
+                return sub_rv != 0; // Cast return value through bool/int
+            };
+
+            for (auto& hook : hooks) {
+                if (hook && hook->is_enabled()) {
+                    auto cb = hook->get_cb();
+                    if (cb) {
+                        rv = cb(this, imp_api, reinterpret_cast<void*>(&orig), argv);
+                        hook_called = true;
+                    }
+                }
+            }
+        }
+
+        if (!hook_called && api) {
             try {
                 std::vector<void*> vptr_argv;
                 for (auto a : argv)
                     vptr_argv.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(a)));
                 void* rv_ptr = api->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
-                uint64_t rv = reinterpret_cast<uintptr_t>(rv_ptr);
-                uint64_t ret = get_ret_address();
-                uint64_t pc = get_pc();
-
-                log_api(call_pc, imp_api, rv, argv);
-
-                if (!run_complete && ret == oret && pc == opc) {
-                    do_call_return(argc, ret, rv, conv);
-                }
-            } catch (const std::exception& e) {
-                (void)e;
+                rv = reinterpret_cast<uintptr_t>(rv_ptr);
+            } catch (...) {
                 on_run_complete();
                 return;
             }
         }
+
+        uint64_t ret = get_ret_address();
+        uint64_t pc = get_pc();
+
+        // Gap C: Dynamic Code Hooks
+        auto mm = get_address_map(ret);
+        if (mm && mm->get_tag().find("virtualalloc") != std::string::npos) {
+            _fire_dyn_code_hooks(ret);
+        }
+
+        log_api(call_pc, imp_api, rv, argv);
+
+        if (!run_complete && ret == oret && pc == opc) {
+            do_call_return(argc, ret, rv, conv);
+        }
+
+        // Gap E: Max API Count Enforcement
+        if (curr_run && curr_run->get_api_count() > config_.max_api_count) {
+            log_info("* Maximum number of API calls reached. Stopping current run.");
+            curr_run->error["error"] = "max_api_count";
+            curr_run->error["pc"] = hex_str(get_pc());
+            curr_run->error["count"] = config_.max_api_count;
+            curr_run->error["last_api"] = imp_api;
+            on_run_complete();
+        }
         return;
     }
 
-    //  No handler: unsupported API 
-    // (API hooks not yet ported  ApiHook struct is TBD)
+    // Gap D: Unsupported API Hooking & config fallbacks
+    if (!hooks.empty()) {
+        auto hook = hooks.back(); // FIFO highest priority / last registered
+        int hook_conv = hook->get_call_conv();
+        int hook_argc = hook->get_argc();
+
+        auto argv = get_func_argv(hook_conv, hook_argc);
+        if (hammer) {
+            hammer->handle_import_func(imp_api, hook_conv, hook_argc);
+        }
+
+        auto cb = hook->get_cb();
+        uint64_t rv = cb ? cb(this, imp_api, nullptr, argv) : 0;
+
+        uint64_t ret = get_ret_address();
+        log_api(call_pc, imp_api, rv, argv);
+        do_call_return(hook_argc, ret, rv, hook_conv);
+        return;
+    } 
+    else if (config_.modules.functions_always_exist) {
+        int conv = speakeasy::arch::CALL_CONV_STDCALL;
+        int argc = 4;
+        auto argv = get_func_argv(conv, argc);
+        uint64_t rv = 1;
+        uint64_t ret = get_ret_address();
+        log_api(call_pc, imp_api, rv, argv);
+        do_call_return(argc, ret, rv, conv);
+        return;
+    }
+
+    // Unregistered / Unsupported fallback
+    log_error("Unsupported API: " + imp_api + " (ret: 0x" + hex_str(oret) + ")");
+    if (curr_run) {
+        curr_run->error["error"] = "unsupported_api";
+        curr_run->error["pc"] = hex_str(get_pc());
+        curr_run->error["api_name"] = imp_api;
+    }
     on_run_complete();
 }
 

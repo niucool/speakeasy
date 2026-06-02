@@ -105,9 +105,9 @@ ApiHook::ApiHook(void* container, EmuEngine* emu_eng,
                  const std::string& module,
                  const std::string& api_name,
                  int argc,
-                 void* call_conv)
+                 int call_convl)
     : Hook(container, emu_eng), module(module), api_name(api_name), 
-      argc(argc), call_conv(call_conv), cb(cb) {
+      argc(argc), call_conv(call_convl), cb(cb) {
 }
 
 /**

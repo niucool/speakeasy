@@ -112,7 +112,7 @@ private:
     std::string module;
     std::string api_name;
     int argc;
-    void* call_conv;
+    int call_conv;
     ApiCallback cb;
 
 public:
@@ -121,7 +121,13 @@ public:
             const std::string& module = "",
             const std::string& api_name = "",
             int argc = 0,
-            void* call_conv = nullptr);
+            int call_conv = 1);
+
+    const std::string& get_module() const { return module; }
+    const std::string& get_api_name() const { return api_name; }
+    int get_argc() const { return argc; }
+    int get_call_conv() const { return call_conv; }
+    ApiCallback get_cb() const { return cb; }
 };
 
 /** Hook that fires when dynamically created/copied code is executed */
