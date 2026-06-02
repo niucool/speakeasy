@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <functional>
 
+#include "api.h"
+
 // Forward declarations
 class ApiHandler;
 class Emulator;
@@ -47,7 +49,7 @@ public:
     /**
      * Get export function handler
      */
-    std::tuple<std::shared_ptr<ApiHandler>, void*> get_export_func_handler(const std::string& mod_name,
+    std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> get_export_func_handler(const std::string& mod_name,
                                                            const std::string& exp_name);
     
     /**

@@ -130,31 +130,30 @@ std::function<void()> ApiHandler::get_data_handler(const std::string& exp_name) 
     return nullptr;
 }
 
-std::tuple<std::string, std::function<void()>, int, int, int>
-ApiHandler::get_func_handler(const std::string& exp_name) {
+ApiHookInfo& ApiHandler::get_func_handler(const std::string& exp_name) {
     // Support ordinal lookup: "ordinal_5"  look up by ordinal number
     if (exp_name.compare(0, 8, "ordinal_") == 0) {
         int ord_num = 0;
         try {
             ord_num = std::stoi(exp_name.substr(8));
         } catch (...) {
-            return std::make_tuple("", nullptr, 0, 0, 0);
+            return InvalidApiInfo;
         }
         // Search funcs for matching ordinal
-        for (const auto& [key, info] : funcs) {
+        for (auto& [key, info] : funcs) {
             (void)key;
             if (info.ordinal == ord_num) {
-                return std::make_tuple(info.name, info.func, info.argc, info.conv, info.ordinal);
+                return info;
             }
         }
     }
 
     auto it = funcs.find(exp_name);
     if (it != funcs.end()) {
-        const auto& info = it->second;
-        return std::make_tuple(info.name, info.func, info.argc, info.conv, info.ordinal);
+        auto& info = it->second;
+        return info;
     }
-    return std::make_tuple("", nullptr, 0, 0, 0);
+    return InvalidApiInfo;
 }
 
 int ApiHandler::get_pointer_size() {

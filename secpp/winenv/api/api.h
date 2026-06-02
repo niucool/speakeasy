@@ -21,11 +21,14 @@ class RegKey;
 // Structure to hold function hook information
 struct ApiHookInfo {
     std::string name;
-    std::function<void()> func;
-    int argc;
-    int conv;
-    int ordinal;
+    std::function<void()> func = nullptr;
+    int argc = 0;
+    int conv = 0;
+    int ordinal = 0;
 };
+
+static ApiHookInfo InvalidApiInfo;
+
 
 // Structure to hold data hook information
 struct DataHookInfo {
@@ -90,7 +93,7 @@ public:
     // Helper methods
     void __get_hook_attrs__(ApiHandler* obj);
     std::function<void()> get_data_handler(const std::string& exp_name);
-    std::tuple<std::string, std::function<void()>, int, int, int> get_func_handler(const std::string& exp_name);
+    ApiHookInfo& get_func_handler(const std::string& exp_name);
     int get_pointer_size();
     
     // Memory management methods

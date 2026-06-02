@@ -1340,10 +1340,13 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         for (auto& exp : img->exports) {
             if (exp.name.empty()) continue;
             // Use normalized name first, then try raw name (Python 1093-1095)
-            auto [handler, func_ptr] = api->get_export_func_handler(mod_base_name_no_ext, exp.name);
+            auto& [handler, func_info] = api->get_export_func_handler(mod_base_name_no_ext, exp.name);
             // normalize_import_miss for API handler resolution (Python:1094-1095)
+            if (!func_info.func) {
+                handler, func_info = normalize_import_miss(mod_base_name_no_ext, exp.name);
+            }
             // C++ uses different return types; the first lookup via get_export_func_handler is sufficient
-            if (func_ptr) {
+            if (func_info.func) {
                 symbols[exp.address] = {mod_base_name_no_ext, exp.name};
                 has_api_exports = true;
             }
@@ -2315,7 +2318,7 @@ void* WindowsEmulator::get_proc(const std::string& mod_name, const std::string& 
 // Python winemu.py:1561
 // def normalize_import_miss(self, dll, name):
 //     """This function attempts to fold as many function handlers together as possible."""
-std::tuple<std::string, std::string> WindowsEmulator::normalize_import_miss(
+std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> WindowsEmulator::normalize_import_miss(
     const std::string& dll, const std::string& name) {
     // Python reference: winemu.py lines 1561-1602
     std::string ndll = dll;
@@ -2347,7 +2350,7 @@ std::tuple<std::string, std::string> WindowsEmulator::normalize_import_miss(
     if (!alt_name.empty())
         nname = alt_name;
 
-    return {ndll, nname};
+    return {nullptr, InvalidApiInfo};
 }
 
 
@@ -2369,35 +2372,34 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 
     //  Primary handler lookup 
     std::shared_ptr<ApiHandler> handler_mod = nullptr;
-    void* func_ptr = nullptr;
+    ApiHookInfo& func_ptr = InvalidApiInfo;
 
     if (api) {
         std::tie(handler_mod, func_ptr) = api->get_export_func_handler(dll_norm, name);
     }
 
     //  Normalization fallback 
-    if (!func_ptr) {
+    if (!func_ptr.func) {
         auto [alt_dll, alt_name] = normalize_import_miss(dll, name);
         if (alt_dll != dll_norm || alt_name != name) {
             if (api) {
                 std::tie(handler_mod, func_ptr) = api->get_export_func_handler(alt_dll, alt_name);
-                if (func_ptr) imp_api = alt_dll + "." + alt_name;
+                if (func_ptr.func) imp_api = alt_dll + "." + alt_name;
             }
         }
     }
 
     std::vector<std::shared_ptr<ApiHook>> hooks = get_api_hooks(dll, name);
 
-    if (func_ptr && handler_mod) {
+    if (func_ptr.func && handler_mod) {
         int conv = speakeasy::arch::CALL_CONV_STDCALL;
         int argc = 4;
 
         // Re-query handler metadata for argc/conv
-        auto [fn_name, hfunc, hargc, hconv, hord] = handler_mod->get_func_handler(name);
-        (void)hord;
-        if (hfunc) { argc = hargc; conv = hconv; }
-        if (!name.empty() && name.find("ordinal_") == 0 && !fn_name.empty())
-            imp_api = dll + "." + fn_name;
+        const ApiHookInfo& info = handler_mod->get_func_handler(name);
+        if (info.func) { argc = info.argc; conv = info.conv; }
+        if (!name.empty() && name.find("ordinal_") == 0 && !info.name.empty())
+            imp_api = dll + "." + info.name;
 
         auto argv = get_func_argv(conv, argc);
 
@@ -2409,15 +2411,16 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         uint64_t rv = 0;
         bool hook_called = false;
 
+        void* func_ptr_func = static_cast<void*>(&func_ptr.func);
         // Gap B: Invoke User API Hooks
         if (!hooks.empty()) {
             // Original handler wrapped as callback
-            ApiCallback orig = [this, handler_mod, func_ptr](void* emu, const std::string& api_name, void* orig_ptr, std::vector<uint64_t> args) -> bool {
+            ApiCallback orig = [this, handler_mod, func_ptr_func](void* emu, const std::string& api_name, void* orig_ptr, std::vector<uint64_t> args) -> bool {
                 (void)emu; (void)api_name; (void)orig_ptr;
                 std::vector<void*> vptr_argv;
                 for (auto a : args)
                     vptr_argv.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(a)));
-                void* rv_ptr = api->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
+                void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, vptr_argv, nullptr);
                 uint64_t sub_rv = reinterpret_cast<uintptr_t>(rv_ptr);
                 return sub_rv != 0; // Cast return value through bool/int
             };
@@ -2438,7 +2441,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
                 std::vector<void*> vptr_argv;
                 for (auto a : argv)
                     vptr_argv.push_back(reinterpret_cast<void*>(static_cast<uintptr_t>(a)));
-                void* rv_ptr = api->call_api_func(handler_mod, func_ptr, vptr_argv, nullptr);
+                void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, vptr_argv, nullptr);
                 rv = reinterpret_cast<uintptr_t>(rv_ptr);
             } catch (...) {
                 on_run_complete();
@@ -2530,7 +2533,7 @@ void WindowsEmulator::handle_import_data(const std::string& mod, const std::stri
     }
     // Fallback: try func export handler (returns a procedure address)
     auto [func_mod, func_ptr] = api->get_export_func_handler(mod, sym);
-    if (func_ptr) {
+    if (func_ptr.func) {
         // Get procedure address (sentinel) for this module+function
         get_proc(mod, sym);
         return;

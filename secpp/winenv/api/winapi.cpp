@@ -97,7 +97,7 @@ std::tuple<std::shared_ptr<ApiHandler>, void*> WindowsApi::get_data_export_handl
     return std::make_tuple(mod, reinterpret_cast<void*>(&func_cache_[cache_key]));
 }
 
-std::tuple<std::shared_ptr<ApiHandler>, void*> WindowsApi::get_export_func_handler(const std::string& mod_name,
+std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> WindowsApi::get_export_func_handler(const std::string& mod_name,
                                                                    const std::string& exp_name) {
     // Find the module handler
     std::string key = speakeasy::to_lower(mod_name);
@@ -110,24 +110,20 @@ std::tuple<std::shared_ptr<ApiHandler>, void*> WindowsApi::get_export_func_handl
     }
 
     if (!mod) {
-        return std::make_tuple(nullptr, nullptr);
+        return std::make_tuple(nullptr, InvalidApiInfo);
     }
 
     // Delegate to the handler's get_func_handler method
-    auto [func_name, handler_func, argc, conv, ordinal] = mod->get_func_handler(exp_name);
-    (void)func_name;
-    (void)argc;
-    (void)conv;
-    (void)ordinal;
+    auto& info = mod->get_func_handler(exp_name);
 
-    if (!handler_func) {
-        return std::make_tuple(mod, nullptr);
+    if (!info.func) {
+        return std::make_tuple(mod, InvalidApiInfo);
     }
 
     // Cache the function and return a void* pointer to it
     std::string cache_key = key + ":" + exp_name + ":func";
-    func_cache_[cache_key] = handler_func;
-    return std::make_tuple(mod, reinterpret_cast<void*>(&func_cache_[cache_key]));
+    func_cache_[cache_key] = info.func;
+    return std::make_tuple(mod, info);
 }
 
 void* WindowsApi::call_api_func(std::shared_ptr<ApiHandler> mod, void* func, const std::vector<void*>& argv, void* ctx) {
