@@ -181,17 +181,29 @@ option(BUILD_TESTS "Build test targets" ON)
 if(BUILD_TESTS)
     enable_testing()
 
-    find_package(GTest CONFIG REQUIRED)
+    include(FetchContent)
+    set(gtest_force_shared_crt OFF CACHE BOOL "" FORCE)
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG        release-1.12.1
+    )
+    FetchContent_MakeAvailable(googletest)
     include(GoogleTest)
 
     # Unit tests (Google Test) — includes smoke_test + all test_*.cpp
     file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/test_*.cpp" "tests/smoke_test.cpp")
     if(UNIT_TEST_SOURCES)
         add_executable(speakeasy_tests ${UNIT_TEST_SOURCES})
+        target_include_directories(speakeasy_tests BEFORE PRIVATE
+            ${googletest_SOURCE_DIR}/googletest/include
+            ${googletest_SOURCE_DIR}/googlemock/include
+        )
         target_link_libraries(speakeasy_tests PRIVATE
             speakeasy
-            GTest::gtest
-            GTest::gtest_main
+            gtest
+            gtest_main
         )
         target_include_directories(speakeasy_tests PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/secpp

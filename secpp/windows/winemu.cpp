@@ -1337,13 +1337,16 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     //  Process exports: build symbol table and register hooks (Python 1088-1109) 
     bool has_api_exports = false;
     if (api) {
+        std::shared_ptr<ApiHandler> handler = nullptr;
+        ApiHookInfo& func_info = InvalidApiInfo;
+
         for (auto& exp : img->exports) {
             if (exp.name.empty()) continue;
             // Use normalized name first, then try raw name (Python 1093-1095)
-            auto& [handler, func_info] = api->get_export_func_handler(mod_base_name_no_ext, exp.name);
+            std::tie(handler, func_info) = api->get_export_func_handler(mod_base_name_no_ext, exp.name);
             // normalize_import_miss for API handler resolution (Python:1094-1095)
             if (!func_info.func) {
-                handler, func_info = normalize_import_miss(mod_base_name_no_ext, exp.name);
+                std::tie(handler, func_info) = normalize_import_miss(mod_base_name_no_ext, exp.name);
             }
             // C++ uses different return types; the first lookup via get_export_func_handler is sufficient
             if (func_info.func) {
@@ -2320,35 +2323,56 @@ void* WindowsEmulator::get_proc(const std::string& mod_name, const std::string& 
 //     """This function attempts to fold as many function handlers together as possible."""
 std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> WindowsEmulator::normalize_import_miss(
     const std::string& dll, const std::string& name) {
-    // Python reference: winemu.py lines 1561-1602
-    std::string ndll = dll;
-    std::string nname = name;
-
-    if (ndll.size() > 4) {
-        auto ext = speakeasy::to_lower(ndll.substr(ndll.size() - 4));
-        if (ext == ".dll") ndll = ndll.substr(0, ndll.size() - 4);
-    }
-    ndll = speakeasy::to_lower(ndll);
-
-    std::string alt_name;
-    if (!nname.empty() && (nname.back() == 'A' || nname.back() == 'W')) {
-        alt_name = nname.substr(0, nname.size() - 1);
+    if (!api) {
+        return {nullptr, InvalidApiInfo};
     }
 
-    bool is_ntos = (ndll.find("ntoskrnl") != std::string::npos);
-    if (is_ntos) {
-        if (nname.find("Zw") == 0 && nname.size() > 2)
-            alt_name = "Nt" + nname.substr(2);
-        else if (nname.find("Nt") == 0 && nname.size() > 2)
-            alt_name = "Zw" + nname.substr(2);
+    std::string alt_imp_api = "";
+    std::string alt_imp_dll = "";
+
+    // Handle ANSI vs UNICODE functions
+    if (!name.empty() && (name.back() == 'A' || name.back() == 'W')) {
+        alt_imp_api = name.substr(0, name.size() - 1);
     }
 
-    bool is_ntdll = (ndll.find("ntdll") != std::string::npos);
-    if (is_ntdll)
-        ndll = "ntoskrnl";
+    std::string dll_lower = speakeasy::to_lower(dll);
+    if (dll_lower.size() > 4 && dll_lower.substr(dll_lower.size() - 4) == ".dll") {
+        dll_lower = dll_lower.substr(0, dll_lower.size() - 4);
+    }
 
-    if (!alt_name.empty())
-        nname = alt_name;
+    // Handle Zw*/Nt* function overlap
+    if (dll_lower.find("ntoskrnl") == 0) {
+        if (name.find("Zw") == 0 && name.size() > 2) {
+            alt_imp_api = "Nt" + name.substr(2);
+        } else if (name.find("Nt") == 0 && name.size() > 2) {
+            alt_imp_api = "Zw" + name.substr(2);
+        }
+    }
+
+    alt_imp_dll = normalize_dll_name(dll_lower);
+
+    // Bridge ntdll funcs to ntoskrnl if supported
+    if (dll_lower.find("ntdll") == 0) {
+        alt_imp_dll = "ntoskrnl";
+        auto res = api->get_export_func_handler(alt_imp_dll, name);
+        if (!std::get<1>(res).func) {
+            if (name.find("Zw") == 0 && name.size() > 2) {
+                alt_imp_api = "Nt" + name.substr(2);
+            } else if (name.find("Nt") == 0 && name.size() > 2) {
+                alt_imp_api = "Zw" + name.substr(2);
+            }
+            if (!alt_imp_api.empty()) {
+                res = api->get_export_func_handler(alt_imp_dll, alt_imp_api);
+            }
+        }
+        return res;
+    }
+
+    if (!alt_imp_api.empty()) {
+        return api->get_export_func_handler(dll, alt_imp_api);
+    } else if (!alt_imp_dll.empty()) {
+        return api->get_export_func_handler(alt_imp_dll, name);
+    }
 
     return {nullptr, InvalidApiInfo};
 }
@@ -2380,13 +2404,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 
     //  Normalization fallback 
     if (!func_ptr.func) {
-        auto [alt_dll, alt_name] = normalize_import_miss(dll, name);
-        if (alt_dll != dll_norm || alt_name != name) {
-            if (api) {
-                std::tie(handler_mod, func_ptr) = api->get_export_func_handler(alt_dll, alt_name);
-                if (func_ptr.func) imp_api = alt_dll + "." + alt_name;
-            }
-        }
+        std::tie(handler_mod, func_ptr) = normalize_import_miss(dll, name);
     }
 
     std::vector<std::shared_ptr<ApiHook>> hooks = get_api_hooks(dll, name);

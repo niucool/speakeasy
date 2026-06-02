@@ -82,7 +82,7 @@ class MemAccess;
 class Run;
 class WindowsEmuError;
 class WindowsApi;
-class ApiHookInfo;
+struct ApiHookInfo;
 
 //  WindowsEmulator 
 // Python winemu.py:51
