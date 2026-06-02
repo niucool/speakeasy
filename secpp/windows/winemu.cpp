@@ -2762,9 +2762,47 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
 //     """Called when an attempt to emulate an instruction from an invalid address"""
 bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
                                              size_t size, uint64_t value) {
-    //TODO:
-    (void)emu; (void)addr; (void)size; (void)value;
-    return false;
+    (void)emu; (void)size; (void)value;
+    if (addr == return_hook || addr == exit_hook) {
+        _unset_emu_hooks();
+        return true;
+    }
+
+    if (!curr_mod) {
+        curr_mod = get_mod_from_addr(get_pc());
+    }
+
+    // Python winemu.py:1400-1413 -- lookup address in import table
+    auto imp_it = import_table.find(addr);
+    if (imp_it != import_table.end()) {
+        auto [mod_name, func_name] = imp_it->second;
+        _unset_emu_hooks();
+        handle_import_func(mod_name, func_name);
+        return true;
+    }
+
+    // Is the address a callback func ptr?
+    for (const auto& [c_addr, c_mod, c_fn] : callbacks) {
+        if (c_addr == addr) {
+            _unset_emu_hooks();
+            handle_import_func(c_mod, c_fn);
+            return true;
+        }
+    }
+
+    // Are there any SEH handlers registered?
+    if (config_.exceptions.dispatch_handlers) {
+        bool rv = dispatch_seh(0xC0000005, addr);
+        if (rv) return true;
+    }
+
+    uint64_t fakeout = addr & ~(page_size - 1);
+    mem_map(page_size, fakeout, PERM_MEM_RWX, "emu.page.tmp", 0, false);
+
+    curr_run->error["error"] = get_error_info("invalid_fetch", addr);
+    tmp_maps.push_back({fakeout, page_size});
+    on_run_complete();
+    return true;
 }
 
 
@@ -2773,9 +2811,14 @@ bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
 //     """Handle protection violation on write access by mapping a fake page and logging error."""
 bool WindowsEmulator::_handle_prot_write(void* emu, uint64_t addr,
                                           size_t size, uint64_t value) {
-    //TODO:
-    (void)emu; (void)addr; (void)size; (void)value;
-    return false;
+    (void)emu; (void)size; (void)value;
+    uint64_t fakeout = addr & ~(page_size - 1);
+    mem_map(page_size, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
+
+    curr_run->error["error"] = get_error_info("invalid_protect_write", addr);
+    tmp_maps.push_back({fakeout, page_size});
+    on_run_complete();
+    return true;
 }
 
 //  Code hooks (additional) 

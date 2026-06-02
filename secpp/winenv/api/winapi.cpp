@@ -34,21 +34,21 @@ std::shared_ptr<ApiHandler> WindowsApi::load_api_handler(const std::string& mod_
     // Use the ApiHandlerRegistry to find and create API handlers
     std::string lower_name = speakeasy::to_lower(mod_name);
 
-    //// Check if already loaded
-    //auto it = mods.find(lower_name);
-    //if (it != mods.end()) {
-    //    return it->second;
-    //}
+    // Check if already loaded
+    auto it = mods.find(lower_name);
+    if (it != mods.end()) {
+        return it->second;
+    }
 
-    //// Try to create handler via registry (looks up exact name match)
-    //std::shared_ptr<ApiHandler> handler = ApiHandlerRegistry::create_handler(lower_name, emu);
-    //if (handler) {
-    //    for (const auto& entry : handler->get_apis()) {
-    //        handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
-    //    }
-    //    mods[lower_name] = handler;
-    //    return handler;
-    //}
+    // Try to create handler via registry (looks up exact name match)
+    std::shared_ptr<ApiHandler> handler = ApiHandlerRegistry::create_handler(lower_name, emu);
+    if (handler) {
+        for (const auto& entry : handler->get_apis()) {
+            handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
+        }
+        mods[lower_name] = handler;
+        return handler;
+    }
 
     // Fallback: iterate all registered handlers and match by name
     auto all_handlers = ApiHandlerRegistry::get_all_handlers();
@@ -57,9 +57,9 @@ std::shared_ptr<ApiHandler> WindowsApi::load_api_handler(const std::string& mod_
         if (reg_name == lower_name) {
             auto handler = factory(emu);
             if (handler) {
-                //for (const auto& entry : handler->get_apis()) {
-                //    handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
-                //}
+                for (const auto& entry : handler->get_apis()) {
+                    handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
+                }
                 mods[lower_name] = handler;
             }
             return handler;

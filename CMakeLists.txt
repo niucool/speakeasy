@@ -38,7 +38,19 @@ FetchContent_Declare(
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
 
-FetchContent_MakeAvailable(pe-parse)
+set(CAPSTONE_BUILD_STATIC ON CACHE BOOL "Build static library" FORCE)
+set(CAPSTONE_BUILD_SHARED OFF CACHE BOOL "Build shared library" FORCE)
+set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "Build cstool" FORCE)
+set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "Build tests" FORCE)
+set(CAPSTONE_ARCHITECTURE_ALL ON CACHE BOOL "Build all architectures" FORCE)
+
+FetchContent_Declare(
+    capstone
+    GIT_REPOSITORY https://github.com/capstone-engine/capstone.git
+    GIT_TAG        5.0.1
+)
+
+FetchContent_MakeAvailable(pe-parse capstone)
 
 # ── Dependencies ──────────────────────────────────────────────
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -74,8 +86,7 @@ else()
     endif()
 endif()
 
-# Optional: Capstone for disassembly (used in binemu)
-find_package(capstone QUIET)
+
 
 # ── Platform Detection ────────────────────────────────────────
 if(WIN32)
@@ -114,10 +125,12 @@ target_link_libraries(speakeasy PUBLIC
     miniz::miniz
 )
 
-if(capstone_FOUND)
+if(TARGET capstone::capstone)
     target_link_libraries(speakeasy PRIVATE capstone::capstone)
-    target_compile_definitions(speakeasy PRIVATE HAS_CAPSTONE)
+else()
+    target_link_libraries(speakeasy PRIVATE capstone)
 endif()
+target_compile_definitions(speakeasy PRIVATE HAS_CAPSTONE)
 
 # ── Compiler Flags ────────────────────────────────────────────
 if(MSVC)
