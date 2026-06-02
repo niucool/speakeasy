@@ -134,6 +134,7 @@ protected:
     std::vector<void*> mem_trace_hooks;
     bool mem_tracing_enabled = false;
     bool emu_hooks_set = false;
+    bool builtin_hooks_set = false;
     void* tmp_code_hook = nullptr;
     uint64_t prev_pc = 0;
 
@@ -680,6 +681,7 @@ public:
     void _register_code_hook(void* callback, uint64_t begin, uint64_t end);
     // Python winemu.py: (Unicorn engine binding)
     void _register_mem_hook(int hook_type, void* callback);
+    void _register_interrupt_hook(void* callback);
     std::vector<uc_hook> uc_hooks_;
 
     //  Memory hooks (additional) 

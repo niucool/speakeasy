@@ -180,11 +180,18 @@ void WindowsEmulator::disable_code_hook() {
     }
 }
 
-// Python winemu.py:628
-// def set_hooks(self):
-//     """Reserves memory that will be used to handle events that occur during emulation."""
 void WindowsEmulator::set_hooks() {
-    // TODO:
+    BinaryEmulator::set_hooks();
+
+    if (!builtin_hooks_set) {
+        _register_mem_hook(UC_HOOK_MEM_UNMAPPED, reinterpret_cast<void*>(mem_unmapped_trampoline));
+        _register_interrupt_hook(reinterpret_cast<void*>(intr_trampoline));
+        builtin_hooks_set = true;
+    }
+
+    set_mem_tracing_hooks();
+    set_coverage_hooks();
+    set_debug_hooks();
 }
 
 // Python winemu.py:377
@@ -2699,6 +2706,8 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
     if (!curr_run) return false;
 
     try {
+        access = emu_eng_->mem_access[access];
+
         // Ensure code hook is active for deferred work
         if (!tmp_code_hook) {
             enable_code_hook();
@@ -2753,6 +2762,7 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
 //     """Called when an attempt to emulate an instruction from an invalid address"""
 bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
                                              size_t size, uint64_t value) {
+    //TODO:
     (void)emu; (void)addr; (void)size; (void)value;
     return false;
 }
@@ -2763,6 +2773,7 @@ bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
 //     """Handle protection violation on write access by mapping a fake page and logging error."""
 bool WindowsEmulator::_handle_prot_write(void* emu, uint64_t addr,
                                           size_t size, uint64_t value) {
+    //TODO:
     (void)emu; (void)addr; (void)size; (void)value;
     return false;
 }
@@ -3299,6 +3310,16 @@ void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
     if (!emu_eng_) return;
     uc_hook hh = 0;
     uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, hook_type,
+                              callback, static_cast<void*>(this), 1, 0);
+    if (err == UC_ERR_OK) {
+        uc_hooks_.push_back(hh);
+    }
+}
+
+void WindowsEmulator::_register_interrupt_hook(void* callback) {
+    if (!emu_eng_) return;
+    uc_hook hh = 0;
+    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_INTR,
                               callback, static_cast<void*>(this), 1, 0);
     if (err == UC_ERR_OK) {
         uc_hooks_.push_back(hh);

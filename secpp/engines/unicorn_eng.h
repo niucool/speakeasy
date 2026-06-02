@@ -48,7 +48,7 @@ public:
  * Wrapper class for underlying cpu emulation engines
  */
 class EmuEngine {
-private:
+public:
     std::string name;
     uc_engine* emu;
     void* mmap;
