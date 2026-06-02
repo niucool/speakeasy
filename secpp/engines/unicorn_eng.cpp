@@ -205,6 +205,22 @@ uc_err EmuEngine::reg_write(int reg, uint64_t val) {
 }
 
 /**
+ * Modify GDT/IDT descriptor table registers (GDTR, IDTR)
+ */
+uc_err EmuEngine::reg_write_gdt_idt(int reg, uint64_t base, uint32_t limit, uint64_t selector, uint32_t flags) {
+    auto it = regs.find(reg);
+    if (it == regs.end()) {
+        return UC_ERR_ARG;
+    }
+    uc_x86_mmr mmr = {0};
+    mmr.base = base;
+    mmr.limit = limit;
+    mmr.selector = selector;
+    mmr.flags = flags;
+    return uc_reg_write(emu, it->second, &mmr);
+}
+
+/**
  * Read register values
  */
 uc_err EmuEngine::reg_read(int reg, uint64_t* val) {

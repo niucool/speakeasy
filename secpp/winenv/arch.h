@@ -21,8 +21,8 @@ const int BITS_64 = 64;
 const uint32_t LSTAR = 0xC0000082;
 
 // x86 Registers
-const int REG_CS = 1001;
-const int REG_DS = 1002;
+//const int REG_CS = 1001;
+//const int REG_DS = 1002;
 const int REG_EAX = 1003;
 const int REG_EBP = 1004;
 const int REG_EBX = 1005;
@@ -38,6 +38,8 @@ const int REG_FS = 1014;
 const int REG_GS = 1015;
 const int REG_ES = 1016;
 const int REG_SS = 1017;
+const int REG_CS = 1018;
+const int REG_DS = 1019;
 const int REG_MSR = 1020;
 
 // AMD64 Registers

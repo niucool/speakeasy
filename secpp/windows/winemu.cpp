@@ -449,7 +449,7 @@ std::tuple<uint64_t, uint64_t> WindowsEmulator::_setup_gdt(int arch) {
     // Write GDTR base address and segment selectors
     if (emu_eng_) {
         uint64_t gdtr_base = gdt_base;
-        emu_eng_->reg_write(speakeasy::arch::REG_GDTR, gdtr_base);
+        emu_eng_->reg_write_gdt_idt(speakeasy::arch::REG_GDTR, gdtr_base, 31 * ENTRY_SIZE - 1);
         // DS selector (index 16, Ring3)
         emu_eng_->reg_write(speakeasy::arch::REG_DS, create_selector(16, GDT_FLAGS::Ring3));
         // CS selector (index 17, Ring3)

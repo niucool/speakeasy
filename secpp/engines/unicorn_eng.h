@@ -111,6 +111,7 @@ public:
      * Modify register values
      */
     uc_err reg_write(int reg, uint64_t val);
+    uc_err reg_write_gdt_idt(int reg, uint64_t base, uint32_t limit, uint64_t selector = 0, uint32_t flags = 0);
 
     /**
      * Read register values
