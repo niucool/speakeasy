@@ -9,7 +9,7 @@
 
 // Forward declarations
 class ApiHandler;
-class Emulator;
+class BinaryEmulator;
 
 /**
  * API Handler Registry - C++ replacement for Python's dynamic module inspection
@@ -17,7 +17,7 @@ class Emulator;
  */
 class ApiHandlerRegistry {
 public:
-    using HandlerFactory = std::function<std::shared_ptr<ApiHandler>(Emulator*)>;
+    using HandlerFactory = std::function<std::shared_ptr<ApiHandler>(BinaryEmulator*)>;
     
 private:
     static std::map<std::string, HandlerFactory>& get_registry() {
@@ -36,7 +36,7 @@ public:
     /**
      * Create an API handler instance by name
      */
-    static std::shared_ptr<ApiHandler> create_handler(const std::string& name, Emulator* emu) {
+    static std::shared_ptr<ApiHandler> create_handler(const std::string& name, BinaryEmulator* emu) {
         auto& registry = get_registry();
         auto it = registry.find(name);
         if (it != registry.end()) {
@@ -58,7 +58,7 @@ public:
  */
 #define REGISTER_API_HANDLER(name, type) \
     namespace { \
-        std::shared_ptr<ApiHandler> create_##type(Emulator* emu) { \
+        std::shared_ptr<ApiHandler> create_##type(BinaryEmulator* emu) { \
             return std::make_shared<type>(emu); \
         } \
         struct type##_Registrar { \

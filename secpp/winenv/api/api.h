@@ -18,26 +18,25 @@ class WindowsEmulator;
 class BinaryEmulator;
 class RegKey;
 
+using ApiFunc = std::function<uint64_t(void* emu, const std::string& api_name,
+    int argc, const std::vector<uint64_t>& argv)>;
+
+using DataFunc = std::function<uint64_t(uint64_t ptr)>;
+
 // Structure to hold function hook information
 struct ApiHookInfo {
     std::string name;
-    std::function<void()> func = nullptr;
+    ApiFunc func = nullptr;
     int argc = 0;
     int conv = 0;
     int ordinal = 0;
 };
 
-static ApiHookInfo InvalidApiInfo;
-
-
 // Structure to hold data hook information
 struct DataHookInfo {
     std::string name;
-    std::function<void()> func;
+    DataFunc func = nullptr;
 };
-
-using ApiFunc = std::function<uint64_t(void* emu, const std::string& api_name,
-                                        int argc, const std::vector<uint64_t>& argv)>;
 
 struct ApiEntry {
     std::string name;
@@ -45,22 +44,26 @@ struct ApiEntry {
     ApiFunc handler;
 };
 
+static ApiHookInfo InvalidApiInfo;
+static DataHookInfo InvalidDataInfo;
+
+
 // Base class for handling exported functions
 class ApiHandler {
 protected:
-    std::map<std::string, ApiHookInfo> funcs;
-    std::map<std::string, DataHookInfo> data;
-    std::string mod_name;
-    void* emu; // Kept as void* to avoid circular dependency with WindowsEmulator/BinaryEmulator includes
-    int ptr_size;
+    std::map<std::string, ApiHookInfo> funcs_;
+    std::map<std::string, DataHookInfo> data_;
+    std::string mod_name_;
+    void* emu_; // Kept as void* to avoid circular dependency with WindowsEmulator/BinaryEmulator includes
+    int ptr_size_;
 
 public:
-    const std::map<std::string, ApiHookInfo>& get_hook_funcs() const { return funcs; }
-    const std::map<std::string, DataHookInfo>& get_hook_data() const { return data; }
+    const std::map<std::string, ApiHookInfo>& get_hook_funcs() const { return funcs_; }
+    const std::map<std::string, DataHookInfo>& get_hook_data() const { return data_; }
 
     void set_emu(void* e);
-    void add_hook(const std::string& name, std::function<void()> func, int argc, int conv, int ordinal = 0);
-    void add_data(const std::string& name, std::function<void()> func);
+    void add_hook(const std::string& name, ApiFunc func, int argc, int conv, int ordinal = 0);
+    void add_data(const std::string& name, DataFunc func);
 
     // Static member for class name
     static std::string class_name;
@@ -92,7 +95,7 @@ public:
 
     // Helper methods
     void __get_hook_attrs__(ApiHandler* obj);
-    std::function<void()> get_data_handler(const std::string& exp_name);
+    DataHookInfo& get_data_handler(const std::string& exp_name);
     ApiHookInfo& get_func_handler(const std::string& exp_name);
     int get_pointer_size();
     

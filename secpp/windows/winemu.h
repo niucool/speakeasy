@@ -648,7 +648,7 @@ public:
     // Python winemu.py:1372
     // def handle_import_data(self, mod_name, sym, data_ptr=0):
     //     """Data that is imported (e.g. KeTickCount) is handled with an initializer function."""
-    void handle_import_data(const std::string& mod, const std::string& sym, uint64_t data_ptr = 0);
+    uint64_t handle_import_data(const std::string& mod, const std::string& sym, uint64_t data_ptr = 0);
     // Python winemu.py:1358
     // def get_proc(self, mod_name, func_name):
     //     """Get a pointer for a supplied function name, similar to GetProcAddress."""

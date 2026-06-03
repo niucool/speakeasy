@@ -22,7 +22,7 @@
 // Forward declarations
 class PeFile;
 class Win32Emulator;
-class Emulator;
+//class Emulator;
 
 /**
  * Wrapper class for invoking the speakeasy emulators

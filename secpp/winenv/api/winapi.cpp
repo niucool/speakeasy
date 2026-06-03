@@ -11,7 +11,7 @@
 #include <tuple>
 
 // Constructor
-WindowsApi::WindowsApi(Emulator* emu) : emu(emu) {
+WindowsApi::WindowsApi(BinaryEmulator* emu) : emu_(emu) {
     // Register all API handlers
     speakeasy::api::register_all_api_handlers();
 
@@ -35,18 +35,18 @@ std::shared_ptr<ApiHandler> WindowsApi::load_api_handler(const std::string& mod_
     std::string lower_name = speakeasy::to_lower(mod_name);
 
     // Check if already loaded
-    auto it = mods.find(lower_name);
-    if (it != mods.end()) {
+    auto it = mods_.find(lower_name);
+    if (it != mods_.end()) {
         return it->second;
     }
 
     // Try to create handler via registry (looks up exact name match)
-    std::shared_ptr<ApiHandler> handler = ApiHandlerRegistry::create_handler(lower_name, emu);
+    std::shared_ptr<ApiHandler> handler = ApiHandlerRegistry::create_handler(lower_name, emu_);
     if (handler) {
         for (const auto& entry : handler->get_apis()) {
-            handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
+            handler->add_hook(entry.name, entry.handler, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
         }
-        mods[lower_name] = handler;
+        mods_[lower_name] = handler;
         return handler;
     }
 
@@ -55,12 +55,12 @@ std::shared_ptr<ApiHandler> WindowsApi::load_api_handler(const std::string& mod_
     for (const auto& [name, factory] : all_handlers) {
         std::string reg_name = speakeasy::to_lower(name);
         if (reg_name == lower_name) {
-            auto handler = factory(emu);
+            auto handler = factory(emu_);
             if (handler) {
                 for (const auto& entry : handler->get_apis()) {
-                    handler->add_hook(entry.name, []() {}, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
+                    handler->add_hook(entry.name, entry.handler, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
                 }
-                mods[lower_name] = handler;
+                mods_[lower_name] = handler;
             }
             return handler;
         }
@@ -69,32 +69,31 @@ std::shared_ptr<ApiHandler> WindowsApi::load_api_handler(const std::string& mod_
     return nullptr;
 }
 
-std::tuple<std::shared_ptr<ApiHandler>, void*> WindowsApi::get_data_export_handler(const std::string& mod_name,
+std::tuple<std::shared_ptr<ApiHandler>, DataHookInfo&> WindowsApi::get_data_export_handler(const std::string& mod_name,
                                                                    const std::string& exp_name) {
     // Find the module handler
     std::string key = speakeasy::to_lower(mod_name);
 
-    auto mod_it = mods.find(key);
-    auto mod = (mod_it != mods.end()) ? mod_it->second : nullptr;
+    auto mod_it = mods_.find(key);
+    auto mod = (mod_it != mods_.end()) ? mod_it->second : nullptr;
 
     if (!mod) {
         mod = load_api_handler(mod_name);
     }
 
     if (!mod) {
-        return std::make_tuple(nullptr, nullptr);
+        return std::tuple<std::shared_ptr<ApiHandler>, DataHookInfo&>(nullptr, InvalidDataInfo);
     }
 
     // Delegate to the handler's get_data_handler method
-    std::function<void()> handler_func = mod->get_data_handler(exp_name);
-    if (!handler_func) {
-        return std::make_tuple(mod, nullptr);
-    }
+    auto& handler = mod->get_data_handler(exp_name);
 
     // Cache the function and return a void* pointer to it
-    std::string cache_key = key + ":" + exp_name + ":data";
-    func_cache_[cache_key] = handler_func;
-    return std::make_tuple(mod, reinterpret_cast<void*>(&func_cache_[cache_key]));
+    //std::string cache_key = key + ":" + exp_name + ":data";
+    //func_cache_[cache_key] = handler.func;
+
+    //return std::make_tuple(mod, handler);
+    return std::tuple<std::shared_ptr<ApiHandler>, DataHookInfo&>(mod, handler);
 }
 
 std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> WindowsApi::get_export_func_handler(const std::string& mod_name,
@@ -102,8 +101,8 @@ std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> WindowsApi::get_export_fun
     // Find the module handler
     std::string key = speakeasy::to_lower(mod_name);
 
-    auto mod_it = mods.find(key);
-    auto mod = (mod_it != mods.end()) ? mod_it->second : nullptr;
+    auto mod_it = mods_.find(key);
+    auto mod = (mod_it != mods_.end()) ? mod_it->second : nullptr;
 
     if (!mod) {
         mod = load_api_handler(mod_name);
@@ -126,50 +125,50 @@ std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> WindowsApi::get_export_fun
     return std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&>(mod, info);
 }
 
-void* WindowsApi::call_api_func(std::shared_ptr<ApiHandler> mod, void* func, const std::vector<void*>& argv, void* ctx) {
-    (void)ctx;
-
+void* WindowsApi::call_api_func(std::shared_ptr<ApiHandler> mod, ApiFunc func, const std::vector<uint64_t>& argv, void* ctx) {
     if (func == nullptr) {
         return nullptr;
     }
 
-    // Check if mod is a valid handler
-    if (mod) {
-        std::string exp_name;
-        for (const auto& [k, v] : func_cache_) {
-            if (reinterpret_cast<const void*>(&v) == func) {
-                // Key format: "mod_name:exp_name:func"
-                size_t first = k.find(':');
-                size_t second = k.find(':', first + 1);
-                if (first != std::string::npos && second != std::string::npos) {
-                    exp_name = k.substr(first + 1, second - first - 1);
-                }
-                break;
-            }
-        }
-        if (!exp_name.empty()) {
-            const auto* entry = mod->find_api(exp_name);
-            if (entry) {
-                std::vector<uint64_t> u64_argv;
-                for (void* arg : argv) {
-                    u64_argv.push_back(reinterpret_cast<uintptr_t>(arg));
-                }
-                uint64_t rv = entry->handler(emu, entry->name, entry->argc, u64_argv);
-                return reinterpret_cast<void*>(static_cast<uintptr_t>(rv));
-            }
-        }
-    }
+    // TODO:
+    return (void *)func((void *)emu_, "", (int)argv.size(), argv);
+    //// Check if mod is a valid handler
+    //if (mod) {
+    //    std::string exp_name;
+    //    for (const auto& [k, v] : func_cache_) {
+    //        if (v == func) {
+    //            // Key format: "mod_name:exp_name:func"
+    //            size_t first = k.find(':');
+    //            size_t second = k.find(':', first + 1);
+    //            if (first != std::string::npos && second != std::string::npos) {
+    //                exp_name = k.substr(first + 1, second - first - 1);
+    //            }
+    //            break;
+    //        }
+    //    }
+    //    if (!exp_name.empty()) {
+    //        const auto* entry = mod->find_api(exp_name);
+    //        if (entry) {
+    //            std::vector<uint64_t> u64_argv;
+    //            for (void* arg : argv) {
+    //                u64_argv.push_back(reinterpret_cast<uintptr_t>(arg));
+    //            }
+    //            uint64_t rv = entry->handler(emu, entry->name, entry->argc, u64_argv);
+    //            return reinterpret_cast<void*>(static_cast<uintptr_t>(rv));
+    //        }
+    //    }
+    //}
 
-    // Fallback: Cast void* back to std::function<void()>* and invoke
-    auto* handler_func = reinterpret_cast<std::function<void()>*>(func);
-    if (handler_func && *handler_func) {
-        (*handler_func)();
-    }
+    //// Fallback: Cast void* back to std::function<void()>* and invoke
+    //auto* handler_func = reinterpret_cast<std::function<void()>*>(func);
+    //if (handler_func && *handler_func) {
+    //    (*handler_func)();
+    //}
 
     return nullptr;
 }
 
-void* WindowsApi::call_data_func(std::shared_ptr<ApiHandler> mod, void* func, uint64_t ptr) {
+void* WindowsApi::call_data_func(std::shared_ptr<ApiHandler> mod, DataFunc func, uint64_t ptr) {
     /**
      * Call the handler to initialize and return imported data variables
      *
@@ -184,12 +183,7 @@ void* WindowsApi::call_data_func(std::shared_ptr<ApiHandler> mod, void* func, ui
     }
 
     // Cast void* back to std::function<void()>* and invoke
-    auto* handler_func = reinterpret_cast<std::function<void()>*>(func);
-    if (handler_func && *handler_func) {
-        (*handler_func)();
-    }
-
-    return nullptr;
+    return (void *)func(ptr);
 }
 
 std::vector<std::tuple<std::string, ApiHandler*>> autoload_api_handlers() {

@@ -9,6 +9,15 @@
 
 #### Added
 
+- **secpp**: 补全了 Windows 模拟器中关于 Hook 初始化、API 模块导入回退以及数据导入的全部移植细节：
+  - **Hook 机制与 SEH 辅助**：完整实现了 `WindowsEmulator::set_hooks`，自动初始化基类仿真 Hook 挂载，配置了未映射内存恢复与系统中断的回调跳板（`mem_unmapped_trampoline`, `intr_trampoline`）。
+  - **API 查找回退规范化**：移植了 `WindowsEmulator::normalize_import_miss`，当遇到找不到的 API 导入函数时，自动计算并折叠 Zw/Nt 命名空间前缀、ANSI/Unicode 字符尾随（A/W 替换）以及转发库名称，实现高拟真的 API 发现流程。
+  - **数据导入动态解析**：在 `WindowsEmulator::load_image` 中实现了 Python 侧对数据导入（如 `KeTickCount`）的解析机制，支持在遇到数据属性导出时，动态通过 `mem_map` 分配对齐的宿主端表示并在全局 `global_data` 进行跟踪写入。
+- **build**: 重构了单元测试模块的 GoogleTest 依赖方案：
+  - **GTest 静态构建 FetchContent**：弃用了 vcpkg 的动态 GTest 模块，改为使用 CMake `FetchContent` 直接拉取 release-1.12.1 源码并在项目内部编译为静态库（强制 `gtest_force_shared_crt OFF`），完全消除了测试套件在 Windows 平台执行时依赖 `gtest.dll` 与 `gtest_main.dll` 动态库加载的问题。
+  - **头文件查找防御**：调整测试目标的 include directories 查找顺序（`BEFORE`），优先强制使用静态 GTest 的同源头文件，彻底消除了由于 vcpkg 头文件混淆导致的 `MakeAndRegisterTestInfo` 链接冲突。
+
+
 - **secpp**: 彻底补全并实现了 177 个遗漏的 `kernel32` DLL 用户态 API 的 C++ 移植，并解决了高频发生的 Windows SDK 内置宏污染命名冲突：
   - **防宏污染宏定义隔离**：针对 MSVC/Windows SDK 环境中 `<windows.h>` 的内置 A/W 映射宏对 API 接口名称的侵入，在 `kernel32.h` 和 `kernel32.cpp` 顶部引入了包含 50 余项核心 API（如 `GetStartupInfo`, `GetSystemDirectory`, `lstrcmpi`, `lstrcpyn`, `InterlockedIncrement` 等）的 `#undef` 防治块，消消除因底层 API 被宏展开为 ANSI/Unicode 变体而产生的 duplicate definition 极其隐蔽的编译冲突。
   - **TLS & FLS 高仿真模拟**：完全实现了线程局部存储与纤程局部存储 API（`TlsAlloc`, `TlsFree`, `TlsGetValue`, `TlsSetValue`, `FlsAlloc`, `FlsFree`, `FlsGetValue`, `FlsSetValue`），直接与运行线程 `Thread` 类的 `tls_` 和 `fls_` 向量进行类型转换同步，实现高保真度仿真。

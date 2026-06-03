@@ -13,27 +13,27 @@
 
 // Forward declarations
 class ApiHandler;
-class Emulator;
+class BinaryEmulator;
 
 /**
  * Windows API handler class
  */
 class WindowsApi {
 private:
-    std::map<std::string, std::shared_ptr<ApiHandler>> mods;
-    std::vector<void*> instances;
-    std::map<std::string, void*> data;
-    Emulator* emu;
+    std::map<std::string, std::shared_ptr<ApiHandler>> mods_;
+    std::vector<void*> instances_;
+    std::map<std::string, void*> data_;
+    BinaryEmulator* emu_;
     int ptr_size;
 
     // Cache for handler functions returned by get_data_export_handler/get_export_func_handler
-    std::map<std::string, std::function<void()>> func_cache_;
+    std::map<std::string, ApiFunc> func_cache_;
 
 public:
     /**
      * Constructor
      */
-    WindowsApi(Emulator* emu);
+    WindowsApi(BinaryEmulator* emu);
     
     /**
      * Load API handler module
@@ -43,7 +43,7 @@ public:
     /**
      * Get data export handler
      */
-    std::tuple<std::shared_ptr<ApiHandler>, void*> get_data_export_handler(const std::string& mod_name,
+    std::tuple<std::shared_ptr<ApiHandler>, DataHookInfo&> get_data_export_handler(const std::string& mod_name,
                                                            const std::string& exp_name);
     
     /**
@@ -55,12 +55,12 @@ public:
     /**
      * Call the handler to implement the imported API
      */
-    void* call_api_func(std::shared_ptr<ApiHandler> mod, void* func, const std::vector<void*>& argv, void* ctx);
+    void* call_api_func(std::shared_ptr<ApiHandler> mod, ApiFunc func, const std::vector<uint64_t>& argv, void* ctx);
     
     /**
      * Call the handler to initialize and return imported data variables
      */
-    void* call_data_func(std::shared_ptr<ApiHandler> mod, void* func, uint64_t ptr);
+    void* call_data_func(std::shared_ptr<ApiHandler> mod, DataFunc func, uint64_t ptr);
     
     /**
      * Get pointer size
