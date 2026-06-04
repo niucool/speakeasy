@@ -49,7 +49,7 @@ static std::map<uint64_t, WinHttpRequest>& requests() {
 //  WinHttpOpen 
 // HINTERNET WinHttpOpen(LPCWSTR pszAgentW, DWORD dwAccessType,
 //                       LPCWSTR pszProxyW, LPCWSTR pszProxyBypassW, DWORD dwFlags);
-uint64_t WinHttp::WinHttpOpen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpOpen(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 5) return 0;
     uint64_t ua_ptr = a[0];
     uint64_t proxy_ptr = a[2];
@@ -76,7 +76,7 @@ uint64_t WinHttp::WinHttpOpen(void* e, const std::string&, int, const std::vecto
 //  WinHttpConnect 
 // HINTERNET WinHttpConnect(HINTERNET hSession, LPCWSTR pswzServerName,
 //                          INTERNET_PORT nServerPort, DWORD dwReserved);
-uint64_t WinHttp::WinHttpConnect(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpConnect(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t hSession = a[0];
     uint64_t server_ptr = a[1];
@@ -100,7 +100,7 @@ uint64_t WinHttp::WinHttpConnect(void* e, const std::string&, int, const std::ve
 //  WinHttpOpenRequest 
 // HINTERNET WinHttpOpenRequest(HINTERNET hConnect, LPCWSTR pwszVerb,
 //                              LPCWSTR pwszObjectName, LPCWSTR pwszVersion, ...);
-uint64_t WinHttp::WinHttpOpenRequest(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpOpenRequest(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 7) return 0;
     uint64_t hConnect = a[0];
     uint64_t verb_ptr = a[1];
@@ -149,7 +149,7 @@ uint64_t WinHttp::WinHttpOpenRequest(void* e, const std::string&, int, const std
 }
 
 //  WinHttpGetIEProxyConfigForCurrentUser 
-uint64_t WinHttp::WinHttpGetIEProxyConfigForCurrentUser(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpGetIEProxyConfigForCurrentUser(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return 0;
     uint64_t proxy_config = a[0];
     if (proxy_config) {
@@ -162,20 +162,20 @@ uint64_t WinHttp::WinHttpGetIEProxyConfigForCurrentUser(void* e, const std::stri
 }
 
 //  WinHttpGetProxyForUrl 
-uint64_t WinHttp::WinHttpGetProxyForUrl(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpGetProxyForUrl(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e;
     if (a.size() < 1) return 0;
     return 1; // TRUE (no proxy)
 }
 
 //  WinHttpSetOption 
-uint64_t WinHttp::WinHttpSetOption(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpSetOption(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1; // TRUE
 }
 
 //  WinHttpSendRequest 
-uint64_t WinHttp::WinHttpSendRequest(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpSendRequest(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 7) return 0;
     uint64_t hRequest = a[0];
     uint64_t headers_ptr = a[1];
@@ -228,13 +228,13 @@ uint64_t WinHttp::WinHttpSendRequest(void* e, const std::string&, int, const std
 }
 
 //  WinHttpReceiveResponse 
-uint64_t WinHttp::WinHttpReceiveResponse(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpReceiveResponse(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1; // TRUE
 }
 
 //  WinHttpReadData 
-uint64_t WinHttp::WinHttpReadData(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpReadData(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t hRequest = a[0];
     uint64_t buf = a[1];
@@ -257,7 +257,7 @@ uint64_t WinHttp::WinHttpReadData(void* e, const std::string&, int, const std::v
 }
 
 //  WinHttpCrackUrl 
-uint64_t WinHttp::WinHttpCrackUrl(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpCrackUrl(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t pwszUrl = a[0];
     uint64_t dwUrlLength = a[1];
@@ -292,7 +292,7 @@ uint64_t WinHttp::WinHttpCrackUrl(void* e, const std::string&, int, const std::v
 }
 
 //  WinHttpAddRequestHeaders 
-uint64_t WinHttp::WinHttpAddRequestHeaders(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpAddRequestHeaders(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t hRequest = a[0];
     uint64_t headers_ptr = a[1];
@@ -312,7 +312,7 @@ uint64_t WinHttp::WinHttpAddRequestHeaders(void* e, const std::string&, int, con
 }
 
 //  WinHttpQueryHeaders 
-uint64_t WinHttp::WinHttpQueryHeaders(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpQueryHeaders(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 6) return 0;
     uint64_t hRequest = a[0];
     uint64_t dwInfoLevel = a[1];
@@ -349,7 +349,7 @@ uint64_t WinHttp::WinHttpQueryHeaders(void* e, const std::string&, int, const st
 }
 
 //  WinHttpCloseHandle 
-uint64_t WinHttp::WinHttpCloseHandle(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t WinHttp::WinHttpCloseHandle(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return 0;
     uint64_t hnd = a[0];
     requests().erase(hnd);

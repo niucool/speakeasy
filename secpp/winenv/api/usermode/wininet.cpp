@@ -90,7 +90,7 @@ static constexpr uint32_t HTTP_QUERY_STATUS_CODE = 0x00000013;
 // 
 //  InternetOpen
 // 
-uint64_t Wininet::InternetOpen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetOpen(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 5) return 0;
     uint64_t ua_ptr = a[0];
     uint32_t access_type = static_cast<uint32_t>(a[1]);
@@ -121,7 +121,7 @@ uint64_t Wininet::InternetOpen(void* e, const std::string&, int, const std::vect
 // 
 //  InternetConnect
 // 
-uint64_t Wininet::InternetConnect(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetConnect(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 8) return 0;
     uint64_t hInternet = a[0];
     uint64_t server_ptr = a[1];
@@ -153,7 +153,7 @@ uint64_t Wininet::InternetConnect(void* e, const std::string&, int, const std::v
 // 
 //  HttpOpenRequest
 // 
-uint64_t Wininet::HttpOpenRequest(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::HttpOpenRequest(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 8) return 0;
     uint64_t hConnect = a[0];
     uint64_t verb_ptr = a[1];
@@ -207,7 +207,7 @@ uint64_t Wininet::HttpOpenRequest(void* e, const std::string&, int, const std::v
 // 
 //  InternetCrackUrl
 // 
-uint64_t Wininet::InternetCrackUrl(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetCrackUrl(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t lpszUrl = a[0];
     uint32_t dwUrlLength = static_cast<uint32_t>(a[1]);
@@ -250,7 +250,7 @@ uint64_t Wininet::InternetCrackUrl(void* e, const std::string&, int, const std::
 // 
 //  InternetSetOption
 // 
-uint64_t Wininet::InternetSetOption(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetSetOption(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1; // TRUE
 }
@@ -258,7 +258,7 @@ uint64_t Wininet::InternetSetOption(void* e, const std::string&, int, const std:
 // 
 //  InternetGetConnectedState
 // 
-uint64_t Wininet::InternetGetConnectedState(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetGetConnectedState(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 2) return 0;
     uint64_t lpdwFlags = a[0];
     uint32_t dwReserved = static_cast<uint32_t>(a[1]);
@@ -276,7 +276,7 @@ uint64_t Wininet::InternetGetConnectedState(void* e, const std::string&, int, co
 // 
 //  HttpSendRequest
 // 
-uint64_t Wininet::HttpSendRequest(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::HttpSendRequest(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 5) return 0;
     uint64_t hRequest = a[0];
     uint64_t headers_ptr = a[1];
@@ -320,7 +320,7 @@ uint64_t Wininet::HttpSendRequest(void* e, const std::string&, int, const std::v
 // 
 //  InternetErrorDlg
 // 
-uint64_t Wininet::InternetErrorDlg(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetErrorDlg(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1; // TRUE (error handled)
 }
@@ -328,7 +328,7 @@ uint64_t Wininet::InternetErrorDlg(void* e, const std::string&, int, const std::
 // 
 //  InternetQueryOption
 // 
-uint64_t Wininet::InternetQueryOption(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetQueryOption(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t hInternet = a[0];
     uint32_t dwOption = static_cast<uint32_t>(a[1]);
@@ -356,7 +356,7 @@ uint64_t Wininet::InternetQueryOption(void* e, const std::string&, int, const st
 // 
 //  InternetReadFile
 // 
-uint64_t Wininet::InternetReadFile(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetReadFile(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t hFile = a[0];
     uint64_t buf = a[1];
@@ -382,7 +382,7 @@ uint64_t Wininet::InternetReadFile(void* e, const std::string&, int, const std::
 // 
 //  HttpQueryInfo
 // 
-uint64_t Wininet::HttpQueryInfo(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::HttpQueryInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 5) return 0;
     uint64_t hRequest = a[0];
     uint32_t dwInfoLevel = static_cast<uint32_t>(a[1]);
@@ -419,7 +419,7 @@ uint64_t Wininet::HttpQueryInfo(void* e, const std::string&, int, const std::vec
 // 
 //  InternetQueryDataAvailable
 // 
-uint64_t Wininet::InternetQueryDataAvailable(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetQueryDataAvailable(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t hFile = a[0];
     uint64_t lpdwNumberOfBytesAvailable = a[1];
@@ -439,7 +439,7 @@ uint64_t Wininet::InternetQueryDataAvailable(void* e, const std::string&, int, c
 // 
 //  InternetCloseHandle
 // 
-uint64_t Wininet::InternetCloseHandle(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetCloseHandle(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return 0;
     uint64_t hnd = a[0];
     (void)e;
@@ -454,7 +454,7 @@ uint64_t Wininet::InternetCloseHandle(void* e, const std::string&, int, const st
 // 
 //  InternetOpenUrl
 // 
-uint64_t Wininet::InternetOpenUrl(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wininet::InternetOpenUrl(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 6) return 0;
     uint64_t hInternet = a[0];
     uint64_t url_ptr = a[1];

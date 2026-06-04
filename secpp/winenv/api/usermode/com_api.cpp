@@ -49,7 +49,7 @@ ComApi::ComApi(void* emu) : ApiHandler(emu) {
 // 
 //  IUnknown::QueryInterface
 // 
-uint64_t ComApi::IUnknown_QueryInterface(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t ComApi::IUnknown_QueryInterface(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // HRESULT QueryInterface(REFIID riid, void **ppvObject);
     // riid = a[0], ppvObject = a[1]
     (void)e; (void)a;
@@ -59,7 +59,7 @@ uint64_t ComApi::IUnknown_QueryInterface(void* e, const std::string&, int, const
 // 
 //  IUnknown::AddRef
 // 
-uint64_t ComApi::IUnknown_AddRef(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t ComApi::IUnknown_AddRef(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // ULONG AddRef();
     (void)e; (void)a;
     return 1;  // refcount increment
@@ -68,7 +68,7 @@ uint64_t ComApi::IUnknown_AddRef(void* e, const std::string&, int, const std::ve
 // 
 //  IUnknown::Release
 // 
-uint64_t ComApi::IUnknown_Release(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t ComApi::IUnknown_Release(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // ULONG Release();
     (void)e; (void)a;
     return 0;  // refcount zero
@@ -77,7 +77,7 @@ uint64_t ComApi::IUnknown_Release(void* e, const std::string&, int, const std::v
 // 
 //  IWbemLocator::ConnectServer
 // 
-uint64_t ComApi::IWbemLocator_ConnectServer(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t ComApi::IWbemLocator_ConnectServer(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // HRESULT ConnectServer(
     //     const BSTR    strNetworkResource,  // a[0]
     //     const BSTR    strUser,             // a[1]
@@ -136,7 +136,7 @@ uint64_t ComApi::IWbemLocator_ConnectServer(void* e, const std::string&, int, co
 // 
 //  IWbemServices::ExecQuery
 // 
-uint64_t ComApi::IWbemServices_ExecQuery(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t ComApi::IWbemServices_ExecQuery(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // HRESULT ExecQuery(
     //     const BSTR           strQueryLanguage,  // a[0]
     //     const BSTR           strQuery,          // a[1]

@@ -40,7 +40,7 @@ static std::map<uint64_t, NcryptProv>& providers() {
 // 
 //  NCryptOpenStorageProvider
 // 
-uint64_t Ncrypt::NCryptOpenStorageProvider(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Ncrypt::NCryptOpenStorageProvider(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 3) return NC_NTE_INVALID_HANDLE;
     uint64_t phProvider = a[0];
     uint64_t pszProviderName = a[1];
@@ -70,7 +70,7 @@ uint64_t Ncrypt::NCryptOpenStorageProvider(void* e, const std::string&, int, con
 // 
 //  NCryptImportKey
 // 
-uint64_t Ncrypt::NCryptImportKey(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Ncrypt::NCryptImportKey(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 8) return NC_NTE_INVALID_HANDLE;
     uint64_t hProvider = a[0];
     uint64_t hImportKey = a[1];
@@ -109,7 +109,7 @@ uint64_t Ncrypt::NCryptImportKey(void* e, const std::string&, int, const std::ve
 // 
 //  NCryptDeleteKey
 // 
-uint64_t Ncrypt::NCryptDeleteKey(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Ncrypt::NCryptDeleteKey(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 2) return NC_NTE_INVALID_HANDLE;
     uint64_t hKey = a[0];
     uint32_t flags = static_cast<uint32_t>(a[1]);
@@ -128,7 +128,7 @@ uint64_t Ncrypt::NCryptDeleteKey(void* e, const std::string&, int, const std::ve
 // 
 //  NCryptFreeObject
 // 
-uint64_t Ncrypt::NCryptFreeObject(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Ncrypt::NCryptFreeObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return NC_NTE_INVALID_HANDLE;
     uint64_t hObject = a[0];
     (void)e;

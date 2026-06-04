@@ -37,7 +37,7 @@ Urlmon::Urlmon(void* emu) : ApiHandler(emu) {
 // 
 //  URLDownloadToFile
 // 
-uint64_t Urlmon::URLDownloadToFile(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Urlmon::URLDownloadToFile(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // HRESULT URLDownloadToFile(
     //     LPUNKNOWN            pCaller,    // a[0]
     //     LPCTSTR              szURL,      // a[1]
@@ -78,7 +78,7 @@ uint64_t Urlmon::URLDownloadToFile(void* e, const std::string&, int, const std::
 // 
 //  URLDownloadToCacheFile
 // 
-uint64_t Urlmon::URLDownloadToCacheFile(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Urlmon::URLDownloadToCacheFile(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // HRESULT URLDownloadToCacheFile(
     //     LPUNKNOWN            pCaller,      // a[0]
     //     LPCSTR               szURL,        // a[1]

@@ -17,7 +17,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  NetApiBufferFree
 // 
-uint64_t NetUtils::NetApiBufferFree(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t NetUtils::NetApiBufferFree(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return defs::windows::NERR_Success;
 }

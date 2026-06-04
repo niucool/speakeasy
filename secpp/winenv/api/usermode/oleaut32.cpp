@@ -38,7 +38,7 @@ Oleaut32::Oleaut32(void* emu) : ApiHandler(emu) {
 
 //  API implementations 
 
-uint64_t Oleaut32::SysAllocString(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Oleaut32::SysAllocString(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t psz = a[0];
     if (!psz) return 0;
 
@@ -64,7 +64,7 @@ uint64_t Oleaut32::SysAllocString(void* e, const std::string&, int, const std::v
     return bstr + 4;
 }
 
-uint64_t Oleaut32::SysAllocStringLen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Oleaut32::SysAllocStringLen(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t strin = a[0], ui = a[1];
 
     size_t ws_len = static_cast<size_t>(ui + 1) * 2;
@@ -99,12 +99,12 @@ uint64_t Oleaut32::SysAllocStringLen(void* e, const std::string&, int, const std
     return bstr + 4;
 }
 
-uint64_t Oleaut32::SysFreeString(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Oleaut32::SysFreeString(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Oleaut32::VariantInit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Oleaut32::VariantInit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t pvarg = a[0];
     if (pvarg) {
         size_t var_size = (ptr_sz(e) == 8) ? 0x18 : 0x10;

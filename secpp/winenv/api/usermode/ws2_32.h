@@ -12,21 +12,21 @@ public:
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 private:
     std::vector<ApiEntry> apis_;
-    static uint64_t WSAStartup(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t WSASocketA(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t connect(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t send(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t recv(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t closesocket(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t bind(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t listen(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t accept(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t gethostbyname(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t WSAGetLastError(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t inet_addr(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t htons(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t select(void*,const std::string&,int,const std::vector<uint64_t>&);
-    static uint64_t stub(void*,const std::string&,int,const std::vector<uint64_t>&);
+    static uint64_t WSAStartup(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t WSASocketA(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t connect(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t send(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t recv(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t closesocket(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t bind(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t listen(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t accept(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t gethostbyname(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t WSAGetLastError(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t inet_addr(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t htons(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t select(void*, const std::vector<uint64_t>&, void* ctx);
+    static uint64_t stub(void*, const std::vector<uint64_t>&, void* ctx);
 };
 }} // namespaces
 #endif

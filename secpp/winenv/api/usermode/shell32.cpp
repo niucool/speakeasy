@@ -90,7 +90,7 @@ Shell32::Shell32(void* emu) : ApiHandler(emu) {
 
 //  API implementations 
 
-uint64_t Shell32::ShellExecuteA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::ShellExecuteA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hwnd = a[0], lpOperation = a[1], lpFile = a[2];
     uint64_t lpParameters = a[3], lpDirectory = a[4], nShowCmd = a[5];
     (void)hwnd; (void)nShowCmd;
@@ -111,7 +111,7 @@ uint64_t Shell32::ShellExecuteA(void* e, const std::string&, int, const std::vec
     return 33;
 }
 
-uint64_t Shell32::ShellExecuteW(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::ShellExecuteW(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hwnd = a[0], lpOperation = a[1], lpFile = a[2];
     uint64_t lpParameters = a[3], lpDirectory = a[4], nShowCmd = a[5];
     (void)hwnd; (void)nShowCmd;
@@ -132,7 +132,7 @@ uint64_t Shell32::ShellExecuteW(void* e, const std::string&, int, const std::vec
     return 33;
 }
 
-uint64_t Shell32::ShellExecuteExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::ShellExecuteExA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t lpExecInfo = a[0];
     if (!lpExecInfo) return 0;
 
@@ -167,7 +167,7 @@ uint64_t Shell32::ShellExecuteExA(void* e, const std::string&, int, const std::v
     return 1;
 }
 
-uint64_t Shell32::SHGetFolderPathA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::SHGetFolderPathA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hwnd = a[0], csidl = a[1], hToken = a[2], dwFlags = a[3], pszPath = a[4];
     (void)hwnd; (void)hToken; (void)dwFlags;
 
@@ -179,7 +179,7 @@ uint64_t Shell32::SHGetFolderPathA(void* e, const std::string&, int, const std::
     return 0; // S_OK
 }
 
-uint64_t Shell32::SHGetFolderPathW(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::SHGetFolderPathW(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hwnd = a[0], csidl = a[1], hToken = a[2], dwFlags = a[3], pszPath = a[4];
     (void)hwnd; (void)hToken; (void)dwFlags;
 
@@ -191,7 +191,7 @@ uint64_t Shell32::SHGetFolderPathW(void* e, const std::string&, int, const std::
     return 0; // S_OK
 }
 
-uint64_t Shell32::SHGetSpecialFolderPathA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::SHGetSpecialFolderPathA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hwnd = a[0], pszPath = a[1], csidl = a[2], fCreate = a[3];
     (void)hwnd; (void)fCreate;
 
@@ -203,27 +203,27 @@ uint64_t Shell32::SHGetSpecialFolderPathA(void* e, const std::string&, int, cons
     return 1;
 }
 
-uint64_t Shell32::SHFileOperationA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::SHFileOperationA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Shell32::ExtractIconExW(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::ExtractIconExW(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t Shell32::SHGetFileInfoA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::SHGetFileInfoA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Shell32::SHGetFileInfoW(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::SHGetFileInfoW(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Shell32::SHCreateDirectoryExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Shell32::SHCreateDirectoryExA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0; // ERROR_SUCCESS
 }

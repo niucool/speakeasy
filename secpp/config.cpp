@@ -166,9 +166,7 @@ void from_json(const nlohmann::json& j, OsVersion& v) {
 }
 
 SpeakeasyConfig::SpeakeasyConfig() {
-    std::cout << "[DEBUG] Starting SpeakeasyConfig constructor" << std::endl;
     nlohmann::json j = nlohmann::json::parse(DEFAULT_CONFIG_DATA);
-    std::cout << "[DEBUG] Parsed DEFAULT_CONFIG_DATA successfully" << std::endl;
     load_config_from_json(j);
 }
 

@@ -129,13 +129,13 @@ Msvcrt::Msvcrt(void* emu) : ApiHandler(emu) {
 //  MEMORY
 // 
 
-uint64_t Msvcrt::malloc(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::malloc(void* e, const std::vector<uint64_t>& a, void* ctx) {
     size_t sz = static_cast<size_t>(a.empty() ? 0 : a[0]);
     if (sz == 0) sz = 1;
     return we(e)->mem_map(sz, 0, 4, "msvcrt.malloc");
 }
 
-uint64_t Msvcrt::calloc(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::calloc(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t num = a.size() > 0 ? a[0] : 0;
     uint64_t sz  = a.size() > 1 ? a[1] : 0;
     size_t total = static_cast<size_t>(num * sz);
@@ -147,7 +147,7 @@ uint64_t Msvcrt::calloc(void* e, const std::string&, int, const std::vector<uint
     return ptr;
 }
 
-uint64_t Msvcrt::free(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::free(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t ptr = a.empty() ? 0 : a[0];
     if (ptr) {
         try { we(e)->mem_free(ptr); } catch (...) {}
@@ -155,7 +155,7 @@ uint64_t Msvcrt::free(void* e, const std::string&, int, const std::vector<uint64
     return 0;
 }
 
-uint64_t Msvcrt::memset(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::memset(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t ptr   = a.size() > 0 ? a[0] : 0;
     uint8_t  value = static_cast<uint8_t>(a.size() > 1 ? (a[1] & 0xFF) : 0);
     size_t   num   = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -164,7 +164,7 @@ uint64_t Msvcrt::memset(void* e, const std::string&, int, const std::vector<uint
     return ptr;
 }
 
-uint64_t Msvcrt::memcpy(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::memcpy(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t dest = a.size() > 0 ? a[0] : 0;
     uint64_t src  = a.size() > 1 ? a[1] : 0;
     size_t   num  = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -172,7 +172,7 @@ uint64_t Msvcrt::memcpy(void* e, const std::string&, int, const std::vector<uint
     return dest;
 }
 
-uint64_t Msvcrt::memmove(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::memmove(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t dest = a.size() > 0 ? a[0] : 0;
     uint64_t src  = a.size() > 1 ? a[1] : 0;
     size_t   num  = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -182,7 +182,7 @@ uint64_t Msvcrt::memmove(void* e, const std::string&, int, const std::vector<uin
     return dest;
 }
 
-uint64_t Msvcrt::memcmp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::memcmp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t b1 = a.size() > 0 ? a[0] : 0;
     uint64_t b2 = a.size() > 1 ? a[1] : 0;
     size_t   cnt = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -200,14 +200,14 @@ uint64_t Msvcrt::memcmp(void* e, const std::string&, int, const std::vector<uint
 //  STRING (ANSI)
 // 
 
-uint64_t Msvcrt::strlen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strlen(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s = a.empty() ? 0 : a[0];
     if (!s) return 0;
     std::string str = be(e)->read_mem_string(s, 1);
     return static_cast<uint64_t>(str.size());
 }
 
-uint64_t Msvcrt::strcpy(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strcpy(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t dest = a.size() > 0 ? a[0] : 0;
     uint64_t src  = a.size() > 1 ? a[1] : 0;
     if (!dest || !src) return dest;
@@ -216,7 +216,7 @@ uint64_t Msvcrt::strcpy(void* e, const std::string&, int, const std::vector<uint
     return dest;
 }
 
-uint64_t Msvcrt::strncpy(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strncpy(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t dest = a.size() > 0 ? a[0] : 0;
     uint64_t src  = a.size() > 1 ? a[1] : 0;
     size_t   len  = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -227,7 +227,7 @@ uint64_t Msvcrt::strncpy(void* e, const std::string&, int, const std::vector<uin
     return dest;
 }
 
-uint64_t Msvcrt::strcat(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strcat(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t d = a.size() > 0 ? a[0] : 0;
     uint64_t s = a.size() > 1 ? a[1] : 0;
     if (!d || !s) return d;
@@ -238,7 +238,7 @@ uint64_t Msvcrt::strcat(void* e, const std::string&, int, const std::vector<uint
     return d;
 }
 
-uint64_t Msvcrt::strncat(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strncat(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t d    = a.size() > 0 ? a[0] : 0;
     uint64_t s    = a.size() > 1 ? a[1] : 0;
     size_t   cnt  = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -250,7 +250,7 @@ uint64_t Msvcrt::strncat(void* e, const std::string&, int, const std::vector<uin
     return d;
 }
 
-uint64_t Msvcrt::strcmp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strcmp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s1 = a.size() > 0 ? a[0] : 0;
     uint64_t s2 = a.size() > 1 ? a[1] : 0;
     if (!s1 || !s2) return (s1 == s2) ? 0 : 1;
@@ -259,7 +259,7 @@ uint64_t Msvcrt::strcmp(void* e, const std::string&, int, const std::vector<uint
     return (str1 == str2) ? 0 : 1;
 }
 
-uint64_t Msvcrt::strncmp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strncmp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s1 = a.size() > 0 ? a[0] : 0;
     uint64_t s2 = a.size() > 1 ? a[1] : 0;
     if (!s1 || !s2) return (s1 == s2) ? 0 : 1;
@@ -268,7 +268,7 @@ uint64_t Msvcrt::strncmp(void* e, const std::string&, int, const std::vector<uin
     return (str1 == str2) ? 0 : 1;
 }
 
-uint64_t Msvcrt::_stricmp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_stricmp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s1 = a.size() > 0 ? a[0] : 0;
     uint64_t s2 = a.size() > 1 ? a[1] : 0;
     if (!s1 || !s2) return (s1 == s2) ? 0 : 1;
@@ -277,11 +277,11 @@ uint64_t Msvcrt::_stricmp(void* e, const std::string&, int, const std::vector<ui
     return (str1 == str2) ? 0 : 1;
 }
 
-uint64_t Msvcrt::_strcmpi(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
-    return _stricmp(e, "", 0, a);
+uint64_t Msvcrt::_strcmpi(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return _stricmp(e, a, ctx);
 }
 
-uint64_t Msvcrt::_strnicmp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_strnicmp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s1    = a.size() > 0 ? a[0] : 0;
     uint64_t s2    = a.size() > 1 ? a[1] : 0;
     size_t   count = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -291,7 +291,7 @@ uint64_t Msvcrt::_strnicmp(void* e, const std::string&, int, const std::vector<u
     return (str1 == str2) ? 0 : 1;
 }
 
-uint64_t Msvcrt::strstr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strstr(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hay   = a.size() > 0 ? a[0] : 0;
     uint64_t needle = a.size() > 1 ? a[1] : 0;
     if (!hay || !needle) return 0;
@@ -302,7 +302,7 @@ uint64_t Msvcrt::strstr(void* e, const std::string&, int, const std::vector<uint
     return hay + pos;
 }
 
-uint64_t Msvcrt::strchr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strchr(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t str = a.size() > 0 ? a[0] : 0;
     int      c   = static_cast<int>(a.size() > 1 ? (a[1] & 0xFF) : 0);
     if (!str) return 0;
@@ -312,7 +312,7 @@ uint64_t Msvcrt::strchr(void* e, const std::string&, int, const std::vector<uint
     return str + pos;
 }
 
-uint64_t Msvcrt::strrchr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strrchr(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t str = a.size() > 0 ? a[0] : 0;
     int      c   = static_cast<int>(a.size() > 1 ? (a[1] & 0xFF) : 0);
     if (!str) return 0;
@@ -322,7 +322,7 @@ uint64_t Msvcrt::strrchr(void* e, const std::string&, int, const std::vector<uin
     return str + pos;
 }
 
-uint64_t Msvcrt::_strlwr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_strlwr(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t str = a.empty() ? 0 : a[0];
     if (!str) return 0;
     std::string s = speakeasy::to_lower(be(e)->read_mem_string(str, 1));
@@ -330,7 +330,7 @@ uint64_t Msvcrt::_strlwr(void* e, const std::string&, int, const std::vector<uin
     return str;
 }
 
-uint64_t Msvcrt::atoi(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::atoi(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t str = a.empty() ? 0 : a[0];
     if (!str) return 0;
     std::string s = be(e)->read_mem_string(str, 1);
@@ -349,7 +349,7 @@ uint64_t Msvcrt::atoi(void* e, const std::string&, int, const std::vector<uint64
     return static_cast<uint64_t>(val * sign);
 }
 
-uint64_t Msvcrt::_ltoa(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_ltoa(void* e, const std::vector<uint64_t>& a, void* ctx) {
     int64_t value   = static_cast<int64_t>(a.size() > 0 ? a[0] : 0);
     uint64_t outstr = a.size() > 1 ? a[1] : 0;
     int radix = static_cast<int>(a.size() > 2 ? a[2] : 10);
@@ -368,11 +368,11 @@ uint64_t Msvcrt::_ltoa(void* e, const std::string&, int, const std::vector<uint6
     return outstr;
 }
 
-uint64_t Msvcrt::_itoa(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
-    return _ltoa(e, "", 0, a);
+uint64_t Msvcrt::_itoa(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return _ltoa(e, a, ctx);
 }
 
-uint64_t Msvcrt::_itow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_itow(void* e, const std::vector<uint64_t>& a, void* ctx) {
     int value    = static_cast<int>(a.size() > 0 ? a[0] : 0);
     uint64_t buf = a.size() > 1 ? a[1] : 0;
     int radix    = static_cast<int>(a.size() > 2 ? a[2] : 10);
@@ -384,7 +384,7 @@ uint64_t Msvcrt::_itow(void* e, const std::string&, int, const std::vector<uint6
     return buf;
 }
 
-uint64_t Msvcrt::wcstombs(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::wcstombs(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t mbstr = a.size() > 0 ? a[0] : 0;
     uint64_t wcstr = a.size() > 1 ? a[1] : 0;
     size_t   count = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -398,14 +398,14 @@ uint64_t Msvcrt::wcstombs(void* e, const std::string&, int, const std::vector<ui
 //  STRING (WIDE)
 // 
 
-uint64_t Msvcrt::wcslen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::wcslen(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s = a.empty() ? 0 : a[0];
     if (!s) return 0;
     std::string ws = be(e)->read_mem_string(s, 2);
     return static_cast<uint64_t>(ws.size());
 }
 
-uint64_t Msvcrt::wcscpy(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::wcscpy(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t dest = a.size() > 0 ? a[0] : 0;
     uint64_t src  = a.size() > 1 ? a[1] : 0;
     if (!dest || !src) return dest;
@@ -414,7 +414,7 @@ uint64_t Msvcrt::wcscpy(void* e, const std::string&, int, const std::vector<uint
     return dest;
 }
 
-uint64_t Msvcrt::wcsncpy(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::wcsncpy(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t dest  = a.size() > 0 ? a[0] : 0;
     uint64_t src   = a.size() > 1 ? a[1] : 0;
     size_t   count = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -425,7 +425,7 @@ uint64_t Msvcrt::wcsncpy(void* e, const std::string&, int, const std::vector<uin
     return dest;
 }
 
-uint64_t Msvcrt::wcscat(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::wcscat(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t d = a.size() > 0 ? a[0] : 0;
     uint64_t s = a.size() > 1 ? a[1] : 0;
     if (!d || !s) return d;
@@ -435,7 +435,7 @@ uint64_t Msvcrt::wcscat(void* e, const std::string&, int, const std::vector<uint
     return d;
 }
 
-uint64_t Msvcrt::wcscmp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::wcscmp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s1 = a.size() > 0 ? a[0] : 0;
     uint64_t s2 = a.size() > 1 ? a[1] : 0;
     if (!s1 || !s2) return (s1 == s2) ? 0 : 1;
@@ -444,7 +444,7 @@ uint64_t Msvcrt::wcscmp(void* e, const std::string&, int, const std::vector<uint
     return (ws1 == ws2) ? 0 : 1;
 }
 
-uint64_t Msvcrt::_wcsicmp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_wcsicmp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s1 = a.size() > 0 ? a[0] : 0;
     uint64_t s2 = a.size() > 1 ? a[1] : 0;
     if (!s1 || !s2) return (s1 == s2) ? 0 : 1;
@@ -453,7 +453,7 @@ uint64_t Msvcrt::_wcsicmp(void* e, const std::string&, int, const std::vector<ui
     return (ws1 == ws2) ? 0 : 1;
 }
 
-uint64_t Msvcrt::wcsstr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::wcsstr(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hay   = a.size() > 0 ? a[0] : 0;
     uint64_t needle = a.size() > 1 ? a[1] : 0;
     if (!hay || !needle) return 0;
@@ -464,7 +464,7 @@ uint64_t Msvcrt::wcsstr(void* e, const std::string&, int, const std::vector<uint
     return hay + pos;
 }
 
-uint64_t Msvcrt::strncat_s(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::strncat_s(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t dest = a.size() > 0 ? a[0] : 0;
     size_t   num  = static_cast<size_t>(a.size() > 1 ? a[1] : 0);
     uint64_t src  = a.size() > 2 ? a[2] : 0;
@@ -626,7 +626,7 @@ static std::vector<uint64_t> msvc_read_va_args(void* e, uint64_t va_list, int nu
     return args;
 }
 
-uint64_t Msvcrt::sprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::sprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // This is called as a vararg function; the actual args are fetched from the stack
     // For the static handler, we receive them in the argv vector already.
     // But vararg functions have their args in argv already because the dispatcher
@@ -643,7 +643,7 @@ uint64_t Msvcrt::sprintf(void* e, const std::string&, int, const std::vector<uin
     return static_cast<uint64_t>(result.size());
 }
 
-uint64_t Msvcrt::_snprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_snprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // argv[0] = buffer, argv[1] = count, argv[2] = format, argv[3+] = varargs
     if (a.size() < 3) return 0;
     uint64_t buf   = a[0];
@@ -660,7 +660,7 @@ uint64_t Msvcrt::_snprintf(void* e, const std::string&, int, const std::vector<u
     return static_cast<uint64_t>(result.size());
 }
 
-uint64_t Msvcrt::_snwprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_snwprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 3) return 0;
     uint64_t buf   = a[0];
     size_t   cnt   = static_cast<size_t>(a[1]);
@@ -684,7 +684,7 @@ uint64_t Msvcrt::_snwprintf(void* e, const std::string&, int, const std::vector<
     return static_cast<uint64_t>(result.size());
 }
 
-uint64_t Msvcrt::_vsnprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_vsnprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // argv[0] = buffer, argv[1] = count, argv[2] = format, argv[3] = argptr
     if (a.size() < 4) return 0;
     uint64_t buf    = a[0];
@@ -702,7 +702,7 @@ uint64_t Msvcrt::_vsnprintf(void* e, const std::string&, int, const std::vector<
     return static_cast<uint64_t>(result.size());
 }
 
-uint64_t Msvcrt::printf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::printf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // argv[0] = format, argv[1+] = varargs
     if (a.empty()) return 0;
     uint64_t fmt_addr = a[0];
@@ -714,7 +714,7 @@ uint64_t Msvcrt::printf(void* e, const std::string&, int, const std::vector<uint
     return static_cast<uint64_t>(result.size());
 }
 
-uint64_t Msvcrt::fprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::fprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // argv[0] = stream, argv[1] = format, argv[2+] = varargs
     if (a.size() < 2) return 0;
     uint64_t fmt_addr = a[1];
@@ -725,7 +725,7 @@ uint64_t Msvcrt::fprintf(void* e, const std::string&, int, const std::vector<uin
     return static_cast<uint64_t>(result.size());
 }
 
-uint64_t Msvcrt::__stdio_common_vfprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__stdio_common_vfprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // Options vary by arch; try to extract format and va_list
     if (a.size() < 5) return 0;
     uint64_t fmt_addr, va_list;
@@ -745,7 +745,7 @@ uint64_t Msvcrt::__stdio_common_vfprintf(void* e, const std::string&, int, const
     return static_cast<uint64_t>(result.size());
 }
 
-uint64_t Msvcrt::__stdio_common_vsprintf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__stdio_common_vsprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // argv: options_lo, options_hi, buffer, count, format, locale, argptr
     if (a.size() < 7) return 0;
     uint64_t buf     = a[2];
@@ -763,12 +763,12 @@ uint64_t Msvcrt::__stdio_common_vsprintf(void* e, const std::string&, int, const
     return static_cast<uint64_t>(result.size());
 }
 
-uint64_t Msvcrt::sscanf(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::sscanf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::puts(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::puts(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s = a.empty() ? 0 : a[0];
     if (!s) return 0;
     std::string str = be(e)->read_mem_string(s, 1);
@@ -787,7 +787,7 @@ static int msvc_ptr_size(void* e) {
     } catch (...) { return 4; }
 }
 
-uint64_t Msvcrt::fopen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::fopen(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t filename = a.size() > 0 ? a[0] : 0;
     uint64_t mode     = a.size() > 1 ? a[1] : 0;
     if (!filename || !mode) return 0;
@@ -808,7 +808,7 @@ uint64_t Msvcrt::fopen(void* e, const std::string&, int, const std::vector<uint6
     return stream;
 }
 
-uint64_t Msvcrt::_wfopen(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_wfopen(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t filename = a.size() > 0 ? a[0] : 0;
     uint64_t mode     = a.size() > 1 ? a[1] : 0;
     if (!filename || !mode) return 0;
@@ -829,7 +829,7 @@ uint64_t Msvcrt::_wfopen(void* e, const std::string&, int, const std::vector<uin
     return stream;
 }
 
-uint64_t Msvcrt::fclose(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::fclose(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t stream = a.empty() ? 0 : a[0];
     if (!stream) return -1;
     msvc_file_streams.erase(stream);
@@ -837,7 +837,7 @@ uint64_t Msvcrt::fclose(void* e, const std::string&, int, const std::vector<uint
     return 0;
 }
 
-uint64_t Msvcrt::fseek(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::fseek(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t stream = a.size() > 0 ? a[0] : 0;
     int64_t  offset = static_cast<int64_t>(a.size() > 1 ? a[1] : 0);
     int      origin = static_cast<int>(a.size() > 2 ? a[2] : 0);
@@ -848,14 +848,14 @@ uint64_t Msvcrt::fseek(void* e, const std::string&, int, const std::vector<uint6
     return 0;
 }
 
-uint64_t Msvcrt::ftell(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::ftell(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t stream = a.empty() ? 0 : a[0];
     auto it = msvc_file_streams.find(stream);
     if (it == msvc_file_streams.end()) return -1;
     return 0; // Return 0 as default position
 }
 
-uint64_t Msvcrt::fread(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::fread(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t ptr    = a.size() > 0 ? a[0] : 0;
     size_t   size   = static_cast<size_t>(a.size() > 1 ? a[1] : 0);
     size_t   count  = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -870,23 +870,23 @@ uint64_t Msvcrt::fread(void* e, const std::string&, int, const std::vector<uint6
     return count;
 }
 
-uint64_t Msvcrt::fputc(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::fputc(void* e, const std::vector<uint64_t>& a, void* ctx) {
     int c = static_cast<int>(a.size() > 0 ? a[0] : 0);
     return static_cast<uint64_t>(c);
 }
 
-uint64_t Msvcrt::__acrt_iob_func(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__acrt_iob_func(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t fd = a.empty() ? 0 : a[0];
     (void)e;
     return fd;
 }
 
-uint64_t Msvcrt::_lock(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_lock(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_unlock(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_unlock(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
@@ -907,32 +907,32 @@ static uint64_t double_to_u64(double x) {
     return u;
 }
 
-uint64_t Msvcrt::pow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::pow(void* e, const std::vector<uint64_t>& a, void* ctx) {
     double x = u64_to_double(a.size() > 0 ? a[0] : 0);
     double y = u64_to_double(a.size() > 1 ? a[1] : 0);
     double z = std::pow(x, y);
     return double_to_u64(z);
 }
 
-uint64_t Msvcrt::floor(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::floor(void* e, const std::vector<uint64_t>& a, void* ctx) {
     double x = u64_to_double(a.empty() ? 0 : a[0]);
     double z = std::floor(x);
     return double_to_u64(z);
 }
 
-uint64_t Msvcrt::sin(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::sin(void* e, const std::vector<uint64_t>& a, void* ctx) {
     double x = u64_to_double(a.empty() ? 0 : a[0]);
     double z = std::sin(x);
     return double_to_u64(z);
 }
 
-uint64_t Msvcrt::abs(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::abs(void* e, const std::vector<uint64_t>& a, void* ctx) {
     int64_t x = static_cast<int64_t>(a.empty() ? 0 : a[0]);
     int64_t y = (x < 0) ? -x : x;
     return static_cast<uint64_t>(y);
 }
 
-uint64_t Msvcrt::_ftol(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_ftol(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t f = a.empty() ? 0 : a[0];
     (void)e;
     return f; // truncation done by caller
@@ -944,7 +944,7 @@ uint64_t Msvcrt::_ftol(void* e, const std::string&, int, const std::vector<uint6
 
 static uint64_t msvc_tick_counter = 86400000; // 1 day in ms
 
-uint64_t Msvcrt::time(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::time(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t destTime = a.empty() ? 0 : a[0];
     uint64_t out_time = 1576292568; // TIME_BASE
     if (destTime) {
@@ -955,13 +955,13 @@ uint64_t Msvcrt::time(void* e, const std::string&, int, const std::vector<uint64
     return out_time;
 }
 
-uint64_t Msvcrt::clock(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::clock(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     msvc_tick_counter += 200;
     return msvc_tick_counter;
 }
 
-uint64_t Msvcrt::_strtime(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_strtime(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t buffer = a.empty() ? 0 : a[0];
     if (!buffer) return 0;
     std::string t = "12:34:56";
@@ -969,7 +969,7 @@ uint64_t Msvcrt::_strtime(void* e, const std::string&, int, const std::vector<ui
     return buffer;
 }
 
-uint64_t Msvcrt::_strdate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_strdate(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t buffer = a.empty() ? 0 : a[0];
     if (!buffer) return 0;
     std::string d = "12/29/19";
@@ -981,13 +981,13 @@ uint64_t Msvcrt::_strdate(void* e, const std::string&, int, const std::vector<ui
 //  RANDOM
 // 
 
-uint64_t Msvcrt::srand(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::srand(void* e, const std::vector<uint64_t>& a, void* ctx) {
     msvc_rand_state = static_cast<int>(a.empty() ? 0 : a[0]);
     (void)e;
     return 0;
 }
 
-uint64_t Msvcrt::rand(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::rand(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     msvc_rand_state += 1;
     return static_cast<uint64_t>(msvc_rand_state);
@@ -997,31 +997,31 @@ uint64_t Msvcrt::rand(void* e, const std::string&, int, const std::vector<uint64
 //  EXIT / TERMINATION
 // 
 
-uint64_t Msvcrt::exit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::exit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     we(e)->stop();
     return 0;
 }
 
-uint64_t Msvcrt::_exit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_exit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     we(e)->stop();
     return 0;
 }
 
-uint64_t Msvcrt::_cexit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_cexit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     we(e)->stop();
     return 0;
 }
 
-uint64_t Msvcrt::_c_exit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_c_exit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     we(e)->stop();
     return 0;
 }
 
-uint64_t Msvcrt::terminate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::terminate(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     we(e)->stop();
     return 0;
@@ -1031,17 +1031,17 @@ uint64_t Msvcrt::terminate(void* e, const std::string&, int, const std::vector<u
 //  EXCEPTION / SEH
 // 
 
-uint64_t Msvcrt::_XcptFilter(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_XcptFilter(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_CxxThrowException(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_CxxThrowException(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_except_handler4_common(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_except_handler4_common(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 6) return 0;
     uint64_t cookie_ptr = a[0];
     uint64_t cookie_func = a[1];
@@ -1090,37 +1090,37 @@ uint64_t Msvcrt::_except_handler4_common(void* e, const std::string&, int, const
     return 0;
 }
 
-uint64_t Msvcrt::_except_handler3(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_except_handler3(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t Msvcrt::_seh_filter_exe(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_seh_filter_exe(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t Msvcrt::_seh_filter_dll(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_seh_filter_dll(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t Msvcrt::__CxxFrameHandler(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__CxxFrameHandler(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_EH_prolog(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_EH_prolog(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::__current_exception_context(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__current_exception_context(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::__current_exception(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__current_exception(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
@@ -1129,7 +1129,7 @@ uint64_t Msvcrt::__current_exception(void* e, const std::string&, int, const std
 //  STARTUP / INIT
 // 
 
-uint64_t Msvcrt::__p__acmdln(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__p__acmdln(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     // Allocate memory for command line string pointer
     int ptr_sz = msvc_ptr_size(e);
@@ -1140,13 +1140,13 @@ uint64_t Msvcrt::__p__acmdln(void* e, const std::string&, int, const std::vector
     return cmdln;
 }
 
-uint64_t Msvcrt::_onexit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_onexit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t func = a.empty() ? 0 : a[0];
     (void)e;
     return func;
 }
 
-uint64_t Msvcrt::mbstowcs_s(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::mbstowcs_s(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // pReturnValue, wcstr, sizeInWords, mbstr, count
     if (a.size() < 5) return 22; // EINVAL
     uint64_t pReturnValue = a[0];
@@ -1172,7 +1172,7 @@ uint64_t Msvcrt::mbstowcs_s(void* e, const std::string&, int, const std::vector<
     return 0;
 }
 
-uint64_t Msvcrt::_wcsnicmp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_wcsnicmp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s1    = a.size() > 0 ? a[0] : 0;
     uint64_t s2    = a.size() > 1 ? a[1] : 0;
     size_t   count = static_cast<size_t>(a.size() > 2 ? a[2] : 0);
@@ -1182,17 +1182,17 @@ uint64_t Msvcrt::_wcsnicmp(void* e, const std::string&, int, const std::vector<u
     return (ws1 == ws2) ? 0 : 1;
 }
 
-uint64_t Msvcrt::_initterm_e(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_initterm_e(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_initterm(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_initterm(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::__getmainargs(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__getmainargs(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // _Argc, _Argv, _Env, _DoWildCard, _StartInfo
     uint64_t _Argc = a.size() > 0 ? a[0] : 0;
     uint64_t _Argv = a.size() > 1 ? a[1] : 0;
@@ -1229,26 +1229,26 @@ uint64_t Msvcrt::__getmainargs(void* e, const std::string&, int, const std::vect
     return 0;
 }
 
-uint64_t Msvcrt::__wgetmainargs(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__wgetmainargs(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::__p___wargv(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__p___wargv(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
     uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 4), 0, 4, "api.argv");
     return mem;
 }
 
-uint64_t Msvcrt::__p___argv(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__p___argv(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
     uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 4), 0, 4, "api.argv");
     return mem;
 }
 
-uint64_t Msvcrt::__p___argc(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__p___argc(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     uint64_t mem = we(e)->mem_map(4, 0, 4, "api.argc");
     std::vector<uint8_t> buf(4, 0);
@@ -1257,21 +1257,21 @@ uint64_t Msvcrt::__p___argc(void* e, const std::string&, int, const std::vector<
     return mem;
 }
 
-uint64_t Msvcrt::__p___initenv(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__p___initenv(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
     uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz), 0, 4, "api.initenv");
     return mem;
 }
 
-uint64_t Msvcrt::_get_initial_narrow_environment(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_get_initial_narrow_environment(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
     uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), 0, 4, "api.envp");
     return mem;
 }
 
-uint64_t Msvcrt::_get_initial_wide_environment(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_get_initial_wide_environment(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
     uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), 0, 4, "api.envp");
@@ -1282,17 +1282,17 @@ uint64_t Msvcrt::_get_initial_wide_environment(void* e, const std::string&, int,
 //  APP TYPE / MODE
 // 
 
-uint64_t Msvcrt::__set_app_type(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__set_app_type(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_set_app_type(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_set_app_type(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::__p__fmode(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__p__fmode(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     uint64_t ptr = we(e)->mem_map(4, 0, 4, "api.fmode");
     std::vector<uint8_t> buf(4, 0);
@@ -1301,7 +1301,7 @@ uint64_t Msvcrt::__p__fmode(void* e, const std::string&, int, const std::vector<
     return ptr;
 }
 
-uint64_t Msvcrt::__p__commode(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__p__commode(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     uint64_t ptr = we(e)->mem_map(4, 0, 4, "api.commode");
     std::vector<uint8_t> buf(4, 0);
@@ -1310,37 +1310,37 @@ uint64_t Msvcrt::__p__commode(void* e, const std::string&, int, const std::vecto
     return ptr;
 }
 
-uint64_t Msvcrt::_set_fmode(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_set_fmode(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_controlfp(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_controlfp(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_controlfp_s(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_controlfp_s(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_set_new_mode(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_set_new_mode(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_configthreadlocale(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_configthreadlocale(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_setusermatherr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_setusermatherr(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::__setusermatherr(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__setusermatherr(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
@@ -1349,43 +1349,43 @@ uint64_t Msvcrt::__setusermatherr(void* e, const std::string&, int, const std::v
 //  C++ HELPERS
 // 
 
-uint64_t Msvcrt::_set_invalid_parameter_handler(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_set_invalid_parameter_handler(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_initialize_onexit_table(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_initialize_onexit_table(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_register_onexit_function(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_register_onexit_function(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::__dllonexit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::__dllonexit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t func = a.empty() ? 0 : a[0];
     (void)e;
     return func;
 }
 
-uint64_t Msvcrt::_register_thread_local_exe_atexit_callback(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_register_thread_local_exe_atexit_callback(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_crt_atexit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_crt_atexit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_initialize_narrow_environment(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_initialize_narrow_environment(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_configure_narrow_argv(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_configure_narrow_argv(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
@@ -1394,7 +1394,7 @@ uint64_t Msvcrt::_configure_narrow_argv(void* e, const std::string&, int, const 
 //  THREADING
 // 
 
-uint64_t Msvcrt::_beginthreadex(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_beginthreadex(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // security, stack_size, start_address, arglist, initflag, thrdaddr
     uint64_t start_address = a.size() > 2 ? a[2] : 0;
     uint64_t arglist       = a.size() > 3 ? a[3] : 0;
@@ -1410,7 +1410,7 @@ uint64_t Msvcrt::_beginthreadex(void* e, const std::string&, int, const std::vec
     return reinterpret_cast<uint64_t>(thread.get());
 }
 
-uint64_t Msvcrt::_beginthread(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_beginthread(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // start_address, stack_size, arglist
     uint64_t start_address = a.size() > 0 ? a[0] : 0;
     uint64_t arglist       = a.size() > 2 ? a[2] : 0;
@@ -1423,38 +1423,38 @@ uint64_t Msvcrt::_beginthread(void* e, const std::string&, int, const std::vecto
 //  MISC
 // 
 
-uint64_t Msvcrt::system(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::system(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t s = a.empty() ? 0 : a[0];
     if (!s) return 0;
     std::string cmd = be(e)->read_mem_string(s, 1);
     return static_cast<uint64_t>(cmd.size());
 }
 
-uint64_t Msvcrt::toupper(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::toupper(void* e, const std::vector<uint64_t>& a, void* ctx) {
     int c = static_cast<int>(a.empty() ? 0 : a[0]);
     (void)e;
     if (c >= 'a' && c <= 'z') return static_cast<uint64_t>(c - 32);
     return static_cast<uint64_t>(c);
 }
 
-uint64_t Msvcrt::tolower(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::tolower(void* e, const std::vector<uint64_t>& a, void* ctx) {
     int c = static_cast<int>(a.empty() ? 0 : a[0]);
     (void)e;
     return static_cast<uint64_t>(c | 0x20);
 }
 
-uint64_t Msvcrt::isdigit(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::isdigit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     int c = static_cast<int>(a.empty() ? 0 : a[0]);
     (void)e;
     return (c >= '0' && c <= '9') ? 1 : 0;
 }
 
-uint64_t Msvcrt::_adjust_fdiv(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_adjust_fdiv(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Msvcrt::_errno(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::_errno(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     if (!msvc_errno_ptr) {
         msvc_errno_ptr = we(e)->mem_map(4, 0, 4, "api.msvcrt._errno");
@@ -1465,7 +1465,7 @@ uint64_t Msvcrt::_errno(void* e, const std::string&, int, const std::vector<uint
     return msvc_errno_ptr;
 }
 
-uint64_t Msvcrt::signal(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Msvcrt::signal(void* e, const std::vector<uint64_t>& a, void* ctx) {
     int sig = static_cast<int>(a.size() > 0 ? a[0] : 0);
     (void)e; (void)a;
     // SIG_IGN = 1, SIG_ERR = -1 (as uint64_t)

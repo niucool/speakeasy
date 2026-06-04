@@ -31,7 +31,7 @@ Wtsapi32::Wtsapi32(void* emu) : ApiHandler(emu) {
 // 
 //  WTSEnumerateSessions  enumerate terminal server sessions
 // 
-uint64_t Wtsapi32::WTSEnumerateSessions(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wtsapi32::WTSEnumerateSessions(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hServer = a[0];
     uint64_t Reserved = a[1];
     uint64_t Version = a[2];
@@ -105,7 +105,7 @@ uint64_t Wtsapi32::WTSEnumerateSessions(void* e, const std::string&, int, const 
 // 
 //  WTSFreeMemory  free memory allocated by WTS APIs
 // 
-uint64_t Wtsapi32::WTSFreeMemory(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wtsapi32::WTSFreeMemory(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t pMemory = a[0];
 
     if (pMemory) {

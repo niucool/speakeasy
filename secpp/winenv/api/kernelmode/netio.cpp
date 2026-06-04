@@ -27,7 +27,7 @@ Netio::Netio(void* emu) : ApiHandler(emu) {
 
 //  Implementations 
 
-uint64_t Netio::NsiEnumerateObjectsAllParametersEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Netio::NsiEnumerateObjectsAllParametersEx(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // ULONG NsiEnumerateObjectsAllParametersEx();
     // Returns STATUS_SUCCESS (0) - stub, real impl would enumerate network objects
     (void)e; (void)a;

@@ -88,7 +88,7 @@ Crypt32::Crypt32(void* emu) : ApiHandler(emu) {
 
 //  API implementations 
 
-uint64_t Crypt32::CryptStringToBinaryA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Crypt32::CryptStringToBinaryA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t pszString = a[0], cchString = a[1], dwFlags = a[2];
     uint64_t pbBinary = a[3], pcbBinary = a[4], pdwSkip = a[5], pdwFlags = a[6];
     (void)pdwFlags;
@@ -146,17 +146,17 @@ uint64_t Crypt32::CryptStringToBinaryA(void* e, const std::string&, int, const s
     return 1;
 }
 
-uint64_t Crypt32::CryptBinaryToStringA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Crypt32::CryptBinaryToStringA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t Crypt32::CertOpenStore(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Crypt32::CertOpenStore(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t Crypt32::CryptDecodeObject(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Crypt32::CryptDecodeObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }

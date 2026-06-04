@@ -75,7 +75,7 @@ User32::User32(void* emu) : ApiHandler(emu) {
 // 
 
 //  MessageBoxA / MessageBoxW 
-uint64_t User32::MessageBoxA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::MessageBoxA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<4) return 2;
     uint64_t lpText = a[1], lpCaption = a[2];
     if (lpText) { std::string s = be(e)->read_mem_string(lpText,1); (void)s; }
@@ -83,7 +83,7 @@ uint64_t User32::MessageBoxA(void* e, const std::string&, int, const std::vector
     return 2; // IDCANCEL
 }
 
-uint64_t User32::MessageBoxW(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::MessageBoxW(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<4) return 2;
     uint64_t lpText = a[1], lpCaption = a[2];
     if (lpText) { std::string s = be(e)->read_mem_string(lpText,2); (void)s; }
@@ -92,7 +92,7 @@ uint64_t User32::MessageBoxW(void* e, const std::string&, int, const std::vector
 }
 
 //  GetMessageA 
-uint64_t User32::GetMessageA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::GetMessageA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<1) return 0;
     uint64_t lpMsg = a[0];
     if (lpMsg) {
@@ -106,12 +106,12 @@ uint64_t User32::GetMessageA(void* e, const std::string&, int, const std::vector
 }
 
 //  PeekMessageA 
-uint64_t User32::PeekMessageA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::PeekMessageA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
 //  FindWindowA 
-uint64_t User32::FindWindowA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::FindWindowA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<2) return 0;
     uint64_t cn = a[0], wn = a[1];
     if (cn) { std::string s = be(e)->read_mem_string(cn,1); (void)s; }
@@ -120,12 +120,12 @@ uint64_t User32::FindWindowA(void* e, const std::string&, int, const std::vector
 }
 
 //  SendMessageA 
-uint64_t User32::SendMessageA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::SendMessageA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
 //  GetWindowTextA 
-uint64_t User32::GetWindowTextA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::GetWindowTextA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e;
     if (a.size()<3) return 0;
     uint64_t pstr = a[1];
@@ -134,7 +134,7 @@ uint64_t User32::GetWindowTextA(void* e, const std::string&, int, const std::vec
 }
 
 //  SetWindowTextA 
-uint64_t User32::SetWindowTextA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::SetWindowTextA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<2) return 0;
     uint64_t lp = a[1];
     if (lp) { std::string s = be(e)->read_mem_string(lp,1); (void)s; }
@@ -142,17 +142,17 @@ uint64_t User32::SetWindowTextA(void* e, const std::string&, int, const std::vec
 }
 
 //  GetForegroundWindow 
-uint64_t User32::GetForegroundWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::GetForegroundWindow(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return next_hwnd();
 }
 
 //  GetDesktopWindow 
-uint64_t User32::GetDesktopWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::GetDesktopWindow(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return next_hwnd();
 }
 
 //  CreateWindowEx_hook 
-uint64_t User32::CreateWindowEx_hook(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::CreateWindowEx_hook(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<3) return 0;
     uint64_t cn = a[1], wn = a[2];
     if (cn) { std::string s = be(e)->read_mem_string(cn,1); (void)s; }
@@ -161,37 +161,37 @@ uint64_t User32::CreateWindowEx_hook(void* e, const std::string&, int, const std
 }
 
 //  RegisterClassExA 
-uint64_t User32::RegisterClassExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::RegisterClassExA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
 //  ShowWindow 
-uint64_t User32::ShowWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::ShowWindow(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
 //  UpdateWindow 
-uint64_t User32::UpdateWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::UpdateWindow(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
 //  GetDC 
-uint64_t User32::GetDC(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::GetDC(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return next_hwnd();
 }
 
 //  GetSystemMetrics 
-uint64_t User32::GetSystemMetrics(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::GetSystemMetrics(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
 //  LoadCursorA 
-uint64_t User32::LoadCursorA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::LoadCursorA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return next_hwnd();
 }
 
 //  SetWindowsHookExA 
-uint64_t User32::SetWindowsHookExA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::SetWindowsHookExA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<4) return 0;
     uint64_t hnd = next_hhook();
     WindowHook wh; wh.idHook=(int)a[0]; wh.lpfn=a[1]; wh.hmod=a[2];
@@ -201,17 +201,17 @@ uint64_t User32::SetWindowsHookExA(void* e, const std::string&, int, const std::
 }
 
 //  CallNextHookEx 
-uint64_t User32::CallNextHookEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::CallNextHookEx(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
 //  GetAsyncKeyState 
-uint64_t User32::GetAsyncKeyState(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::GetAsyncKeyState(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
 //  GetKeyboardType 
-uint64_t User32::GetKeyboardType(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::GetKeyboardType(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<1) return 0;
     uint64_t typ = a[0];
     if (typ==0) return 4; if (typ==1) return 0; if (typ==2) return 12;
@@ -219,7 +219,7 @@ uint64_t User32::GetKeyboardType(void* e, const std::string&, int, const std::ve
 }
 
 //  wsprintfA 
-uint64_t User32::wsprintfA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::wsprintfA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<2) return 0;
     uint64_t buf = a[0], fmt_ptr = a[1];
     if (fmt_ptr) {
@@ -235,7 +235,7 @@ uint64_t User32::wsprintfA(void* e, const std::string&, int, const std::vector<u
 }
 
 //  LoadStringA 
-uint64_t User32::LoadStringA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::LoadStringA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<4) return 0;
     uint64_t bufp = a[2];
     if (bufp) { std::vector<uint8_t> nul(1,0); we(e)->mem_write(bufp,nul); }
@@ -243,31 +243,31 @@ uint64_t User32::LoadStringA(void* e, const std::string&, int, const std::vector
 }
 
 //  TranslateMessage 
-uint64_t User32::TranslateMessage(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::TranslateMessage(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
 //  DispatchMessageA 
-uint64_t User32::DispatchMessageA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::DispatchMessageA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
 //  PostQuitMessage 
-uint64_t User32::PostQuitMessage(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::PostQuitMessage(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
 //  DefWindowProcA 
-uint64_t User32::DefWindowProcA(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::DefWindowProcA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
 //  DestroyWindow 
-uint64_t User32::DestroyWindow(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::DestroyWindow(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
-uint64_t User32::stub(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t User32::stub(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 

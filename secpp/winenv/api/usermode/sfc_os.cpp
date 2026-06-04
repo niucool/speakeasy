@@ -25,7 +25,7 @@ Sfc_os::Sfc_os(void* emu) : ApiHandler(emu) {
 // 
 //  SfcIsFileProtected  check if a file is protected by WFP
 // 
-uint64_t Sfc_os::SfcIsFileProtected(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Sfc_os::SfcIsFileProtected(void* e, const std::vector<uint64_t>& a, void* ctx) {
     uint64_t hRpc = a[0];
     uint64_t pszProtFileName = a[1];
     (void)hRpc;
@@ -45,7 +45,7 @@ uint64_t Sfc_os::SfcIsFileProtected(void* e, const std::string&, int, const std:
 // 
 //  SfcTerminateWatcherThread  terminate the WFP watcher thread
 // 
-uint64_t Sfc_os::SfcTerminateWatcherThread(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Sfc_os::SfcTerminateWatcherThread(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return SFC_SUCCESS;
 }

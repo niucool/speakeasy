@@ -16,7 +16,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  SfcIsFileProtected
 // 
-uint64_t Sfc::SfcIsFileProtected(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Sfc::SfcIsFileProtected(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;  // FALSE - file is not protected
 }
@@ -24,7 +24,7 @@ uint64_t Sfc::SfcIsFileProtected(void* e, const std::string&, int, const std::ve
 // 
 //  SfcTerminateWatcherThread
 // 
-uint64_t Sfc::SfcTerminateWatcherThread(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Sfc::SfcTerminateWatcherThread(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;  // TRUE (non-zero success)
 }

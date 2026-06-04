@@ -16,7 +16,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  InitCommonControlsEx
 // 
-uint64_t Comctl32::InitCommonControlsEx(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Comctl32::InitCommonControlsEx(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;  // TRUE
 }
@@ -24,7 +24,7 @@ uint64_t Comctl32::InitCommonControlsEx(void* e, const std::string&, int, const 
 // 
 //  InitCommonControls
 // 
-uint64_t Comctl32::InitCommonControls(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Comctl32::InitCommonControls(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;  // void, returns nothing
 }

@@ -66,7 +66,7 @@ Wdfldr::Wdfldr(void* emu) : ApiHandler(emu) {
 
 //  Implementations 
 
-uint64_t Wdfldr::WdfVersionBind(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfVersionBind(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfVersionBind(DriverObject, RegistryPath, BindInfo, ComponentGlobals)
     uint64_t bind_info = a[2];
     uint64_t comp_globals = a[3];
@@ -95,33 +95,33 @@ uint64_t Wdfldr::WdfVersionBind(void* e, const std::string&, int, const std::vec
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfDriverCreate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDriverCreate(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfDriverCreate(DriverGlobals, DriverObject, RegistryPath, DriverAttributes, DriverConfig, Driver)
     (void)e; (void)a;
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfDeviceInitSetPnpPowerEventCallbacks(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceInitSetPnpPowerEventCallbacks(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfDeviceInitSetRequestAttributes(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceInitSetRequestAttributes(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfDeviceInitSetFileObjectConfig(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceInitSetFileObjectConfig(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfDeviceInitSetIoType(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceInitSetIoType(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfDeviceCreate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceCreate(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfDeviceCreate(DeviceInit, DeviceAttributes, Device)
     uint64_t device_out = a[2];
     if (device_out) {
@@ -137,16 +137,16 @@ uint64_t Wdfldr::WdfDeviceCreate(void* e, const std::string&, int, const std::ve
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfObjectGetTypedContextWorker(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfObjectGetTypedContextWorker(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // PVOID WdfObjectGetTypedContextWorker(Handle, TypeInfo)
     size_t psz = static_cast<size_t>(ptr_sz(e));
     (void)psz;
-    uint64_t ctx = mm(e)->mem_map(psz * 8, 0, common::PERM_MEM_RWX,
+    uint64_t mapped_ctx = mm(e)->mem_map(psz * 8, 0, common::PERM_MEM_RWX,
                                   "api.struct.WDF_TYPED_CONTEXT_WORKER");
-    return ctx;
+    return mapped_ctx;
 }
 
-uint64_t Wdfldr::WdfDriverOpenParametersRegistryKey(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDriverOpenParametersRegistryKey(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfDriverOpenParametersRegistryKey(Driver, DesiredAccess, KeyAttributes, Key)
     uint64_t p_key = a[3];
     if (p_key) {
@@ -157,7 +157,7 @@ uint64_t Wdfldr::WdfDriverOpenParametersRegistryKey(void* e, const std::string&,
     return 0; // STATUS_SUCCESS (simplified)
 }
 
-uint64_t Wdfldr::WdfRegistryQueryULong(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfRegistryQueryULong(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfRegistryQueryULong(Key, ValueName, Value)
     uint64_t p_value = a[2];
     if (p_value) {
@@ -167,46 +167,46 @@ uint64_t Wdfldr::WdfRegistryQueryULong(void* e, const std::string&, int, const s
     return 0; // STATUS_SUCCESS (simplified, returns 0)
 }
 
-uint64_t Wdfldr::WdfRegistryClose(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfRegistryClose(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfDeviceSetPnpCapabilities(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceSetPnpCapabilities(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfIoQueueReadyNotify(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfIoQueueReadyNotify(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfDeviceCreateDeviceInterface(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceCreateDeviceInterface(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfIoQueueCreate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfIoQueueCreate(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfDeviceWdmGetAttachedDevice(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceWdmGetAttachedDevice(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // Return a dummy device object
     size_t psz = static_cast<size_t>(ptr_sz(e));
     (void)psz;
     return mm(e)->mem_map(psz * 16, 0, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
 }
 
-uint64_t Wdfldr::WdfDeviceWdmGetDeviceObject(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfDeviceWdmGetDeviceObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // Return a dummy device object
     size_t psz = static_cast<size_t>(ptr_sz(e));
     (void)psz;
     return mm(e)->mem_map(psz * 16, 0, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
 }
 
-uint64_t Wdfldr::WdfUsbTargetDeviceCreateWithParameters(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbTargetDeviceCreateWithParameters(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbTargetDeviceCreateWithParameters(Device, Config, Attributes, USBDevice)
     uint64_t usb_dev = a[3];
     if (usb_dev) {
@@ -219,7 +219,7 @@ uint64_t Wdfldr::WdfUsbTargetDeviceCreateWithParameters(void* e, const std::stri
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbTargetDeviceGetDeviceDescriptor(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbTargetDeviceGetDeviceDescriptor(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbTargetDeviceGetDeviceDescriptor(Handle, Descriptor)
     uint64_t desc = a[1];
     if (desc) {
@@ -238,7 +238,7 @@ uint64_t Wdfldr::WdfUsbTargetDeviceGetDeviceDescriptor(void* e, const std::strin
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfMemoryCreate(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfMemoryCreate(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfMemoryCreate(Attributes, PoolType, PoolTag, BufferSize, Memory, Buffer)
     uint64_t mem_out = a[3]; // Memory handle
     uint64_t buf_out = a[4]; // Buffer pointer
@@ -266,13 +266,13 @@ uint64_t Wdfldr::WdfMemoryCreate(void* e, const std::string&, int, const std::ve
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbTargetDeviceSelectConfig(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbTargetDeviceSelectConfig(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbTargetDeviceSelectConfig(Handle, Options, Params)
     (void)e; (void)a;
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbTargetDeviceRetrieveConfigDescriptor(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbTargetDeviceRetrieveConfigDescriptor(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbTargetDeviceRetrieveConfigDescriptor(Handle, ConfigDescriptor, Size)
     uint64_t config_desc = a[1];
     uint64_t size_ptr = a[2];
@@ -310,12 +310,12 @@ uint64_t Wdfldr::WdfUsbTargetDeviceRetrieveConfigDescriptor(void* e, const std::
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbInterfaceSelectSetting(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbInterfaceSelectSetting(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfUsbTargetDeviceGetNumInterfaces(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbTargetDeviceGetNumInterfaces(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbTargetDeviceGetNumInterfaces(Handle, NumInterfaces)
     uint64_t num_if = a[1];
     if (num_if) {
@@ -326,7 +326,7 @@ uint64_t Wdfldr::WdfUsbTargetDeviceGetNumInterfaces(void* e, const std::string&,
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbInterfaceGetNumConfiguredPipes(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbInterfaceGetNumConfiguredPipes(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbInterfaceGetNumConfiguredPipes(Handle, NumPipes)
     uint64_t num_pipes = a[1];
     if (num_pipes) {
@@ -337,7 +337,7 @@ uint64_t Wdfldr::WdfUsbInterfaceGetNumConfiguredPipes(void* e, const std::string
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbInterfaceGetNumSettings(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbInterfaceGetNumSettings(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbInterfaceGetNumSettings(Handle, NumSettings)
     uint64_t num_settings = a[1];
     if (num_settings) {
@@ -348,12 +348,12 @@ uint64_t Wdfldr::WdfUsbInterfaceGetNumSettings(void* e, const std::string&, int,
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbTargetDeviceRetrieveInformation(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbTargetDeviceRetrieveInformation(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wdfldr::WdfUsbInterfaceGetConfiguredPipe(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbInterfaceGetConfiguredPipe(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbInterfaceGetConfiguredPipe(Handle, Index, Pipe)
     uint64_t pipe_out = a[2];
     if (pipe_out) {
@@ -366,7 +366,7 @@ uint64_t Wdfldr::WdfUsbInterfaceGetConfiguredPipe(void* e, const std::string&, i
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbTargetPipeGetInformation(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbTargetPipeGetInformation(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbTargetPipeGetInformation(Handle, PipeInfo)
     uint64_t pipe_info = a[1];
     if (pipe_info) {
@@ -377,7 +377,7 @@ uint64_t Wdfldr::WdfUsbTargetPipeGetInformation(void* e, const std::string&, int
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Wdfldr::WdfUsbInterfaceGetInterfaceNumber(void* e, const std::string&, int, const std::vector<uint64_t>& a) {
+uint64_t Wdfldr::WdfUsbInterfaceGetInterfaceNumber(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WdfUsbInterfaceGetInterfaceNumber(Handle, InterfaceNumber)
     uint64_t if_num = a[1];
     if (if_num) {

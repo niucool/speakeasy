@@ -130,8 +130,8 @@ void* WindowsApi::call_api_func(std::shared_ptr<ApiHandler> mod, ApiFunc func, c
         return nullptr;
     }
 
-    // TODO:
-    return (void *)func((void *)emu_, "", (int)argv.size(), argv);
+    (void)mod;
+    return (void *)func((void *)emu_, argv, ctx);
     //// Check if mod is a valid handler
     //if (mod) {
     //    std::string exp_name;
