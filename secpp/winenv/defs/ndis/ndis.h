@@ -10,7 +10,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "../../../../struct.h"
+#include "../../../struct.h"
 
 namespace speakeasy { namespace defs { namespace ndis {
 

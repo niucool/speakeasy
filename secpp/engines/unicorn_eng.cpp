@@ -155,9 +155,9 @@ void EmuEngine::init_engine(int eng_arch, int mode) {
 /**
  * Allocate memory in the cpu engine
  */
-uc_err EmuEngine::mem_map(uint64_t base, size_t size, uint32_t perms) {
-    uint32_t perm = perms;
-    auto it = this->perms.find(perms);
+uc_err EmuEngine::mem_map(uint64_t base, size_t size, uint32_t permsl) {
+    uint32_t perm = permsl;
+    auto it = this->perms.find(permsl);
     if (it != this->perms.end()) {
         perm = it->second;
     }
@@ -195,9 +195,9 @@ uc_err EmuEngine::mem_read(uint64_t addr, void* data, size_t size) {
 /**
  * Change the memory protections for pages in the emu engine
  */
-uc_err EmuEngine::mem_protect(uint64_t addr, size_t size, uint32_t perms) {
-    uint32_t perm = perms;
-    auto it = this->perms.find(perms);
+uc_err EmuEngine::mem_protect(uint64_t addr, size_t size, uint32_t permsl) {
+    uint32_t perm = permsl;
+    auto it = this->perms.find(permsl);
     if (it != this->perms.end()) {
         perm = it->second;
     }
@@ -226,7 +226,7 @@ uc_err EmuEngine::reg_write_gdt_idt(int reg, uint64_t base, uint32_t limit, uint
     uc_x86_mmr mmr = {0};
     mmr.base = base;
     mmr.limit = limit;
-    mmr.selector = selector;
+    mmr.selector = (uint16_t)selector;
     mmr.flags = flags;
     return uc_reg_write(emu, it->second, &mmr);
 }

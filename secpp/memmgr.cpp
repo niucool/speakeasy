@@ -4,6 +4,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <cstring>
+#include <format>
 
 /**
  * Constructor for MemMap
@@ -14,7 +15,7 @@ MemMap::MemMap(uint64_t base, uint64_t size, const std::string& tag, uint32_t pr
     : base_(base), size_(size), prot_(prot), flags_(flags), shared_(shared),
       free_(false), process_(process), block_base_(block_base), block_size_(block_size) {
 
-    std::string base_addr_tag = ".0x" + std::to_string(base);
+    std::string base_addr_tag = std::format(".0x{:x}", base);
     std::string new_tag = tag;
     
     if (!tag.empty() && tag.find(base_addr_tag) == std::string::npos) {

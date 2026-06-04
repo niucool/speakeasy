@@ -330,7 +330,7 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
         curr_process_ = p;
         om->add_object(p);
         processes.push_back(p);
-        auto& mm = get_address_map(module->base);
+        auto mm = get_address_map(module->base);
         if (mm)
             mm->set_process(curr_process_);
     }
@@ -569,7 +569,6 @@ void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
     this->arch = my_arch;
     _setup_gdt(my_arch);
     setup_user_shared_data();
-    mem_map(EMU_RESERVE_SIZE, EMU_RESERVED, PERM_MEM_RW, "emu.reserved");
     set_ptr_size(my_arch);
     peb_addr_ = (my_arch == 32) ? fs_addr + 0x30 : gs_addr + 0x60;
 

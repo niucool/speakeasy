@@ -110,6 +110,38 @@ public:
     virtual std::string get_mem_tag() const { return "struct"; }
 };
 
+/**
+ * CRTP helper to automate EmuStruct serialization/deserialization for POD-like subclasses.
+ * This class assumes that the subclass contains no virtual methods or base classes other
+ * than EmuStructHelper, allowing its member variables to lay contiguously in memory
+ * starting at offset sizeof(void*) (just after the vptr).
+ */
+template <typename Derived>
+class EmuStructHelper : public EmuStruct {
+public:
+    size_t sizeof_obj() const override {
+        return sizeof(Derived) - sizeof(void*);
+    }
+
+    std::vector<uint8_t> get_bytes() const override {
+        size_t sz = sizeof_obj();
+        std::vector<uint8_t> b(sz);
+        const uint8_t* src = reinterpret_cast<const uint8_t*>(this) + sizeof(void*);
+        std::memcpy(b.data(), src, sz);
+        return b;
+    }
+
+    void from_bytes(const std::vector<uint8_t>& data) override {
+        size_t sz = sizeof_obj();
+        if (data.size() < sz) {
+            throw EmuStructException("Buffer too small to deserialize EmuStruct");
+        }
+        uint8_t* dest = reinterpret_cast<uint8_t*>(this) + sizeof(void*);
+        std::memcpy(dest, data.data(), sz);
+    }
+};
+
+
 //  Byte-level helpers 
 
 /** Write a little-endian integer into a byte buffer at offset. */
