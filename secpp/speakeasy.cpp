@@ -15,11 +15,26 @@
 #endif
 #include <pe-parse/parse.h>
 #include "struct.h"
+#include <plog/Log.h>
+#include <plog/Init.h>
+#include <plog/Formatters/TxtFormatter.h>
+#include <plog/Appenders/ConsoleAppender.h>
+#include <mutex>
+
+static void init_logging(plog::Severity severity) {
+    static std::once_flag flag;
+    std::call_once(flag, [severity]() {
+        static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
+        plog::init(severity, &consoleAppender);
+    });
+}
 
 Speakeasy::Speakeasy(const speakeasy::SpeakeasyConfig& cfg, void* logger, 
                      const std::vector<std::string>& argv, bool debug, void* exit_event)
     : logger(logger), config(cfg), emu(nullptr), argv(argv), exit_event(exit_event), 
       debug(debug) {
+    init_logging(debug ? plog::debug : plog::info);
+    plog::get()->setMaxSeverity(debug ? plog::debug : plog::info);
     try {
         this->config.validate_config();
     } catch (const std::exception& err) {
@@ -82,11 +97,10 @@ void Speakeasy::_auto_mount_target_directory(const std::string& path) {
     
     // Log
     if (true) {
-        // Simple stdout logging since we don't have Python's logger
-        printf("[speakeasy] Auto-mounted %zu file(s) from %s into %s\n",
-               new_entries.size(), target_dir.string().c_str(), guest_cd.c_str());
+        PLOG_INFO << "[speakeasy] Auto-mounted " << new_entries.size()
+                  << " file(s) from " << target_dir.string() << " into " << guest_cd;
         for (auto& e : new_entries) {
-            printf("[speakeasy]   %s -> %s\n", e.emu_path.c_str(), e.path.c_str());
+            PLOG_INFO << "[speakeasy]   " << e.emu_path << " -> " << e.path;
         }
     }
 }

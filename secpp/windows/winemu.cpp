@@ -14,6 +14,7 @@
 #include <cctype>
 #include <filesystem>
 #include <chrono>
+#include <plog/Log.h>
 
 namespace fs = std::filesystem;
 
@@ -3086,9 +3087,7 @@ bool WindowsEmulator::_hook_code_debug(void* emu, uint64_t addr, size_t size) {
                 regs_str += buf;
             }
         }
-        printf("0x%llx: %s, %s\n",
-               static_cast<unsigned long long>(addr),
-               instr.c_str(), regs_str.c_str());
+        PLOG_DEBUG << std::hex << "0x" << static_cast<unsigned long long>(addr) << ": " << instr << ", " << regs_str << std::dec;
         return true;
     } catch (...) {
         return true;

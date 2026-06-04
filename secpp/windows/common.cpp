@@ -12,6 +12,7 @@
 #include <pe-parse/nt-headers.h>
 
 #include "picosha2.h"
+#include <plog/Log.h>
 
 
 /**
@@ -843,7 +844,7 @@ void JitPeFile::update_image_size() {
     uint16_t num_sections = read_u16(raw_pe_data, coff_offset + 2);
     uint32_t max_vaddr = 0x1000; // default for headers
 
-    std::fprintf(stderr, "[DEBUG] update_image_size: num_sections=%d, raw_size=%d\n", (int)num_sections, (int)raw_pe_data.size());
+    PLOG_DEBUG << "[DEBUG] update_image_size: num_sections=" << (int)num_sections << ", raw_size=" << (int)raw_pe_data.size();
 
     for (uint16_t i = 0; i < num_sections; ++i) {
         size_t sect_offset = section_table_offset + i * 40;
@@ -851,13 +852,13 @@ void JitPeFile::update_image_size() {
         uint32_t v_size = read_u32(raw_pe_data, sect_offset + 8);
         uint32_t v_addr = read_u32(raw_pe_data, sect_offset + 12);
         uint32_t aligned_end = align_up(v_addr + v_size, 0x1000);
-        std::fprintf(stderr, "[DEBUG]   Section %d: v_addr=0x%X, v_size=0x%X, aligned_end=0x%X\n", (int)i, (int)v_addr, (int)v_size, (int)aligned_end);
+        PLOG_DEBUG << "[DEBUG]   Section " << (int)i << ": v_addr=0x" << std::hex << (int)v_addr << ", v_size=0x" << (int)v_size << ", aligned_end=0x" << (int)aligned_end << std::dec;
         if (aligned_end > max_vaddr) {
             max_vaddr = aligned_end;
         }
     }
 
-    std::fprintf(stderr, "[DEBUG] update_image_size: writing SizeOfImage=0x%X at offset %d\n", (int)max_vaddr, (int)(e_lfanew + 80));
+    PLOG_DEBUG << "[DEBUG] update_image_size: writing SizeOfImage=0x" << std::hex << (int)max_vaddr << " at offset " << std::dec << (int)(e_lfanew + 80);
     std::memcpy(&raw_pe_data[e_lfanew + 80], &max_vaddr, sizeof(max_vaddr));
     
     //update();

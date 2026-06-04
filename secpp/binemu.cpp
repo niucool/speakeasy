@@ -487,7 +487,7 @@ std::vector<std::tuple<uint64_t, uint64_t, std::string>> BinaryEmulator::format_
 // Python binemu.py:500-515 doc: "Debug function used to print the current stack state"
 void BinaryEmulator::print_stack(int num_ptrs) {
     auto trace = get_stack_trace(num_ptrs);
-    for (auto& line : trace) fprintf(stderr, "%s\n", line.c_str());
+    for (auto& line : trace) PLOG_DEBUG << line;
 }
 
 

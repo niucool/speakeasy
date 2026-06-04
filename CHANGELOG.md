@@ -5,6 +5,23 @@
 
 ## [Unreleased]
 
+### 2026-06-03
+
+#### Added
+
+- **secpp**: 引入了 `plog` 日志框架替代原有的 `printf`/`fprintf` 诊断打印，支持默认的控制台输出：
+  - **线程安全单次初始化**：在 `Speakeasy` 构造函数中使用 `std::once_flag` 保证全局仅初始化一次控制台 Appender，并自动支持根据仿真器的 `debug` 参数配置日志等级（`plog::debug` 或 `plog::info`）。
+  - **诊断打印日志宏化**：将自动挂载卷记录、指令级执行 trace 回调打印、栈帧打印以及 `update_image_size` 阶段的调试输出全部升级替换为 `PLOG_INFO` 与 `PLOG_DEBUG` 流式日志，杜绝控制台字符污染。
+
+#### Changed
+
+- **secpp**: 重构了用户态与内核态所有 Windows/Kernel API 的 C++ 函数实现签名：
+  - **API 接口签名统一更新**：将所有 API 处理器（`usermode/` 和 `kernelmode/` 目录下的 47 个 DLL/驱动类，上千个 API 函数）的参数定义由 `(void* emu, const std::string& api_name, int argc, const std::vector<uint64_t>& argv)` 整体重构并精简为更为高效的现代签名 `(void* emu, const std::vector<uint64_t>& argv, void* ctx)`。
+  - **中央宏定义与调度调整**：修改了 `api.h` 中的 `API_ENTRY`、`STUB`、`KERNEL_STUB` 等接口注册宏，并在 `WindowsApi::call_api_func` 派发层中去除了冗余的 `api_name`/`argc` 传递，降低调用栈开销。
+  - **规避局部参数冲突**：解决了 `ntdll.cpp` 及 `wdfldr.cpp` 等模块中由于引入 `ctx` 参数导致的局部变量重定义与类型强转错误。
+  - **内部转发修复**：全局修复了 `memcpy`、`_stricmp`、`vsprintf_s`、`VirtualProtectEx` 等 API 中残留的旧签名 4 参数代转发调用。
+  - **字符串宽/窄字符自适应**：重构了 `lstrcmpi` 与 `lstrcpyn` API 的实现逻辑，去除了对已被移除的 `name` 字符串前缀/后缀特性的依赖，改用更干净的 static boolean is_wide 标志传递进行宽窄字符分支判定。
+
 ### 2026-06-02
 
 #### Added
