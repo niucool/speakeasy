@@ -35,7 +35,7 @@ constexpr uint64_t SYSTEM_TIME_START = 131911108955110000ULL;
 class WinKernelEmulator : public Win32Emulator, public IoManager {
 public:
     WinKernelEmulator(const speakeasy::SpeakeasyConfig& cfg, const std::vector<std::string>& argv = {},
-                      bool debug = false, void* logger = nullptr, void* exit_event = nullptr);
+                      bool debug = false, void* exit_event = nullptr);
     virtual ~WinKernelEmulator() = default;
 
     //  WindowsEmulator pure-virtual overrides 

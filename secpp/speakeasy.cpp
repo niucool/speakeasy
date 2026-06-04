@@ -16,22 +16,66 @@
 #include <pe-parse/parse.h>
 #include "struct.h"
 #include <plog/Log.h>
+#include <plog/Util.h>
 #include <plog/Init.h>
 #include <plog/Formatters/TxtFormatter.h>
 #include <plog/Appenders/ConsoleAppender.h>
 #include <mutex>
+#include <iomanip>
+#include <sstream>
+
+struct CleanFormatter
+{
+    // Defines the top-of-file row if using a format like CSV (can return empty)
+    static plog::util::nstring header()
+    {
+        return plog::util::nstring();
+    }
+
+    // Formats each individual log line
+    static plog::util::nstring format(const plog::Record& record)
+    {
+        plog::util::nostringstream ss;
+
+        // 1. Fetch and format the timestamp
+        tm t;
+        plog::util::localtime_s(&t, &record.getTime().time);
+
+        ss << std::setfill(PLOG_NSTR('0'))
+            << std::setw(4) << t.tm_year + 1900 << PLOG_NSTR("/")
+            << std::setw(2) << t.tm_mon + 1 << PLOG_NSTR("/")
+            << std::setw(2) << t.tm_mday << PLOG_NSTR(" ")
+            << std::setw(2) << t.tm_hour << PLOG_NSTR(":")
+            << std::setw(2) << t.tm_min << PLOG_NSTR(":")
+            << std::setw(2) << t.tm_sec << PLOG_NSTR(".")
+            << std::setw(3) << record.getTime().millitm << PLOG_NSTR(" ");
+
+        // 2. Add the Severity Level (e.g., INFO, DEBUG)
+        ss << std::setfill(PLOG_NSTR(' ')) << std::setw(5) << std::left
+            << plog::severityToString(record.getSeverity()) << PLOG_NSTR(" ");
+
+        // 3. Add the Thread ID (Optional, omit if unwanted)
+        ss << PLOG_NSTR("[") << record.getTid() << PLOG_NSTR("] ");
+
+        // 4. Add the actual log message (Excludes file, line, and function)
+        ss << record.getMessage() << PLOG_NSTR("\n");
+
+        return ss.str();
+    }
+};
+
 
 static void init_logging(plog::Severity severity) {
     static std::once_flag flag;
     std::call_once(flag, [severity]() {
-        static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
+        static plog::ConsoleAppender<CleanFormatter> consoleAppender;
         plog::init(severity, &consoleAppender);
     });
 }
 
-Speakeasy::Speakeasy(const speakeasy::SpeakeasyConfig& cfg, void* logger, 
+Speakeasy::Speakeasy(const speakeasy::SpeakeasyConfig& cfg, 
                      const std::vector<std::string>& argv, bool debug, void* exit_event)
-    : logger(logger), config(cfg), emu(nullptr), argv(argv), exit_event(exit_event), 
+    : config(cfg), emu(nullptr), argv(argv), exit_event(exit_event), 
       debug(debug) {
     init_logging(debug ? plog::debug : plog::info);
     plog::get()->setMaxSeverity(debug ? plog::debug : plog::info);
@@ -172,14 +216,14 @@ void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_
 
         if (is_driver) {
             //  Kernel-mode emulator (Python: WinKernelEmulator) 
-            emu = new speakeasy::WinKernelEmulator(config, argv, debug, logger, exit_event);
+            emu = new speakeasy::WinKernelEmulator(config, argv, debug, exit_event);
         } else {
             //  User-mode emulator (Python: Win32Emulator) 
-            emu = new Win32Emulator(config, argv, debug, logger, exit_event);
+            emu = new Win32Emulator(config, argv, debug, exit_event);
         }
     } else {
         //  Raw/Shellcode mode (Python: Win32Emulator) 
-        emu = new Win32Emulator(config, argv, debug, logger, exit_event);
+        emu = new Win32Emulator(config, argv, debug, exit_event);
     }
 }
 

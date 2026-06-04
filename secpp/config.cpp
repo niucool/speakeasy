@@ -15,7 +15,7 @@ static constexpr const char DEFAULT_CONFIG_DATA[] = R"CFG({
   "config_version": 0.2,
   "description": "Default emulation profile to use when not overridden by user",
   "emu_engine": "unicorn",
-  "timeout": 60,
+  "timeout": 6000,
   "max_api_count": 10000,
   "stack_size": 0,
   "system": "windows",

@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <chrono>
 #include <plog/Log.h>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
@@ -24,7 +25,7 @@ namespace fs = std::filesystem;
 //     """Initialize the Windows emulator with configuration.
 //     Sets up managers, memory state, bootstrap phase, and parses config."""
 
-WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* logger,
+WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg,
                                   void* evt, bool dbg)
     : BinaryEmulator(cfg), debug(dbg), arch(0),
       page_size(4096), ptr_size(0),
@@ -2570,14 +2571,141 @@ uint64_t WindowsEmulator::handle_import_data(const std::string& mod, const std::
 }
 
 
+static std::string repr(const std::string& s) {
+    std::string res = "'";
+    for (char c : s) {
+        if (c == '\'') res += "\\'";
+        else if (c == '\\') res += "\\\\";
+        else if (c == '\n') res += "\\n";
+        else if (c == '\r') res += "\\r";
+        else if (c == '\t') res += "\\t";
+        else res += c;
+    }
+    res += "'";
+    return res;
+}
+
+std::optional<std::string> WindowsEmulator::read_string_heuristic(uint64_t addr) {
+    if (addr < 0x10000) {
+        return std::nullopt;
+    }
+    if (!is_address_valid(addr)) {
+        return std::nullopt;
+    }
+    auto mm = get_address_map(addr);
+    if (!mm || mm->is_free()) {
+        return std::nullopt;
+    }
+
+    uint64_t limit = 256;
+    uint64_t end = mm->get_base() + mm->get_size();
+    if (addr + limit > end) {
+        limit = end - addr;
+    }
+    if (limit == 0) {
+        return std::nullopt;
+    }
+
+    std::vector<uint8_t> buf = mem_read(addr, limit);
+    if (buf.empty()) {
+        return std::nullopt;
+    }
+
+    // Try ANSI first
+    bool is_ansi = false;
+    size_t ansi_len = 0;
+    for (size_t i = 0; i < buf.size(); ++i) {
+        if (buf[i] == 0) {
+            is_ansi = true;
+            ansi_len = i;
+            break;
+        }
+        char c = static_cast<char>(buf[i]);
+        if (!((c >= 0x20 && c <= 0x7E) || c == '\r' || c == '\n' || c == '\t')) {
+            break;
+        }
+    }
+
+    if (is_ansi && ansi_len > 0) {
+        return std::string(buf.begin(), buf.begin() + ansi_len);
+    }
+
+    // Try UTF-16LE
+    bool is_unicode = false;
+    size_t unicode_len = 0;
+    for (size_t i = 0; i + 1 < buf.size(); i += 2) {
+        uint16_t w = buf[i] | (buf[i+1] << 8);
+        if (w == 0) {
+            is_unicode = true;
+            unicode_len = i / 2;
+            break;
+        }
+        if (buf[i+1] != 0) {
+            break;
+        }
+        char c = static_cast<char>(buf[i]);
+        if (!((c >= 0x20 && c <= 0x7E) || c == '\r' || c == '\n' || c == '\t')) {
+            break;
+        }
+    }
+
+    if (is_unicode && unicode_len > 0) {
+        std::string utf8_str;
+        utf8_str.reserve(unicode_len);
+        for (size_t i = 0; i < unicode_len; ++i) {
+            utf8_str += static_cast<char>(buf[2*i]);
+        }
+        return utf8_str;
+    }
+
+    return std::nullopt;
+}
+
 // Python winemu.py:1614
 // def log_api(self, pc, imp_api, rv, argv):
 //     """Log an API call with its arguments and return value."""
 void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
                                uint64_t rv, const std::vector<uint64_t>& argv) {
+    std::string call_str = api + "(";
+    std::vector<std::string> str_argv;
+
+    for (size_t i = 0; i < argv.size(); ++i) {
+        uint64_t arg = argv[i];
+        std::optional<std::string> s = read_string_heuristic(arg);
+        if (s.has_value()) {
+            std::string escaped_str;
+            for (char c : s.value()) {
+                if (c == '\n') escaped_str += "\\n";
+                else if (c == '\r') escaped_str += "\\r";
+                else if (c == '\t') escaped_str += "\\t";
+                else if (c == '"') escaped_str += "\\\"";
+                else if (c == '\\') escaped_str += "\\\\";
+                else escaped_str += c;
+            }
+            std::string quoted = "\"" + escaped_str + "\"";
+            call_str += quoted;
+            str_argv.push_back(quoted);
+        } else {
+            std::stringstream hex_s;
+            hex_s << "0x" << std::hex << arg;
+            call_str += hex_s.str();
+            str_argv.push_back(hex_s.str());
+        }
+        if (i + 1 < argv.size()) {
+            call_str += ", ";
+        }
+    }
+    call_str += ")";
+
+    std::stringstream pc_stream;
+    pc_stream << "0x" << std::hex << pc;
+
+    std::stringstream rv_stream;
+    rv_stream << "0x" << std::hex << rv;
+
+    PLOG_INFO << pc_stream.str() << ": " << repr(call_str) << " -> " << rv_stream.str();
+
     if (profiler_) {
-        std::vector<std::string> str_argv;
-        for (auto a : argv) str_argv.push_back("0x" + speakeasy::hex_str(a));
         profiler_->log_api(curr_run, pc, api, reinterpret_cast<void*>(rv), str_argv);
     }
 }

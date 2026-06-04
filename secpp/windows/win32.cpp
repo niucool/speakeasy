@@ -15,8 +15,8 @@
 //     """User Mode Windows Emulator Class"""
 // Constructor implementation
 Win32Emulator::Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::vector<std::string>& argv,
-                             bool debug, void* logger, void* exit_event)
-    : WindowsEmulator(cfg, logger, exit_event, debug),
+                             bool debug, void* exit_event)
+    : WindowsEmulator(cfg, exit_event, debug),
       last_error_(0), peb_addr_(0), argv_(argv) {
     com_ = std::make_shared<COM>(cfg);
     sessman_ = std::make_shared<SessionManager>(cfg);

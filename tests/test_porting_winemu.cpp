@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <nlohmann/json.hpp>
 
 #include "config.h"
 #include "windows/winemu.h"
@@ -378,6 +379,72 @@ TEST(WindowsEmulatorTest, GetNativeModulePathValidation) {
 
     std::string path_empty = emu.get_native_module_path("nonexistent_decoy");
     EXPECT_TRUE(path_empty.empty());
+}
+
+class TestWin32Emulator : public Win32Emulator {
+public:
+    using Win32Emulator::Win32Emulator;
+    void set_curr_run(std::shared_ptr<::Run> run) {
+        curr_run = run;
+    }
+};
+
+TEST(WindowsEmulatorTest, LogApiValidation) {
+    SpeakeasyConfig cfg;
+    TestWin32Emulator emu(cfg);
+    emu.setup();
+
+    // Create a mock Run context and assign it to the emulator
+    auto mock_run = std::make_shared<::Run>();
+    emu.set_curr_run(mock_run);
+    emu.add_run(mock_run);
+
+    // Map some memory in the emulator so we can write a test string
+    uint64_t str_addr = emu.mem_map(0x1000, 0x200000, common::PERM_MEM_RWX, "test.string");
+    ASSERT_NE(str_addr, 0ULL);
+
+    // Write ANSI string
+    std::string ansi_str = "test_ansi_mutex_name";
+    emu.write_mem_string(ansi_str, str_addr, 1);
+
+    // Write Unicode string (UTF-16LE)
+    uint64_t wstr_addr = str_addr + 0x100;
+    std::string unicode_str = "test_unicode_event_name";
+    emu.write_mem_string(unicode_str, wstr_addr, 2);
+
+    // Trigger log_api with both string pointers and hex numbers
+    std::vector<uint64_t> argv = { 0, 0x15, str_addr, wstr_addr };
+    EXPECT_NO_THROW({
+        emu.log_api(0x401000, "kernel32.CreateMutexA", 0x1804, argv);
+    });
+
+    // Check if the event was correctly logged to the profiler report
+    auto prof = emu.get_profiler();
+    ASSERT_NE(prof, nullptr);
+
+    auto report = prof->get_report();
+    ASSERT_EQ(report.entry_points.size(), 1ULL);
+
+    // Find the logged API call
+    ASSERT_FALSE(mock_run->apis.empty());
+    auto api_event = mock_run->apis[0];
+
+    EXPECT_EQ(api_event["api_name"], "kernel32.CreateMutexA");
+    EXPECT_EQ(api_event["pc"], "0x401000");
+    EXPECT_EQ(api_event["ret_val"], "0x1804");
+
+    // Check arguments formatting:
+    // argv[0] should be "0x0"
+    // argv[1] should be "0x15"
+    // argv[2] should be "\"test_ansi_mutex_name\""
+    // argv[3] should be "\"test_unicode_event_name\""
+
+    auto j_args = nlohmann::json::parse(api_event["args"]);
+    ASSERT_EQ(j_args.size(), 4ULL);
+    EXPECT_EQ(j_args[0].get<std::string>(), "0x0");
+    EXPECT_EQ(j_args[1].get<std::string>(), "0x15");
+    EXPECT_EQ(j_args[2].get<std::string>(), "\"test_ansi_mutex_name\"");
+    EXPECT_EQ(j_args[3].get<std::string>(), "\"test_unicode_event_name\"");
 }
 
 

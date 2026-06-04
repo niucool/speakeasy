@@ -27,6 +27,7 @@
 
 #include "../helper.h"
 #include <string>
+#include <optional>
 #include <vector>
 #include <map>
 #include <set>
@@ -202,7 +203,7 @@ public:
     // Python winemu.py:73
     // def __init__(self, config, exit_event=None, debug=False, gdb_port=None):
     //     """Initialize the Windows emulator with configuration."""
-    WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg, void* logger = nullptr,
+    WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg,
                     void* exit_event = nullptr, bool debug = false);
     virtual ~WindowsEmulator() = default;
 
@@ -645,6 +646,7 @@ public:
     // def log_api(self, pc, imp_api, rv, argv):
     //     """Log an API call with its arguments and return value."""
     void log_api(uint64_t pc, const std::string& api, uint64_t rv, const std::vector<uint64_t>& argv);
+    std::optional<std::string> read_string_heuristic(uint64_t addr);
     // Python winemu.py:1372
     // def handle_import_data(self, mod_name, sym, data_ptr=0):
     //     """Data that is imported (e.g. KeTickCount) is handled with an initializer function."""

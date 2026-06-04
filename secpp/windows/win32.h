@@ -76,7 +76,7 @@ public:
     // def __init__(self, config, argv=None, debug=False, exit_event=None, gdb_port=None):
     //     """User Mode Windows Emulator Class"""
     Win32Emulator(const speakeasy::SpeakeasyConfig& cfg, const std::vector<std::string>& argv = {},
-                  bool debug = false, void* logger = nullptr, void* exit_event = nullptr);
+                  bool debug = false, void* exit_event = nullptr);
     
     // Python win32.py:44
     // def get_argv(self):

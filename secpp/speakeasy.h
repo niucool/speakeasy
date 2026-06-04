@@ -29,7 +29,6 @@ class Win32Emulator;
  */
 class Speakeasy {
 private:
-    void* logger;
     speakeasy::SpeakeasyConfig config;
     Win32Emulator* emu;
 
@@ -72,7 +71,7 @@ public:
     /**
      * Constructor
      */
-    Speakeasy(const speakeasy::SpeakeasyConfig& config = speakeasy::SpeakeasyConfig(), void* logger = nullptr, 
+    Speakeasy(const speakeasy::SpeakeasyConfig& config = speakeasy::SpeakeasyConfig(), 
               const std::vector<std::string>& argv = {}, bool debug = false, void* exit_event = nullptr);
     
     /**

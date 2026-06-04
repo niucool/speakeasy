@@ -14,8 +14,8 @@ namespace speakeasy {
 
 WinKernelEmulator::WinKernelEmulator(const speakeasy::SpeakeasyConfig& cfg,
                                      const std::vector<std::string>& argv,
-                                     bool debug, void* logger, void* exit_event)
-    : Win32Emulator(cfg, argv, debug, logger, exit_event),
+                                     bool debug, void* exit_event)
+    : Win32Emulator(cfg, argv, debug, exit_event),
       IoManager() {
     kernel_mode_ = true;
 }

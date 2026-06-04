@@ -19,7 +19,7 @@ def main():
         sys.exit(1)
 
     print(f"[*] Initializing Speakeasy emulator...")
-    se = speakeasy.Speakeasy()
+    se = speakeasy.Speakeasy(debug=True)
 
     print(f"[*] Loading module: {args.file}...")
     module = se.load_module(path=args.file)

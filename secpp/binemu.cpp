@@ -923,9 +923,10 @@ void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_va
         ret_addr = pop_stack();
     } else {
         reg_write(sp_reg, stk_ptr + get_ptr_size());
+        reg_write(pc_reg, ret_addr);
     }
-    set_pc(ret_addr);
-    reg_write(ret_reg, ret_value);
+    if (ret_value != 0)
+        reg_write(ret_reg, ret_value);
 
     // Cleanup the stack
     if (conv == speakeasy::arch::CALL_CONV_CDECL) {
