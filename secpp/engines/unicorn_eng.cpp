@@ -36,7 +36,7 @@ void EmuEngine::init_regs() {
     regs[speakeasy::arch::REG_EBP] = UC_X86_REG_EBP;
     regs[speakeasy::arch::REG_ECX] = UC_X86_REG_ECX;
     regs[speakeasy::arch::REG_EDX] = UC_X86_REG_EDX;
-    regs[speakeasy::arch::REG_EDI] = UC_X86_REG_ESI;
+    regs[speakeasy::arch::REG_EDI] = UC_X86_REG_EDI;
     regs[speakeasy::arch::REG_ESI] = UC_X86_REG_ESI;
     regs[speakeasy::arch::REG_EFLAGS] = UC_X86_REG_EFLAGS;
     
