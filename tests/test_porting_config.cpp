@@ -71,5 +71,5 @@ TEST(ConfigTest, LegacyCaptureMemoryDumpsAlias) {
         "modules": {"module_directory_x86": "", "module_directory_x64": ""}
     })"_json;
     SpeakeasyConfig cfg = j;
-    SUCCEED();
+    //SUCCEED();
 }

@@ -142,6 +142,22 @@ MemoryManager::MemoryManager()
 }
 
 /**
+ * Destructor for MemoryManager
+ */
+MemoryManager::~MemoryManager() {
+    // Clean up any remaining memory maps
+    for (const auto& mm : maps_) {
+        mem_unmap(mm->get_base(), mm->get_size());
+    }
+    maps_.clear();
+
+    if(emu_eng_) {
+        delete emu_eng_;
+        emu_eng_ = nullptr;
+    }
+}
+
+/**
  * Dispatch memory map hooks
  */
 void MemoryManager::_hook_mem_map_dispatch(std::shared_ptr<MemMap> mm) {

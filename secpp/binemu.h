@@ -38,6 +38,7 @@
 #include "engines/unicorn_eng.h"
 #include "version.h"
 #include "errors.h"
+#include <capstone/capstone.h>
 
 // Hook type aliases (match Python binemu.py:24-26)
 // WILDCARD_FLAG = bool
@@ -52,7 +53,7 @@ class BinaryEmulator : public MemoryManager {
 private:
     uint64_t inst_count_;
     uint64_t curr_instr_size_;
-    void* disasm_eng_;
+    csh disasm_eng_;
     bool builtin_hooks_set_;
 
 protected:
@@ -106,6 +107,7 @@ private:
 public:
     // Constructor
     BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg);
+    ~BinaryEmulator();
     
     // Logging methods
     // Python binemu.py:33-34 doc: "Base class for emulating binaries\n\nSubclasses must define the following attributes:\n    arch: Architecture constant (e.g., ARCH_X86, ARCH_AMD64)\n    modules: List of loaded modules\n    input: Input metadata dictionary (or None)"

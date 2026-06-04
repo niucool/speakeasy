@@ -270,7 +270,8 @@ private:
 public:
     // Constructor
     JitPeFile(int arch, uint64_t base = 0, const std::string& mod_name = "", const std::vector<std::string>& export_names = {});
-    
+    ~JitPeFile();
+
     // Methods
     int get_section_count();
     std::vector<uint8_t> get_raw_pe();

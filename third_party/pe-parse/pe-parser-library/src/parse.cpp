@@ -2955,6 +2955,29 @@ bool parsed_pe::AddSection(const std::string &name, std::uint32_t characteristic
   return true;
 }
 
+  static const std::vector<std::uint8_t> X86_STUB = {
+    0x8B, 0xFF, // mov edi, edi (NOP for hotpatching)
+    0x55, // push ebp
+    0x8B, 0xEC, // mov ebp, esp
+    0xB8, 0x00, 0x00, 0x00, 0x00, // mov eax, 0
+    0x8B, 0xE5, // mov esp, ebp
+    0x5D, // pop ebp
+    0xC3, // ret
+    0xCC, // int 3 padding
+    0xCC, // int 3 padding
+    0xCC, // int 3 padding
+  };
+  static const std::vector<std::uint8_t> X64_STUB = {
+      0x48, 0x89, 0xFF, // mov rdi, rdi (NOP for hotpatching)
+      0x90, // nop
+      0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00, // mov rax, 0
+      0xC3, // ret
+      0xCC, // int 3 padding
+      0xCC, // int 3 padding
+      0xCC, // int 3 padding
+      0xCC, // int 3 padding
+  };
+
 bool parsed_pe::InitTextSection(const std::vector<std::string> &names, std::vector<std::pair<std::uint32_t, std::string>> &exports_info) {
   if (!internal) return false;
 
@@ -2968,13 +2991,6 @@ bool parsed_pe::InitTextSection(const std::vector<std::string> &names, std::vect
   if (!text_sec) return false;
 
   bool is_32 = (peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC);
-
-  static const std::vector<std::uint8_t> X86_STUB = {
-      0x8B, 0xFF, 0x55, 0x8B, 0xEC, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x8B, 0xE5, 0x5D, 0xC3, 0xCC, 0xCC, 0xCC
-  };
-  static const std::vector<std::uint8_t> X64_STUB = {
-      0x48, 0x89, 0xFF, 0x90, 0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00, 0xC3, 0xCC, 0xCC, 0xCC, 0xCC
-  };
 
   auto align_up = [](std::uint32_t val, std::uint32_t align) {
       return align == 0 ? val : (val + align - 1) & ~(align - 1);

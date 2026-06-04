@@ -45,10 +45,10 @@ TEST(SmokeTest, JsonLibrary) {
     EXPECT_EQ(parsed["test"], "hello");
 }
 
-TEST(SmokeTest, PlogLibrary) {
-    // plog is header-only; verify the include compiles
-    SUCCEED();
-}
+//TEST(SmokeTest, PlogLibrary) {
+//    // plog is header-only; verify the include compiles
+//    SUCCEED();
+//}
 
 TEST(SmokeTest, ProjectVersion) {
     // The C++ port version constant (defined in version.h, included transitively)
@@ -286,9 +286,10 @@ TEST(MemoryManagerTest, MemFree) {
     mm.mem_free(addr);
     // After free, address_map should either be null or marked free
     auto map = mm.get_address_map(addr);
+    EXPECT_EQ(map, nullptr);
     // Memory manager coalesces; the exact behavior depends on implementation
     // but at minimum it should not crash
-    SUCCEED();
+    //SUCCEED();
 }
 
 TEST(MemoryManagerTest, MemReserve) {

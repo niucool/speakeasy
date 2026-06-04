@@ -153,6 +153,7 @@ public:
      * Constructor for MemoryManager
      */
     MemoryManager();
+    virtual ~MemoryManager();
 
     /**
      * Map a block of memory with specified permissions and a tag

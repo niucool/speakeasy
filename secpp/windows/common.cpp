@@ -789,6 +789,10 @@ JitPeFile::JitPeFile(int arch, uint64_t base, const std::string& mod_name, const
     update();
 }
 
+JitPeFile::~JitPeFile() {
+    //
+}
+
 int JitPeFile::get_section_count() {
     return static_cast<int>(pe_sections.size());
 }

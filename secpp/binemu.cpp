@@ -6,16 +6,13 @@
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
-#ifdef HAS_CAPSTONE
-#include <capstone/capstone.h>
-#endif
 #include <plog/Log.h>
 
 // Python binemu.py:59-78 doc: "Base class for emulating binaries\n\nSubclasses must define the following attributes:\n    arch: Architecture constant (e.g., ARCH_X86, ARCH_AMD64)\n    modules: List of loaded modules\n    input: Input metadata dictionary (or None)"
 // Constructor
 BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg)
     : config_(cfg), stack_base_(0), inst_count_(0), curr_instr_size_(0),
-      disasm_eng_(nullptr), builtin_hooks_set_(false),
+      disasm_eng_(0), builtin_hooks_set_(false),
       runtime_(0) {
     
     // Python binemu.py:59-78: __init__ -- initializes all member state
@@ -29,8 +26,22 @@ BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg)
     
     profiler_ = std::make_shared<Profiler>();
     emu_version_ = get_emu_version();
-    
+
+    cs_mode mode = (get_arch() == 64) ? CS_MODE_64 : CS_MODE_32;
+
+    if (cs_open(CS_ARCH_X86, mode, &disasm_eng_) != CS_ERR_OK) {
+        // log error
+    }
+
+    cs_option(disasm_eng_, CS_OPT_DETAIL, CS_OPT_OFF);
+
     _parse_config(cfg);
+}
+
+BinaryEmulator::~BinaryEmulator() {
+    if (disasm_eng_) {
+        cs_close(&disasm_eng_);
+    }
 }
 
 void BinaryEmulator::log_info(const std::string& msg) {
@@ -261,25 +272,19 @@ std::tuple<std::string, std::string, std::string> BinaryEmulator::_cs_disasm(con
 
     op = '%s %s' % (mnem, oper)
     */
-#ifdef HAS_CAPSTONE
-    csh handle; cs_insn* insn = nullptr;
-    cs_mode mode = (get_arch() == 64) ? CS_MODE_64 : CS_MODE_32;
-    if (cs_open(CS_ARCH_X86, mode, &handle) != CS_ERR_OK)
+    cs_insn* insn = nullptr;
+    if (!disasm_eng_)
         return std::make_tuple("", "", "cs_open failed");
-    cs_option(handle, CS_OPT_DETAIL, CS_OPT_OFF);
-    if (fast) cs_option(handle, CS_OPT_SKIPDATA, CS_OPT_ON);
-    size_t count = cs_disasm(handle, mem.data(), mem.size(), addr, 1, &insn);
+
+    if (fast) cs_option(disasm_eng_, CS_OPT_SKIPDATA, CS_OPT_ON);
+    size_t count = cs_disasm(disasm_eng_, mem.data(), mem.size(), addr, 1, &insn);
     std::string mnem, ops;
     if (count > 0 && insn) {
         mnem = insn[0].mnemonic; ops = insn[0].op_str;
         cs_free(insn, count);
     }
-    cs_close(&handle);
+
     return std::make_tuple(mnem, ops, mnem + " " + ops);
-#else
-    (void)mem; (void)addr; (void)fast;
-    return std::make_tuple("", "", "");
-#endif
 }
 
 std::tuple<std::string, std::string, std::string> BinaryEmulator::disasm(const std::vector<uint8_t>& mem, 
