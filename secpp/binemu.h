@@ -59,7 +59,7 @@ private:
 protected:
     //uint64_t page_size_;
     uint64_t stack_base_ = 0;
-    //EmuEngine* emu_eng_;
+    //std::shared_ptr<EmuEngine> emu_eng_;
     //std::vector<void*> maps_;
     ModuleLevel api_hooks_{};
     //std::map<int, std::vector<std::shared_ptr<Hook>>> hooks_;

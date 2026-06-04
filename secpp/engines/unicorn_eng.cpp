@@ -13,6 +13,17 @@ EmuEngine::EmuEngine() : name("unicorn"), emu(nullptr), mmap(nullptr) {
     init_hook_types();
 }
 
+EmuEngine::~EmuEngine() {
+    if (emu) {
+        uc_close(emu);
+        emu = nullptr;
+    }
+    if (mmap) {
+        // _assert(0);
+        mmap = nullptr;
+    }
+}
+
 /**
  * Initialize register mappings
  */

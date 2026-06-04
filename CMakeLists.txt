@@ -64,7 +64,7 @@ FetchContent_Declare(
 # unicorn static compilation
 set(UNICORN_BUILD_SHARED OFF CACHE BOOL "Build shared library" FORCE)
 set(UNICORN_BUILD_STATIC ON CACHE BOOL "Build static library" FORCE)
-set(UNICORN_ARCHS "x86" CACHE STRING "Architectures to build" FORCE)
+set(UNICORN_ARCH "x86" CACHE STRING "Architectures to build" FORCE)
 
 FetchContent_Declare(
     unicorn
@@ -136,6 +136,8 @@ list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/test/.*")
 list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
 # win32.cpp now compiles with completed winemu.h
 
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/secpp" FILES ${SPEAKEASY_SOURCES})
+
 # ── Library Target ────────────────────────────────────────────
 add_library(speakeasy STATIC ${SPEAKEASY_SOURCES})
 
@@ -154,9 +156,9 @@ target_link_libraries(speakeasy PUBLIC
 )
 
 if(TARGET capstone::capstone)
-    target_link_libraries(speakeasy PRIVATE capstone::capstone)
+    target_link_libraries(speakeasy PUBLIC capstone::capstone)
 else()
-    target_link_libraries(speakeasy PRIVATE capstone)
+    target_link_libraries(speakeasy PUBLIC capstone)
 endif()
 target_compile_definitions(speakeasy PRIVATE HAS_CAPSTONE)
 

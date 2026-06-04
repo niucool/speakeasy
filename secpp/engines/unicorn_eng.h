@@ -72,6 +72,8 @@ public:
      */
     EmuEngine();
 
+    ~EmuEngine();
+
     /**
      * Initialize cpu engine
      */

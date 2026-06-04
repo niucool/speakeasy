@@ -150,11 +150,6 @@ MemoryManager::~MemoryManager() {
         mem_unmap(mm->get_base(), mm->get_size());
     }
     maps_.clear();
-
-    if(emu_eng_) {
-        delete emu_eng_;
-        emu_eng_ = nullptr;
-    }
 }
 
 /**

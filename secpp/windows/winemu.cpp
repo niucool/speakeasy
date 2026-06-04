@@ -1204,7 +1204,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     if (!emu_eng_) {
         int eng_arch = valid_arch ? img->arch : speakeasy::arch::ARCH_X86;
         int mode = (img->arch == 64) ? speakeasy::arch::BITS_64 : speakeasy::arch::BITS_32;
-        emu_eng_ = new EmuEngine();
+        emu_eng_ = std::make_shared<EmuEngine>();
         emu_eng_->init_engine(eng_arch, mode);
     }
     if (!ptr_size) ptr_size = 4;

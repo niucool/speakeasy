@@ -124,7 +124,7 @@ protected:
     bool keep_memory_on_free_;
 
     // Assuming these would be defined elsewhere
-    EmuEngine* emu_eng_;
+    std::shared_ptr<EmuEngine> emu_eng_;
     std::map<int, std::vector<std::shared_ptr<Hook>>> hooks_;
     std::shared_ptr<Process> curr_process_;
 
