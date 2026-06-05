@@ -1395,6 +1395,7 @@ struct WDFFUNCTIONS
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::deffs
+} // namespace deffs
+} // namespace speakeasy
 
 #endif // SPEAKEASY_DEFS_NEW_WDF_H

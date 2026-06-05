@@ -151,6 +151,7 @@ struct USBD_VERSION_INFORMATION
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::deffs
+} // namespace deffs
+} // namespace speakeasy
 
 #endif // SPEAKEASY_DEFS_NEW_USB_H

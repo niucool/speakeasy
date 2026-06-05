@@ -259,7 +259,10 @@ TEST(EmuStructHelperTest, MockListEntryLayout64) {
 #include "winenv/deffs/registry/reg.h"
 #include "winenv/deffs/wdf.h"
 
-using namespace speakeasy::defs::new_structs;
+using namespace speakeasy::deffs;
+using namespace speakeasy::deffs::nt;
+using namespace speakeasy::deffs::ndis;
+using namespace speakeasy::deffs::registry;
 
 TEST(EmuStructHelperTest, NewListEntryLayout) {
     LIST_ENTRY<4> le32;

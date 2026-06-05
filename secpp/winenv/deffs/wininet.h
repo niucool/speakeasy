@@ -291,6 +291,7 @@ constexpr int kErrorInsufficientBuffer     = 122;
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::deffs
+} // namespace deffs
+} // namespace speakeasy
 
 #endif // SPEAKEASY_DEFS_NEW_WININET_H

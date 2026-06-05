@@ -223,6 +223,7 @@ struct WSK_PROVIDER_NPI : public EmuStructHelper<WSK_PROVIDER_NPI<PtrSize>>,
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::deffs
+} // namespace deffs
+} // namespace speakeasy
 
 #endif // SPEAKEASY_DEFS_NEW_WSK_H
