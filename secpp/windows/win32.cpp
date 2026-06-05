@@ -8,7 +8,9 @@
 #include <fstream>
 #include "picosha2.h"
 #include "../config.h"
-#include "../winenv/defs/nt/ntoskrnl.h"
+#include "../winenv/deffs/nt/ntoskrnl.h"
+
+constexpr int kPtrSize = sizeof(void*);
 
 // Python win32.py:34
 // def __init__(self, config, argv=None, debug=False, exit_event=None, gdb_port=None):
@@ -539,7 +541,7 @@ void Win32Emulator::alloc_peb(std::shared_ptr<Process> proc) {
     auto peb = proc->get_peb();
     proc->is_peb_active = true;
 
-    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    auto* peb_struct = static_cast<speakeasy::deffs::nt::PEB<(sizeof(void*))>*>(peb->get_object());
     peb_struct->ImageBaseAddress = proc->base;
     peb_struct->OSMajorVersion = config_.os_ver.major;
     peb_struct->OSMinorVersion = config_.os_ver.minor;

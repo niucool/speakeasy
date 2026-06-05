@@ -18,13 +18,20 @@
 #include "artifacts.h"
 #include "memmgr.h"
 #include "profiler.h"
+constexpr int kPtrSize = sizeof(void*);
 #include "winenv/arch.h"
 
 // Windows emulation modules
 #include "windows/fileman.h"
 #include "windows/common.h"
-#include "winenv/defs/nt/ntoskrnl.h"
-#include "winenv/defs/nt/ddk.h"
+#include "winenv/deffs/nt/ntoskrnl.h"
+#include "winenv/deffs/nt/ddk.h"
+
+using speakeasy::deffs::nt::IRP_MJ_CREATE;
+using speakeasy::deffs::nt::IRP_MJ_READ;
+using speakeasy::deffs::nt::IRP_MJ_WRITE;
+using speakeasy::deffs::nt::IRP_MJ_DEVICE_CONTROL;
+using speakeasy::deffs::nt::IRP_MJ_MAXIMUM_FUNCTION;
 #include "common.h"    // PERM_MEM_*, HOOK_* constants
 #include <picosha2.h>
 
@@ -67,14 +74,14 @@ TEST(ArchTest, Constants) {
 
 TEST(NtStructTest, UnicodeStringSize) {
     // 64-bit layout: Length(2) + MaxLen(2) + pad(4) + Buffer(8) = 16
-    defs::nt::UNICODE_STRING us;
+    speakeasy::deffs::nt::UNICODE_STRING<kPtrSize> us;
     EXPECT_EQ(us.sizeof_obj(), 16);
 }
 
 TEST(NtStructTest, UnicodeStringGetBytes) {
     // With 8-byte pointers (x64): Length(2) + MaxLen(2) + pad(4) + Buffer(8) = 16
     // sizeof_obj always returns the 64-bit layout since uint64_t is used for Buffer
-    defs::nt::UNICODE_STRING us;
+    speakeasy::deffs::nt::UNICODE_STRING<kPtrSize> us;
     us.Buffer = 0xDEADBEEFCAFEULL;
     auto bytes = us.get_bytes();
     EXPECT_EQ(bytes.size(), 16);
@@ -84,7 +91,7 @@ TEST(NtStructTest, UnicodeStringGetBytes) {
 }
 
 TEST(NtStructTest, StringStruct) {
-    defs::nt::STRING s;
+    speakeasy::deffs::nt::STRING<kPtrSize> s;
     s.Length = 4;
     s.MaximumLength = 8;
     s.Buffer = 0x1000;
@@ -98,7 +105,7 @@ TEST(NtStructTest, StringStruct) {
 }
 
 TEST(NtStructTest, KSystemTime) {
-    defs::nt::KSYSTEM_TIME kt;
+    speakeasy::deffs::nt::KSYSTEM_TIME kt;
     kt.LowPart = 0xAABBCCDD;
     kt.High1Time = 0x11223344;
     kt.High2Time = 0x55667788;

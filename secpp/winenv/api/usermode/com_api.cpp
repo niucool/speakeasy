@@ -110,14 +110,14 @@ uint64_t ComApi::IWbemLocator_ConnectServer(void* e, const std::vector<uint64_t>
     if (ppNamespace) {
         int ps = be(e)->get_ptr_size();
         // Emulate: create an IWbemServices interface in emulated memory
-        defs::new_structs::IWbemServices<sizeof(void*)> svc_vtbl;
+        deffs::windows::IWbemServices<sizeof(void*)> svc_vtbl;
         size_t vtbl_size = svc_vtbl.sizeof_obj();
         uint64_t vtbl_addr = we(e)->mem_map(vtbl_size, 0, 7, "emu.COM.IWbemServices.vtbl");
         std::vector<uint8_t> vtbl_bytes = svc_vtbl.get_bytes();
         we(e)->mem_write(vtbl_addr, vtbl_bytes);
 
         // ComInterface wrapper: contains pointer to vtable
-        defs::new_structs::ComInterface<sizeof(void*)> ci;
+        deffs::windows::ComInterface<sizeof(void*)> ci;
         ci.vtable = vtbl_addr;
         size_t ci_size = ci.sizeof_obj();
         uint64_t ci_addr = we(e)->mem_map(ci_size, 0, 7, "emu.COM.IWbemServices");

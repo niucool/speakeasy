@@ -3,7 +3,7 @@
 // Maps to: speakeasy/winenv/defs/windows/secur32.py
 //
 // Constants only — no struct definitions.
-// Namespace speakeasy::defs::new_structs.
+// Namespace speakeasy::deffs::windows.
 
 #ifndef SPEAKEASY_DEFS_NEW_WINDOWS_SECUR32_H
 #define SPEAKEASY_DEFS_NEW_WINDOWS_SECUR32_H
@@ -11,7 +11,7 @@
 #include <string>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace windows {
 
 // ==========================================================================================================
 // EXTENDED_NAME_FORMAT
@@ -52,6 +52,6 @@ inline std::string get_name_format(int define) {
     }
 }
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::windows
 
 #endif // SPEAKEASY_DEFS_NEW_WINDOWS_SECUR32_H

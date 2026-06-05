@@ -50,10 +50,10 @@ uint64_t Wkscli::NetGetJoinInformation(void* e, const std::vector<uint64_t>& a, 
 
     // Write the join status
     std::vector<uint8_t> status_buf(4, 0);
-    write_le(status_buf, 0, static_cast<uint64_t>(defs::new_structs::NetSetupDomainName), 4);
+    write_le(status_buf, 0, static_cast<uint64_t>(deffs::windows::NetSetupDomainName), 4);
     we(e)->mem_write(BufferType, status_buf);
 
-    return defs::new_structs::NERR_Success;
+    return deffs::windows::NERR_Success;
 }
 
 //  Constructor 

@@ -6,17 +6,18 @@
 #include <vector>
 #include <cstdint>
 
-#include "winenv/defs/nt/ntoskrnl.h"
+#include "winenv/deffs/nt/ntoskrnl.h"
 
 using namespace speakeasy;
+constexpr int kPtrSize = sizeof(void*);
 
 TEST(NtDefTest, UnicodeStringOffsets) {
-    defs::nt::UNICODE_STRING us;
+    speakeasy::deffs::UNICODE_STRING<kPtrSize> us;
     EXPECT_EQ(us.sizeof_obj(), 16);  // x64: Len(2)+Max(2)+pad(4)+Buf(8)
 }
 
 TEST(NtDefTest, UnicodeStringBufferAtOffset8) {
-    defs::nt::UNICODE_STRING us;
+    speakeasy::deffs::UNICODE_STRING<kPtrSize> us;
     us.Buffer = 0xDEADBEEFCAFEULL;
     auto bytes = us.get_bytes();
     EXPECT_EQ(bytes.size(), 16);
@@ -25,7 +26,7 @@ TEST(NtDefTest, UnicodeStringBufferAtOffset8) {
 }
 
 TEST(NtDefTest, KSystemTimeLayout) {
-    defs::nt::KSYSTEM_TIME kt;
+    speakeasy::deffs::KSYSTEM_TIME kt;
     kt.LowPart   = 0xAABBCCDD;
     kt.High1Time = 0x11223344;
     kt.High2Time = 0x55667788;
@@ -41,7 +42,7 @@ TEST(NtDefTest, KSystemTimeLayout) {
 }
 
 TEST(NtDefTest, StringStruct) {
-    defs::nt::STRING s;
+    speakeasy::deffs::STRING<kPtrSize> s;
     s.Length = 4;
     s.MaximumLength = 8;
     s.Buffer = 0x1000;

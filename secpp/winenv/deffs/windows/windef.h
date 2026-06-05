@@ -6,7 +6,7 @@
 // All structs use #pragma pack(push, 1) with explicit field ordering to match
 // the sizeof() that Python ctypes (natural C ABI alignment) would produce.
 //
-// Namespace speakeasy::defs::new_structs to avoid conflicts with existing defs.
+// Namespace speakeasy::deffs::windows to avoid conflicts with existing defs.
 
 #ifndef SPEAKEASY_DEFS_NEW_WINDOWS_WINDEF_H
 #define SPEAKEASY_DEFS_NEW_WINDOWS_WINDEF_H
@@ -15,7 +15,7 @@
 #include <string>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace windows {
 
 #pragma pack(push, 1)
 
@@ -59,6 +59,6 @@ struct MONITORINFO : public EmuStructHelper<MONITORINFO>, public MONITORINFO_POD
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::windows
 
 #endif // SPEAKEASY_DEFS_NEW_WINDOWS_WINDEF_H

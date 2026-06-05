@@ -5,7 +5,7 @@
 // Registry value type constants, HKEY constants, RTL registry path constants,
 // KEY_VALUE_INFORMATION_CLASS enum, and KEY_VALUE_*_INFORMATION structures.
 // Uses the new EmuStructHelper CRTP approach for auto serialize/deserialize.
-// Namespace speakeasy::defs::new_structs to avoid conflicts with existing defs.
+// Namespace speakeasy::deffs::registry to avoid conflicts with existing defs.
 //
 // NOTE: KEY_VALUE_PARTIAL_INFORMATION is defined below.
 
@@ -16,7 +16,7 @@
 #include <string>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace registry {
 
 #pragma pack(push, 1)
 
@@ -133,6 +133,6 @@ struct KEY_VALUE_PARTIAL_INFORMATION : public EmuStructHelper<KEY_VALUE_PARTIAL_
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::registry
 
 #endif // SPEAKEASY_DEFS_NEW_REGISTRY_REG_H

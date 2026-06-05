@@ -15,7 +15,7 @@
 #include <vector>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs {
 
 #pragma pack(push, 1)
 
@@ -223,6 +223,6 @@ struct WSK_PROVIDER_NPI : public EmuStructHelper<WSK_PROVIDER_NPI<PtrSize>>,
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs
 
 #endif // SPEAKEASY_DEFS_NEW_WSK_H

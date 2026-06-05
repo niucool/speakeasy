@@ -2,14 +2,14 @@
 //
 // Maps to: speakeasy/winenv/defs/nt/ddk.py
 //
-// Namespace speakeasy::defs::new_structs to avoid conflicts with existing defs.
+// Namespace speakeasy::deffs::nt to avoid conflicts with existing defs.
 
 #ifndef SPEAKEASY_DEFS_NEW_NT_DDK_H
 #define SPEAKEASY_DEFS_NEW_NT_DDK_H
 
 #include <cstdint>
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace nt {
 
 // ------ IRQL Levels ---------------------------------------------------------------------
 constexpr uint32_t PASSIVE_LEVEL  = 0;
@@ -237,6 +237,6 @@ constexpr uint32_t IMAGE_SUBSYSTEM_WINDOWS_GUI = 2;
 #pragma pop_macro("IMAGE_NT_SIGNATURE")
 #pragma pop_macro("IMAGE_DOS_SIGNATURE")
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::nt
 
 #endif // SPEAKEASY_DEFS_NEW_NT_DDK_H

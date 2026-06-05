@@ -15,7 +15,7 @@
 #include <vector>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace winsock {
 
 #pragma pack(push, 1)
 
@@ -192,6 +192,6 @@ struct addrinfo : public EmuStructHelper<addrinfo<PtrSize>>,
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::winsock
 
 #endif // SPEAKEASY_DEFS_NEW_WINSOCK_WS2_32_H

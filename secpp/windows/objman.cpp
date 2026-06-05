@@ -21,8 +21,8 @@
 #include <sstream>
 
 #include "../winenv/arch.h"
-#include "../winenv/defs/nt/ddk.h"
-#include "../winenv/defs/nt/ntoskrnl.h"
+#include "../winenv/deffs/nt/ddk.h"
+#include "../winenv/deffs/nt/ntoskrnl.h"
 #include "../binemu.h"      // BinaryEmulator (get_arch, mem_read, mem_write, )
 #include "../windows/winemu.h" // WindowsEmulator (get_thread_context)
 #include "../struct.h"      // EmuStruct
@@ -30,6 +30,9 @@
 #include "../profiler.h"    // Run (indirectly)
 
 using namespace speakeasy;
+using speakeasy::deffs::nt::IRP_MJ_MAXIMUM_FUNCTION;
+
+constexpr int kPtrSize = sizeof(void*);
 
 //  Helper: get BinaryEmulator / WindowsEmulator from void* 
 
@@ -500,7 +503,7 @@ Thread::Thread(void* emu, uint64_t stack_base, uint64_t stack_commit)
     // object.Data = b"\xff" * sizeof()
     // ctx = emu.get_thread_context()
     // write_back()
-    object_ = new speakeasy::defs::nt::ETHREAD();
+    object_ = new speakeasy::deffs::nt::ETHREAD();
     address_ = static_cast<WindowsEmulator*>(emu_)->mem_map(sizeof_obj());
 
     // Allocate thread context
@@ -568,7 +571,7 @@ void Thread::init_teb(uint64_t teb_addr, uint64_t peb_addr) {
         this->teb_ = std::make_shared<TEB>(emu_, teb_addr);
     }
 
-    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb_->get_object());
+    auto* teb_struct = static_cast<speakeasy::deffs::nt::TEB<kPtrSize>* >(this->teb_->get_object());
     teb_struct->NtTib.StackBase = this->stack_base_;
     teb_struct->NtTib.Self = teb_addr;
     teb_struct->NtTib.StackLimit = this->stack_commit_;
@@ -623,7 +626,7 @@ void Thread::init_tls(int tls_dir, const std::string& modname) {
     }
     BE(emu_)->mem_write(tls_dirp, tls_data);
 
-    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(this->teb_->get_object());
+    auto* teb_struct = static_cast<speakeasy::deffs::nt::TEB<kPtrSize>* >(this->teb_->get_object());
     teb_struct->ThreadLocalStoragePointer = tls_dirp;
     this->teb_->write_back();
 }
@@ -643,7 +646,7 @@ Token::Token(void* emu)
 PEB::PEB(void* emu, uint64_t addr)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object_ = new speakeasy::defs::nt::PEB(ptr_sz);
+    object_ = new speakeasy::deffs::nt::PEB<kPtrSize>();
     if (!addr) {
         address_ = static_cast<int>(
             BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
@@ -659,7 +662,7 @@ PEB::PEB(void* emu, uint64_t addr)
 TEB::TEB(void* emu, uint64_t addr)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object_ = new speakeasy::defs::nt::TEB(ptr_sz);
+    object_ = new speakeasy::deffs::nt::TEB<kPtrSize>();
     if (addr) {
         address_ = static_cast<int>(addr);
     } else {
@@ -675,7 +678,7 @@ TEB::TEB(void* emu, uint64_t addr)
 PebLdrData::PebLdrData(void* emu)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object_ = new speakeasy::defs::nt::PEB_LDR_DATA(ptr_sz);
+    object_ = new speakeasy::deffs::nt::PEB_LDR_DATA<kPtrSize>();
     address_ = 0;
 }
 
@@ -685,7 +688,7 @@ PebLdrData::PebLdrData(void* emu)
 LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, const std::string& tag)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object_ = new speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY(ptr_sz);
+    object_ = new speakeasy::deffs::nt::LDR_DATA_TABLE_ENTRY<kPtrSize>();
 
     int size = static_cast<int>(sizeof_obj());
     size += static_cast<int>((dllname.length() + 1) * 2);
@@ -702,7 +705,7 @@ LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, cons
 RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* proc)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object_ = new speakeasy::defs::nt::RTL_USER_PROCESS_PARAMETERS(ptr_sz);
+    object_ = new speakeasy::deffs::nt::RTL_USER_PROCESS_PARAMETERS<kPtrSize>();
 
     std::string proc_path = proc->path + '\0';
     std::string proc_cmdline = proc->cmdline + '\0';
@@ -755,7 +758,7 @@ RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* pro
     BE(emu)->mem_write(offset, desk_utf16);
     uint64_t desktop_addr = offset;
 
-    auto* param = static_cast<speakeasy::defs::nt::RTL_USER_PROCESS_PARAMETERS*>(object_);
+    auto* param = static_cast<speakeasy::deffs::nt::RTL_USER_PROCESS_PARAMETERS<kPtrSize>* >(object_);
     param->MaximumLength = size;
     param->Length = size;
     param->Flags = 1;
@@ -789,7 +792,7 @@ RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* pro
 IDT::IDT(void* emu)
     : KernelObject(emu) {
     int ptr_sz = emu ? BE(emu)->get_ptr_size() : 4;
-    object_ = new speakeasy::defs::nt::IDT(ptr_sz);
+    object_ = new speakeasy::deffs::nt::IDT<kPtrSize>();
     address_ = static_cast<int>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
@@ -797,30 +800,34 @@ IDT::IDT(void* emu)
 
 void IDT::init_descriptors() {
     int ptr_sz = BE(emu_)->get_ptr_size();
-    speakeasy::defs::nt::DESCRIPTOR_TABLE tbl(ptr_sz);
-
     auto km = WE(emu_)->get_mod_by_name("ntoskrnl");
     uint64_t kbase = km ? km->base : 0x80000000;
 
-    uint64_t descs = BE(emu_)->mem_map(tbl.sizeof_obj(), 0, 4, get_mem_tag() + ".idt_entries");
-    auto* idt_obj = static_cast<speakeasy::defs::nt::IDT*>(object_);
-    idt_obj->Limit = 0xFFF;
-    idt_obj->Descriptors = descs;
-
+    uint64_t descs;
     if (ptr_sz == 4) {
+        speakeasy::deffs::nt::DESCRIPTOR_TABLE<4> tbl;
+        descs = BE(emu_)->mem_map(tbl.sizeof_obj(), 0, 4, get_mem_tag() + ".idt_entries");
+        auto* idt_obj = static_cast<speakeasy::deffs::nt::IDT<4>*>(object_);
+        idt_obj->Limit = 0xFFF;
+        idt_obj->Descriptors = descs;
         for (int i = 0; i < 256; ++i) {
-            tbl.table_32[i].OffsetLow = 0 + (4 * i);
-            tbl.table_32[i].Base = static_cast<uint32_t>(kbase);
+            tbl.Table[i].OffsetLow = 0 + (4 * i);
+            tbl.Table[i].Base = static_cast<uint32_t>(kbase);
         }
+        BE(emu_)->mem_write(descs, tbl.get_bytes());
     } else {
+        speakeasy::deffs::nt::DESCRIPTOR_TABLE<8> tbl;
+        descs = BE(emu_)->mem_map(tbl.sizeof_obj(), 0, 4, get_mem_tag() + ".idt_entries");
+        auto* idt_obj = static_cast<speakeasy::deffs::nt::IDT<8>*>(object_);
+        idt_obj->Limit = 0xFFF;
+        idt_obj->Descriptors = descs;
         for (int i = 0; i < 256; ++i) {
-            tbl.table_64[i].OffsetLow = kbase & 0xFFFF;
-            tbl.table_64[i].OffsetMiddle = (kbase & 0xFFFF0000) >> 16;
-            tbl.table_64[i].OffsetHigh = (kbase & 0xFFFFFFFF00000000) >> 32;
+            tbl.Table[i].OffsetLow = kbase & 0xFFFF;
+            tbl.Table[i].OffsetMiddle = (kbase & 0xFFFF0000) >> 16;
+            tbl.Table[i].OffsetHigh = (kbase & 0xFFFFFFFF00000000) >> 32;
         }
+        BE(emu_)->mem_write(descs, tbl.get_bytes());
     }
-
-    BE(emu_)->mem_write(descs, tbl.get_bytes());
     write_back();
 }
 
@@ -829,7 +836,7 @@ void IDT::init_descriptors() {
 // 
 Event::Event(void* emu)
     : KernelObject(emu) {
-    object_ = new speakeasy::defs::nt::KEVENT();
+    object_ = new speakeasy::deffs::nt::KEVENT();
     address_ = static_cast<int>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
@@ -840,7 +847,7 @@ Event::Event(void* emu)
 // 
 Mutant::Mutant(void* emu)
     : KernelObject(emu) {
-    object_ = new speakeasy::defs::nt::MUTANT();
+    object_ = new speakeasy::deffs::nt::MUTANT();
     address_ = static_cast<int>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
@@ -907,7 +914,7 @@ std::shared_ptr<PEB> Process::get_peb() {
 
 void Process::set_peb_ldr_address(uint64_t addr) {
     if (!peb || !peb_ldr_data) return;
-    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    auto* peb_struct = static_cast<speakeasy::deffs::nt::PEB<kPtrSize>* >(peb->get_object());
     peb_struct->Ldr = addr;
     peb->write_back();
 
@@ -917,7 +924,7 @@ void Process::set_peb_ldr_address(uint64_t addr) {
 void Process::set_process_parameters(void* emu) {
     if (!emu || !this->peb) return;
     auto params = std::make_shared<RTL_USER_PROCESS_PARAMETERS>(emu, this);
-    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    auto* peb_struct = static_cast<speakeasy::deffs::nt::PEB<kPtrSize>* >(peb->get_object());
     peb_struct->ProcessParameters = params->get_address();
     peb->write_back();
 }
@@ -1000,11 +1007,11 @@ void Process::add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module
     auto* be = BE(emu_);
     int ptr_sz = be->get_ptr_size();
 
-    speakeasy::defs::nt::LIST_ENTRY list_type(ptr_sz);
+    speakeasy::deffs::nt::LIST_ENTRY<kPtrSize> list_type;
     size_t list_sz = list_type.sizeof_obj();
 
     auto ldte = std::make_shared<LdrDataTableEntry>(emu_, module->emu_path);
-    auto* ldte_struct = static_cast<speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY*>(ldte->get_object());
+    auto* ldte_struct = static_cast<speakeasy::deffs::nt::LDR_DATA_TABLE_ENTRY<kPtrSize>* >(ldte->get_object());
 
     std::shared_ptr<LdrDataTableEntry> prev;
     if (ldr_entries_list.empty()) {
@@ -1015,7 +1022,7 @@ void Process::add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module
 
     ldr_entries_list.push_back(ldte);
     auto first = ldr_entries_list.front();
-    auto* first_struct = static_cast<speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY*>(first->get_object());
+    auto* first_struct = static_cast<speakeasy::deffs::nt::LDR_DATA_TABLE_ENTRY<kPtrSize>* >(first->get_object());
 
     ldte_struct->InLoadOrderLinks.Flink = first->get_address();
     ldte_struct->InMemoryOrderLinks.Flink = first->get_address() + list_sz;
@@ -1057,7 +1064,7 @@ void Process::add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module
 
     ldte->write_back();
 
-    auto* prev_struct = static_cast<speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY*>(prev->get_object());
+    auto* prev_struct = static_cast<speakeasy::deffs::nt::LDR_DATA_TABLE_ENTRY<kPtrSize>* >(prev->get_object());
     prev_struct->InLoadOrderLinks.Flink = ldte->get_address();
     prev_struct->InMemoryOrderLinks.Flink = ldte->get_address() + list_sz;
 
@@ -1088,13 +1095,13 @@ void Process::add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module
     }
     first->write_back();
 
-    auto* pld_struct = static_cast<speakeasy::defs::nt::PEB_LDR_DATA*>(peb_ldr_data->get_object());
+    auto* pld_struct = static_cast<speakeasy::deffs::nt::PEB_LDR_DATA<kPtrSize>* >(peb_ldr_data->get_object());
     pld_struct->InLoadOrderModuleList.Flink = first->get_address();
     pld_struct->InMemoryOrderModuleList.Flink = pld_struct->InLoadOrderModuleList.Flink + list_sz;
 
     uint64_t head = pld_struct->InMemoryOrderModuleList.Flink;
     std::vector<uint8_t> le_data = be->mem_read(head, list_sz);
-    speakeasy::defs::nt::LIST_ENTRY le(ptr_sz);
+    speakeasy::deffs::nt::LIST_ENTRY<kPtrSize> le;
     le.from_bytes(le_data);
 
     pld_struct->InInitializationOrderModuleList.Flink = le.Flink + list_sz;
@@ -1104,7 +1111,7 @@ void Process::add_module_to_peb(std::shared_ptr<speakeasy::RuntimeModule> module
 
     peb_ldr_data->write_back();
 
-    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    auto* peb_struct = static_cast<speakeasy::deffs::nt::PEB<kPtrSize>* >(peb->get_object());
     peb_struct->Ldr = peb_ldr_data->get_address();
     peb->write_back();
 }

@@ -8,7 +8,7 @@
 // Uses the new EmuStructHelper CRTP approach for auto serialize/deserialize.
 // All structs use #pragma pack(push, 1).
 //
-// Namespace speakeasy::defs::new_structs to avoid conflicts with existing defs.
+// Namespace speakeasy::deffs::windows to avoid conflicts with existing defs.
 
 #ifndef SPEAKEASY_DEFS_NEW_WINDOWS_COM_H
 #define SPEAKEASY_DEFS_NEW_WINDOWS_COM_H
@@ -18,7 +18,7 @@
 #include <cstring>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace windows {
 
 #pragma pack(push, 1)
 
@@ -260,6 +260,6 @@ struct ComInterface : public EmuStructHelper<ComInterface<PtrSize>>, public ComI
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::windows
 
 #endif // SPEAKEASY_DEFS_NEW_WINDOWS_COM_H

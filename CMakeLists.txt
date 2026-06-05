@@ -3,9 +3,11 @@ cmake_minimum_required(VERSION 3.16)
 # Resolve compatibility errors for dependency CMake files requiring < 3.5
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
-# Force static CRT linking on MSVC and set target triplet for vcpkg
-set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "" FORCE)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+# Force static CRT linking on MSVC
+if(WIN32)
+    set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "" FORCE)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 project(speakeasy
     VERSION 1.6.1

@@ -3,7 +3,7 @@
 // Maps to: speakeasy/winenv/defs/windows/mpr.py
 //
 // Constants only — no struct definitions.
-// Namespace speakeasy::defs::new_structs.
+// Namespace speakeasy::deffs::windows.
 
 #ifndef SPEAKEASY_DEFS_NEW_WINDOWS_MPR_H
 #define SPEAKEASY_DEFS_NEW_WINDOWS_MPR_H
@@ -11,7 +11,7 @@
 #include <string>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace windows {
 
 // ==========================================================================================================
 // MPR Constants
@@ -70,6 +70,6 @@ inline std::string get_mpr_define(int define, const std::string& prefix = "") {
     return "";
 }
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::windows
 
 #endif // SPEAKEASY_DEFS_NEW_WINDOWS_MPR_H

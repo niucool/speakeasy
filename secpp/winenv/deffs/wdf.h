@@ -18,7 +18,7 @@
 #include "struct.h"
 #include "usb.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs {
 
 #pragma pack(push, 1)
 
@@ -1395,6 +1395,6 @@ struct WDFFUNCTIONS
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs
 
 #endif // SPEAKEASY_DEFS_NEW_WDF_H

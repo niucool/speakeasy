@@ -12,7 +12,7 @@
 #include "windows/winemu.h"
 #include "windows/loaders.h"
 #include "windows/win32.h"
-#include "winenv/defs/nt/ntoskrnl.h"
+#include "winenv/deffs/nt/ntoskrnl.h"
 
 using namespace speakeasy;
 
@@ -45,7 +45,7 @@ TEST(ObjmanPortingTest, PebTebLinkedlistValidation) {
     }
 
     // Test ProcessParameters address linked to PEB
-    auto* peb_struct = static_cast<speakeasy::defs::nt::PEB*>(peb->get_object());
+    auto* peb_struct = static_cast<speakeasy::deffs::PEB<kPtrSize>*>(peb->get_object());
     if (peb_struct->ProcessParameters == 0) {
         ADD_FAILURE() << "ProcessParameters is 0";
     }
@@ -76,7 +76,7 @@ TEST(ObjmanPortingTest, PebTebLinkedlistValidation) {
         return;
     }
 
-    auto* ldte_struct = static_cast<speakeasy::defs::nt::LDR_DATA_TABLE_ENTRY*>(ldte->get_object());
+    auto* ldte_struct = static_cast<speakeasy::deffs::LDR_DATA_TABLE_ENTRY<kPtrSize>*>(ldte->get_object());
     if (ldte_struct->DllBase != 0x10000000ULL) {
         ADD_FAILURE() << "DllBase mismatch";
     }
@@ -184,7 +184,7 @@ TEST(ObjmanPortingTest, TebReadbackIntegration) {
     // Verify initial values
     auto teb = thread->get_teb();
     ASSERT_NE(teb, nullptr);
-    auto* teb_struct = static_cast<speakeasy::defs::nt::TEB*>(teb->get_object());
+    auto* teb_struct = static_cast<speakeasy::deffs::TEB<kPtrSize>*>(teb->get_object());
     EXPECT_EQ(teb_struct->NtTib.StackBase, 0x20000);
     EXPECT_EQ(teb_struct->NtTib.StackLimit, 0x2000);
 
@@ -196,7 +196,7 @@ TEST(ObjmanPortingTest, TebReadbackIntegration) {
 
     // get_teb() should call read_back() and reflect the update
     auto teb_updated = thread->get_teb();
-    auto* teb_struct_updated = static_cast<speakeasy::defs::nt::TEB*>(teb_updated->get_object());
+    auto* teb_struct_updated = static_cast<speakeasy::deffs::TEB<kPtrSize>*>(teb_updated->get_object());
     EXPECT_EQ(teb_struct_updated->NtTib.StackLimit, 0x5000);
 }
 

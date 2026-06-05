@@ -6,7 +6,7 @@
 // All structs use #pragma pack(push, 1) with explicit padding fields to match
 // the sizeof() that Python ctypes (natural C ABI alignment) would produce.
 //
-// Namespace speakeasy::defs::new_structs to avoid conflicts with existing defs.
+// Namespace speakeasy::deffs::nt to avoid conflicts with existing defs.
 //
 // NOTE: Core structs (LIST_ENTRY, UNICODE_STRING, STRING, OBJECT_ATTRIBUTES,
 // IO_STATUS_BLOCK, LARGE_INTEGER, KSYSTEM_TIME, SYSTEM_TIMEOFDAY_INFORMATION,
@@ -21,7 +21,7 @@
 #include <vector>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace nt {
 
 #pragma pack(push, 1)
 
@@ -2045,6 +2045,6 @@ struct VOLUME_DISK_EXTENTS : public EmuStructHelper<VOLUME_DISK_EXTENTS> {
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::nt
 
 #endif // SPEAKEASY_DEFS_NEW_NT_NTOSKRNL_H

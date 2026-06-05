@@ -12,7 +12,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace winsock {
 
 // ==========================================================================================================
 // Address families
@@ -125,6 +125,6 @@ inline int get_service_port(const std::string& service) {
     return 0;
 }
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::winsock
 
 #endif // SPEAKEASY_DEFS_NEW_WINSOCK_WINSOCK_H

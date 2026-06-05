@@ -15,7 +15,7 @@
 #include <vector>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs {
 
 #pragma pack(push, 1)
 
@@ -291,6 +291,6 @@ constexpr int kErrorInsufficientBuffer     = 122;
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs
 
 #endif // SPEAKEASY_DEFS_NEW_WININET_H

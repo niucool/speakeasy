@@ -18,7 +18,7 @@
 #include <vector>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace wfp {
 
 #pragma pack(push, 1)
 
@@ -385,6 +385,6 @@ struct FWPM_FILTER0 : public EmuStructHelper<FWPM_FILTER0<PtrSize>>,
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::wfp
 
 #endif // SPEAKEASY_DEFS_NEW_WFP_FWPMTYPES_H

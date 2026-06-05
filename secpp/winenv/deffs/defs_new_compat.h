@@ -7,12 +7,12 @@
 //
 // Usage patterns:
 //   // Construction
-//   object_ = new_by_ptr_sz<new_structs::TEB<8>, new_structs::TEB<4>>(ptr_sz);
-//   object_ = new_by_ptr_sz<new_structs::PEB<8>, new_structs::PEB<4>>(ptr_sz);
-//   object_ = new new_structs::ETHREAD();  // non-template (fixed-size)
+//   object_ = new_by_ptr_sz<TEB<8>, TEB<4>>(ptr_sz);
+//   object_ = new_by_ptr_sz<PEB<8>, PEB<4>>(ptr_sz);
+//   object_ = new ETHREAD();  // non-template (fixed-size)
 //
 //   // Field access with type dispatch
-//   compat::with_typed<new_structs::TEB<8>, new_structs::TEB<4>>(
+//   compat::with_typed<TEB<8>, TEB<4>>(
 //       ptr_sz, obj, [](auto* t) { t->NtTib_StackBase = ...; });
 //
 #ifndef SPEAKEASY_DEFS_NEW_COMPAT_H
@@ -41,7 +41,7 @@
 #include "windows/mpr.h"
 #include "windows/secur32.h"
 
-namespace speakeasy { namespace defs {
+namespace speakeasy { namespace deffs {
 
 // Factory: creates a template-parameterized struct at runtime, dispatching on ptr_sz.
 // Returns void* so it can be stored in KernelObject's object_ field (just like the old code).
@@ -73,6 +73,6 @@ inline auto with_typed_const(int ptr_sz, const void* obj, Fn&& fn) -> decltype(f
 }
 
 } // namespace compat
-}} // namespace speakeasy::defs
+}} // namespace speakeasy::deffs
 
 #endif // SPEAKEASY_DEFS_NEW_COMPAT_H

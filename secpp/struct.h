@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <iomanip>
+#include <cstring>
 
 namespace speakeasy {
 

@@ -17,7 +17,7 @@
 #include <vector>
 #include "struct.h"
 
-namespace speakeasy { namespace defs { namespace new_structs {
+namespace speakeasy { namespace deffs { namespace ndis {
 
 #pragma pack(push, 1)
 
@@ -300,6 +300,6 @@ struct NET_BUFFER : public EmuStructHelper<NET_BUFFER<PtrSize>>,
 
 #pragma pack(pop)
 
-}}} // namespace speakeasy::defs::new_structs
+}}} // namespace speakeasy::deffs::ndis
 
 #endif // SPEAKEASY_DEFS_NEW_NDIS_NDIS_H
