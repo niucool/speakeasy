@@ -5,6 +5,64 @@
 
 ## [Unreleased]
 
+### 2026-06-04
+
+#### Added
+
+- **deffs**: 完成了 `secpp/winenv/deffs/` 目录下全部 147 个 `EmuStruct` 的 CRTP 结构体移植，与 Python `speakeasy/winenv/defs/` 一一对应：
+  - 所有结构体使用 `#pragma pack(push, 1)` + `EmuStructHelper<T>` CRTP 自动序列化/反序列化
+  - x86/x64 多态通过模板 `_POD<4>` / `_POD<8>` 显式特化实现
+  - 命名空间 `speakeasy::defs::new_structs` 隔离新旧代码
+- **deffs**: 补齐缺失的常量与结构体到 `deffs/` 各分类头文件：
+  - 常量 `NERR_Success` / `NetSetupDomainName` → `deffs/windows/netapi32.h`
+  - 常量 `ERROR_NO_NETWORK` → `deffs/windows/mpr.h`
+  - 结构体 `SERVER_INFO_101` → `deffs/windows/netapi32.h`
+  - 结构体 `ComInterface` → `deffs/windows/com.h`
+  - WKSTA_INFO_100/101/102 字段名从带数字后缀（`wki101_*`）统一为简洁命名（`wki_*`）
+- **deffs**: 淘汰了共享头文件 `emu_structs_new.h`，将其 14 个共享结构体按分类迁移至各头文件：
+  - `LIST_ENTRY`, `UNICODE_STRING`, `STRING`, `OBJECT_ATTRIBUTES`, `IO_STATUS_BLOCK`, `LARGE_INTEGER`, `KSYSTEM_TIME`, `SYSTEM_TIMEOFDAY_INFORMATION`, `DISK_EXTENT`, `VOLUME_DISK_EXTENTS` → `deffs/nt/ntoskrnl.h`
+  - `NDIS_OBJECT_HEADER` → `deffs/ndis/ndis.h`
+  - `USB_DEVICE_DESCRIPTOR` → `deffs/usb.h`
+  - `KEY_VALUE_PARTIAL_INFORMATION` → `deffs/registry/reg.h`
+  - `WDF_VERSION` → `deffs/wdf.h`
+  - 淘汰了 `PointerType<PtrSize>` 辅助模板（`LIST_ENTRY` / `IO_STATUS_BLOCK` 改为显式 `<4>` / `<8>` 特化）
+  - 所有 22 个 `deffs/` 头文件的 include 从 `emu_structs_new.h` 改为直接引用 `struct.h`
+- **tests**: 新增 `test_win_size_validation_all.cpp` 全面 Windows SDK 长度比对测试（`WinSizeAll` 套件，51 个测试）
+- **tests**: 新增 `test_struct_offset_compare.cpp` 字段偏移诊断测试（`OffsetCompare` 套件，9 个测试，仅诊断输出不强制比对）
+- **tests**: 在 `test_emu_struct_helper.cpp` 底部补全 `deffs/` 多文件 include 引用，新增 2 个结构体测试，测试总数从 12 增至 14
+
+#### Changed
+
+- **迁移**: 将 5 个生产代码文件从旧 `defs/` 改用新 `deffs/` 头文件（逐步迁移）：
+  - `api/usermode/mpr.cpp` — 改用 `deffs/mpr.h` + `new_structs` 常量
+  - `api/usermode/netutils.cpp` — 改用 `deffs/netapi32.h` + `new_structs` 常量
+  - `api/usermode/wkscli.cpp` — 改用 `deffs/netapi32.h` + `new_structs` 常量/枚举
+  - `api/usermode/com_api.cpp` — 改用 `deffs/com.h` + `IWbemServices<sizeof(void*)>` / `ComInterface<sizeof(void*)>`
+  - `api/usermode/netapi32.cpp` — 改用 `deffs/netapi32.h` + `WKSTA_INFO_xxx<sizeof(void*)>` / `SERVER_INFO_101<sizeof(void*)>`
+- **移除**: 删除 `secpp/winenv/defs/` 下全部 29 个 Python `.py` 文件
+- **移除**: 删除冗余的 `secpp/winenv/defs/emu_structs_new.h`（内容已分类迁移至 deffs）
+- **移除**: 删除冗余的 `secpp/winenv/defs/windows/wininet.h`（被根目录 `wininet.h` 替代）
+
+#### Fixed
+
+- **deffs**: 修复 9 个结构体与 Windows SDK 的布局偏差（对齐/填充/字段尺寸错误）：
+  - `MEMORY_BASIC_INFORMATION<8>`: 缺少尾部 4 字节自然对齐 padding（44→48）
+  - `OSVERSIONINFOEX`: `szCSDVersion` 使用了 `uint16_t[128]` 应为 `uint8_t[128]`（284→156）
+  - `WNDCLASSEX<8>`: 缺少尾部 4 字节 padding
+  - `WSAData<8>`: 缺少 `lpVendorInfo` 前 4 字节指针对齐 padding（400→408）
+  - `WKSTA_INFO_101<8>`: `platform_id`/`ver_major`/`ver_minor` 错误使用 `uint64_t`（44→40）
+  - `WKSTA_INFO_102<8>`: 同上（52→48）
+  - `CLIENT_ID`: x64 已正确为 16 字节，测试预期值修正
+  - `CONTEXT`: 区分 x86(204)/x64(1144) 独立检查
+  - `EXCEPTION_RECORD<8>`: 布局补齐至 152 字节
+- **deffs**: 修复新发现 4 个结构体布局偏差（`WinSizeAll` 测试捕获）：
+  - `KBDLLHOOKSTRUCT<8>`: 移除不必要的 `pad1`（28→24）
+  - `MODULEENTRY32<8>`: `hModule` 是指针应使用 `uint64_t`（556→568）
+  - `WIN32_FIND_DATA`: 缺少尾部 2 字节自然对齐 padding（318→320）
+  - `SID`: 缺少最小 `SubAuthority[1]` DWORD（8→12）
+- **deffs**: 修正 `ERROR_NO_NETWORK` 与 Windows SDK 宏冲突 (`#pragma push_macro` / `#undef`)
+- **deffs**: 修复 `wfp/fwpmtypes.h` 损坏的 include 路径 `../../../../struct.h` → `../emu_structs_new.h`
+
 ### 2026-06-03
 
 #### Added
