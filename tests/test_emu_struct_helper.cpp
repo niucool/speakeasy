@@ -253,7 +253,11 @@ TEST(EmuStructHelperTest, MockListEntryLayout64) {
     EXPECT_EQ(le2.Blink, 0x3333333344444444ULL);
 }
 
-#include "winenv/defs/emu_structs_new.h"
+#include "winenv/deffs/nt/ntoskrnl.h"
+#include "winenv/deffs/ndis/ndis.h"
+#include "winenv/deffs/usb.h"
+#include "winenv/deffs/registry/reg.h"
+#include "winenv/deffs/wdf.h"
 
 using namespace speakeasy::defs::new_structs;
 

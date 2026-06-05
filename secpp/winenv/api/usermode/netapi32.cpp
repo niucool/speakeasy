@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "windows/winemu.h"
-#include "winenv/defs/windows/netapi32.h"
+#include "winenv/deffs/windows/netapi32.h"
 
 //  Windows SDK macro conflict protection 
 #ifdef _WIN32
@@ -195,7 +195,7 @@ uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::vector<uint64_t>& a, void
     int ps = ptr_sz(e);
 
     if (level == 100) {
-        defs::windows::WKSTA_INFO_100 wki;
+        defs::new_structs::WKSTA_INFO_100<sizeof(void*)> wki;
         wki.wki_platform_id  = 500;  // PLATFORM_ID_NT
         wki.wki_computername = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
         be(e)->write_mem_string(hostname, wki.wki_computername, 2);
@@ -214,7 +214,7 @@ uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::vector<uint64_t>& a, void
         we(e)->mem_write(bufptr, ptr_buf);
 
     } else if (level == 101) {
-        defs::windows::WKSTA_INFO_101 wki;
+        defs::new_structs::WKSTA_INFO_101<sizeof(void*)> wki;
         wki.wki_platform_id  = 500;
         wki.wki_computername = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
         be(e)->write_mem_string(hostname, wki.wki_computername, 2);
@@ -239,7 +239,7 @@ uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::vector<uint64_t>& a, void
         we(e)->mem_write(bufptr, ptr_buf);
 
     } else {  // level == 102
-        defs::windows::WKSTA_INFO_102 wki;
+        defs::new_structs::WKSTA_INFO_102<sizeof(void*)> wki;
         wki.wki_platform_id     = 500;
         wki.wki_computername    = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
         be(e)->write_mem_string(hostname, wki.wki_computername, 2);
@@ -311,7 +311,7 @@ uint64_t NetApi32::NetServerGetInfo(void* e, const std::vector<uint64_t>& a, voi
 
     if (level == 101) {
         int ps = ptr_sz(e);
-        defs::windows::SERVER_INFO_101 si;
+        defs::new_structs::SERVER_INFO_101<sizeof(void*)> si;
         si.sv101_platform_id   = 500;
         std::string srv_name = "\\\\SERVER";
         si.sv101_name = we(e)->mem_map(static_cast<size_t>((srv_name.size() + 1) * 2), 0, 7, "emu.sv101_name");
