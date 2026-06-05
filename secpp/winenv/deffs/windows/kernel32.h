@@ -240,13 +240,9 @@ struct MEMORY_BASIC_INFORMATION : public EmuStructHelper<MEMORY_BASIC_INFORMATIO
 // ==========================================================================================================
 struct WIN32_FIND_DATA_POD {
     uint32_t dwFileAttributes            = 0;   // offset   0
-    // Embedded FILETIME fields (no vtable)
-    uint32_t ftCreationTime_dwLowDateTime   = 0;   // offset   4
-    uint32_t ftCreationTime_dwHighDateTime  = 0;   // offset   8
-    uint32_t ftLastAccessTime_dwLowDateTime = 0;   // offset  12
-    uint32_t ftLastAccessTime_dwHighDateTime = 0;  // offset  16
-    uint32_t ftLastWriteTime_dwLowDateTime  = 0;   // offset  20
-    uint32_t ftLastWriteTime_dwHighDateTime  = 0;  // offset  24
+    FILETIME_POD ftCreationTime;                // offset   4 (8 bytes)
+    FILETIME_POD ftLastAccessTime;              // offset  12 (8 bytes)
+    FILETIME_POD ftLastWriteTime;               // offset  20 (8 bytes)
     uint32_t nFileSizeHigh              = 0;   // offset  28
     uint32_t nFileSizeLow               = 0;   // offset  32
     uint32_t dwReserved0                = 0;   // offset  36
@@ -266,12 +262,9 @@ struct WIN32_FIND_DATA : public EmuStructHelper<WIN32_FIND_DATA>, public WIN32_F
 // ==========================================================================================================
 struct WIN32_FILE_ATTRIBUTE_DATA_POD {
     uint32_t dwFileAttributes                = 0;   // offset  0
-    uint32_t ftCreationTime_dwLowDateTime    = 0;   // offset  4
-    uint32_t ftCreationTime_dwHighDateTime   = 0;   // offset  8
-    uint32_t ftLastAccessTime_dwLowDateTime  = 0;   // offset 12
-    uint32_t ftLastAccessTime_dwHighDateTime  = 0;  // offset 16
-    uint32_t ftLastWriteTime_dwLowDateTime   = 0;   // offset 20
-    uint32_t ftLastWriteTime_dwHighDateTime   = 0;  // offset 24
+    FILETIME_POD ftCreationTime;                    // offset  4 (8 bytes)
+    FILETIME_POD ftLastAccessTime;                  // offset 12 (8 bytes)
+    FILETIME_POD ftLastWriteTime;                   // offset 20 (8 bytes)
     uint32_t nFileSizeHigh                  = 0;   // offset 28
     uint32_t nFileSizeLow                   = 0;   // offset 32
     // total = 36

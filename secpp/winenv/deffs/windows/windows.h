@@ -243,16 +243,7 @@ struct CONTEXT_POD {
     uint32_t Dr3             = 0;    // offset  16
     uint32_t Dr6             = 0;    // offset  20
     uint32_t Dr7             = 0;    // offset  24
-    // Embedded FLOATING_SAVE_AREA (112 bytes)
-    uint32_t FloatSave_ControlWord    = 0;    // offset  28
-    uint32_t FloatSave_StatusWord     = 0;    // offset  32
-    uint32_t FloatSave_TagWord        = 0;    // offset  36
-    uint32_t FloatSave_ErrorOffset    = 0;    // offset  40
-    uint32_t FloatSave_ErrorSelector  = 0;    // offset  44
-    uint32_t FloatSave_DataOffset     = 0;    // offset  48
-    uint32_t FloatSave_DataSelector   = 0;    // offset  52
-    uint8_t  FloatSave_RegisterArea[80] = {}; // offset  56
-    uint32_t FloatSave_Spare0         = 0;    // offset 136
+    FLOATING_SAVE_AREA_POD FloatSave;    // offset  28 (nested, size=112)
     uint32_t SegGs             = 0;    // offset 140
     uint32_t SegFs             = 0;    // offset 144
     uint32_t SegEs             = 0;    // offset 148

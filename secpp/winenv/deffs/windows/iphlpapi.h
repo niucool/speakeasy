@@ -131,31 +131,12 @@ struct IP_ADAPTER_INFO_POD<4> {
     uint8_t   pad1[3]                               = {}; // offset 421 → align CurrentIpAddress
     uint32_t  CurrentIpAddress                      = 0;  // offset 424
     // IpAddressList (IP_ADDR_STRING<4> = 40 bytes) — flattened
-    uint32_t  IpAddressList_Next                    = 0;  // offset 428
-    uint8_t   IpAddressList_IpAddress[16]           = {}; // offset 432
-    uint8_t   IpAddressList_IpMask[16]              = {}; // offset 448
-    uint32_t  IpAddressList_Context                 = 0;  // offset 464
-    // GatewayList (40 bytes)
-    uint32_t  GatewayList_Next                      = 0;  // offset 468
-    uint8_t   GatewayList_IpAddress[16]             = {}; // offset 472
-    uint8_t   GatewayList_IpMask[16]                = {}; // offset 488
-    uint32_t  GatewayList_Context                   = 0;  // offset 504
-    // DhcpServer (40 bytes)
-    uint32_t  DhcpServer_Next                       = 0;  // offset 508
-    uint8_t   DhcpServer_IpAddress[16]              = {}; // offset 512
-    uint8_t   DhcpServer_IpMask[16]                 = {}; // offset 528
-    uint32_t  DhcpServer_Context                    = 0;  // offset 544
+    IP_ADDR_STRING_POD<4> IpAddressList;               // offset 428 (nested, size=40)
+    IP_ADDR_STRING_POD<4> GatewayList;                 // offset 468 (nested, size=40)
+    IP_ADDR_STRING_POD<4> DhcpServer;                  // offset 508 (nested, size=40)
     uint32_t  HaveWins                              = 0;  // offset 548
-    // PrimaryWinsServer (40 bytes)
-    uint32_t  PrimaryWinsServer_Next                = 0;  // offset 552
-    uint8_t   PrimaryWinsServer_IpAddress[16]       = {}; // offset 556
-    uint8_t   PrimaryWinsServer_IpMask[16]          = {}; // offset 572
-    uint32_t  PrimaryWinsServer_Context             = 0;  // offset 588
-    // SecondaryWinsServer (40 bytes)
-    uint32_t  SecondaryWinsServer_Next              = 0;  // offset 592
-    uint8_t   SecondaryWinsServer_IpAddress[16]     = {}; // offset 596
-    uint8_t   SecondaryWinsServer_IpMask[16]        = {}; // offset 612
-    uint32_t  SecondaryWinsServer_Context           = 0;  // offset 628
+    IP_ADDR_STRING_POD<4> PrimaryWinsServer;            // offset 552 (nested, size=40)
+    IP_ADDR_STRING_POD<4> SecondaryWinsServer;          // offset 592 (nested, size=40)
     uint32_t  LeaseObtained                         = 0;  // offset 632
     uint32_t  LeaseExpires                          = 0;  // offset 636
     // total = 640
@@ -175,11 +156,7 @@ struct IP_ADAPTER_INFO_POD<8> {
     uint8_t   pad1[7]                               = {}; // offset 425 → align CurrentIpAddress to 432
     uint64_t  CurrentIpAddress                      = 0;  // offset 432
     // IpAddressList (IP_ADDR_STRING<8> = 48 bytes) — flattened
-    uint64_t  IpAddressList_Next                    = 0;  // offset 440
-    uint8_t   IpAddressList_IpAddress[16]           = {}; // offset 448
-    uint8_t   IpAddressList_IpMask[16]              = {}; // offset 464
-    uint32_t  IpAddressList_Context                 = 0;  // offset 480
-    uint32_t  IpAddressList_pad                     = 0;  // offset 484
+    IP_ADDR_STRING_POD<8> IpAddressList;    uint32_t  IpAddressList_pad                     = 0;  // offset 484
     // GatewayList (48 bytes)
     uint64_t  GatewayList_Next                      = 0;  // offset 488
     uint8_t   GatewayList_IpAddress[16]             = {}; // offset 496

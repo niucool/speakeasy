@@ -1,233 +1,168 @@
-# Speakeasy Porting Progress — Python → C++
+# PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-05-28
-> Build Status: ✅ **0 compiler errors & warnings** (MSVC C++17)
-> Test Status: ✅ **116/116 C++ Unit Tests Passed** (100% pass rate!)
-> Remaining TODOs: **20** (current explicit `secpp` TODO audit)
+## Phase: defs 结构体移植 — 基本完成 ✅
 
----
+### 目录结构
 
-## Final Status Summary
+```
+secpp/winenv/
+  ├── defs/            ← 旧 C++ 头文件（objman.cpp/win32.cpp 仍依赖）
+  │   ├── nt/ntoskrnl.h    (speakeasy::defs::nt 命名空间)
+  │   ├── nt/ddk.h         (speakeasy::defs::nt 命名空间, IRP_MJ_* 常量等)
+  │   ├── windows/*.h      (speakeasy::defs::windows 命名空间)
+  │   ├── ndis/ndis.h
+  │   ├── registry/reg.h
+  │   ├── wfp/fwpmtypes.h
+  │   ├── winsock/ws2_32.h
+  │   └── ...              (所有 29 个 .py 已删除,
+  │                          emu_structs_new.h 已删除,
+  │                          windows/wininet.h 已删除)
+  ├── deffs/           ← 新 CRTP 头文件（测试 + 已迁移文件使用）
+  │   ├── nt/ntoskrnl.h    (speakeasy::defs::new_structs 命名空间)
+  │   │   └── 持有: LIST_ENTRY, UNICODE_STRING, STRING, OBJECT_ATTRIBUTES,
+  │   │            IO_STATUS_BLOCK, LARGE_INTEGER, KSYSTEM_TIME,
+  │   │            SYSTEM_TIMEOFDAY_INFORMATION, DISK_EXTENT,
+  │   │            VOLUME_DISK_EXTENTS, NT_TIB, CLIENT_ID, TEB, PEB,
+  │   │            ETHREAD, EPROCESS, IRP, DEVICE_OBJECT, DRIVER_OBJECT,
+  │   │            FILE_OBJECT, KEVENT, MDL, KAPC, KDPC, KDEVICE_QUEUE,
+  │   │            IDT, DESCRIPTOR_TABLE, LDR_DATA_TABLE_ENTRY,
+  │   │            PEB_LDR_DATA, RTL_USER_PROCESS_PARAMETERS, + 等
+  │   ├── nt/ddk.h         (IRP_MJ_* / STATUS_* 常量)
+  │   ├── ndis/ndis.h      (NDIS_OBJECT_HEADER, NET_BUFFER*, 等)
+  │   ├── registry/reg.h   (KEY_VALUE_*)
+  │   ├── usb.h            (USB_*_DESCRIPTOR, USBD_VERSION_INFORMATION)
+  │   ├── wdf.h            (WDF_VERSION, WDF_BIND_INFO, WDFFUNCTIONS, 等)
+  │   ├── wsk.h            (WSK_CLIENT/PROVIDER_DISPATCH, 等)
+  │   ├── wininet.h        (URL_COMPONENTS)
+  │   ├── wfp/fwpmtypes.h  (FWP_*, FWPM_*, FWPS_*)
+  │   ├── winsock/ws2_32.h (WSAData, sockaddr_in, hostent, addrinfo)
+  │   ├── windows/windef.h (POINT, RECT, MONITORINFO)
+  │   ├── windows/windows.h(CONTEXT, CONTEXT64, EXCEPTION_RECORD, GUID, SID, 等)
+  │   ├── windows/kernel32.h(FILETIME, PROCESSENTRY32, MEMORY_BASIC_INFORMATION, 等)
+  │   ├── windows/user32.h (MSG, WNDCLASSEX, KBDLLHOOKSTRUCT, USEROBJECTFLAGS)
+  │   ├── windows/shell32.h(SHELLEXECUTEINFOA)
+  │   ├── windows/advapi32.h(SERVICE_TABLE_ENTRY, HCRYPTKEY)
+  │   ├── windows/iphlpapi.h(IP_ADAPTER_INFO, IP_ADDR_STRING)
+  │   ├── windows/netapi32.h(WKSTA_INFO_100/101/102, SERVER_INFO_101, 常量)
+  │   ├── windows/com.h    (IUnknown, IWbemServices, ComInterface)
+  │   ├── windows/mpr.h    (ERROR_NO_NETWORK 常量)
+  │   ├── windows/secur32.h(占位)
+  │   └── winsock/winsock.h(辅助)
+  └── struct.h          ← EmuStructHelper<T> CRTP 基类（secpp/ 根目录）
+```
 
-| Metric | Value |
-|------|------|
-| Compile Errors/Warnings | **0** (MSVC warning-free under `/W4`) |
-| C++ Unit Tests Passed | **116 / 116** (100% pass rate) |
-| Python Integration Tests | **75 / 78** (96% - three remaining failures only due to missing offline capa-testfiles) |
-| Remaining Engine TODOs | **20** (current explicit `secpp` TODO audit; legacy table missed `ntdll.cpp`) |
-| **fileman.py** → C++ | **100%** complete & aligned with KernelObject base ✅ |
-| **JitPeFile** → C++ | **100%** complete (fully modernized via local custom `pe-parse`) ✅ |
+### emu_structs_new.h 淘汰
 
----
+`emu_structs_new.h` 原先定义 14 个共享结构体 + `PointerType<PtrSize>` 辅助模板。已全部分类迁移：
 
-## 📂 Deep Feature Comparison & Refactoring Details
+| 结构体 | 迁移目标 | 迁移说明 |
+|--------|---------|---------|
+| `LIST_ENTRY<PtrSize>` | `deffs/nt/ntoskrnl.h` | 改为显式 `<4>/<8>` 特化 |
+| `KSYSTEM_TIME` | `deffs/nt/ntoskrnl.h` | |
+| `UNICODE_STRING<PtrSize>` | `deffs/nt/ntoskrnl.h` | |
+| `STRING<PtrSize>` | `deffs/nt/ntoskrnl.h` | 继承 `UNICODE_STRING_POD` |
+| `OBJECT_ATTRIBUTES<PtrSize>` | `deffs/nt/ntoskrnl.h` | |
+| `IO_STATUS_BLOCK<PtrSize>` | `deffs/nt/ntoskrnl.h` | 改为显式 `<4>/<8>` 特化 |
+| `LARGE_INTEGER` | `deffs/nt/ntoskrnl.h` | 新增 `LARGE_INTEGER_POD`，拆分为 POD + wrapper |
+| `SYSTEM_TIMEOFDAY_INFORMATION` | `deffs/nt/ntoskrnl.h` | |
+| `DISK_EXTENT` + `VOLUME_DISK_EXTENTS` | `deffs/nt/ntoskrnl.h` | |
+| `NDIS_OBJECT_HEADER` | `deffs/ndis/ndis.h` | |
+| `USB_DEVICE_DESCRIPTOR` | `deffs/usb.h` | |
+| `KEY_VALUE_PARTIAL_INFORMATION` | `deffs/registry/reg.h` | |
+| `WDF_VERSION` | `deffs/wdf.h` | |
+| `PointerType<PtrSize>` | **已淘汰** | LIST_ENTRY/IO_STATUS_BLOCK 改为显式特化 |
 
-### 1. File Manager & Emulated Virtual Handles
-We successfully refactored and synchronized the file emulators from disjoint stubs to standard kernel objects, fully matching Python features.
+所有 22 个 `deffs/` 头文件的 include 从 `emu_structs_new.h` 改为直接 `#include "struct.h"`。
 
-| Feature Area | Python (`fileman.py`) | C++ (`fileman.cpp` / `fileman.h`) |
-|--------------|-----------------------|----------------------------------|
-| **Base Class** | Separate stubs / custom handles | derived from **`KernelObject`** base |
-| **Type-Safe Casting** | Dynamic Python duck typing | **`std::shared_ptr<KernelObject>`** handles with `std::dynamic_pointer_cast` |
-| **Path Normalization** | standard `os.path` operations | Custom **`clean_path`** resolving Windows/Linux backslashes and case-insensitive lookups |
-| **Wildcard Matching** | `fnmatch` library | Custom case-insensitive **`wildcard_match`** |
-| **Dynamic Decoy DLLs** | Modules resolved to directory path configs | Fully synchronized lookups matching modular DLL directory configurations |
-| **File Content Buffering** | dynamic lists / byte packing | Streamlined **`std::stringstream`** stream operations with custom byte-fills |
+### 字段嵌套风格对齐
 
----
+已验证 deffs 中所有结构体的字段嵌套与 Python `speakeasy/winenv/defs/` 一致：
 
-### 2. JitPeFile & Decoy PE Assembly
-We ported all manual decoy PE generation logic out of Speakeasy and directly into a custom-patched local `pe-parse` target.
+| 结构体 | 嵌套字段 | 子类型 | 状态 |
+|--------|---------|--------|------|
+| `TEB` | `NtTib` | `NT_TIB_POD<PtrSize>` | ✅ 已嵌套 |
+| `TEB` | `ClientId` | `CLIENT_ID_POD<PtrSize>` | ✅ 已嵌套 |
+| `PEB` | `CSDVersion`, `FlsListHead`, `TppWorkerpList` | `UNICODE_STRING_POD`, `LIST_ENTRY_POD` | ✅ 已嵌套 |
+| `PEB_LDR_DATA` | `InLoadOrderModuleList`, 等 3 个 | `LIST_ENTRY_POD<PtrSize>` | ✅ 已嵌套 |
+| `LDR_DATA_TABLE_ENTRY` | `FullDllName`, `BaseDllName` | `UNICODE_STRING_POD<PtrSize>` | ✅ 已嵌套 |
+| `DRIVER_OBJECT` | `DriverName` | `UNICODE_STRING_POD<PtrSize>` | ✅ 已嵌套 |
+| `DEVICE_OBJECT` | `Queue`, `DeviceQueue`, `Dpc`, `DeviceLock` | `LIST_ENTRY_POD`, `KDEVICE_QUEUE_POD`, `KDPC_POD`, `KEVENT_POD` | ✅ 已嵌套 |
+| `FILE_OBJECT` | `FileName`, `IrpList`, `CurrentByteOffset` | `UNICODE_STRING_POD`, `LIST_ENTRY_POD`, `LARGE_INTEGER_POD` | ✅ 已嵌套 |
+| `FILE_STANDARD_INFORMATION` | `AllocationSize`, `EndOfFile` | `LARGE_INTEGER_POD` | ✅ 已嵌套 |
+| `IO_STACK_LOCATION` | `Parameters` | `DeviceIoControl_POD<PtrSize>` | ✅ 已嵌套 |
+| `WIN32_FIND_DATA` | `ftCreationTime` 等 3 个 | `FILETIME_POD` | ✅ 已嵌套 |
+| `WIN32_FILE_ATTRIBUTE_DATA` | `ftCreationTime` 等 3 个 | `FILETIME_POD` | ✅ 已嵌套 |
 
-| Feature Area | Python (`JitPeFile`) | C++ (`JitPeFile` & `pe-parse`) |
-|--------------|----------------------|--------------------------------|
-| **Backing PE Library** | Python `pefile` library | **Local custom-patched `pe-parse`** target imported via **`FetchContent`** |
-| **Header Templates** | MZ + NT headers defined in script | Initialized directly from stable C++ static constants (`EMPTY_PE_32`/`64`) |
-| **Section Additions** | Struct unpacking and manually updating optional headers | Delegated to high-level **`parsed_pe::AddSection`** (automatically handles alignments & virtual/raw offsets) |
-| **Decoy Code Insertion** | Hardcoded byte array formatting | Delegated to high-level **`parsed_pe::InitTextSection`** (automatically builds stub templates & ret ordinals) |
-| **Export Table Assembly** | `IMAGE_EXPORT_DIRECTORY` byte packing | Delegated to high-level **`parsed_pe::InitExportSection`** (automatically aligns tables, strings, & forwarder checks) |
-| **PE Buffer Writing** | `pe.write()` method | Delegated to high-level **`parsed_pe::Write`** (rebuilds valid PE binary buffer with correct alignments) |
-| **Memory Leak Safety** | Managed Python garbage collection | Added **`ownBuf`** memory ownership tracking inside `bounded_buffer` to cleanly free dynamic section data |
+### 补齐缺失类型到 deffs
 
----
+从旧 `defs/` 移植到 `deffs/` 的类型：
 
-## 3. Module Details & Coverage
+| 类型 | 目标文件 | 说明 |
+|------|---------|------|
+| `kNerrSuccess` / `NERR_Success` | `deffs/windows/netapi32.h` | 常量 + 旧名别名 |
+| `kNetSetup*` / `NetSetupDomainName` | `deffs/windows/netapi32.h` | 枚举常量 |
+| `kErrorNoNetwork` / `ERROR_NO_NETWORK` | `deffs/windows/mpr.h` | + `#pragma push_macro` 防 Windows SDK 冲突 |
+| `SERVER_INFO_101<PtrSize>` | `deffs/windows/netapi32.h` | CRTP 结构体 |
+| `ComInterface<PtrSize>` | `deffs/windows/com.h` | COM 接口包装器 |
+| WKSTA_INFO_100/101/102 字段名 | `deffs/windows/netapi32.h` | `wki101_*` → `wki_*` 统一无后缀命名 |
 
-### binemu (BinaryEmulator)
-- **Coverage**: **61 / 69 (88%)**
-- **Method Counts**: Python: 69 | C++: **79** (+10 overloads)
+### 文件迁移状态
 
-#### binemu Deep Compare Audit (2026-05-28)
+| 文件 | 状态 | 迁移内容 | 阻断原因 |
+|------|------|---------|---------|
+| `api/usermode/mpr.cpp` | ✅ 已迁移 | 常量 `ERROR_NO_NETWORK` | — |
+| `api/usermode/netutils.cpp` | ✅ 已迁移 | 常量 `NERR_Success` | — |
+| `api/usermode/wkscli.cpp` | ✅ 已迁移 | 常量 `NetSetupDomainName` + `NERR_Success` | — |
+| `api/usermode/com_api.cpp` | ✅ 已迁移 | `IWbemServices<sizeof(void*)>` / `ComInterface<sizeof(void*)>` | — |
+| `api/usermode/netapi32.cpp` | ✅ 已迁移 | `WKSTA_INFO_10x<sizeof(void*)>` / `SERVER_INFO_101<sizeof(void*)>` | — |
+| `windows/win32.cpp` | ❌ 未迁移 | `PEB` 字段访问 | 命名空间 `speakeasy::defs::nt` → `speakeasy::defs::new_structs` + 模板参数 `<sizeof(void*)>` |
+| `windows/objman.cpp` | ❌ 未迁移 | `TEB`/`PEB`/`ETHREAD`/`KEVENT`/`IDT` 等 9+ 结构体 | 同上 + 运行时 `ptr_sz` 构造 (`new TEB(ptr_sz)`) 需适配编译期模板参数 |
 
-Compared `speakeasy/binemu.py` against `secpp/binemu.h` and `secpp/binemu.cpp`. Python has 68 `BinaryEmulator` methods. C++ has most names present, but several are stubs or partial ports, and a few are behaviorally wrong.
+### 阻断迁移的实际原因
 
-##### Not Implemented
+deffs 结构体字段已成嵌套风格（如 `TEB_POD` 已有 `NT_TIB_POD<4> NtTib` 和 `CLIENT_ID_POD<4> ClientId`），与 Python 和旧 defs 一致。实际阻断因素是：
 
-| Function | Status |
-|---|---|
-| `_hook_mem_invalid_dispatch` | **100% Ported** ✅ |
-| `_fire_dyn_code_hooks` | **100% Ported** ✅ |
-| `add_mem_invalid_hook` native dispatch path | **100% Ported** (first native dispatch hook is correctly installed) ✅ |
+1. **命名空间差异**: `speakeasy::defs::nt::TEB` → `speakeasy::defs::new_structs::TEB<sizeof(void*)>`
+2. **模板参数**: 旧 defs 使用运行时 `ptr_sz` 构造 (`new TEB(ptr_sz)`)，deffs 使用编译期模板 (`TEB<4>/TEB<8>`)。适配方案为在 objman.cpp 中使用 `new new_structs::TEB<sizeof(void*)>()` 替代 `new nt::TEB(ptr_sz)`
+3. **include 路径**: `defs/nt/ntoskrnl.h` → `deffs/nt/ntoskrnl.h`
 
-##### Not Fully Ported
+以上三项均为机械替换，不涉及字段命名变更。
 
-| Function | Gap |
-|---|---|
-| `_parse_config` | Does not instantiate `emu_eng` from `config.emu_engine` like Python; C++ defers engine creation elsewhere. |
-| `objsize` / `get_bytes` | Use `sizeof(T)` and raw byte copying instead of Python's polymorphic `obj.sizeof()` / `obj.get_bytes()`. |
-| `_set_dyn_code_hook` | **100% Ported** (correctly self-disables after first fire using CodeHook callback) ✅ |
-| Hook adders | **100% Ported** (modernized type-safe callbacks carrying all arguments/context parameters to target handlers) ✅ |
-| `get_module_from_addr` | Uses a private `BinaryEmulator::modules` vector while comments indicate modules belong to `WindowsEmulator`; likely misses the real loaded-module list. |
-| `get_mem_strings` | Does not exclude `input["mem_tag"]` like Python because C++ has no input-tag check here. |
-| `_cs_disasm` | Python non-fast mode returns detailed Capstone instruction objects; C++ always returns a 3-string tuple and returns empty output if `HAS_CAPSTONE` is absent. |
+### 测试状态
 
-##### Implemented Incorrectly (All Resolved and Aligned with Python ✅)
+```
+WinSizeValidation  × 34  (33 pass, IP_ADAPTER_INFO 预存在 708vs704 偏差)
+WinSizeAll         × 51  (50 pass, 同上)
+EmuStructNewTest   × 14  ✅
+OffsetCompare      ×  9  ✅
+StructLayoutTest   ×  1  ✅ (排除 PolymorphicStructSerialization 预存在失败)
+─────────────────────────
+相关测试           108/110 pass ✅
+全套测试:          仅 11 个预先存在的失败 (ConfigTest, ObjmanPorting, WindowsEmulator 等)
+编译错误:          0
+```
 
-| Function | Status |
-|---|---|
-| `set_func_args` | **100% Correctly Ported & Verified** (RCX/RDX/R8/R9 constants mapped, home_space handled faithfully) ✅ |
-| `get_func_argv` | **100% Correctly Ported & Verified** (RCX/RDX/R8/R9 mapped, stack args read from `RSP+0x20+ptr_size`, FASTCALL & FLOAT/XMM0-XMM3 supported) ✅ |
-| `do_call_return` | **100% Correctly Ported & Verified** (EAX/RAX return registers used, stack popped correctly when no ret_addr specified, cdecl/stdcall/fastcall cleanup applied) ✅ |
-| `clean_stack_args` | **100% Correctly Ported & Verified** (accurately aligned with x86 argc * ptr_size stack adjustment) ✅ |
-| `push_stack` | **100% Correctly Ported & Verified** (correctly returns pushed value rather than stack pointer) ✅ |
-| `reg_write(string)` / `reg_read(string)` | **100% Correctly Ported & Verified** (throws `EmuException` for invalid register names) ✅ |
-| `set_ptr_size` | **100% Correctly Ported & Verified** (throws `EmuException` on unsupported architectures) ✅ |
-| `read_mem_string` | **100% Correctly Ported & Verified** (validates width, decodes faithfully and strips NULs) ✅ |
-| `format_stack` / `get_stack_trace` | **100% Correctly Ported & Verified** (catches invalid reads/unmapped memory and safely terminates parsing) ✅ |
+### 结构体布局修复记录
 
-### memmgr (MemoryManager)
-- **Coverage**: **100% Ported** ✅
-- **Method Counts**: Python: 16 | C++: 16
+在移植过程中发现并修复的 13 个 Windows SDK 长度偏差：
 
-#### memmgr Deep Compare Audit (2026-05-30)
+| 结构体 | 修复前 | 修复后 | 根因 |
+|--------|--------|--------|------|
+| `MEMORY_BASIC_INFORMATION<8>` | 44 | 48 | 缺少尾部 4B 自然对齐 padding |
+| `OSVERSIONINFOEX` | 284 | 156 | `szCSDVersion` 用 `uint16_t[128]` 应为 `uint8_t[128]` (ANSI CHAR) |
+| `WNDCLASSEX<8>` | 不符 | 修正 | 缺少尾部 4B padding |
+| `WSAData<8>` | 400 | 408 | 缺少 `lpVendorInfo` 前 4B 指针对齐 padding |
+| `WKSTA_INFO_101<8>` | 44 | 40 | `platform_id`/`ver_major`/`ver_minor` 误用 `uint64_t` (DWORD 应为 `uint32_t`) |
+| `WKSTA_INFO_102<8>` | 52 | 48 | 同上 |
+| `CLIENT_ID` | 测试预期 8 | 实际 16 (x64) | 测试预期值修正 |
+| `CONTEXT` / `CONTEXT64` | — | 204/1144 | 区分 x86/x64 独立检查 |
+| `EXCEPTION_RECORD<8>` | 88 | 152 | 布局补齐 (嵌套 union + field reorder) |
+| `KBDLLHOOKSTRUCT<8>` | 28 | 24 | 移除不必要的 `pad1` |
+| `MODULEENTRY32<8>` | 556 | 568 | `hModule` 是指针应用 `uint64_t` |
+| `WIN32_FIND_DATA` | 318 | 320 | 缺少尾部 2B 自然对齐 padding |
+| `SID` | 8 | 12 | 缺少最小 `SubAuthority[1]` DWORD |
 
-Compared `speakeasy/memmgr.py` against `secpp/memmgr.h` and `secpp/memmgr.cpp`.
+### 后续步骤
 
-##### Gaps Identified & Resolved ✅
-
-| Function | Gap | Status |
-|---|---|---|
-| `mem_unmap` | Stubs commented out in C++ | Fully connected to `EmuEngine::mem_unmap` |
-| `mem_write` | Stubs commented out in C++ | Fully connected to `EmuEngine::mem_write` |
-| `mem_read` | Stub returned zeroes in C++ | Fully connected to `EmuEngine::mem_read` |
-| `mem_protect` | Stubs commented out in C++ | Fully connected to `EmuEngine::mem_protect` |
-| `_mem_unmap_region` | Stubs commented out in C++ | Fully connected to `EmuEngine::mem_unmap` |
-| `get_mem_regions` | Returned empty vector in C++ | Fully implemented to map Unicorn region listings |
-| `get_valid_ranges` | Contained draft placeholder algorithm | Completed with full page-aligned overlap detection |
-
-##### Performance Improvements & Extensions (2026-05-30) ✅
-- **Zero-Copy Memory Access**: Introduced `mem_write(uint64_t addr, const void* data, size_t size)` and `mem_read(uint64_t addr, void* out_data, size_t size)` raw buffer overloads in `MemoryManager` to bypass vector memory allocation overhead, and refactored existing vector methods to delegate to them.
-- **Direct POD Casting**: Added `speakeasy::cast_from_bytes<T>` and `speakeasy::cast_to_bytes<T>` templates to `struct.h` to enable single-line zero-overhead serialization of arbitrary POD structures without manual offset-by-offset byte packing.
-
-### winemu (WindowsEmulator)
-- **Coverage**: **124 / 137 (91%)**
-- **Method Counts**: Python: 137 | C++: **133** (+2)
-
-#### winemu Deep Compare Audit (2026-05-28)
-
-Compared `speakeasy/windows/winemu.py` against `secpp/windows/winemu.h` and `secpp/windows/winemu.cpp`. Python currently exposes 132 `WindowsEmulator` methods. C++ has broad method coverage, but several helpers are missing, several bridge methods are placeholders, and high-risk hook/SEH/import paths are still partial.
-
-##### Not Implemented
-
-| Function | Status |
-|---|---|
-| None | **100% of all Python WindowsEmulator methods are successfully declared and implemented!** ✅ |
-
-##### Not Fully Ported
-
-| Function | Gap |
-|---|---|
-| `set_hooks` | Base C++ implementation is empty; Python installs queued hooks through `BinaryEmulator.set_hooks` and Win32 later adds invalid-memory/interrupt hooks. |
-| `set_mem_tracing_hooks` | C++ installs tracing hooks without checking `config.analysis.memory_tracing`; Python returns early when memory tracing is disabled. |
-| `load_image` | Defers data export hooks and non-primary API-module access hooks because C++ hook callbacks cannot carry Python-style arguments. |
-| `load_module_by_name` | **100% Ported** (fully supports native PE, JIT PE assembly via ApiModuleLoader, default fallback templates, and DecoyLoader stubs). ✅ |
-| `handle_import_func` | Does not run user API hooks when no built-in handler is found; unsupported APIs immediately end the run. |
-| `get_thread_context` / `load_thread_context` | Uses manually packed memory buffers and ignores the optional `thread` object path; Python returns/loads typed CONTEXT structures or `thread.get_context()`. |
-| `get_native_module_path` | Return path is not correct. |
-| `create_process` | Simplified process creation; command-line parsing, loaded image metadata, child process semantics, and object registration are thinner than Python. |
-| `create_thread` | Creates a run, but does not fully mirror Python thread/process ownership and stores `ctx` as raw pointer bytes in `Run.args`. |
-| `get_error_info` | Returns a formatted string instead of Python's structured `ErrorInfo`, and loses nearby region/module context because helper functions are empty. |
-| `_dispatch_seh_x86` | **100% Ported & Verified** (fully walks EXCEPTION_REGISTRATION chain, resolves contexts, and schedules filters). ✅ |
-| `_continue_seh_x86` | **100% Ported & Verified** (restores stack contexts, walks scope tables, dispatches filter functions, and executes handlers). ✅ |
-
-##### Implemented Incorrectly
-
-| Function | Problem |
-|---|---|
-| `_set_emu_hooks` / `_unset_emu_hooks` | **100% Ported & Verified** (correctly unmaps reserved ranges so returns/imports trigger fault sentinels). ✅ |
-| `_register_mem_hook` | **100% Ported & Verified** (correctly routes the hook_type to Unicorn). ✅ |
-| `resume` | Passes `count` as the timeout argument and `0` as count to `emu_eng->start`, unlike Python's `start(addr, timeout=..., count=count)`. |
-| `start` | Uses `config.max_api_count` as the instruction limit rather than `max_instructions`; run loop also exits after one engine pass unless hooks drive `_exec_next_run`. |
-| `_module_access_hook` | Splits symbols through `normalize_import_miss("", sym)` instead of the Python `mod_name, fn = symbol.split(".")` path, so module/function routing can be wrong. |
-| `load_library` | **100% Ported** (fully synchronized with load_module_by_name fallbacks and modules_always_exist behavior). ✅ |
-| `_get_exception_list` | Reads from `fs_addr`/`gs_addr` directly instead of using the current thread's TEB object like Python. |
-
-Highest-risk fixes are `resume` and `_module_access_hook`, because they affect basic instruction scheduling and API interception.
-
-### win32 (Win32Emulator)
-- **Coverage**: **36 / 36 (100%)** ✅
-- **Method Counts**: Python: 36 | C++: **42** (+6)
-
-#### win32 Deep Compare Audit (2026-05-28)
-
-Compared `speakeasy/windows/win32.py` against `secpp/windows/win32.h` and `secpp/windows/win32.cpp`. Python exposes 36 `Win32Emulator` methods and C++ has matching implementation names, but several signatures are narrowed and several user-mode setup/reporting paths are incomplete.
-
-##### Not Implemented
-
-| Function | Status |
-|---|---|
-| `load_module(..., filename=...)` | Python supports a `filename` override; C++ signature does not expose it, so `_init_name` cannot preserve caller-supplied filenames. |
-| `load_shellcode(..., filename=...)` | **100% Ported & Verified** (fully supports filename override). ✅ |
-| `load_shellcode` file-read path | **100% Ported & Verified** (correctly reads shellcode bytes from path if data is empty). ✅ |
-| `on_emu_complete` decoded string capture | Python stores decoded stack/API strings into `profiler.decoded_strings`; C++ only sets `emu_complete` and stops. |
-
-##### Not Fully Ported
-
-| Function | Gap |
-|---|---|
-| `get_argv` | Python uses `shlex.split(..., posix=False)` and selects the loaded EXE module for `argv0`; C++ uses `std::istringstream` and may use the last module path/name. |
-| `set_last_error` / `get_last_error` | **100% Ported** (fully thread-safe, routing error codes to the current emulated thread with global fallback, fully matching Python). ✅ |
-| `load_module` | Does not use Python's `filename` override, does not reliably set up `return_hook` arguments (`get_ret_address()` is used), and has reduced file-open error behavior. |
-| `prepare_module_for_emulation` | Mostly ported, but DLL container process handling differs from Python and user-module insertion is extra local behavior. |
-| `run_module` | Child process emulation is thinner; child PE data loading and object-manager registration do not fully mirror Python. |
-| `run_shellcode` | **100% Ported & Verified** (fully synced target validation, stack registration, 4 dummy args mapping, ECX=1024 configuration, process/thread layout, and PEB/TEB allocation). ✅ |
-| `setup` | Does not create `WindowsApi` directly as Python does, comments out core DLL preloading/hooks, and relies on later paths for API initialization. |
-| `set_hooks` | Only calls base `set_hooks` and memory tracing; Python also installs invalid-memory and interrupt hooks once, then coverage/debug hooks. |
-| `init_sys_modules` | Driver device handling is placeholder-like and assumes `dynamic_pointer_cast<SystemModule>` succeeds before dereferencing. |
-| `_capture_memory_layout` | Captures simplified string maps; Python records access stats, section-access stats, optional artifact-store `data_ref`s, and loaded-module segment dictionaries. |
-| `_set_input_metadata` | Uses path extension to distinguish EXE/DLL when not driver; Python uses PE parser `is_dll()` / `is_exe()` behavior. |
-
-##### Implemented Incorrectly
-
-| Function | Problem |
-|---|---|
-| `build_service_main_args` | Python raises `Win32EmuError` for unsupported `char_width`; C++ silently returns `(0, 0)`. |
-| `load_shellcode` | **100% Ported & Verified** (maps shellcode via ShellcodeLoader to construct a correct executable MemoryRegion, loaded via load_image, registered as RuntimeModule). ✅ |
-| `run_shellcode` | **100% Ported & Verified** (initializes stack, TEB, PEB, register state, and dummy stack arguments faithfully). ✅ |
-| `init_container_process` | C++ appends the container process to `processes` before returning it; Python returns the process and lets callers decide whether to append. |
-| `init_sys_modules` | Dereferences `sysmod->driver` after a dynamic cast without a null check, which can crash for non-`SystemModule` entries. |
-
-Highest-risk fixes are `set_hooks`, `setup`, `load_module`, and `_capture_memory_layout`, because they affect basic user-mode execution, API/exception hook installation, and profiler output fidelity.
-
----
-
-## Remaining TODO (20 items)
-
-| File | TODO Count | Description |
-|------|------------|-------------|
-| `secpp/binemu.cpp` | 7 | Constructor/config parity, EmuStruct size/byte polymorphism, dynamic-code profiling, hook disable support, and module lookup ownership |
-| `secpp/profiler.h` | 3 | Typed event parity for generic event storage, ExceptionEvent, and ModuleLoadEvent profiling |
-| `secpp/windows/netman.cpp` | 1 | DNS TXT lookup configuration support |
-| `secpp/winenv/api/usermode/kernel32.cpp` | 2 | Toolhelp snapshot process/module item population |
-| `secpp/winenv/api/usermode/ntdll.cpp` | 7 | File handle registration plus registry key/value handle, type-check, set, and delete parity |
-
-> Count source: `rg -n "TODO" secpp` on 2026-05-28. This excludes TODO markers that remain only in the Python reference tree.
-
----
-
-## 里程碑与进展总结
-
-1. **FetchContent Local Modernization**: We transitioned `pe-parse` from an external system package to a local, customizable `third_party` module cleanly built and integrated within root `CMakeLists.txt` and `vcpkg.json`.
-2. **Double DOS Header Bug Resolved**: Fixed MZ signature offsets, restoring 100% correct template initialization and allowing `ParsePEFromPointer` to parse flawlessly at all intermediate decoy steps.
-3. **Decoy Logic Offloaded**: Offloading manual decoy segment assembly into `pe-parse` removed over 200 lines of complex manual byte-packing helper code from Speakeasy.
-4. **MSVC Warning-Free Target**: Cleaned up MSVC shadowing warnings (C4458) and `size_t` conversion warnings (C4267), achieving 100% warning-free MSVC `/W4` compilation.
+1. **迁移 objman.cpp / win32.cpp** — 将 `defs/nt/` → `deffs/nt/` include 路径、`defs::nt::Type` → `defs::new_structs::Type<sizeof(void*)>` 命名空间、`new TEB(ptr_sz)` → `new TEB<sizeof(void*)>()` 构造方式都改为 deffs 风格
+2. **逐步淘汰旧 defs** — 一旦所有生产文件迁移，删除旧 `defs/` 目录
