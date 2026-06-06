@@ -195,18 +195,35 @@ uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::vector<uint64_t>& a, void
     int ps = ptr_sz(e);
 
     if (level == 100) {
-        deffs::windows::WKSTA_INFO_100<sizeof(void*)> wki;
-        wki.wki_platform_id  = 500;  // PLATFORM_ID_NT
-        wki.wki_computername = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
-        be(e)->write_mem_string(hostname, wki.wki_computername, 2);
-        wki.wki_langroup     = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
-        be(e)->write_mem_string(domain, wki.wki_langroup, 2);
-        wki.wki_ver_major    = 10;
-        wki.wki_ver_minor    = 0;
-
-        size_t sz = wki.sizeof_obj();
-        uint64_t addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_100");
-        auto bytes = wki.get_bytes();
+        // Branch on runtime pointer size for correct struct layout.
+        size_t sz;
+        uint64_t addr;
+        std::vector<uint8_t> bytes;
+        if (ps == 8) {
+            deffs::windows::WKSTA_INFO_100<8> wki;
+            wki.wki_platform_id  = 500;  // PLATFORM_ID_NT
+            wki.wki_computername = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
+            be(e)->write_mem_string(hostname, wki.wki_computername, 2);
+            wki.wki_langroup     = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
+            be(e)->write_mem_string(domain, wki.wki_langroup, 2);
+            wki.wki_ver_major    = 10;
+            wki.wki_ver_minor    = 0;
+            sz = wki.sizeof_obj();
+            addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_100");
+            bytes = wki.get_bytes();
+        } else {
+            deffs::windows::WKSTA_INFO_100<4> wki;
+            wki.wki_platform_id  = 500;  // PLATFORM_ID_NT
+            wki.wki_computername = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
+            be(e)->write_mem_string(hostname, wki.wki_computername, 2);
+            wki.wki_langroup     = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
+            be(e)->write_mem_string(domain, wki.wki_langroup, 2);
+            wki.wki_ver_major    = 10;
+            wki.wki_ver_minor    = 0;
+            sz = wki.sizeof_obj();
+            addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_100");
+            bytes = wki.get_bytes();
+        }
         we(e)->mem_write(addr, bytes);
 
         std::vector<uint8_t> ptr_buf(ps, 0);
@@ -214,24 +231,38 @@ uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::vector<uint64_t>& a, void
         we(e)->mem_write(bufptr, ptr_buf);
 
     } else if (level == 101) {
-        deffs::windows::WKSTA_INFO_101<sizeof(void*)> wki;
-        wki.wki_platform_id  = 500;
-        wki.wki_computername = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
-        be(e)->write_mem_string(hostname, wki.wki_computername, 2);
-        wki.wki_langroup     = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
-        be(e)->write_mem_string(domain, wki.wki_langroup, 2);
-        wki.wki_ver_major    = 10;
-        wki.wki_ver_minor    = 0;
-        // Empty lanroot string (just null terminator)
-        wki.wki_lanroot      = we(e)->mem_map(2, 0, 7, "emu.wki_lanroot");
-        {
-            std::vector<uint8_t> empty(2, 0);
-            we(e)->mem_write(wki.wki_lanroot, empty);
+        size_t sz;
+        uint64_t addr;
+        std::vector<uint8_t> bytes;
+        if (ps == 8) {
+            deffs::windows::WKSTA_INFO_101<8> wki;
+            wki.wki_platform_id  = 500;
+            wki.wki_computername = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
+            be(e)->write_mem_string(hostname, wki.wki_computername, 2);
+            wki.wki_langroup     = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
+            be(e)->write_mem_string(domain, wki.wki_langroup, 2);
+            wki.wki_ver_major    = 10;
+            wki.wki_ver_minor    = 0;
+            wki.wki_lanroot      = we(e)->mem_map(2, 0, 7, "emu.wki_lanroot");
+            { std::vector<uint8_t> empty(2, 0); we(e)->mem_write(wki.wki_lanroot, empty); }
+            sz = wki.sizeof_obj();
+            addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_101");
+            bytes = wki.get_bytes();
+        } else {
+            deffs::windows::WKSTA_INFO_101<4> wki;
+            wki.wki_platform_id  = 500;
+            wki.wki_computername = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
+            be(e)->write_mem_string(hostname, wki.wki_computername, 2);
+            wki.wki_langroup     = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
+            be(e)->write_mem_string(domain, wki.wki_langroup, 2);
+            wki.wki_ver_major    = 10;
+            wki.wki_ver_minor    = 0;
+            wki.wki_lanroot      = we(e)->mem_map(2, 0, 7, "emu.wki_lanroot");
+            { std::vector<uint8_t> empty(2, 0); we(e)->mem_write(wki.wki_lanroot, empty); }
+            sz = wki.sizeof_obj();
+            addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_101");
+            bytes = wki.get_bytes();
         }
-
-        size_t sz = wki.sizeof_obj();
-        uint64_t addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_101");
-        auto bytes = wki.get_bytes();
         we(e)->mem_write(addr, bytes);
 
         std::vector<uint8_t> ptr_buf(ps, 0);
@@ -239,24 +270,40 @@ uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::vector<uint64_t>& a, void
         we(e)->mem_write(bufptr, ptr_buf);
 
     } else {  // level == 102
-        deffs::windows::WKSTA_INFO_102<sizeof(void*)> wki;
-        wki.wki_platform_id     = 500;
-        wki.wki_computername    = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
-        be(e)->write_mem_string(hostname, wki.wki_computername, 2);
-        wki.wki_langroup        = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
-        be(e)->write_mem_string(domain, wki.wki_langroup, 2);
-        wki.wki_ver_major       = 10;
-        wki.wki_ver_minor       = 0;
-        wki.wki_lanroot         = we(e)->mem_map(2, 0, 7, "emu.wki_lanroot");
-        {
-            std::vector<uint8_t> empty(2, 0);
-            we(e)->mem_write(wki.wki_lanroot, empty);
+        size_t sz;
+        uint64_t addr;
+        std::vector<uint8_t> bytes;
+        if (ps == 8) {
+            deffs::windows::WKSTA_INFO_102<8> wki;
+            wki.wki_platform_id     = 500;
+            wki.wki_computername    = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
+            be(e)->write_mem_string(hostname, wki.wki_computername, 2);
+            wki.wki_langroup        = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
+            be(e)->write_mem_string(domain, wki.wki_langroup, 2);
+            wki.wki_ver_major       = 10;
+            wki.wki_ver_minor       = 0;
+            wki.wki_lanroot         = we(e)->mem_map(2, 0, 7, "emu.wki_lanroot");
+            { std::vector<uint8_t> empty(2, 0); we(e)->mem_write(wki.wki_lanroot, empty); }
+            wki.wki_logged_on_users = 2;
+            sz = wki.sizeof_obj();
+            addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_102");
+            bytes = wki.get_bytes();
+        } else {
+            deffs::windows::WKSTA_INFO_102<4> wki;
+            wki.wki_platform_id     = 500;
+            wki.wki_computername    = we(e)->mem_map(static_cast<size_t>((hostname.size() + 1) * 2), 0, 7, "emu.wki_computername");
+            be(e)->write_mem_string(hostname, wki.wki_computername, 2);
+            wki.wki_langroup        = we(e)->mem_map(static_cast<size_t>((domain.size() + 1) * 2), 0, 7, "emu.wki_langroup");
+            be(e)->write_mem_string(domain, wki.wki_langroup, 2);
+            wki.wki_ver_major       = 10;
+            wki.wki_ver_minor       = 0;
+            wki.wki_lanroot         = we(e)->mem_map(2, 0, 7, "emu.wki_lanroot");
+            { std::vector<uint8_t> empty(2, 0); we(e)->mem_write(wki.wki_lanroot, empty); }
+            wki.wki_logged_on_users = 2;
+            sz = wki.sizeof_obj();
+            addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_102");
+            bytes = wki.get_bytes();
         }
-        wki.wki_logged_on_users = 2;
-
-        size_t sz = wki.sizeof_obj();
-        uint64_t addr = we(e)->mem_map(sz, 0, 7, "emu.WKSTA_INFO_102");
-        auto bytes = wki.get_bytes();
         we(e)->mem_write(addr, bytes);
 
         std::vector<uint8_t> ptr_buf(ps, 0);
@@ -311,24 +358,38 @@ uint64_t NetApi32::NetServerGetInfo(void* e, const std::vector<uint64_t>& a, voi
 
     if (level == 101) {
         int ps = ptr_sz(e);
-        deffs::windows::SERVER_INFO_101<sizeof(void*)> si;
-        si.sv101_platform_id   = 500;
-        std::string srv_name = "\\\\SERVER";
-        si.sv101_name = we(e)->mem_map(static_cast<size_t>((srv_name.size() + 1) * 2), 0, 7, "emu.sv101_name");
-        be(e)->write_mem_string(srv_name, si.sv101_name, 2);
-        si.sv101_version_major = 10;
-        si.sv101_version_minor = 0;
-        si.sv101_type          = 3;  // SV_TYPE_SERVER | SV_TYPE_WORKSTATION
-        std::string comment = "";
-        si.sv101_comment = we(e)->mem_map(2, 0, 7, "emu.sv101_comment");
-        {
-            std::vector<uint8_t> empty(2, 0);
-            we(e)->mem_write(si.sv101_comment, empty);
+        size_t sz;
+        uint64_t addr;
+        std::vector<uint8_t> bytes;
+        if (ps == 8) {
+            deffs::windows::SERVER_INFO_101<8> si;
+            si.sv101_platform_id   = 500;
+            std::string srv_name = "\\\\SERVER";
+            si.sv101_name = we(e)->mem_map(static_cast<size_t>((srv_name.size() + 1) * 2), 0, 7, "emu.sv101_name");
+            be(e)->write_mem_string(srv_name, si.sv101_name, 2);
+            si.sv101_version_major = 10;
+            si.sv101_version_minor = 0;
+            si.sv101_type          = 3;  // SV_TYPE_SERVER | SV_TYPE_WORKSTATION
+            si.sv101_comment = we(e)->mem_map(2, 0, 7, "emu.sv101_comment");
+            { std::vector<uint8_t> empty(2, 0); we(e)->mem_write(si.sv101_comment, empty); }
+            sz = si.sizeof_obj();
+            addr = we(e)->mem_map(sz, 0, 7, "emu.SERVER_INFO_101");
+            bytes = si.get_bytes();
+        } else {
+            deffs::windows::SERVER_INFO_101<4> si;
+            si.sv101_platform_id   = 500;
+            std::string srv_name = "\\\\SERVER";
+            si.sv101_name = we(e)->mem_map(static_cast<size_t>((srv_name.size() + 1) * 2), 0, 7, "emu.sv101_name");
+            be(e)->write_mem_string(srv_name, si.sv101_name, 2);
+            si.sv101_version_major = 10;
+            si.sv101_version_minor = 0;
+            si.sv101_type          = 3;  // SV_TYPE_SERVER | SV_TYPE_WORKSTATION
+            si.sv101_comment = we(e)->mem_map(2, 0, 7, "emu.sv101_comment");
+            { std::vector<uint8_t> empty(2, 0); we(e)->mem_write(si.sv101_comment, empty); }
+            sz = si.sizeof_obj();
+            addr = we(e)->mem_map(sz, 0, 7, "emu.SERVER_INFO_101");
+            bytes = si.get_bytes();
         }
-
-        size_t sz = si.sizeof_obj();
-        uint64_t addr = we(e)->mem_map(sz, 0, 7, "emu.SERVER_INFO_101");
-        auto bytes = si.get_bytes();
         we(e)->mem_write(addr, bytes);
 
         std::vector<uint8_t> ptr_buf(ps, 0);

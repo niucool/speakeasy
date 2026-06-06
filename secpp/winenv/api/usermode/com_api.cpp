@@ -109,20 +109,33 @@ uint64_t ComApi::IWbemLocator_ConnectServer(void* e, const std::vector<uint64_t>
 
     if (ppNamespace) {
         int ps = be(e)->get_ptr_size();
-        // Emulate: create an IWbemServices interface in emulated memory
-        deffs::windows::IWbemServices<sizeof(void*)> svc_vtbl;
-        size_t vtbl_size = svc_vtbl.sizeof_obj();
-        uint64_t vtbl_addr = we(e)->mem_map(vtbl_size, 0, 7, "emu.COM.IWbemServices.vtbl");
-        std::vector<uint8_t> vtbl_bytes = svc_vtbl.get_bytes();
-        we(e)->mem_write(vtbl_addr, vtbl_bytes);
+        // Emulate: create an IWbemServices interface in emulated memory.
+        // Branch on runtime pointer size so struct layouts are correct for
+        // both 32-bit and 64-bit emulated targets.
+        uint64_t ci_addr = 0;
+        if (ps == 8) {
+            deffs::windows::IWbemServices<8> svc_vtbl;
+            size_t vtbl_size = svc_vtbl.sizeof_obj();
+            uint64_t vtbl_addr = we(e)->mem_map(vtbl_size, 0, 7, "emu.COM.IWbemServices.vtbl");
+            we(e)->mem_write(vtbl_addr, svc_vtbl.get_bytes());
 
-        // ComInterface wrapper: contains pointer to vtable
-        deffs::windows::ComInterface<sizeof(void*)> ci;
-        ci.vtable = vtbl_addr;
-        size_t ci_size = ci.sizeof_obj();
-        uint64_t ci_addr = we(e)->mem_map(ci_size, 0, 7, "emu.COM.IWbemServices");
-        std::vector<uint8_t> ci_bytes = ci.get_bytes();
-        we(e)->mem_write(ci_addr, ci_bytes);
+            deffs::windows::ComInterface<8> ci;
+            ci.vtable = vtbl_addr;
+            size_t ci_size = ci.sizeof_obj();
+            ci_addr = we(e)->mem_map(ci_size, 0, 7, "emu.COM.IWbemServices");
+            we(e)->mem_write(ci_addr, ci.get_bytes());
+        } else {
+            deffs::windows::IWbemServices<4> svc_vtbl;
+            size_t vtbl_size = svc_vtbl.sizeof_obj();
+            uint64_t vtbl_addr = we(e)->mem_map(vtbl_size, 0, 7, "emu.COM.IWbemServices.vtbl");
+            we(e)->mem_write(vtbl_addr, svc_vtbl.get_bytes());
+
+            deffs::windows::ComInterface<4> ci;
+            ci.vtable = vtbl_addr;
+            size_t ci_size = ci.sizeof_obj();
+            ci_addr = we(e)->mem_map(ci_size, 0, 7, "emu.COM.IWbemServices");
+            we(e)->mem_write(ci_addr, ci.get_bytes());
+        }
 
         // Write pointer to the interface into ppNamespace
         std::vector<uint8_t> pp_buf(ps, 0);

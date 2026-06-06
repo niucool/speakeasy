@@ -18,7 +18,6 @@
 #include "artifacts.h"
 #include "memmgr.h"
 #include "profiler.h"
-constexpr int kPtrSize = sizeof(void*);
 #include "winenv/arch.h"
 
 // Windows emulation modules
@@ -72,36 +71,59 @@ TEST(ArchTest, Constants) {
 
 //  NT Kernel Structure tests 
 
-TEST(NtStructTest, UnicodeStringSize) {
-    // 64-bit layout: Length(2) + MaxLen(2) + pad(4) + Buffer(8) = 16
-    speakeasy::deffs::nt::UNICODE_STRING<kPtrSize> us;
-    EXPECT_EQ(us.sizeof_obj(), 16);
+TEST(NtStructTest, UnicodeStringSizeForBothArchitectures) {
+    // x86 (<4>): Length(2)+MaxLen(2)+Buffer(4) = 8
+    // x64 (<8>): Length(2)+MaxLen(2)+pad(4)+Buffer(8) = 16
+    EXPECT_EQ((speakeasy::deffs::nt::UNICODE_STRING<4>().sizeof_obj()), 8);
+    EXPECT_EQ((speakeasy::deffs::nt::UNICODE_STRING<8>().sizeof_obj()), 16);
+    // Host-native verification
+    EXPECT_EQ((speakeasy::deffs::nt::UNICODE_STRING<sizeof(void*)>().sizeof_obj()),
+              (sizeof(void*) == 8) ? 16 : 8);
 }
 
-TEST(NtStructTest, UnicodeStringGetBytes) {
-    // With 8-byte pointers (x64): Length(2) + MaxLen(2) + pad(4) + Buffer(8) = 16
-    // sizeof_obj always returns the 64-bit layout since uint64_t is used for Buffer
-    speakeasy::deffs::nt::UNICODE_STRING<kPtrSize> us;
-    us.Buffer = 0xDEADBEEFCAFEULL;
-    auto bytes = us.get_bytes();
-    EXPECT_EQ(bytes.size(), 16);
-    // Buffer at offset 8 (little-endian)
-    EXPECT_EQ(bytes[8], 0xFE);
-    EXPECT_EQ(bytes[9], 0xCA);
+TEST(NtStructTest, UnicodeStringGetBytesBothArchitectures) {
+    // <4>: Buffer at offset 4
+    {
+        speakeasy::deffs::nt::UNICODE_STRING<4> us;
+        us.Buffer = 0xDEADBEEF;
+        auto bytes = us.get_bytes();
+        EXPECT_EQ(bytes.size(), 8);
+        EXPECT_EQ(bytes[4], 0xEF);  // Buffer LSB at offset 4
+    }
+    // <8>: Buffer at offset 8 (after 4-byte padding)
+    {
+        speakeasy::deffs::nt::UNICODE_STRING<8> us;
+        us.Buffer = 0xDEADBEEFCAFEULL;
+        auto bytes = us.get_bytes();
+        EXPECT_EQ(bytes.size(), 16);
+        EXPECT_EQ(bytes[8], 0xFE);
+        EXPECT_EQ(bytes[9], 0xCA);
+    }
 }
 
-TEST(NtStructTest, StringStruct) {
-    speakeasy::deffs::nt::STRING<kPtrSize> s;
-    s.Length = 4;
-    s.MaximumLength = 8;
-    s.Buffer = 0x1000;
-    auto bytes = s.get_bytes();
-    // 64-bit layout: Length(2) + MaxLen(2) + pad(4) + Buffer(8) = 16
-    EXPECT_EQ(bytes.size(), 16);
-    EXPECT_EQ(bytes[0], 4);  // Length
-    EXPECT_EQ(bytes[1], 0);
-    EXPECT_EQ(bytes[2], 8);  // MaxLength
-    EXPECT_EQ(bytes[3], 0);
+TEST(NtStructTest, StringStructBothArchitectures) {
+    // <4>
+    {
+        speakeasy::deffs::nt::STRING<4> s;
+        s.Length = 4;
+        s.MaximumLength = 8;
+        s.Buffer = 0x1000;
+        auto bytes = s.get_bytes();
+        EXPECT_EQ(bytes.size(), 8);
+        EXPECT_EQ(bytes[0], 4);   // Length
+        EXPECT_EQ(bytes[2], 8);   // MaxLength
+    }
+    // <8>
+    {
+        speakeasy::deffs::nt::STRING<8> s;
+        s.Length = 4;
+        s.MaximumLength = 8;
+        s.Buffer = 0x1000;
+        auto bytes = s.get_bytes();
+        EXPECT_EQ(bytes.size(), 16);
+        EXPECT_EQ(bytes[0], 4);   // Length
+        EXPECT_EQ(bytes[2], 8);   // MaxLength
+    }
 }
 
 TEST(NtStructTest, KSystemTime) {

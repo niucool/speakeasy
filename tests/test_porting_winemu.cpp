@@ -45,8 +45,14 @@ TEST(ObjmanPortingTest, PebTebLinkedlistValidation) {
     }
 
     // Test ProcessParameters address linked to PEB
-    auto* peb_struct = static_cast<speakeasy::deffs::nt::PEB<sizeof(void*)>*>(peb->get_object());
-    if (peb_struct->ProcessParameters == 0) {
+    int ps = emu.get_ptr_size();
+    bool has_process_params = false;
+    if (ps == 8) {
+        has_process_params = (static_cast<speakeasy::deffs::nt::PEB<8>*>(peb->get_object())->ProcessParameters != 0);
+    } else {
+        has_process_params = (static_cast<speakeasy::deffs::nt::PEB<4>*>(peb->get_object())->ProcessParameters != 0);
+    }
+    if (!has_process_params) {
         ADD_FAILURE() << "ProcessParameters is 0";
     }
 
@@ -76,31 +82,53 @@ TEST(ObjmanPortingTest, PebTebLinkedlistValidation) {
         return;
     }
 
-    auto* ldte_struct = static_cast<speakeasy::deffs::nt::LDR_DATA_TABLE_ENTRY<sizeof(void*)>*>(ldte->get_object());
-    if (ldte_struct->DllBase != 0x10000000ULL) {
-        ADD_FAILURE() << "DllBase mismatch";
-    }
-    if (ldte_struct->EntryPoint != 0x10001000ULL) {
-        ADD_FAILURE() << "EntryPoint mismatch";
-    }
-    if (ldte_struct->SizeOfImage != 0x2000) {
-        ADD_FAILURE() << "SizeOfImage mismatch";
-    }
-
-    // Circular links should point to itself since it is the only element
-    if (ldte_struct->InLoadOrderLinks.Flink != ldte->get_address()) {
-        ADD_FAILURE() << "Flink mismatch";
-    }
-    if (ldte_struct->InLoadOrderLinks.Blink != ldte->get_address()) {
-        ADD_FAILURE() << "Blink mismatch";
-    }
-
-    // Verify Unicode strings
-    if (ldte_struct->FullDllName.Length == 0) {
-        ADD_FAILURE() << "FullDllName is empty";
-    }
-    if (ldte_struct->BaseDllName.Length == 0) {
-        ADD_FAILURE() << "BaseDllName is empty";
+    // Dispatch on runtime pointer size so field offsets are correct.
+    if (ps == 8) {
+        auto* ldte_struct = static_cast<speakeasy::deffs::nt::LDR_DATA_TABLE_ENTRY<8>*>(ldte->get_object());
+        if (ldte_struct->DllBase != 0x10000000ULL) {
+            ADD_FAILURE() << "DllBase mismatch";
+        }
+        if (ldte_struct->EntryPoint != 0x10001000ULL) {
+            ADD_FAILURE() << "EntryPoint mismatch";
+        }
+        if (ldte_struct->SizeOfImage != 0x2000) {
+            ADD_FAILURE() << "SizeOfImage mismatch";
+        }
+        if (ldte_struct->InLoadOrderLinks.Flink != ldte->get_address()) {
+            ADD_FAILURE() << "Flink mismatch";
+        }
+        if (ldte_struct->InLoadOrderLinks.Blink != ldte->get_address()) {
+            ADD_FAILURE() << "Blink mismatch";
+        }
+        if (ldte_struct->FullDllName.Length == 0) {
+            ADD_FAILURE() << "FullDllName is empty";
+        }
+        if (ldte_struct->BaseDllName.Length == 0) {
+            ADD_FAILURE() << "BaseDllName is empty";
+        }
+    } else {
+        auto* ldte_struct = static_cast<speakeasy::deffs::nt::LDR_DATA_TABLE_ENTRY<4>*>(ldte->get_object());
+        if (ldte_struct->DllBase != 0x10000000ULL) {
+            ADD_FAILURE() << "DllBase mismatch";
+        }
+        if (ldte_struct->EntryPoint != 0x10001000ULL) {
+            ADD_FAILURE() << "EntryPoint mismatch";
+        }
+        if (ldte_struct->SizeOfImage != 0x2000) {
+            ADD_FAILURE() << "SizeOfImage mismatch";
+        }
+        if (ldte_struct->InLoadOrderLinks.Flink != ldte->get_address()) {
+            ADD_FAILURE() << "Flink mismatch";
+        }
+        if (ldte_struct->InLoadOrderLinks.Blink != ldte->get_address()) {
+            ADD_FAILURE() << "Blink mismatch";
+        }
+        if (ldte_struct->FullDllName.Length == 0) {
+            ADD_FAILURE() << "FullDllName is empty";
+        }
+        if (ldte_struct->BaseDllName.Length == 0) {
+            ADD_FAILURE() << "BaseDllName is empty";
+        }
     }
 }
 
@@ -184,9 +212,18 @@ TEST(ObjmanPortingTest, TebReadbackIntegration) {
     // Verify initial values
     auto teb = thread->get_teb();
     ASSERT_NE(teb, nullptr);
-    auto* teb_struct = static_cast<speakeasy::deffs::nt::TEB<sizeof(void*)>*>(teb->get_object());
-    EXPECT_EQ(teb_struct->NtTib.StackBase, 0x20000);
-    EXPECT_EQ(teb_struct->NtTib.StackLimit, 0x2000);
+    {
+        int teb_ps = emu.get_ptr_size();
+        if (teb_ps == 8) {
+            auto* teb_struct = static_cast<speakeasy::deffs::nt::TEB<8>*>(teb->get_object());
+            EXPECT_EQ(teb_struct->NtTib.StackBase, 0x20000);
+            EXPECT_EQ(teb_struct->NtTib.StackLimit, 0x2000);
+        } else {
+            auto* teb_struct = static_cast<speakeasy::deffs::nt::TEB<4>*>(teb->get_object());
+            EXPECT_EQ(teb_struct->NtTib.StackBase, 0x20000);
+            EXPECT_EQ(teb_struct->NtTib.StackLimit, 0x2000);
+        }
+    }
 
     // Directly modify TEB's StackLimit in emulation memory
     std::vector<uint8_t> new_limit_buf(4);
@@ -196,8 +233,16 @@ TEST(ObjmanPortingTest, TebReadbackIntegration) {
 
     // get_teb() should call read_back() and reflect the update
     auto teb_updated = thread->get_teb();
-    auto* teb_struct_updated = static_cast<speakeasy::deffs::nt::TEB<sizeof(void*)>*>(teb_updated->get_object());
-    EXPECT_EQ(teb_struct_updated->NtTib.StackLimit, 0x5000);
+    {
+        int teb_ps = emu.get_ptr_size();
+        if (teb_ps == 8) {
+            auto* ts = static_cast<speakeasy::deffs::nt::TEB<8>*>(teb_updated->get_object());
+            EXPECT_EQ(ts->NtTib.StackLimit, 0x5000);
+        } else {
+            auto* ts = static_cast<speakeasy::deffs::nt::TEB<4>*>(teb_updated->get_object());
+            EXPECT_EQ(ts->NtTib.StackLimit, 0x5000);
+        }
+    }
 }
 
 TEST(ObjmanPortingTest, ThreadSpecificLastErrorRouting) {

@@ -1,5 +1,28 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
+## 2026-06-05: kPtrSize 运行时修复
+
+修复了 `kPtrSize = sizeof(void*)`（编译期宿主指针大小）与运行时 `ptr_sz = get_ptr_size()`（仿真目标指针大小）不匹配的问题。在 64-bit 宿主上仿真 32-bit PE 时，`kPtrSize == 8` 但 `ptr_sz == 4`，导致：
+
+- 受影响的 `KernelObject` 子类（PEB/TEB/PEB_LDR_DATA/LDR_DATA_TABLE_ENTRY/RTL_USER_PROCESS_PARAMETERS/IDT）的 `object_` 创建了错误的模板类型
+- 后续 `static_cast` 类型不匹配 → 未定义行为
+
+**修复方案：** 方案 A（运行时 if/else + 模板体提取）
+
+| 文件 | 变更 |
+|------|------|
+| `secpp/windows/objman.cpp` | 6 个构造函数 + 4 个简单方法 + 2 个自由函数模板 (`add_module_to_peb_impl`, `populate_runtime_params_impl`) + 显式实例化；移除 `kPtrSize` |
+| `secpp/windows/win32.cpp` | `alloc_peb` 中 1 处 if/else 分支；移除未使用的 `kPtrSize` |
+| `secpp/winenv/api/usermode/com_api.cpp` | 2 处 if/else 分支（`IWbemServices` + `ComInterface`） |
+| `secpp/winenv/api/usermode/netapi32.cpp` | 4 处 if/else 分支（`WKSTA_INFO_100/101/102` + `SERVER_INFO_101`） |
+| `tests/test_porting_winemu.cpp` | 4 处 `static_cast` → if/else |
+| `tests/smoke_test.cpp` | `kPtrSize` → 显式 `<4>` + `<8>` 双架构测试 |
+| `tests/test_porting_ntdefs.cpp` | `kPtrSize` → 显式 `<4>` + `<8>` 双架构测试 |
+
+**零头文件变更**（所有变更在 `.cpp` 文件内）。
+
+---
+
 ## Phase: defs 结构体移植 — 基本完成 ✅
 
 ### 目录结构

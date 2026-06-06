@@ -5,7 +5,18 @@
 
 ## [Unreleased]
 
-### 2026-06-04
+### 2026-06-05
+
+#### Fixed
+
+- **secpp**: 修复了 `objman.cpp` 中 `kPtrSize = sizeof(void*)` 的架构缺陷——当在 64-bit 宿主上仿真 32-bit PE 时，编译期 `kPtrSize`（始终为 8）与运行时 `ptr_sz = get_ptr_size()`（返回 4）不匹配，导致 `PEB`/`TEB`/`PEB_LDR_DATA`/`LDR_DATA_TABLE_ENTRY`/`RTL_USER_PROCESS_PARAMETERS`/`IDT` 六个结构体创建了错误指针大小的 `object_` 实例，且后续 `static_cast` 为未定义行为：
+  - **构造函数修复**：6 个 `KernelObject` 子类的构造函数改为运行时 if/else 分支（`if (ptr_sz == 8) new Foo<8>() else new Foo<4>()`），确保 `object_` 实例化正确的模板特化
+  - **字段访问修复**：所有 `static_cast<Foo<kPtrSize>*>(object_)` 替换为 if/else 分支或模板体函数 `_impl<PtrSize>`，消除 UB
+  - **自由函数模板**：`add_module_to_peb` 和 `RTL_USER_PROCESS_PARAMETERS` 构造函数中的复杂字段填充逻辑提取为自由函数模板 `add_module_to_peb_impl<PtrSize>` 和 `populate_runtime_params_impl<PtrSize>`，末尾显式实例化
+  - **移除**：删除 `objman.cpp` 和 `win32.cpp` 中的 `constexpr int kPtrSize = sizeof(void*);`
+- **secpp/winenv/api/usermode**: 修复了 `com_api.cpp`（2 处）和 `netapi32.cpp`（4 处）中结构体局部变量使用 `sizeof(void*)` 作为模板参数的问题——在 64-bit 宿主上仿真 32-bit 程序时，写入仿真内存的 `IWbemServices`/`ComInterface`/`WKSTA_INFO_10x`/`SERVER_INFO_101` 结构体会使用错误的指针大小布局，改为运行时 `ps` 分支
+- **tests**: 修复了 `test_porting_winemu.cpp` 中 4 处 `static_cast` 使用 `sizeof(void*)` 的问题，改为基于 `emu.get_ptr_size()` 的运行时分支
+- **tests**: 将 `test_porting_ntdefs.cpp` 和 `smoke_test.cpp` 中的 `kPtrSize` 替换为显式 `<4>` + `<8>` 双架构测试，确保两种指针大小的结构体序列化/反序列化行为均被验证
 
 #### Added
 
