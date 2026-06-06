@@ -9,6 +9,332 @@
 
 #include <cstdint>
 
+// Undefine conflicting Windows SDK macros (avoid clash with constexpr definitions)
+#ifdef _WIN32
+// -- IRQL Levels --
+#ifdef PASSIVE_LEVEL
+#undef PASSIVE_LEVEL
+#endif
+#ifdef LOW_LEVEL
+#undef LOW_LEVEL
+#endif
+#ifdef APC_LEVEL
+#undef APC_LEVEL
+#endif
+#ifdef DISPATCH_LEVEL
+#undef DISPATCH_LEVEL
+#endif
+#ifdef CMCI_LEVEL
+#undef CMCI_LEVEL
+#endif
+#ifdef PROFILE_LEVEL
+#undef PROFILE_LEVEL
+#endif
+#ifdef CLOCK1_LEVEL
+#undef CLOCK1_LEVEL
+#endif
+#ifdef CLOCK2_LEVEL
+#undef CLOCK2_LEVEL
+#endif
+#ifdef IPI_LEVEL
+#undef IPI_LEVEL
+#endif
+#ifdef POWER_LEVEL
+#undef POWER_LEVEL
+#endif
+#ifdef HIGH_LEVEL
+#undef HIGH_LEVEL
+#endif
+
+// -- NT Status Codes --
+#ifdef STATUS_SUCCESS
+#undef STATUS_SUCCESS
+#endif
+#ifdef STATUS_BREAKPOINT
+#undef STATUS_BREAKPOINT
+#endif
+#ifdef STATUS_SINGLE_STEP
+#undef STATUS_SINGLE_STEP
+#endif
+#ifdef STATUS_UNSUCCESSFUL
+#undef STATUS_UNSUCCESSFUL
+#endif
+#ifdef STATUS_INFO_LENGTH_MISMATCH
+#undef STATUS_INFO_LENGTH_MISMATCH
+#endif
+#ifdef STATUS_ACCESS_VIOLATION
+#undef STATUS_ACCESS_VIOLATION
+#endif
+#ifdef STATUS_INVALID_HANDLE
+#undef STATUS_INVALID_HANDLE
+#endif
+#ifdef STATUS_INVALID_CID
+#undef STATUS_INVALID_CID
+#endif
+#ifdef STATUS_INVALID_PARAMETER
+#undef STATUS_INVALID_PARAMETER
+#endif
+#ifdef STATUS_INTEGER_DIVIDE_BY_ZERO
+#undef STATUS_INTEGER_DIVIDE_BY_ZERO
+#endif
+#ifdef STATUS_ILLEGAL_INSTRUCTION
+#undef STATUS_ILLEGAL_INSTRUCTION
+#endif
+#ifdef STATUS_BUFFER_TOO_SMALL
+#undef STATUS_BUFFER_TOO_SMALL
+#endif
+#ifdef STATUS_OBJECT_TYPE_MISMATCH
+#undef STATUS_OBJECT_TYPE_MISMATCH
+#endif
+#ifdef STATUS_OBJECT_NAME_NOT_FOUND
+#undef STATUS_OBJECT_NAME_NOT_FOUND
+#endif
+#ifdef STATUS_PROCEDURE_NOT_FOUND
+#undef STATUS_PROCEDURE_NOT_FOUND
+#endif
+#ifdef STATUS_RESOURCE_DATA_NOT_FOUND
+#undef STATUS_RESOURCE_DATA_NOT_FOUND
+#endif
+#ifdef STATUS_NOT_SUPPORTED
+#undef STATUS_NOT_SUPPORTED
+#endif
+#ifdef STATUS_INVALID_DEVICE_REQUEST
+#undef STATUS_INVALID_DEVICE_REQUEST
+#endif
+#ifdef STATUS_PRIVILEGED_INSTRUCTION
+#undef STATUS_PRIVILEGED_INSTRUCTION
+#endif
+#ifdef STATUS_DEBUGGER_INACTIVE
+#undef STATUS_DEBUGGER_INACTIVE
+#endif
+#ifdef STATUS_BAD_COMPRESSION_BUFFER
+#undef STATUS_BAD_COMPRESSION_BUFFER
+#endif
+#ifdef STATUS_UNSUPPORTED_COMPRESSION
+#undef STATUS_UNSUPPORTED_COMPRESSION
+#endif
+#ifdef STATUS_NOINTERFACE
+#undef STATUS_NOINTERFACE
+#endif
+#ifdef STATUS_PORT_NOT_SET
+#undef STATUS_PORT_NOT_SET
+#endif
+
+// -- IRP Major Function Codes --
+#ifdef IRP_MJ_CREATE
+#undef IRP_MJ_CREATE
+#endif
+#ifdef IRP_MJ_CREATE_NAMED_PIPE
+#undef IRP_MJ_CREATE_NAMED_PIPE
+#endif
+#ifdef IRP_MJ_CLOSE
+#undef IRP_MJ_CLOSE
+#endif
+#ifdef IRP_MJ_READ
+#undef IRP_MJ_READ
+#endif
+#ifdef IRP_MJ_WRITE
+#undef IRP_MJ_WRITE
+#endif
+#ifdef IRP_MJ_QUERY_INFORMATION
+#undef IRP_MJ_QUERY_INFORMATION
+#endif
+#ifdef IRP_MJ_SET_INFORMATION
+#undef IRP_MJ_SET_INFORMATION
+#endif
+#ifdef IRP_MJ_QUERY_EA
+#undef IRP_MJ_QUERY_EA
+#endif
+#ifdef IRP_MJ_SET_EA
+#undef IRP_MJ_SET_EA
+#endif
+#ifdef IRP_MJ_FLUSH_BUFFERS
+#undef IRP_MJ_FLUSH_BUFFERS
+#endif
+#ifdef IRP_MJ_QUERY_VOLUME_INFORMATION
+#undef IRP_MJ_QUERY_VOLUME_INFORMATION
+#endif
+#ifdef IRP_MJ_SET_VOLUME_INFORMATION
+#undef IRP_MJ_SET_VOLUME_INFORMATION
+#endif
+#ifdef IRP_MJ_DIRECTORY_CONTROL
+#undef IRP_MJ_DIRECTORY_CONTROL
+#endif
+#ifdef IRP_MJ_FILE_SYSTEM_CONTROL
+#undef IRP_MJ_FILE_SYSTEM_CONTROL
+#endif
+#ifdef IRP_MJ_DEVICE_CONTROL
+#undef IRP_MJ_DEVICE_CONTROL
+#endif
+#ifdef IRP_MJ_INTERNAL_DEVICE_CONTROL
+#undef IRP_MJ_INTERNAL_DEVICE_CONTROL
+#endif
+#ifdef IRP_MJ_SHUTDOWN
+#undef IRP_MJ_SHUTDOWN
+#endif
+#ifdef IRP_MJ_LOCK_CONTROL
+#undef IRP_MJ_LOCK_CONTROL
+#endif
+#ifdef IRP_MJ_CLEANUP
+#undef IRP_MJ_CLEANUP
+#endif
+#ifdef IRP_MJ_CREATE_MAILSLOT
+#undef IRP_MJ_CREATE_MAILSLOT
+#endif
+#ifdef IRP_MJ_QUERY_SECURITY
+#undef IRP_MJ_QUERY_SECURITY
+#endif
+#ifdef IRP_MJ_SET_SECURITY
+#undef IRP_MJ_SET_SECURITY
+#endif
+#ifdef IRP_MJ_POWER
+#undef IRP_MJ_POWER
+#endif
+#ifdef IRP_MJ_SYSTEM_CONTROL
+#undef IRP_MJ_SYSTEM_CONTROL
+#endif
+#ifdef IRP_MJ_DEVICE_CHANGE
+#undef IRP_MJ_DEVICE_CHANGE
+#endif
+#ifdef IRP_MJ_QUERY_QUOTA
+#undef IRP_MJ_QUERY_QUOTA
+#endif
+#ifdef IRP_MJ_SET_QUOTA
+#undef IRP_MJ_SET_QUOTA
+#endif
+#ifdef IRP_MJ_PNP
+#undef IRP_MJ_PNP
+#endif
+#ifdef IRP_MJ_PNP_POWER
+#undef IRP_MJ_PNP_POWER
+#endif
+#ifdef IRP_MJ_MAXIMUM_FUNCTION
+#undef IRP_MJ_MAXIMUM_FUNCTION
+#endif
+
+// -- POOL_TYPE --
+#ifdef NonPagedPool
+#undef NonPagedPool
+#endif
+#ifdef PagedPool
+#undef PagedPool
+#endif
+#ifdef NonPagedPoolNx
+#undef NonPagedPoolNx
+#endif
+
+// -- Access Masks (winnt.h) --
+#ifdef DELETE
+#undef DELETE
+#endif
+#ifdef READ_CONTROL
+#undef READ_CONTROL
+#endif
+#ifdef WRITE_DAC
+#undef WRITE_DAC
+#endif
+#ifdef WRITE_OWNER
+#undef WRITE_OWNER
+#endif
+#ifdef SYNCHRONIZE
+#undef SYNCHRONIZE
+#endif
+#ifdef GENERIC_READ
+#undef GENERIC_READ
+#endif
+#ifdef GENERIC_WRITE
+#undef GENERIC_WRITE
+#endif
+#ifdef GENERIC_EXECUTE
+#undef GENERIC_EXECUTE
+#endif
+#ifdef GENERIC_ALL
+#undef GENERIC_ALL
+#endif
+
+// -- File Attributes --
+#ifdef FILE_ATTRIBUTE_READONLY
+#undef FILE_ATTRIBUTE_READONLY
+#endif
+#ifdef FILE_ATTRIBUTE_HIDDEN
+#undef FILE_ATTRIBUTE_HIDDEN
+#endif
+#ifdef FILE_ATTRIBUTE_SYSTEM
+#undef FILE_ATTRIBUTE_SYSTEM
+#endif
+#ifdef FILE_ATTRIBUTE_DIRECTORY
+#undef FILE_ATTRIBUTE_DIRECTORY
+#endif
+#ifdef FILE_ATTRIBUTE_ARCHIVE
+#undef FILE_ATTRIBUTE_ARCHIVE
+#endif
+#ifdef FILE_ATTRIBUTE_NORMAL
+#undef FILE_ATTRIBUTE_NORMAL
+#endif
+
+// -- Information Classes --
+#ifdef ProcessBasicInformation
+#undef ProcessBasicInformation
+#endif
+#ifdef ProcessDebugPort
+#undef ProcessDebugPort
+#endif
+#ifdef SystemBasicInformation
+#undef SystemBasicInformation
+#endif
+#ifdef SystemModuleInformation
+#undef SystemModuleInformation
+#endif
+#ifdef SystemProcessInformation
+#undef SystemProcessInformation
+#endif
+#ifdef SystemPerformanceInformation
+#undef SystemPerformanceInformation
+#endif
+#ifdef SystemTimeOfDayInformation
+#undef SystemTimeOfDayInformation
+#endif
+#ifdef SystemFlagsInformation
+#undef SystemFlagsInformation
+#endif
+#ifdef FileStandardInformation
+#undef FileStandardInformation
+#endif
+#ifdef FilePositionInformation
+#undef FilePositionInformation
+#endif
+#ifdef FileAlignmentInformation
+#undef FileAlignmentInformation
+#endif
+#ifdef FileNameInformation
+#undef FileNameInformation
+#endif
+#ifdef KeyValueBasicInformation
+#undef KeyValueBasicInformation
+#endif
+#ifdef KeyValueFullInformation
+#undef KeyValueFullInformation
+#endif
+#ifdef KeyValuePartialInformation
+#undef KeyValuePartialInformation
+#endif
+#ifdef KernelMode
+#undef KernelMode
+#endif
+#ifdef UserMode
+#undef UserMode
+#endif
+
+// -- Compression Formats --
+#ifdef COMPRESSION_FORMAT_LZNT1
+#undef COMPRESSION_FORMAT_LZNT1
+#endif
+#ifdef COMPRESSION_FORMAT_XPRESS
+#undef COMPRESSION_FORMAT_XPRESS
+#endif
+
+#endif // _WIN32
+
 namespace speakeasy { namespace deffs { namespace nt {
 
 // ------ IRQL Levels ---------------------------------------------------------------------
