@@ -11,7 +11,6 @@
 #include "winenv/arch.h"
 #include "windows/winemu.h"
 #include "windows/win32.h"
-#include "winenv/defs/windows/shell32.h"
 
 using namespace speakeasy;
 

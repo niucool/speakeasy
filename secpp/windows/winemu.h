@@ -60,11 +60,7 @@ using speakeasy::write_le;
 using speakeasy::read_le;
 using speakeasy::hex_str;
 
-// Forward declarations for defs (not yet ported)
-// #include "winenv/defs/nt/ddk.h"
-// #include "winenv/defs/windows/windows.h"
-
-//  Constants 
+//  Constants
 
 constexpr int DISASM_SIZE = 0x20;
 
