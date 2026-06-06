@@ -151,8 +151,8 @@ std::string emulate_binary(const std::string& target_path,
             config.validate_config();
         }
 
-        //  3. Initialise Speakeasy 
-        Speakeasy se(config, extra_argv, true, nullptr);
+        //  3. Initialise Speakeasy
+        Speakeasy se(config, extra_argv, verbose, nullptr);
         std::string report;
 
         if (is_raw) {

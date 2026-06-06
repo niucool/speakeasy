@@ -134,6 +134,7 @@ protected:
     bool emu_hooks_set = false;
     bool builtin_hooks_set = false;
     void* tmp_code_hook = nullptr;
+    uc_hook tmp_code_hook_handle = 0;  // Unicorn handle for the temporary code hook
     uint64_t prev_pc = 0;
 
     //  SEH / exceptions 
@@ -783,14 +784,12 @@ public:
     //  Process / thread creation 
     // Python winemu.py:1226
     // def create_process(self, path=None, cmdline=None, image=None, child=False):
-    //     """Create a process object that will exist in the emulator.
-    //     NOT YET PORTED  stub only."""
+    //     """Create a process object that will exist in the emulator."""
     std::shared_ptr<Process> create_process(const std::string& path = "", const std::string& cmdline = "",
         std::shared_ptr<speakeasy::RuntimeModule> image = nullptr, bool child = false);
     // Python winemu.py:1293
     // def create_thread(self, addr, ctx, proc_obj, thread_type="thread", is_suspended=False):
-    //     """Create a thread object that will exist in the emulator.
-    //     NOT YET PORTED  stub only."""
+    //     """Create a thread object that will exist in the emulator."""
     std::shared_ptr<Thread> create_thread(uint64_t addr, void* ctx, std::shared_ptr<Process> proc_obj,
                         const std::string& thread_type = "thread", bool is_suspended = false);
     // def resume_thread(self, thread):

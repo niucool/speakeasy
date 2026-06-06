@@ -5,6 +5,25 @@
 
 ## [Unreleased]
 
+### 2026-06-06
+
+#### Fixed
+
+- **secpp/windows/winemu.cpp**: 修复了仿真在第一个 API 调用后立即停止的关键 Bug。根因有两个：
+  - **`_unset_emu_hooks` 权限错误**：哨兵页面的 `mem_map` 使用了 `PERM_MEM_RW`（读+写，无执行权限），导致 Unicorn 在哨兵地址重试获取指令时触发 `UC_ERR_FETCH_PROT`（err=14）而非 `UC_ERR_FETCH_UNMAPPED`（err=8）。修复为 `PERM_MEM_RWX`（读+写+执行），与 Python 的默认 `mem_map` 权限对齐
+  - **`start()` 错误处理**：主仿真循环将所有非零 `uc_emu_start` 返回值视为致命错误并调用 `on_run_complete()`。添加了对 `UC_ERR_FETCH_UNMAPPED`、`UC_ERR_FETCH_PROT` 和 `UC_ERR_MAP` 的优雅恢复——`do_call_return` 已将 PC 设置为返回地址后，从当前 PC 重新开始仿真
+- **secpp/windows/winemu.cpp**: 修复了 `disable_code_hook()` 删除**所有** Unicorn 钩子（包括内存跟踪和代码跟踪钩子）的 Bug。现在仅删除通过 `enable_code_hook()` 注册的临时代码钩子，使用独立的 `tmp_code_hook_handle`
+- **secpp/windows/winemu.cpp**: `_handle_invalid_fetch` 中分发后立即从 `import_table` 移除导入条目，防止 `do_call_return` 设置 PC 后哨兵页面的无限重分发循环
+- **secpp/config**: 添加了 `max_instructions` 配置项（默认 `-1` = 无限制），与 Python 的 `config.max_instructions` 对齐。修正了 `start()` 中错误地将 `max_api_count` 用作 Unicorn 指令限制的问题
+
+#### Added
+
+- **secpp/winenv/api/usermode/user32**: 为 9 个仅有 ANSI (A) 实现的函数补全了 WideChar (W) 版本，实现完整的 A/W API 对等覆盖：
+  - `GetMessageW`、`PeekMessageW`、`FindWindowW`、`SendMessageW`
+  - `GetWindowTextW`、`SetWindowTextW`、`RegisterClassExW`
+  - `DispatchMessageW`、`DefWindowProcW`
+- **诊断日志**：在 `_hook_code_core`、`handle_import_func`、`_hook_mem_unmapped`、`enable_code_hook` 和 `start()` 引擎循环中添加了全面的 `PLOG_DEBUG` 日志，覆盖完整的 API 分发-返回路径
+
 ### 2026-06-05
 
 #### Fixed

@@ -106,6 +106,7 @@ namespace {
 
 void code_hook_trampoline(uc_engine* uc, uint64_t address, uint32_t size, void* user_data) {
     auto* emu = static_cast<WindowsEmulator*>(user_data);
+    PLOG_DEBUG << "[tramp] code_hook fired at 0x" << std::hex << address << std::dec;
     emu->_hook_code_core(static_cast<void*>(uc), address, static_cast<size_t>(size));
 }
 
@@ -163,21 +164,30 @@ bool intr_trampoline(uc_engine* uc, uint32_t intno, void* user_data) {
 //     """Install the transient code hook needed for deferred work."""
 
 void WindowsEmulator::enable_code_hook() {
+    PLOG_DEBUG << "[hook] enable_code_hook: tmp_code_hook=" << (tmp_code_hook != nullptr)
+                << " mem_tracing_enabled=" << mem_tracing_enabled;
     if (!tmp_code_hook && !mem_tracing_enabled) {
-        _register_code_hook(reinterpret_cast<void*>(code_hook_trampoline), 1, 0);
-        tmp_code_hook = reinterpret_cast<void*>(1);  // mark as registered
+        uc_hook hh = 0;
+        uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_CODE,
+                                  reinterpret_cast<void*>(code_hook_trampoline),
+                                  static_cast<void*>(this), 1, 0);
+        if (err == UC_ERR_OK) {
+            tmp_code_hook_handle = hh;
+            tmp_code_hook = reinterpret_cast<void*>(1);  // mark as registered
+            PLOG_DEBUG << "[hook] enable_code_hook: registered handle=" << hh;
+        } else {
+            PLOG_DEBUG << "[hook] enable_code_hook: FAILED err=" << static_cast<int>(err);
+        }
     }
 }
 
 // Python winemu.py:206
 // def disable_code_hook(self):
-//     """Remove the transient code hook."""
+//     """Remove the transient code hook (ONLY the temporary hook, not all hooks)."""
 void WindowsEmulator::disable_code_hook() {
-    if (tmp_code_hook && emu_eng_) {
-        for (auto h : uc_hooks_) {
-            uc_hook_del(emu_eng_->get_engine(), h);
-        }
-        uc_hooks_.clear();
+    if (tmp_code_hook && emu_eng_ && tmp_code_hook_handle != 0) {
+        uc_hook_del(emu_eng_->get_engine(), tmp_code_hook_handle);
+        tmp_code_hook_handle = 0;
         tmp_code_hook = nullptr;
     }
 }
@@ -211,7 +221,9 @@ void WindowsEmulator::_set_emu_hooks() {
 void WindowsEmulator::_unset_emu_hooks() {
     if (emu_hooks_set) {
         try {
-            mem_map(EMU_RESERVE_SIZE, EMU_RETURN_ADDR, PERM_MEM_RW, "emu.reserved");
+            // Must use RWX (read+write+execute) — Unicorn needs to fetch
+            // instructions from the sentinel page for FETCH fault retry.
+            mem_map(EMU_RESERVE_SIZE, EMU_RETURN_ADDR, PERM_MEM_RWX, "emu.reserved");
         } catch (...) {}
         emu_hooks_set = false;
     }
@@ -261,6 +273,12 @@ bool WindowsEmulator::_module_access_hook(void* emu, uint64_t addr,
 //     and disables itself once the pending work is drained."""
 
 bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
+    PLOG_DEBUG << "[code-core] fired at 0x" << std::hex << addr
+                << " curr_exception=" << curr_exception_code
+                << " restart=" << restart_curr_run
+                << " run_complete=" << run_complete
+                << " return_hook=0x" << return_hook << std::dec;
+
     // SEH dispatch
     if (curr_exception_code != 0) {
         dispatch_seh(curr_exception_code);
@@ -278,6 +296,9 @@ bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
 
     // Run complete / return hook hit
     if (addr == return_hook || run_complete) {
+        PLOG_DEBUG << "[code-core] RUN COMPLETE: addr(0x" << std::hex << addr
+                    << ") == return_hook(0x" << return_hook << ") || run_complete="
+                    << run_complete << std::dec;
         on_run_complete();
         return false;
     }
@@ -290,6 +311,7 @@ bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
 
     // Process import data queue
     if (!impdata_queue.empty()) {
+        PLOG_DEBUG << "[code-core] processing impdata_queue (size=" << impdata_queue.size() << ")";
         auto imp = impdata_queue.front();
         impdata_queue.erase(impdata_queue.begin());
         auto& mod = std::get<0>(imp);
@@ -301,6 +323,7 @@ bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
 
     _set_emu_hooks();
     disable_code_hook();
+    PLOG_DEBUG << "[code-core] done, hooks reset, resuming emulation";
     return true;
 }
 
@@ -341,6 +364,9 @@ void WindowsEmulator::setup(size_t stack_commit, bool first_time_setup) { /* def
 
 // Python winemu.py:548  base class on_run_complete (Python has this on WindowsEmulator)
 void WindowsEmulator::on_run_complete() {
+    PLOG_DEBUG << "[lifecycle] on_run_complete() called, stack trace:";
+    auto trace = get_stack_trace();
+    for (auto& line : trace) PLOG_DEBUG << "  " << line;
     run_complete = true;
 }
 
@@ -695,6 +721,8 @@ void WindowsEmulator::call(uint64_t addr, const std::vector<std::string>& params
 std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> run) {
     curr_run = run;
 
+    PLOG_INFO << "* exec: " << run->type;
+
     if (profiler_) {
         profiler_->add_run(run);
     }
@@ -785,8 +813,10 @@ void WindowsEmulator::start() {
         profiler_->set_start_time();
     }
 
-    int max_instr = config_.max_api_count;
-    if (max_instr <= 0) max_instr = 0;
+    // Python: uc_emu_start(addr, timeout, count=self.config.max_instructions)
+    // where max_instructions defaults to -1 (unlimited).
+    int max_instr = config_.max_instructions;
+    if (max_instr < 0) max_instr = 0;  // -1 = unlimited → pass 0 to Unicorn
 
     while (true) {
         try {
@@ -799,7 +829,23 @@ void WindowsEmulator::start() {
             if (emu_eng_ && curr_run) {
                 uc_err err = emu_eng_->start(curr_run->start_addr, timeout_usec,
                                              static_cast<size_t>(max_instr));
+                PLOG_DEBUG << "[engine] uc_emu_start returned err=" << static_cast<int>(err)
+                            << " run_complete=" << run_complete
+                            << " curr_pc=0x" << std::hex << get_pc()
+                            << " instr_cnt=" << std::dec << curr_run->instr_cnt;
                 if (err != UC_ERR_OK) {
+                    // UC_ERR_FETCH_PROT (14): sentinel page was mapped RW but
+                    // not executable. do_call_return already set PC to the
+                    // to the return address — just restart emulation from there.
+                    if ((err == UC_ERR_FETCH_UNMAPPED || err == UC_ERR_FETCH_PROT
+                         || err == UC_ERR_MAP)
+                        && !run_complete && curr_run) {
+                        PLOG_DEBUG << "[engine] FETCH_UNMAPPED after API dispatch, "
+                                    << "restarting from pc=0x" << std::hex << get_pc() << std::dec;
+                        curr_run->start_addr = get_pc();
+                        continue;
+                    }
+
                     // Check for timeout after execution
                     if (profiler_ && timeout_usec > 0 &&
                         profiler_->get_run_time() > static_cast<double>(config_.timeout)) {
@@ -2399,6 +2445,8 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
     // Python reference: winemu.py lines 1639-1751
     std::string imp_api = dll + "." + name;
 
+    PLOG_DEBUG << "[api-dispatch] handling: " << imp_api;
+
     uint64_t oret = get_ret_address();
     uint64_t opc  = get_pc();
     uint64_t call_pc = (prev_pc != 0) ? prev_pc : oret;
@@ -2487,8 +2535,18 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 
         log_api(call_pc, imp_api, rv, argv);
 
+        PLOG_DEBUG << "[api-dispatch] post-call: run_complete=" << run_complete
+                    << " ret=0x" << std::hex << ret << " oret=0x" << oret
+                    << " pc=0x" << pc << " opc=0x" << opc << std::dec;
+
         if (!run_complete && ret == oret && pc == opc) {
+            PLOG_DEBUG << "[api-dispatch] calling do_call_return(argc=" << argc
+                        << " ret_addr=0x" << std::hex << ret << " rv=0x" << rv << ")" << std::dec;
             do_call_return(argc, ret, rv, conv);
+            PLOG_DEBUG << "[api-dispatch] do_call_return done, new pc=0x"
+                        << std::hex << get_pc() << std::dec;
+        } else {
+            PLOG_DEBUG << "[api-dispatch] skipping do_call_return (ret!=oret || pc!=opc)";
         }
 
         // Gap E: Max API Count Enforcement
@@ -2949,6 +3007,9 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
     (void)emu; (void)size; (void)value;
     if (!curr_run) return false;
 
+    PLOG_DEBUG << "mem_unmapped: access=" << access << " addr=0x" << std::hex << addr
+               << " size=0x" << size << std::dec;
+
     try {
         access = emu_eng_->mem_access[access];
 
@@ -2956,6 +3017,14 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
         if (!tmp_code_hook) {
             enable_code_hook();
         }
+
+        PLOG_DEBUG << "mem_unmapped: mapped_access=" << access << " ("
+                    << (access == INVALID_MEM_EXEC ? "FETCH" :
+                        access == INVALID_MEM_READ ? "READ" :
+                        access == INVALID_MEM_WRITE ? "WRITE" :
+                        access == INVAL_PERM_MEM_EXEC ? "FETCH_PROT" :
+                        access == INVAL_PERM_MEM_WRITE ? "WRITE_PROT" : "OTHER")
+                    << ") addr=0x" << std::hex << addr << std::dec;
 
         if (access == INVALID_MEM_EXEC) {
             // SEH return - continue SEH and unset emu hooks
@@ -2969,8 +3038,6 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
                 if (!curr_run->api_callbacks.empty()) {
                     auto cb = curr_run->api_callbacks.front();
                     curr_run->api_callbacks.erase(curr_run->api_callbacks.begin());
-                    // cb is a function<void()>  invoke to process pending work
-                    // For now, unset hooks and let code core handle it
                     _unset_emu_hooks();
                 }
                 return true;
@@ -2981,7 +3048,6 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
         } else if (access == INVAL_PERM_MEM_EXEC) {
             return _handle_prot_fetch(emu, addr, size, value);
         } else if (access == INVALID_MEM_WRITE) {
-            // Map a temporary page and dispatch
             uint64_t fakeout = addr & ~(page_size - 1);
             mem_map(page_size, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
             tmp_maps.push_back({fakeout, page_size});
@@ -3019,7 +3085,11 @@ bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
     // Python winemu.py:1400-1413 -- lookup address in import table
     auto imp_it = import_table.find(addr);
     if (imp_it != import_table.end()) {
-        auto [mod_name, func_name] = imp_it->second;
+        auto mod_name = std::get<0>(imp_it->second);
+        auto func_name = std::get<1>(imp_it->second);
+        // Erase immediately to prevent infinite re-dispatch on subsequent
+        // FETCH_UNMAPPED events after do_call_return has set PC.
+        import_table.erase(imp_it);
         _unset_emu_hooks();
         handle_import_func(mod_name, func_name);
         return true;

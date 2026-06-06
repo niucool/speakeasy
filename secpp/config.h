@@ -188,6 +188,7 @@ struct SpeakeasyConfig {
     std::string emu_engine = "unicorn";
     int timeout = 60;
     int max_api_count = 10000;
+    int max_instructions = -1;  // -1 = unlimited, matches Python default
     int stack_size = 0;
     std::string system = "windows";
 

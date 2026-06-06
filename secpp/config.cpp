@@ -17,6 +17,7 @@ static constexpr const char DEFAULT_CONFIG_DATA[] = R"CFG({
   "emu_engine": "unicorn",
   "timeout": 6000,
   "max_api_count": 10000,
+  "max_instructions": -1,
   "stack_size": 0,
   "system": "windows",
   "analysis": {"memory_tracing": false, "strings": true, "coverage": false},
@@ -225,6 +226,7 @@ bool SpeakeasyConfig::load_config_from_json(const nlohmann::json& j) {
     if (j.contains("emu_engine")) emu_engine = j.at("emu_engine").get<std::string>();
     if (j.contains("timeout")) timeout = j.at("timeout").get<int>();
     if (j.contains("max_api_count")) max_api_count = j.at("max_api_count").get<int>();
+    if (j.contains("max_instructions")) max_instructions = j.at("max_instructions").get<int>();
     if (j.contains("stack_size")) stack_size = j.at("stack_size").get<int>();
     if (j.contains("system")) system = j.at("system").get<std::string>();
     if (j.contains("keep_memory_on_free")) keep_memory_on_free = j.at("keep_memory_on_free").get<bool>();

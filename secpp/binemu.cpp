@@ -16,7 +16,6 @@ BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg)
       runtime_(0) {
     
     // Python binemu.py:59-78: __init__ -- initializes all member state
-    // TODO: Python also calls _parse_config inside __init__; C++ calls after init list
     max_instructions_ = -1;
     timeout_ = 0;
     max_api_count_ = 5000;
@@ -81,8 +80,6 @@ std::string BinaryEmulator::get_json_report_string() {
 
 void BinaryEmulator::_parse_config(const speakeasy::SpeakeasyConfig& cfg) {
     // Python binemu.py:102-116 doc: "Parse the config to be used for emulation"
-    // TODO: Python also initializes self.emu_eng from EMU_ENGINES lookup table
-    //       C++ defers engine creation to WindowsEmulator::load_image
     timeout_ = cfg.timeout;
     max_api_count_ = cfg.max_api_count;
     keep_memory_on_free_ = cfg.keep_memory_on_free;
@@ -573,7 +570,6 @@ void BinaryEmulator::eval_emu_var() {
 
 std::shared_ptr<speakeasy::Module> BinaryEmulator::get_module_from_addr(uint64_t addr) {
     // Python binemu.py:811-820 doc: "If the supplied address belongs to a module, return it"
-    // TODO: 'modules' is a WindowsEmulator member, not BinaryEmulator move this to WindowsEmulator
     for (auto& mod : modules_) {
         if (addr >= mod->base && addr <= mod->base + mod->image_size) {
             return mod;

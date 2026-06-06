@@ -38,16 +38,23 @@ User32::User32(void* emu) : ApiHandler(emu) {
     apis_.push_back({"MessageBoxA",4,MessageBoxA});
     apis_.push_back({"MessageBoxW",4,MessageBoxW});
     apis_.push_back({"GetMessageA",4,GetMessageA});
+    apis_.push_back({"GetMessageW",4,GetMessageW});
     apis_.push_back({"PeekMessageA",5,PeekMessageA});
+    apis_.push_back({"PeekMessageW",5,PeekMessageW});
     apis_.push_back({"FindWindowA",2,FindWindowA});
+    apis_.push_back({"FindWindowW",2,FindWindowW});
     apis_.push_back({"SendMessageA",4,SendMessageA});
+    apis_.push_back({"SendMessageW",4,SendMessageW});
     apis_.push_back({"GetWindowTextA",3,GetWindowTextA});
+    apis_.push_back({"GetWindowTextW",3,GetWindowTextW});
     apis_.push_back({"SetWindowTextA",2,SetWindowTextA});
+    apis_.push_back({"SetWindowTextW",2,SetWindowTextW});
     apis_.push_back({"GetForegroundWindow",0,GetForegroundWindow});
     apis_.push_back({"GetDesktopWindow",0,GetDesktopWindow});
     apis_.push_back({"CreateWindowExA",12,CreateWindowEx_hook});
     apis_.push_back({"CreateWindowExW",12,CreateWindowEx_hook});
     apis_.push_back({"RegisterClassExA",1,RegisterClassExA});
+    apis_.push_back({"RegisterClassExW",1,RegisterClassExW});
     apis_.push_back({"ShowWindow",2,ShowWindow});
     apis_.push_back({"UpdateWindow",1,UpdateWindow});
     apis_.push_back({"GetDC",1,GetDC});
@@ -65,8 +72,10 @@ User32::User32(void* emu) : ApiHandler(emu) {
     apis_.push_back({"LoadStringW",4,LoadStringA});
     apis_.push_back({"TranslateMessage",1,TranslateMessage});
     apis_.push_back({"DispatchMessageA",1,DispatchMessageA});
+    apis_.push_back({"DispatchMessageW",1,DispatchMessageW});
     apis_.push_back({"PostQuitMessage",1,PostQuitMessage});
     apis_.push_back({"DefWindowProcA",4,DefWindowProcA});
+    apis_.push_back({"DefWindowProcW",4,DefWindowProcW});
     apis_.push_back({"DestroyWindow",1,DestroyWindow});
 }
 
@@ -91,7 +100,7 @@ uint64_t User32::MessageBoxW(void* e, const std::vector<uint64_t>& a, void* ctx)
     return 2; // IDCANCEL
 }
 
-//  GetMessageA 
+//  GetMessageA / GetMessageW
 uint64_t User32::GetMessageA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<1) return 0;
     uint64_t lpMsg = a[0];
@@ -105,12 +114,20 @@ uint64_t User32::GetMessageA(void* e, const std::vector<uint64_t>& a, void* ctx)
     return 0; // FALSE (WM_QUIT)
 }
 
-//  PeekMessageA 
+uint64_t User32::GetMessageW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return GetMessageA(e, a, ctx); // Same MSG struct layout regardless of A/W
+}
+
+//  PeekMessageA / PeekMessageW
 uint64_t User32::PeekMessageA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
-//  FindWindowA 
+uint64_t User32::PeekMessageW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return PeekMessageA(e, a, ctx); // Same MSG struct
+}
+
+//  FindWindowA / FindWindowW
 uint64_t User32::FindWindowA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<2) return 0;
     uint64_t cn = a[0], wn = a[1];
@@ -119,12 +136,24 @@ uint64_t User32::FindWindowA(void* e, const std::vector<uint64_t>& a, void* ctx)
     return 0;
 }
 
-//  SendMessageA 
+uint64_t User32::FindWindowW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    if (a.size()<2) return 0;
+    uint64_t cn = a[0], wn = a[1];
+    if (cn) { std::string s = be(e)->read_mem_string(cn,2); (void)s; }
+    if (wn) { std::string s = be(e)->read_mem_string(wn,2); (void)s; }
+    return 0;
+}
+
+//  SendMessageA / SendMessageW
 uint64_t User32::SendMessageA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
-//  GetWindowTextA 
+uint64_t User32::SendMessageW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return SendMessageA(e, a, ctx); // Same message dispatch regardless of A/W
+}
+
+//  GetWindowTextA / GetWindowTextW
 uint64_t User32::GetWindowTextA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e;
     if (a.size()<3) return 0;
@@ -133,11 +162,26 @@ uint64_t User32::GetWindowTextA(void* e, const std::vector<uint64_t>& a, void* c
     return 0;
 }
 
-//  SetWindowTextA 
+uint64_t User32::GetWindowTextW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    (void)e;
+    if (a.size()<3) return 0;
+    uint64_t pstr = a[1];
+    if (pstr) { std::vector<uint8_t> nul(2,0); we(e)->mem_write(pstr,nul); } // UTF-16 NUL = 2 bytes
+    return 0;
+}
+
+//  SetWindowTextA / SetWindowTextW
 uint64_t User32::SetWindowTextA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<2) return 0;
     uint64_t lp = a[1];
     if (lp) { std::string s = be(e)->read_mem_string(lp,1); (void)s; }
+    return 1;
+}
+
+uint64_t User32::SetWindowTextW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    if (a.size()<2) return 0;
+    uint64_t lp = a[1];
+    if (lp) { std::string s = be(e)->read_mem_string(lp,2); (void)s; }
     return 1;
 }
 
@@ -160,9 +204,13 @@ uint64_t User32::CreateWindowEx_hook(void* e, const std::vector<uint64_t>& a, vo
     return next_hwnd();
 }
 
-//  RegisterClassExA 
+//  RegisterClassExA / RegisterClassExW
 uint64_t User32::RegisterClassExA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
+}
+
+uint64_t User32::RegisterClassExW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return RegisterClassExA(e, a, ctx); // Same class registration logic
 }
 
 //  ShowWindow 
@@ -247,19 +295,27 @@ uint64_t User32::TranslateMessage(void* e, const std::vector<uint64_t>& a, void*
     (void)e; (void)a; return 1;
 }
 
-//  DispatchMessageA 
+//  DispatchMessageA / DispatchMessageW
 uint64_t User32::DispatchMessageA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
-//  PostQuitMessage 
+uint64_t User32::DispatchMessageW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return DispatchMessageA(e, a, ctx); // Same MSG struct dispatch regardless of A/W
+}
+
+//  PostQuitMessage
 uint64_t User32::PostQuitMessage(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
-//  DefWindowProcA 
+//  DefWindowProcA / DefWindowProcW
 uint64_t User32::DefWindowProcA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 0;
+}
+
+uint64_t User32::DefWindowProcW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return DefWindowProcA(e, a, ctx); // Same window proc regardless of A/W
 }
 
 //  DestroyWindow 
