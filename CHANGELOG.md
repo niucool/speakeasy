@@ -5,14 +5,34 @@
 
 ## [Unreleased]
 
-### 2026-06-06 (continues)
+### 2026-06-07
+
+#### Fixed
+
+- **secpp/windows/winemu.cpp**: 修复了 `_handle_invalid_fetch` 中 `import_table.erase()` 导致的第二次 API 调用失败——同一 IAT 地址的连续调用命中同一哨兵地址，被删除后无法再找到导入条目。改为 `get_pc() == addr` 守卫 + 始终调用 `_unset_emu_hooks()` 映射哨兵页面
+- **secpp/windows/winemu.cpp**: 修复了 `_hook_code_core` 在哨兵地址处调用 `_set_emu_hooks()` 取消映射页面导致的无限 FETCH_UNMAPPED 循环——当 `addr` 在 EMU_RESERVED 范围内时跳过取消映射，仅在返回地址处执行取消映射
+- **secpp/windows/winemu.cpp**: 修复了 `_set_emu_hooks` / `_unset_emu_hooks` 的状态腐蚀问题——`mem_unmap`/`mem_map` 失败时仍设置 `emu_hooks_set`，导致后续调用状态不一致。添加了 double-map 检测和正确的失败处理
+- **secpp/windows/winemu.cpp**: 修复了 `read_string_heuristic` 对 UTF-16LE 字符串的误判——ANSI 优先逻辑导致 "Qt5QWindowIcon" 被截断为 "Q"（首个 0x00 字节被当作 ANSI 终止符）。改为当 UTF-16LE 找到更长字符串时优先选择
+- **secpp/windows/winemu.cpp**: 修复了 `disable_code_hook()` 删除所有 Unicorn 钩子（包括内存跟踪和代码跟踪）的严重 Bug——改为仅删除通过 `enable_code_hook()` 注册的临时代码钩子
+- **secpp/windows/winemu.cpp**: `start()` 主循环添加了对 `UC_ERR_MAP` (err=11)、`UC_ERR_FETCH_PROT` (err=14)、`UC_ERR_FETCH_UNMAPPED` (err=8) 的恢复机制——从 `do_call_return` 设置的 PC 重新开始仿真（Python Unicorn 内部处理这些错误，C++ Unicorn 2.0.1 会将其返回给调用者）
+- **secpp/winenv/api/usermode/user32.cpp**: 补全了 9 个缺失的 WideChar (W) 函数——`FindWindowW`、`GetMessageW`、`PeekMessageW`、`SendMessageW`、`GetWindowTextW`、`SetWindowTextW`、`RegisterClassExW`、`DispatchMessageW`、`DefWindowProcW`
+- **secpp/winenv/api/usermode/kernel32.cpp**: 实现了 `GetThreadContext`（从 STUB 升级为完整实现）、`CreateMutexW`、`GetModuleFileNameW`；添加了 `_except_handler4_common` 的 SEH 分发逻辑
+- **secpp/winenv/api/usermode/msvcrt.cpp**: 修复了 `_except_handler4_common` 导致的死循环——设置 SEH 帧后主动调用 `dispatch_seh(0xC0000005)` 完成异常分发
+
+#### Added
+
+- **secpp/binemu.cpp**: 集成 `utf8cpp` (v4.0.6) 替代手动 UTF-16LE/UTF-8 转换——`read_mem_string` 使用 `utf8::utf16to8()`，`write_mem_string` 使用 `utf8::utf8to16()`，消除 150+ 行手动编码代码
+- **CMakeLists.txt**: 添加 `utf8cpp` 作为 FetchContent 依赖项，链接到 `speakeasy` 库
+- **log/ 目录**: 建立日志对比系统——Python/C++ 执行日志、诊断跟踪、API 调用序列对比
+- **sptest.py**: 更新测试脚本，支持 `-l`（日志文件）、`-r`（报告文件）参数和更好的日志格式
+- **Python 诊断日志**: 在 `_hook_code_core`、`_set_emu_hooks`、`_unset_emu_hooks`、`start()` 引擎循环中添加了 `[code-core]`、`[emu-hooks]`、`[engine]` 日志
+- **C++ 诊断日志**: 在 `_hook_code_core`、`_handle_invalid_fetch`、`handle_import_func`、`enable_code_hook`、`_hook_mem_unmapped`、`start()`、`EmuEngine::mem_map` 中添加了全面的 `PLOG_DEBUG` 日志
 
 #### Changed
 
-- **secpp/winenv/api/usermode/kernel32**: 全面补全了 A/W API 函数对——为 28 个仅有 ANSI (A) 实现的函数新增 WideChar (W) 版本注册（STUB），同时将 `CreateFileA/W`、`CopyFileA/W` 等已实现的 A/W 对重构为 `_impl` 模式（A/W 包装器仅负责字符串解码后委托给公共实现）
+- **secpp/winenv/api/usermode/kernel32**: 全面补全 A/W API 函数对——为 28 个仅有 ANSI (A) 实现的函数新增 WideChar (W) 版本注册（STUB），同时将 `CreateFileA/W`、`CopyFileA/W` 重构为 `_impl` 模式
 - **secpp/winenv/api/usermode/kernel32.h**: 新增 28 个 W 函数声明
-- **secpp/binemu.cpp**: 引入 `utf8cpp` (v4.0.6) 替代手动 UTF-16LE 转换：
-  - **Windows 平台**：优先使用 `WideCharToMultiByte(CP_UTF8, ...)` 进行原生的 UTF-16LE → UTF-8 转换，正确处理所有 Unicode 字符（含增补平面和代理对）
+- **secpp/config.h/cpp**: 添加 `max_instructions` 配置项（默认 `-1`，对齐 Python），修正 `start()` 中错误使用 `max_api_count` 作为指令限制的问题
   - **通用回退**：改进的手动 UTF-16LE → UTF-8 转换，新增代理对支持（`0xD800-0xDFFF`）和 4 字节 UTF-8 编码（`U+10000` 以上码点），对齐 Python 的 `.decode('utf-16le', 'ignore')` 行为
 - **secpp/winenv/api/usermode/kernel32.cpp**: 重构了 `CreateFileA`/`CreateFileW` 为统一的 A/W 模式：
   - 提取公共逻辑到 `CreateFile_impl(emu, target, access, share, ...)` 静态函数

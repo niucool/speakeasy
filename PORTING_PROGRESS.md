@@ -1,9 +1,61 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-06
+> Last Updated: 2026-06-07
 > Build Status: ✅ **0 compiler errors** (MSVC C++17, /W4 warning-free)
-> Emulation Status: ✅ **Antidbg.exe runs correctly** (18+ APIs dispatched, full anti-debug sequence)
-> Remaining TODOs: **19**
+> Emulation Status: ✅ **Antidbg.exe runs to completion** (28 APIs dispatched, full anti-debug sequence)
+> Remaining TODOs: **19** (unchanged from previous audit)
+> Known Issue: UC_ERR_MAP restart hack (see below)
+
+---
+
+---
+
+## 2026-06-07: 钩子链修复与日志对比系统
+
+### 关键 Bug 修复
+
+通过逐行对比 Python 和 C++ 的 `_handle_invalid_fetch` / `_hook_code_core` / `_set_emu_hooks` / `_unset_emu_hooks` 实现，发现并修复了以下问题：
+
+| Bug | 根因 | 修复 |
+|-----|------|------|
+| 第二次 API 调用失败 | `import_table.erase()` 删除了哨兵条目，同一 IAT 地址的连续调用无法找到导入 | 改为 `get_pc() == addr` 守卫 + 始终映射页面 |
+| UC_ERR_MAP 无限循环 | `_hook_code_core` 在哨兵地址处取消映射页面，导致 Unicorn 陷入 FETCH_UNMAPPED 循环 | 在哨兵地址处跳过 `_set_emu_hooks`，仅在返回地址处执行 |
+| 钩子状态腐蚀 | `_set_emu_hooks` 的 mem_unmap 失败时仍设置 `emu_hooks_set = true` | 添加双重映射检测，失败时正确处理状态 |
+| disable_code_hook 删除所有钩子 | 原实现遍历 `uc_hooks_` 并删除所有 Unicorn 钩子 | 仅删除临时钩子句柄 `tmp_code_hook_handle` |
+| read_string_heuristic 截断宽字符串 | ANSI 优先逻辑在遇到 UTF-16LE 的首个 0x00 字节时立即终止 | 当 UTF-16LE 找到更长字符串时优先选择 |
+
+### Python vs C++ 行为差异
+
+**同一哨兵地址的连续调用**：当两个不同的调用点（如 `0x40121f` 和 `0x40123b`）通过同一 IAT 条目调用 `FindWindowW` 时，它们命中**同一哨兵地址**。C++ 的 `import_table.erase()` 删除了该条目，导致第二次调用失败。Python 不删除条目——它依赖 `do_call_return` 的 PC 变更来防止重新分发。
+
+**UC_ERR_MAP 重启**：C++ Unicorn 2.0.1 在钩子链导致 FETCH_UNMAPPED → 映射 → 代码钩子 → 取消映射 → FETCH_UNMAPPED 循环时返回 `UC_ERR_MAP` (err=11)。Python Unicorn 在内部处理此循环并返回 `UC_ERR_OK`。`start()` 中的重启 hack 是一个有效的变通方案——每次 API 调用触发一次重启，但仿真正常继续。
+
+### 日志对比系统
+
+建立了完整的 Python/C++ 执行日志对比方法：
+
+```
+log/
+├── README.md              — 对比方法说明
+├── py_antidbg.log          — Python 完整执行日志
+├── cpp_antidbg.log         — C++ 完整执行日志
+├── py_trace.log            — Python 钩子链诊断跟踪
+└── cpp_v*.log              — C++ 各版本测试日志
+```
+
+**已验证的 API 序列（前 10 个）**：
+```
+1. kernel32.GetSystemTimeAsFileTime  → Python: None       C++: 0x0        ✅
+2. kernel32.GetCurrentThreadId       → Python: 0x434      C++: 0x428      ✅ (值不同但均有效)
+3. kernel32.GetCurrentProcessId      → Python: 0x420      C++: 0x414      ✅
+4. kernel32.QueryPerformanceCounter  → Python: 0x1        C++: 0x1        ✅
+5. kernel32.IsProcessorFeaturePresent→ Python: 0x1        C++: 0x1        ✅
+6. user32.FindWindowW("Qt5QWindowIcon") → 0x0                              ✅
+7. user32.FindWindowW("OLLYDBG")      → 0x0                                 ✅
+8. user32.FindWindowW("ID")           → 0x0                                 ✅
+9. kernel32.LoadLibraryW("ntdll.dll") → 0x7c000000                          ✅
+10. kernel32.GetProcAddress(...)     → 0xfeedf0fc                            ✅
+```
 
 ---
 

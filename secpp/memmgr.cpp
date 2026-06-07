@@ -217,10 +217,10 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
     if (blockSize > this->block_size_) {
         actual_block_size = blockSize;
     }
-    
-    auto mm = std::make_shared<MemMap>(base, blockSize, tag, perms, flags, 
+
+    auto mm = std::make_shared<MemMap>(base, blockSize, tag, perms, flags,
                                        base, actual_block_size, shared, process);
-    
+
     if (this->emu_eng_) {
         this->emu_eng_->mem_map(base, blockSize, perms);
     }
@@ -314,6 +314,17 @@ int64_t MemoryManager::mem_remap(uint64_t from, uint64_t to) {
  * Free a block of emulated memory
  */
 void MemoryManager::mem_unmap(uint64_t base, uint64_t size) {
+    // Mark overlapping maps as free in internal tracking so get_valid_ranges()
+    // returns the correct (original) base on the next mem_map call.
+    // Without this, sentinel addresses drift because get_valid_ranges
+    // thinks the old region is still occupied.
+    uint64_t end = base + size;
+    for (auto& m : maps_) {
+        uint64_t m_end = m->get_base() + m->get_size();
+        if (m->get_base() < end && m_end > base) {
+            m->set_free();
+        }
+    }
     if (this->emu_eng_) {
         this->emu_eng_->mem_unmap(base, size);
     }
@@ -546,8 +557,9 @@ std::pair<uint64_t, uint64_t> MemoryManager::get_valid_ranges(uint64_t size, uin
         }
     }
  
-    // Add already mapped memory
+    // Add already mapped memory (skip free/erased maps)
     for (const auto& m : this->maps_) {
+        if (m->is_free()) continue;
         for (uint64_t i = m->get_base(); i < (m->get_base() + m->get_size()); i += page_size) {
             curr.push_back(i);
         }

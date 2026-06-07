@@ -261,6 +261,8 @@ class WindowsEmulator(BinaryEmulator):
         Create a formatted structure from bytes
         """
         if self.emu_hooks_set:
+            logger.debug("[emu-hooks] UNSET: mapping 0x%x size=0x%x",
+                         winemu.EMU_RETURN_ADDR, winemu.EMU_RESERVE_SIZE)
             self.emu_eng.mem_map(winemu.EMU_RETURN_ADDR, winemu.EMU_RESERVE_SIZE)  # type: ignore[union-attr]
         self.emu_hooks_set = False
 
@@ -380,6 +382,8 @@ class WindowsEmulator(BinaryEmulator):
         entry point returns, etc.)
         """
         if not self.emu_hooks_set:
+            logger.debug("[emu-hooks] SET: unmapping 0x%x size=0x%x",
+                         winemu.EMU_RETURN_ADDR, winemu.EMU_RESERVE_SIZE)
             self.mem_unmap(winemu.EMU_RETURN_ADDR, winemu.EMU_RESERVE_SIZE)
             self.emu_hooks_set = True
 
@@ -576,6 +580,8 @@ class WindowsEmulator(BinaryEmulator):
             try:
                 self.curr_mod = self.get_module_from_addr(self.curr_run.start_addr)  # type: ignore[union-attr]
                 self.emu_eng.start(self.curr_run.start_addr, timeout=timeout, count=self.config.max_instructions)  # type: ignore[union-attr]
+                logger.debug("[engine] uc_emu_start returned OK, pc=0x%x instr_cnt=%d",
+                             self.get_pc(), self.curr_run.instr_cnt)
                 if self.profiler and timeout > 0:
                     if self.profiler.get_run_time() > timeout:
                         logger.error("* Timeout of %d sec(s) reached.", timeout)
@@ -2035,6 +2041,9 @@ class WindowsEmulator(BinaryEmulator):
         and disables itself once the pending work is drained.
         """
         try:
+            logger.debug("[code-core] fired at 0x%x exc=%s restart=%s complete=%s ret_hook=0x%x",
+                         addr, self.curr_exception_code, self.restart_curr_run,
+                         self.run_complete, self.return_hook)
             if self.curr_exception_code != 0:
                 self.dispatch_seh(self.curr_exception_code)
                 self.curr_exception_code = 0
@@ -2069,6 +2078,7 @@ class WindowsEmulator(BinaryEmulator):
                 self.mem_write(read_addr, data_ptr.to_bytes(self.get_ptr_size(), "little"))
                 return True
 
+            logger.debug("[code-core] _set_emu_hooks + disable")
             self._set_emu_hooks()
             self.disable_code_hook()
             return True

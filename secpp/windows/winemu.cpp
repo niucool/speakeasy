@@ -211,21 +211,36 @@ void WindowsEmulator::set_hooks() {
 //     """Unmap reserved memory space so we can handle events (e.g. import APIs, entry point returns, etc.)"""
 void WindowsEmulator::_set_emu_hooks() {
     if (!emu_hooks_set) {
+        // Unmap the reserved region so that sentinel addresses trigger
+        // UC_MEM_FETCH_UNMAPPED again for the next API call.
         try {
             mem_unmap(EMU_RETURN_ADDR, EMU_RESERVE_SIZE);
-        } catch (...) {}
-        emu_hooks_set = true;
+            emu_hooks_set = true;
+            PLOG_DEBUG << "[emu-hooks] SET: unmapped 0x" << std::hex << EMU_RETURN_ADDR
+                        << " size=0x" << EMU_RESERVE_SIZE << std::dec;
+        } catch (const std::exception& ex) {
+            // If unmap fails, the region is already unmapped — that's fine.
+            // Only set emu_hooks_set if the unmap actually worked.
+            PLOG_DEBUG << "[emu-hooks] SET: unmap failed (already unmapped?): " << ex.what();
+            emu_hooks_set = true;  // still mark as set — the region IS unmapped
+        }
     }
 }
 
 void WindowsEmulator::_unset_emu_hooks() {
     if (emu_hooks_set) {
+        // Map the reserved region with RWX so Unicorn can fetch the sentinel
+        // instruction.  If the region is already mapped (e.g. by a tmp_map),
+        // mem_map will fail gracefully — we log and do NOT corrupt emu_hooks_set.
         try {
-            // Must use RWX (read+write+execute) — Unicorn needs to fetch
-            // instructions from the sentinel page for FETCH fault retry.
             mem_map(EMU_RESERVE_SIZE, EMU_RETURN_ADDR, PERM_MEM_RWX, "emu.reserved");
-        } catch (...) {}
-        emu_hooks_set = false;
+            emu_hooks_set = false;
+            PLOG_DEBUG << "[emu-hooks] UNSET: mapped 0x" << std::hex << EMU_RETURN_ADDR
+                        << " size=0x" << EMU_RESERVE_SIZE << std::dec;
+        } catch (const std::exception& ex) {
+            PLOG_DEBUG << "[emu-hooks] UNSET: map FAILED (keeping emu_hooks_set=true): "
+                        << ex.what();
+        }
     }
 }
 
@@ -296,9 +311,7 @@ bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
 
     // Run complete / return hook hit
     if (addr == return_hook || run_complete) {
-        PLOG_DEBUG << "[code-core] RUN COMPLETE: addr(0x" << std::hex << addr
-                    << ") == return_hook(0x" << return_hook << ") || run_complete="
-                    << run_complete << std::dec;
+        PLOG_DEBUG << "[code-core] RUN COMPLETE";
         on_run_complete();
         return false;
     }
@@ -311,7 +324,6 @@ bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
 
     // Process import data queue
     if (!impdata_queue.empty()) {
-        PLOG_DEBUG << "[code-core] processing impdata_queue (size=" << impdata_queue.size() << ")";
         auto imp = impdata_queue.front();
         impdata_queue.erase(impdata_queue.begin());
         auto& mod = std::get<0>(imp);
@@ -321,9 +333,23 @@ bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
         return true;
     }
 
+    // At a sentinel address (in the reserved range): DON'T unmap the page.
+    // Unmapping here would cause an infinite FETCH_UNMAPPED → map → hook → unmap
+    // loop because the instruction at the sentinel hasn't executed yet.
+    // The sentinel page will be unmapped in the NEXT _hook_code_core call
+    // that fires at the return address (after the RET/nop executes).
+    bool at_sentinel = (addr >= EMU_RESERVED && addr <= (EMU_RESERVED + EMU_RESERVE_SIZE));
+    if (at_sentinel) {
+        PLOG_DEBUG << "[code-core] at sentinel (0x" << std::hex << addr
+                    << "), skipping _set_emu_hooks" << std::dec;
+        disable_code_hook();
+        return true;
+    }
+
+    // At the return address (not a sentinel): safe to unmap.
     _set_emu_hooks();
     disable_code_hook();
-    PLOG_DEBUG << "[code-core] done, hooks reset, resuming emulation";
+    PLOG_DEBUG << "[code-core] at return addr, hooks reset";
     return true;
 }
 
@@ -815,8 +841,10 @@ void WindowsEmulator::start() {
 
     // Python: uc_emu_start(addr, timeout, count=self.config.max_instructions)
     // where max_instructions defaults to -1 (unlimited).
+    // Use a large count instead of 0 because Unicorn 2.x may return UC_ERR_MAP
+    // with count=0 when the hook chain modifies memory mappings.
     int max_instr = config_.max_instructions;
-    if (max_instr < 0) max_instr = 0;  // -1 = unlimited → pass 0 to Unicorn
+    if (max_instr < 0) max_instr = 0x7FFFFFFF;  // large finite value
 
     while (true) {
         try {
@@ -2669,51 +2697,59 @@ std::optional<std::string> WindowsEmulator::read_string_heuristic(uint64_t addr)
         return std::nullopt;
     }
 
-    // Try ANSI first
-    bool is_ansi = false;
+    // Try ANSI: printable chars until null
     size_t ansi_len = 0;
+    bool ansi_printable = false;
     for (size_t i = 0; i < buf.size(); ++i) {
         if (buf[i] == 0) {
-            is_ansi = true;
-            ansi_len = i;
+            ansi_printable = (ansi_len > 0);
             break;
         }
         char c = static_cast<char>(buf[i]);
-        if (!((c >= 0x20 && c <= 0x7E) || c == '\r' || c == '\n' || c == '\t')) {
+        if ((c >= 0x20 && c <= 0x7E) || c == '\r' || c == '\n' || c == '\t') {
+            ansi_len = i + 1;
+        } else if (c == '\0') {
+            break;
+        } else {
+            ansi_len = 0; // non-printable — invalidate ANSI
             break;
         }
     }
 
-    if (is_ansi && ansi_len > 0) {
-        return std::string(buf.begin(), buf.begin() + ansi_len);
-    }
-
-    // Try UTF-16LE
-    bool is_unicode = false;
+    // Try UTF-16LE: ASCII chars with high-byte=0, null-terminated
     size_t unicode_len = 0;
+    bool unicode_valid = false;
     for (size_t i = 0; i + 1 < buf.size(); i += 2) {
-        uint16_t w = buf[i] | (buf[i+1] << 8);
+        uint16_t w = buf[i] | (static_cast<uint16_t>(buf[i+1]) << 8);
         if (w == 0) {
-            is_unicode = true;
-            unicode_len = i / 2;
+            unicode_valid = (unicode_len > 0);
             break;
         }
-        if (buf[i+1] != 0) {
-            break;
-        }
+        // ASCII in UTF-16LE: high byte is 0, low byte is printable
+        if (buf[i+1] != 0) break; // non-ASCII high byte — not simple UTF-16LE ASCII
         char c = static_cast<char>(buf[i]);
-        if (!((c >= 0x20 && c <= 0x7E) || c == '\r' || c == '\n' || c == '\t')) {
-            break;
+        if ((c >= 0x20 && c <= 0x7E) || c == '\r' || c == '\n' || c == '\t') {
+            unicode_len = i / 2 + 1;
+        } else {
+            break; // non-printable — stop
         }
     }
 
-    if (is_unicode && unicode_len > 0) {
+    // Prefer UTF-16LE when it finds a LONGER string than ANSI.
+    // This fixes "Qt5QWindowIcon" in UTF-16LE where ANSI sees "Q\0" → "Q"
+    // but UTF-16LE correctly sees "Qt5QWindowIcon\0\0".
+    if (unicode_valid && unicode_len > 0 && unicode_len > ansi_len) {
         std::string utf8_str;
         utf8_str.reserve(unicode_len);
         for (size_t i = 0; i < unicode_len; ++i) {
             utf8_str += static_cast<char>(buf[2*i]);
         }
         return utf8_str;
+    }
+
+    // Fallback to ANSI if valid
+    if (ansi_printable && ansi_len > 0) {
+        return std::string(buf.begin(), buf.begin() + ansi_len);
     }
 
     return std::nullopt;
@@ -3087,11 +3123,19 @@ bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
     if (imp_it != import_table.end()) {
         auto mod_name = std::get<0>(imp_it->second);
         auto func_name = std::get<1>(imp_it->second);
-        // Erase immediately to prevent infinite re-dispatch on subsequent
-        // FETCH_UNMAPPED events after do_call_return has set PC.
-        import_table.erase(imp_it);
+        // On first entry (PC == sentinel): map page and dispatch the API.
+        // do_call_return inside handle_import_func sets PC to return address.
+        //
+        // On re-entry (PC != sentinel): the code hook already unmapped the
+        // page via _set_emu_hooks, causing another FETCH_UNMAPPED.  Since
+        // the API was already dispatched, just re-map the page so Unicorn
+        // can fetch the sentinel instruction (RET / nop) and continue to
+        // the return address.  Without this re-map, Unicorn enters an
+        // infinite FETCH_UNMAPPED loop that eventually returns UC_ERR_MAP.
         _unset_emu_hooks();
-        handle_import_func(mod_name, func_name);
+        if (get_pc() == addr) {
+            handle_import_func(mod_name, func_name);
+        }
         return true;
     }
 
