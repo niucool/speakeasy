@@ -1452,9 +1452,54 @@ uint64_t Ntoskrnl::ZwDeleteKey(void* e, const std::vector<uint64_t>& a, void* ct
 }
 
 uint64_t Ntoskrnl::ZwQueryInformationProcess(void* e, const std::vector<uint64_t>& a, void* ctx) {
-    // NTSTATUS ZwQueryInformationProcess(HANDLE, PROCESSINFOCLASS, PVOID, ULONG, PULONG)
-    (void)e; (void)a;
-    return KERN_STATUS_SUCCESS;
+    // Python ntoskrnl.py:2362-2401
+    uint64_t hnd       = a[0];
+    uint32_t info_class = static_cast<uint32_t>(a[1]);
+    uint64_t proc_info = a[2];
+    uint64_t proc_info_len = a[3];
+    uint64_t retlen   = a[4];
+    (void)proc_info_len;
+
+    uint64_t nts = 0xC0000024; // STATUS_OBJECT_TYPE_MISMATCH
+
+    // Python: if hnd == self.get_max_int(): obj = emu.get_current_process()
+    std::shared_ptr<KernelObject> obj;
+    if (hnd == 0xFFFFFFFF || hnd == 0xFFFFFFFFFFFFFFFFULL) {
+        auto proc = we(e)->get_current_process();
+        obj = std::static_pointer_cast<KernelObject>(proc);
+    } else {
+        obj = we(e)->get_object_from_handle(hnd);
+    }
+
+    int ptr_size = be(e)->get_ptr_size();
+
+    if (obj) {
+        if (info_class == 26) { // ProcessWow64Information
+            if (proc_info_len < static_cast<uint32_t>(ptr_size)) {
+                nts = KERN_STATUS_INFO_LENGTH_MISMATCH;
+                if (retlen) {
+                    std::vector<uint8_t> sz_bytes(ptr_size, 0);
+                    speakeasy::write_le(sz_bytes, 0, static_cast<uint64_t>(ptr_size), static_cast<size_t>(ptr_size));
+                    be(e)->mem_write(retlen, sz_bytes);
+                    nts = KERN_STATUS_SUCCESS;
+                }
+            } else {
+                if (retlen) {
+                    std::vector<uint8_t> sz_bytes(ptr_size, 0);
+                    speakeasy::write_le(sz_bytes, 0, static_cast<uint64_t>(ptr_size), static_cast<size_t>(ptr_size));
+                    be(e)->mem_write(retlen, sz_bytes);
+                }
+                // Return 0 = NOT running under WOW64
+                std::vector<uint8_t> zero(static_cast<size_t>(ptr_size), 0);
+                be(e)->mem_write(proc_info, zero);
+                nts = KERN_STATUS_SUCCESS;
+            }
+        } else if (info_class == 30) { // ProcessDebugObjectHandle
+            nts = 0xC0000353; // STATUS_PORT_NOT_SET
+        }
+    }
+
+    return nts;
 }
 
 uint64_t Ntoskrnl::ZwOpenKey(void* e, const std::vector<uint64_t>& a, void* ctx) {

@@ -163,11 +163,18 @@ class EmuEngine:
     def mem_map(self, base, size, perms=common.PERM_MEM_RWX):
         """Allocate memory in the cpu engine"""
         perm = self.perms.get(perms, uc.UC_PROT_ALL)
-        return self.emu.mem_map(base, size, perm)  # type: ignore[union-attr]
+        r = "R" if perm & 1 else "-"
+        w = "W" if perm & 2 else "-"
+        x = "X" if perm & 4 else "-"
+        result = self.emu.mem_map(base, size, perm)  # type: ignore[union-attr]
+        print(f"[uc] MAP   0x{base:010x} size=0x{size:06x} perm={perm} {r}{w}{x} -> 0", file=__import__('sys').stderr)
+        return result
 
     def mem_unmap(self, addr, size):
         """Free memory in the cpu engine"""
-        return self.emu.mem_unmap(addr, size)  # type: ignore[union-attr]
+        result = self.emu.mem_unmap(addr, size)  # type: ignore[union-attr]
+        print(f"[uc] UNMAP 0x{addr:010x} size=0x{size:06x} -> 0", file=__import__('sys').stderr)
+        return result
 
     def mem_regions(self):
         """Get current memory allocations from the engine"""

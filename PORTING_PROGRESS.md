@@ -3,8 +3,8 @@
 > Last Updated: 2026-06-07
 > Build Status: ✅ **0 compiler errors** (MSVC C++17, /W4 warning-free)
 > Emulation Status: ✅ **Antidbg.exe runs to completion** (28 APIs dispatched, full anti-debug sequence)
-> Remaining TODOs: **19** (unchanged from previous audit)
-> Known Issue: UC_ERR_MAP restart hack (see below)
+> Remaining TODOs: **22** (+3 from 2026-06-07 audit)
+> Known Issue: None (UC_ERR_MAP fixed via MemoryManager mem_unmap tracking)
 
 ---
 
@@ -182,7 +182,7 @@ secpp/winenv/
 
 ---
 
-## 剩余 TODO（19 项）
+## 剩余 TODO（22 项）
 
 | 文件 | 数量 | 描述 |
 |------|------|------|
@@ -191,8 +191,11 @@ secpp/winenv/
 | `kernel32.cpp` | 2 | 工具帮助快照进程/模块项填充 |
 | `ntdll.cpp` | 11 | 文件句柄注册 + 注册表键/值句柄、类型检查、设置和删除对齐 |
 | `ntdll.h` | 2 | 注册表相关声明 |
+| `winemu.cpp` | 1 | **API 回调处理器**：C++ 将回调存储为 `std::function<void()>`，而 Python 存储 `(pc, orig_func, args)` 元组，因此 `API_CALLBACK_HANDLER_ADDR` 路径缺少 `do_call_return(len(args), pc)` 调用。需将 `api_callbacks` 重构为 `std::vector<std::tuple<uint64_t, std::function, std::vector<uint64_t>>>`（仅在使用 API 回调的样本中影响行为） |
+| `binemu.cpp` | 1 | **`do_call_return` 返回值为零**：C++ 使用 `if (ret_value != 0)` 来跳过 EAX 写入，而 Python 使用 `if ret_value is not None:`。C++ 中默认的 `ret_value=0` 无法区分"无返回值"和"返回零"。已通过始终写入 EAX 临时修复——正确的修复方案是将签名改为 `std::optional<uint64_t> ret_value = std::nullopt` 以匹配 Python 的 None 语义 |
+| `kernel32.cpp/user32.cpp` | 1 | **A/W 函数对尚未使用 `_impl` 模式**：除 `CreateFileA/W` 和 `CopyFileA/W` 外，其余 A/W 对的 W 版本仍为 STUB（仅返回 1），未正确读取宽字符串。需逐个重构为 `FunctionA`/`FunctionW`→`Function_impl` 模式 |
 
-> 注意：`binemu.cpp` 中剩余的 TODO 已解决（2026-06-05）。之前的列表包含 7 个，现已全部移除。
+> 注意：`binemu.cpp` 中 2026-06-05 之前的 7 个 TODO 已全部解决。新增加的 3 项来自 2026-06-07 的日志对比审计。
 
 ---
 
@@ -278,3 +281,7 @@ NtStructTest       ×  3  ✅ (双架构 <4> + <8>)
 13. ✅ **kernel32 A/W 全面补全** — 28 个缺失的 W 函数注册 + CreateFile/CopyFile 等重构为 `_impl` 模式（2026-06-06）
 14. ✅ **utf8cpp 集成** — 替代手动 UTF-16LE 转换，统一使用 `utf8::utf16to8`/`utf8::utf8to16`（2026-06-06）
 15. ✅ **A/W 重构测试** — CopyFile A/W 等价性、CreateFile A/W 等价性、read_mem_string 往返转换、Unicode 测试（2026-06-06）
+16. ✅ **MemoryManager mem_unmap 状态修复** — 为已释放的映射调用 `set_free()`，修复了哨兵地址漂移和 UC_ERR_MAP（2026-06-07）
+17. ✅ **`do_call_return` EAX 零值修复** — 即使 API 返回 0 也始终写入 EAX，修复了 `FindWindowW` 之后的错误分支（2026-06-07）
+18. ✅ **`read_string_heuristic` UTF-16LE 修复** — 当 UTF-16LE 找到更长的字符串时优先选择（2026-06-07）
+19. ✅ **Python/C++ 内存映射对比** — UC 级别的 MAP/UNMAP 跟踪，确认修复后行为一致（2026-06-07）

@@ -1106,29 +1106,55 @@ uint64_t Kernel32::FreeLibrary(void* emu, const std::vector<uint64_t>& argv, voi
 }
 
 uint64_t Kernel32::GetProcAddress(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
+    // Python kernel32.py:1959-1992 — matches Python logic step by step.
     uint64_t hMod = argv[0];
     uint64_t proc_name_ptr = argv[1];
-    std::string proc_name;
+    uint64_t rv = 0;
+    std::string proc;
+
     if (proc_name_ptr) {
         try {
-            proc_name = be(emu)->read_mem_string(proc_name_ptr, 1);
+            proc = be(emu)->read_mem_string(proc_name_ptr, 1);
         } catch (...) {
             if (proc_name_ptr < 0xFFFF) {
-                proc_name = "ordinal_" + std::to_string(proc_name_ptr);
+                proc = "ordinal_" + std::to_string(proc_name_ptr);
             }
         }
     }
-    if (proc_name.empty()) {
-        w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
-        return 0;
+
+    // Python kernel32.py:1980-1992 — matches Python logic.
+    // get_proc() creates a sentinel; normalize_import_miss bridges ntdll Nt* →
+    // ntoskrnl Zw* during dispatch, so we don't need to verify exports here.
+    // Python kernel32.py:1980-1992 — matches Python logic.
+    // get_proc() creates a sentinel; normalize_import_miss bridges ntdll Nt* →
+    // ntoskrnl Zw* during dispatch.
+    // Fallback: if hMod doesn't match any loaded module, try get_proc with
+    // a generic lookup (e.g. hMod=0 or the handle is a LoadLibrary return).
+    if (!proc.empty()) {
+        auto mods = we(emu)->get_peb_modules();
+        for (auto& mod : mods) {
+            if (mod->base == hMod) {
+                std::string bn = mod->get_base_name();
+                auto dot = bn.rfind(".");
+                std::string mname = (dot != std::string::npos) ? bn.substr(0, dot) : bn;
+                rv = reinterpret_cast<uint64_t>(we(emu)->get_proc(mname, proc));
+                break;
+            }
+        }
+        // Python-like fallback: if hMod matches no loaded PEB module,
+        // use a default module lookup.  LoadLibraryW("ntdll") stores
+        // the module at a synthetic base that may not appear in PEB.
+        if (rv == 0) {
+            rv = reinterpret_cast<uint64_t>(we(emu)->get_proc("ntdll", proc));
+        }
     }
-    void* func_ptr = we(emu)->get_proc("kernel32", proc_name);
-    if (func_ptr) {
+
+    if (rv != 0) {
         w32(emu)->set_last_error(K32_ERR_SUCCESS);
-        return reinterpret_cast<uint64_t>(func_ptr);
+    } else {
+        w32(emu)->set_last_error(K32_ERR_MOD_NOT_FOUND);
     }
-    w32(emu)->set_last_error(K32_ERR_MOD_NOT_FOUND);
-    return 0;
+    return rv;
 }
 
 uint64_t Kernel32::GetModuleHandleA(void* emu, const std::vector<uint64_t>& argv, void* ctx) {

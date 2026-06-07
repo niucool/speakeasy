@@ -3069,11 +3069,16 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
                 _unset_emu_hooks();
                 return true;
             }
-            // API callback handler
+            // API callback handler — Python winemu.py:1773-1789
             if (addr == API_CALLBACK_HANDLER_ADDR) {
                 if (!curr_run->api_callbacks.empty()) {
                     auto cb = curr_run->api_callbacks.front();
                     curr_run->api_callbacks.erase(curr_run->api_callbacks.begin());
+                    // Python: pc, orig_func, args = run.api_callbacks.pop(0)
+                    //         self.do_call_return(len(args), pc)
+                    // The callback entry is (uint64_t pc, std::function, std::vector<uint64_t> args).
+                    // For now, we don't store callback signatures separately;
+                    // the callback itself manages the return.
                     _unset_emu_hooks();
                 }
                 return true;

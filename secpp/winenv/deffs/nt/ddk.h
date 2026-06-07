@@ -375,6 +375,7 @@ constexpr uint32_t STATUS_BAD_COMPRESSION_BUFFER    = 0xC0000242;
 constexpr uint32_t STATUS_UNSUPPORTED_COMPRESSION   = 0xC000025F;
 constexpr uint32_t STATUS_NOINTERFACE               = 0xC00002B9;
 constexpr uint32_t STATUS_PORT_NOT_SET              = 0xC0000353;
+// STATUS_OBJECT_TYPE_MISMATCH already defined by Windows SDK
 
 // ------ Device Flags --------------------------------------------------------------------
 constexpr uint32_t DO_DIRECT_IO           = 0x00000010;
@@ -445,6 +446,9 @@ constexpr uint32_t NonPagedPoolNx     = 2;
 // ------ Process Information Class --------------------------------------------------------
 constexpr uint32_t ProcessBasicInformation    = 0;
 constexpr uint32_t ProcessDebugPort           = 7;
+constexpr uint32_t ProcessWow64Information    = 26;  // 0x1A
+constexpr uint32_t ProcessDebugObjectHandle   = 30;  // 0x1E
+constexpr uint32_t ProcessDebugFlags          = 31;  // 0x1F
 
 // ------ SYSTEM_INFORMATION_CLASS ---------------------------------------------------------
 constexpr uint32_t SystemBasicInformation           = 0;

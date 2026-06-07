@@ -1071,32 +1071,37 @@ uint64_t Ntdll::NtQueryInformationProcess(void* emu, const std::vector<uint64_t>
 
     switch (info_class) {
         case 0: { // ProcessBasicInformation
-            // PEB_BASIC_INFORMATION: UniqueProcessId(ptr), InheritedFromUniqueProcessId(ptr),
-            //                        PebBaseAddress(ptr), ...
             if (proc && info_ptr) {
                 write_ptr(emu, info_ptr, static_cast<uint64_t>(proc->get_pid()));
                 write_ptr(emu, info_ptr + psz, 0); // InheritedFrom
                 uint64_t peb_addr = (proc && proc->get_peb()) ? proc->get_peb()->get_address() : 0;
                 write_ptr(emu, info_ptr + psz * 2, peb_addr);
             }
-            if (ret_len_ptr) write_u32(emu, ret_len_ptr, psz * 3);
+            if (ret_len_ptr) write_u32(emu, ret_len_ptr, static_cast<uint32_t>(psz * 3));
             break;
         }
-        case 0x1A: { // ProcessImageFileName
-            // Return the image file name as a UNICODE_STRING
+        case 0x1A: { // ProcessImageFileName (also ProcessWow64Information in kernel)
             if (proc && info_ptr) {
                 std::string img_path = proc->get_process_path();
-                // info_ptr points to a UNICODE_STRING
-                // Allocate buffer after the structure
-                uint64_t buf_addr = info_ptr + psz + 4 + 2; // after UNICODE_STRING
+                uint64_t buf_addr = info_ptr + static_cast<uint64_t>(psz) + 4 + 2;
                 write_unicode_string(emu, info_ptr, img_path, buf_addr);
-                if (ret_len_ptr) write_u32(emu, ret_len_ptr, (psz + 4) + img_path.size() * 2 + 2);
+                if (ret_len_ptr) write_u32(emu, ret_len_ptr, static_cast<uint32_t>(psz + 4 + img_path.size() * 2 + 2));
             }
             break;
         }
-        default:
+        case 0x1E: { // ProcessDebugObjectHandle — return STATUS_PORT_NOT_SET
             if (ret_len_ptr) write_u32(emu, ret_len_ptr, 0);
-            break;
+            return 0xC0000353; // STATUS_PORT_NOT_SET
+        }
+        case 0x1F: { // ProcessDebugFlags — anti-debug: return 0 (no debugger)
+            if (ret_len_ptr) write_u32(emu, ret_len_ptr, 0);
+            return 0xC0000353; // STATUS_PORT_NOT_SET
+        }
+        default:
+            // Python returns STATUS_OBJECT_TYPE_MISMATCH for unhandled info classes
+            // including ProcessDebugPort(7), ProcessDebugFlags(0x1F), etc.
+            if (ret_len_ptr) write_u32(emu, ret_len_ptr, 0);
+            return 0xC0000024; // STATUS_OBJECT_TYPE_MISMATCH
     }
 
     return NT_SUCCESS;

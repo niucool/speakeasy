@@ -2,6 +2,7 @@
 #include "unicorn_eng.h"
 #include <stdexcept>
 #include <cstring>
+#include <plog/Log.h>
 
 /**
  * Constructor for EmuEngine
@@ -161,14 +162,20 @@ uc_err EmuEngine::mem_map(uint64_t base, size_t size, uint32_t permsl) {
     if (it != this->perms.end()) {
         perm = it->second;
     }
-    return uc_mem_map(emu, base, size, perm);
+    uc_err err = uc_mem_map(emu, base, size, perm);
+    PLOG_DEBUG << "[uc] MAP   0x" << std::hex << base << " size=0x" << size
+               << " perm=" << perm << " -> " << static_cast<int>(err) << std::dec;
+    return err;
 }
 
 /**
  * Free memory in the cpu engine
  */
 uc_err EmuEngine::mem_unmap(uint64_t addr, size_t size) {
-    return uc_mem_unmap(emu, addr, size);
+    uc_err err = uc_mem_unmap(emu, addr, size);
+    PLOG_DEBUG << "[uc] UNMAP 0x" << std::hex << addr << " size=0x" << size
+               << " -> " << static_cast<int>(err) << std::dec;
+    return err;
 }
 
 /**

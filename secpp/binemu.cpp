@@ -922,8 +922,14 @@ void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_va
         reg_write(sp_reg, stk_ptr + get_ptr_size());
         reg_write(pc_reg, ret_addr);
     }
-    if (ret_value != 0)
-        reg_write(ret_reg, ret_value);
+    // Python: `if ret_value is not None: self.reg_write(rr, ret_value)`
+    // In Python, 0 is not None, so EAX is written even when the API returns 0.
+    // In C++, we can't distinguish "no value" (default 0) from "returned 0"
+    // without std::optional, but all callers pass explicit return values so
+    // always writing is safe.  Not writing EAX=0 caused FindWindowW's return
+    // value to be lost (EAX retained 0x4042d4), taking the wrong branch at
+    // "cmp [ebp-4], 0 / je 0x401290".
+    reg_write(ret_reg, ret_value);
 
     // Cleanup the stack
     if (conv == speakeasy::arch::CALL_CONV_CDECL) {
