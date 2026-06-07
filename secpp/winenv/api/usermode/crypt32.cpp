@@ -78,12 +78,12 @@ static std::vector<uint8_t> base64_decode(const std::string& input) {
 //  Constructor 
 
 Crypt32::Crypt32(void* emu) : ApiHandler(emu) {
-    apis_ = {
-        {"CryptStringToBinaryA", 7, CryptStringToBinaryA},
-        {"CryptBinaryToStringA", 6, CryptBinaryToStringA},
-        {"CertOpenStore", 3, CertOpenStore},
-        {"CryptDecodeObject", 5, CryptDecodeObject},
-    };
+    INIT_API_TABLE(Crypt32)
+    REG(Crypt32, CryptStringToBinaryA, 7)
+    REG(Crypt32, CryptBinaryToStringA, 6)
+    REG(Crypt32, CertOpenStore, 3)
+    REG(Crypt32, CryptDecodeObject, 5)
+    END_API_TABLE
 }
 
 //  API implementations 

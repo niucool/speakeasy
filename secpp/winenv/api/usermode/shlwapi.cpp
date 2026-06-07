@@ -158,7 +158,7 @@ Shlwapi::Shlwapi(void* emu) : ApiHandler(emu) {
     REG(Shlwapi, StrStrI, 2)             REG(Shlwapi, PathFindExtension, 1)
     REG(Shlwapi, StrCmpI, 2)             REG(Shlwapi, PathFindFileName, 1)
     REG(Shlwapi, PathRemoveExtension, 1) REG(Shlwapi, PathStripPath, 1)
-    REG(Shlwapi, wvnsprintfA, 4)         REG(Shlwapi, wnsprintf, 4)
+    REG(Shlwapi, wvnsprintfA, 4)         REG2(Shlwapi, wnsprintf, 4)
     REG(Shlwapi, PathAppend, 2)          REG(Shlwapi, PathCanonicalize, 2)
     REG(Shlwapi, PathRemoveFileSpec, 1)  REG(Shlwapi, PathAddBackslash, 1)
     REG(Shlwapi, PathRenameExtension, 2)

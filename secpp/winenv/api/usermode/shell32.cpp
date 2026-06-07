@@ -72,19 +72,14 @@ static std::string resolve_csidl_path(void* e, uint32_t csidl) {
 //  Constructor 
 
 Shell32::Shell32(void* emu) : ApiHandler(emu) {
-    apis_ = {
-        {"ShellExecuteA", 6, ShellExecuteA},
-        {"ShellExecuteW", 6, ShellExecuteW},
-        {"ShellExecuteExA", 1, ShellExecuteExA},
-        {"SHGetFolderPathA", 5, SHGetFolderPathA},
-        {"SHGetSpecialFolderPathA", 4, SHGetSpecialFolderPathA},
-        {"SHGetFolderPathW", 5, SHGetFolderPathW},
-        {"SHFileOperationA", 1, SHFileOperationA},
-        {"ExtractIconExW", 5, ExtractIconExW},
-        {"SHGetFileInfoA", 4, SHGetFileInfoA},
-        {"SHGetFileInfoW", 4, SHGetFileInfoW},
-        {"SHCreateDirectoryExA", 3, SHCreateDirectoryExA},
-    };
+    INIT_API_TABLE(Shell32)
+    REG(Shell32, ShellExecuteA, 6)          REG(Shell32, ShellExecuteW, 6)
+    REG(Shell32, ShellExecuteExA, 1)        REG(Shell32, SHGetFolderPathA, 5)
+    REG(Shell32, SHGetSpecialFolderPathA, 4) REG(Shell32, SHGetFolderPathW, 5)
+    REG(Shell32, SHFileOperationA, 1)       REG(Shell32, ExtractIconExW, 5)
+    REG(Shell32, SHGetFileInfoA, 4)         REG(Shell32, SHGetFileInfoW, 4)
+    REG(Shell32, SHCreateDirectoryExA, 3)
+    END_API_TABLE
 }
 
 //  API implementations 

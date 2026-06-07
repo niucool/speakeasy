@@ -44,7 +44,7 @@ std::shared_ptr<ApiHandler> WindowsApi::load_api_handler(const std::string& mod_
     std::shared_ptr<ApiHandler> handler = ApiHandlerRegistry::create_handler(lower_name, emu_);
     if (handler) {
         for (const auto& entry : handler->get_apis()) {
-            handler->add_hook(entry.name, entry.handler, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
+            handler->add_hook(entry.name, entry.handler, entry.argc, entry.conv);
         }
         mods_[lower_name] = handler;
         return handler;
@@ -58,7 +58,7 @@ std::shared_ptr<ApiHandler> WindowsApi::load_api_handler(const std::string& mod_
             auto handler = factory(emu_);
             if (handler) {
                 for (const auto& entry : handler->get_apis()) {
-                    handler->add_hook(entry.name, entry.handler, entry.argc, speakeasy::arch::CALL_CONV_STDCALL);
+                    handler->add_hook(entry.name, entry.handler, entry.argc, entry.conv);
                 }
                 mods_[lower_name] = handler;
             }

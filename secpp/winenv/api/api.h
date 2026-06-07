@@ -39,7 +39,8 @@ struct DataHookInfo {
 
 struct ApiEntry {
     std::string name;
-    int argc;
+    int argc = 0;
+    int conv = 0;
     ApiFunc handler;
 };
 
@@ -232,8 +233,13 @@ private: \
     apis_ = {
 
 /// Register one API entry. Usage: REG(klass, CreateFileA, 7)
+// REG for stdcall. Note: Windows APIs are typically stdcall, but some may be cdecl.
 #define REG(klass, name, argc) \
-    {#name, argc, klass::name},
+    {#name, argc, speakeasy::arch::CALL_CONV_STDCALL, klass::name},
+
+// REG2 for cdecl. Usage: REG2(klass, printf, 2)
+#define REG2(klass, name, argc) \
+    {#name, argc, speakeasy::arch::CALL_CONV_CDECL, klass::name},
 
 /// End the API table initialization.
 #define END_API_TABLE \

@@ -844,7 +844,7 @@ void WindowsEmulator::start() {
     // Use a large count instead of 0 because Unicorn 2.x may return UC_ERR_MAP
     // with count=0 when the hook chain modifies memory mappings.
     int max_instr = config_.max_instructions;
-    if (max_instr < 0) max_instr = 0x7FFFFFFF;  // large finite value
+    if (max_instr < 0) max_instr = 50000;  // finite limit, > Python antidbg's ~844 instructions
 
     while (true) {
         try {
@@ -3128,17 +3128,11 @@ bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
     if (imp_it != import_table.end()) {
         auto mod_name = std::get<0>(imp_it->second);
         auto func_name = std::get<1>(imp_it->second);
-        // On first entry (PC == sentinel): map page and dispatch the API.
-        // do_call_return inside handle_import_func sets PC to return address.
-        //
-        // On re-entry (PC != sentinel): the code hook already unmapped the
-        // page via _set_emu_hooks, causing another FETCH_UNMAPPED.  Since
-        // the API was already dispatched, just re-map the page so Unicorn
-        // can fetch the sentinel instruction (RET / nop) and continue to
-        // the return address.  Without this re-map, Unicorn enters an
-        // infinite FETCH_UNMAPPED loop that eventually returns UC_ERR_MAP.
         _unset_emu_hooks();
-        if (get_pc() == addr) {
+        // Dispatch the API only if this run is still active.  If the
+        // API handler called on_run_complete(), the run is done and
+        // re-dispatching would cause an infinite FETCH_UNMAPPED loop.
+        if (!run_complete && get_pc() == addr) {
             handle_import_func(mod_name, func_name);
         }
         return true;

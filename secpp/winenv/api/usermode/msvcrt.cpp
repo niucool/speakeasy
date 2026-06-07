@@ -40,88 +40,88 @@ static std::map<uint64_t, int> msvc_file_streams; // stream_addr -> file_handle
 Msvcrt::Msvcrt(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Msvcrt)
     // Startup / init
-    REG(Msvcrt, __p__acmdln, 0)            REG(Msvcrt, _onexit, 1)
-    REG(Msvcrt, mbstowcs_s, 5)             REG(Msvcrt, _wcsnicmp, 3)
-    REG(Msvcrt, _initterm_e, 2)            REG(Msvcrt, _initterm, 2)
-    REG(Msvcrt, __getmainargs, 5)          REG(Msvcrt, __wgetmainargs, 5)
-    REG(Msvcrt, __p___wargv, 0)            REG(Msvcrt, __p___argv, 0)
-    REG(Msvcrt, __p___argc, 0)             REG(Msvcrt, __p___initenv, 0)
-    REG(Msvcrt, _get_initial_narrow_environment, 0)
-    REG(Msvcrt, _get_initial_wide_environment, 0)
+    REG2(Msvcrt, __p__acmdln, 0)            REG2(Msvcrt, _onexit, 1)
+    REG2(Msvcrt, mbstowcs_s, 5)             REG2(Msvcrt, _wcsnicmp, 3)
+    REG2(Msvcrt, _initterm_e, 2)            REG2(Msvcrt, _initterm, 2)
+    REG2(Msvcrt, __getmainargs, 5)          REG2(Msvcrt, __wgetmainargs, 5)
+    REG2(Msvcrt, __p___wargv, 0)            REG2(Msvcrt, __p___argv, 0)
+    REG2(Msvcrt, __p___argc, 0)             REG2(Msvcrt, __p___initenv, 0)
+    REG2(Msvcrt, _get_initial_narrow_environment, 0)
+    REG2(Msvcrt, _get_initial_wide_environment, 0)
     // Exit / termination
-    REG(Msvcrt, exit, 1)                   REG(Msvcrt, _exit, 1)
-    REG(Msvcrt, _cexit, 0)                 REG(Msvcrt, _c_exit, 0)
-    REG(Msvcrt, terminate, 1)
+    REG2(Msvcrt, exit, 1)                   REG2(Msvcrt, _exit, 1)
+    REG2(Msvcrt, _cexit, 0)                 REG2(Msvcrt, _c_exit, 0)
+    REG2(Msvcrt, terminate, 1)
     // Exception / SEH
-    REG(Msvcrt, _XcptFilter, 2)            REG(Msvcrt, _CxxThrowException, 2)
-    REG(Msvcrt, _except_handler4_common, 6) REG(Msvcrt, _except_handler3, 4)
-    REG(Msvcrt, _seh_filter_exe, 2)        REG(Msvcrt, _seh_filter_dll, 2)
-    REG(Msvcrt, __CxxFrameHandler, 4)      REG(Msvcrt, _EH_prolog, 0)
-    REG(Msvcrt, __current_exception_context, 0)
-    REG(Msvcrt, __current_exception, 0)
+    REG2(Msvcrt, _XcptFilter, 2)            REG2(Msvcrt, _CxxThrowException, 2)
+    REG2(Msvcrt, _except_handler4_common, 6) REG2(Msvcrt, _except_handler3, 4)
+    REG2(Msvcrt, _seh_filter_exe, 2)        REG2(Msvcrt, _seh_filter_dll, 2)
+    REG2(Msvcrt, __CxxFrameHandler, 4)      REG2(Msvcrt, _EH_prolog, 0)
+    REG2(Msvcrt, __current_exception_context, 0)
+    REG2(Msvcrt, __current_exception, 0)
     // I/O
-    REG(Msvcrt, __acrt_iob_func, 1)        REG(Msvcrt, __stdio_common_vfprintf, 0)
-    REG(Msvcrt, __stdio_common_vsprintf, 7) REG(Msvcrt, fprintf, 0)
-    REG(Msvcrt, printf, 0)                 REG(Msvcrt, sprintf, 0)
-    REG(Msvcrt, _snprintf, 0)              REG(Msvcrt, _snwprintf, 0)
-    REG(Msvcrt, _vsnprintf, 4)             REG(Msvcrt, sscanf, 0)
-    REG(Msvcrt, puts, 1)                   REG(Msvcrt, fopen, 2)
-    REG(Msvcrt, _wfopen, 2)                REG(Msvcrt, fclose, 1)
-    REG(Msvcrt, fseek, 3)                  REG(Msvcrt, ftell, 1)
-    REG(Msvcrt, fread, 4)                  REG(Msvcrt, fputc, 2)
-    REG(Msvcrt, _lock, 1)                  REG(Msvcrt, _unlock, 1)
+    REG2(Msvcrt, __acrt_iob_func, 1)        REG2(Msvcrt, __stdio_common_vfprintf, 0)
+    REG2(Msvcrt, __stdio_common_vsprintf, 7) REG2(Msvcrt, fprintf, 0)
+    REG2(Msvcrt, printf, 0)                 REG2(Msvcrt, sprintf, 0)
+    REG2(Msvcrt, _snprintf, 0)              REG2(Msvcrt, _snwprintf, 0)
+    REG2(Msvcrt, _vsnprintf, 4)             REG2(Msvcrt, sscanf, 0)
+    REG2(Msvcrt, puts, 1)                   REG2(Msvcrt, fopen, 2)
+    REG2(Msvcrt, _wfopen, 2)                REG2(Msvcrt, fclose, 1)
+    REG2(Msvcrt, fseek, 3)                  REG2(Msvcrt, ftell, 1)
+    REG2(Msvcrt, fread, 4)                  REG2(Msvcrt, fputc, 2)
+    REG2(Msvcrt, _lock, 1)                  REG2(Msvcrt, _unlock, 1)
     // Memory
-    REG(Msvcrt, memset, 3)                 REG(Msvcrt, memcpy, 3)
-    REG(Msvcrt, memmove, 3)                REG(Msvcrt, memcmp, 3)
-    REG(Msvcrt, malloc, 1)                 REG(Msvcrt, calloc, 2)
-    REG(Msvcrt, free, 1)
+    REG2(Msvcrt, memset, 3)                 REG2(Msvcrt, memcpy, 3)
+    REG2(Msvcrt, memmove, 3)                REG2(Msvcrt, memcmp, 3)
+    REG2(Msvcrt, malloc, 1)                 REG2(Msvcrt, calloc, 2)
+    REG2(Msvcrt, free, 1)
     // String
-    REG(Msvcrt, strcpy, 2)                 REG(Msvcrt, wcscpy, 2)
-    REG(Msvcrt, strncpy, 3)                REG(Msvcrt, wcsncpy, 3)
-    REG(Msvcrt, strcat, 2)                 REG(Msvcrt, wcscat, 2)
-    REG(Msvcrt, strncat, 3)                REG(Msvcrt, strncat_s, 4)
-    REG(Msvcrt, strlen, 1)                 REG(Msvcrt, wcslen, 1)
-    REG(Msvcrt, strcmp, 2)                 REG(Msvcrt, wcscmp, 2)
-    REG(Msvcrt, strncmp, 3)                REG(Msvcrt, _strcmpi, 2)
-    REG(Msvcrt, _stricmp, 2)               REG(Msvcrt, _strnicmp, 3)
-    REG(Msvcrt, _wcsicmp, 2)               REG(Msvcrt, strstr, 2)
-    REG(Msvcrt, wcsstr, 2)                 REG(Msvcrt, strchr, 2)
-    REG(Msvcrt, strrchr, 2)                REG(Msvcrt, _strlwr, 1)
-    REG(Msvcrt, atoi, 1)                   REG(Msvcrt, _ltoa, 3)
-    REG(Msvcrt, _itoa, 3)                  REG(Msvcrt, _itow, 3)
-    REG(Msvcrt, wcstombs, 3)
+    REG2(Msvcrt, strcpy, 2)                 REG2(Msvcrt, wcscpy, 2)
+    REG2(Msvcrt, strncpy, 3)                REG2(Msvcrt, wcsncpy, 3)
+    REG2(Msvcrt, strcat, 2)                 REG2(Msvcrt, wcscat, 2)
+    REG2(Msvcrt, strncat, 3)                REG2(Msvcrt, strncat_s, 4)
+    REG2(Msvcrt, strlen, 1)                 REG2(Msvcrt, wcslen, 1)
+    REG2(Msvcrt, strcmp, 2)                 REG2(Msvcrt, wcscmp, 2)
+    REG2(Msvcrt, strncmp, 3)                REG2(Msvcrt, _strcmpi, 2)
+    REG2(Msvcrt, _stricmp, 2)               REG2(Msvcrt, _strnicmp, 3)
+    REG2(Msvcrt, _wcsicmp, 2)               REG2(Msvcrt, strstr, 2)
+    REG2(Msvcrt, wcsstr, 2)                 REG2(Msvcrt, strchr, 2)
+    REG2(Msvcrt, strrchr, 2)                REG2(Msvcrt, _strlwr, 1)
+    REG2(Msvcrt, atoi, 1)                   REG2(Msvcrt, _ltoa, 3)
+    REG2(Msvcrt, _itoa, 3)                  REG2(Msvcrt, _itow, 3)
+    REG2(Msvcrt, wcstombs, 3)
     // Math
-    REG(Msvcrt, pow, 2)                    REG(Msvcrt, floor, 1)
-    REG(Msvcrt, sin, 1)                    REG(Msvcrt, abs, 1)
-    REG(Msvcrt, _ftol, 1)
+    REG2(Msvcrt, pow, 2)                    REG2(Msvcrt, floor, 1)
+    REG2(Msvcrt, sin, 1)                    REG2(Msvcrt, abs, 1)
+    REG2(Msvcrt, _ftol, 1)
     // Time
-    REG(Msvcrt, time, 1)                   REG(Msvcrt, clock, 0)
-    REG(Msvcrt, _strtime, 1)               REG(Msvcrt, _strdate, 1)
+    REG2(Msvcrt, time, 1)                   REG2(Msvcrt, clock, 0)
+    REG2(Msvcrt, _strtime, 1)               REG2(Msvcrt, _strdate, 1)
     // Random
-    REG(Msvcrt, rand, 0)                   REG(Msvcrt, srand, 1)
+    REG2(Msvcrt, rand, 0)                   REG2(Msvcrt, srand, 1)
     // App type / mode
-    REG(Msvcrt, __set_app_type, 1)         REG(Msvcrt, _set_app_type, 1)
-    REG(Msvcrt, __p__fmode, 0)             REG(Msvcrt, __p__commode, 0)
-    REG(Msvcrt, _set_fmode, 1)             REG(Msvcrt, _controlfp, 2)
-    REG(Msvcrt, _controlfp_s, 3)           REG(Msvcrt, _set_new_mode, 1)
-    REG(Msvcrt, _configthreadlocale, 1)    REG(Msvcrt, _setusermatherr, 1)
-    REG(Msvcrt, __setusermatherr, 1)
+    REG2(Msvcrt, __set_app_type, 1)         REG2(Msvcrt, _set_app_type, 1)
+    REG2(Msvcrt, __p__fmode, 0)             REG2(Msvcrt, __p__commode, 0)
+    REG2(Msvcrt, _set_fmode, 1)             REG2(Msvcrt, _controlfp, 2)
+    REG2(Msvcrt, _controlfp_s, 3)           REG2(Msvcrt, _set_new_mode, 1)
+    REG2(Msvcrt, _configthreadlocale, 1)    REG2(Msvcrt, _setusermatherr, 1)
+    REG2(Msvcrt, __setusermatherr, 1)
     // C++ helpers
-    REG(Msvcrt, _set_invalid_parameter_handler, 1)
-    REG(Msvcrt, _initialize_onexit_table, 1)
-    REG(Msvcrt, _register_onexit_function, 2)
-    REG(Msvcrt, __dllonexit, 3)
-    REG(Msvcrt, _register_thread_local_exe_atexit_callback, 1)
-    REG(Msvcrt, _crt_atexit, 1)
-    REG(Msvcrt, _initialize_narrow_environment, 0)
-    REG(Msvcrt, _configure_narrow_argv, 1)
+    REG2(Msvcrt, _set_invalid_parameter_handler, 1)
+    REG2(Msvcrt, _initialize_onexit_table, 1)
+    REG2(Msvcrt, _register_onexit_function, 2)
+    REG2(Msvcrt, __dllonexit, 3)
+    REG2(Msvcrt, _register_thread_local_exe_atexit_callback, 1)
+    REG2(Msvcrt, _crt_atexit, 1)
+    REG2(Msvcrt, _initialize_narrow_environment, 0)
+    REG2(Msvcrt, _configure_narrow_argv, 1)
     // Threading
-    REG(Msvcrt, _beginthreadex, 6)         REG(Msvcrt, _beginthread, 3)
+    REG2(Msvcrt, _beginthreadex, 6)         REG2(Msvcrt, _beginthread, 3)
     // Misc
-    REG(Msvcrt, system, 1)                 REG(Msvcrt, toupper, 1)
-    REG(Msvcrt, tolower, 1)                REG(Msvcrt, isdigit, 1)
-    REG(Msvcrt, _adjust_fdiv, 0)           REG(Msvcrt, _errno, 0)
-    REG(Msvcrt, signal, 2)
+    REG2(Msvcrt, system, 1)                 REG2(Msvcrt, toupper, 1)
+    REG2(Msvcrt, tolower, 1)                REG2(Msvcrt, isdigit, 1)
+    REG2(Msvcrt, _adjust_fdiv, 0)           REG2(Msvcrt, _errno, 0)
+    REG2(Msvcrt, signal, 2)
     END_API_TABLE
 }
 
@@ -1087,16 +1087,11 @@ uint64_t Msvcrt::_except_handler4_common(void* e, const std::vector<uint64_t>& a
         curr_frame = next;
     }
 
-    // After setting up SEH frames, trigger SEH dispatch to handle the
-    // exception properly. Calling dispatch_seh directly walks the frame
-    // chain and executes the appropriate handler/filter.
-    // Return EXCEPTION_EXECUTE_HANDLER if handler was found, else
-    // EXCEPTION_CONTINUE_SEARCH so the CRT continues searching.
-    if (!seh.get_frames_ref().empty()) {
-        bool handled = we(e)->dispatch_seh(0xC0000005);
-        if (handled) return 1;  // EXCEPTION_EXECUTE_HANDLER
-    }
-    return 0;  // EXCEPTION_CONTINUE_SEARCH
+    // Python returns 0 and native CRT in Unicorn handles the SEH chain.
+    // C++ cannot — on_run_complete() + stop() ends the run cleanly.
+    we(e)->on_run_complete();
+    we(e)->stop();
+    return 0;
 }
 
 uint64_t Msvcrt::_except_handler3(void* e, const std::vector<uint64_t>& a, void* ctx) {

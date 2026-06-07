@@ -180,87 +180,55 @@ static inline std::vector<uint8_t> utf8_to_utf16(const std::string& s) {
 // 
 
 Ntdll::Ntdll(void* emu) : ApiHandler(emu) {
-    apis_ = {
-        // Heap
-        {"RtlAllocateHeap",         3, RtlAllocateHeap},
-        {"RtlFreeHeap",             3, RtlFreeHeap},
-        {"RtlReAllocateHeap",       4, RtlReAllocateHeap},
-        {"RtlCreateHeap",           5, RtlCreateHeap},
-        {"RtlDestroyHeap",          1, RtlDestroyHeap},
-        {"RtlGetProcessHeap",       0, RtlGetProcessHeap},
-        // Virtual memory
-        {"NtAllocateVirtualMemory",   6, NtAllocateVirtualMemory},
-        {"NtFreeVirtualMemory",       4, NtFreeVirtualMemory},
-        {"NtProtectVirtualMemory",    5, NtProtectVirtualMemory},
-        {"NtQueryVirtualMemory",      6, NtQueryVirtualMemory},
-        // File I/O
-        {"NtCreateFile",              11, NtCreateFile},
-        {"NtOpenFile",                6, NtOpenFile},
-        {"NtReadFile",                9, NtReadFile},
-        {"NtWriteFile",               9, NtWriteFile},
-        {"NtClose",                   1, NtClose},
-        {"NtDeviceIoControlFile",     10, NtDeviceIoControlFile},
-        // Process / thread
-        {"NtCreateProcess",           8, NtCreateProcess},
-        {"NtCreateThread",            8, NtCreateThread},
-        {"NtOpenThread",              4, NtOpenThread},
-        {"NtTerminateProcess",        2, NtTerminateProcess},
-        {"NtTerminateThread",         2, NtTerminateThread},
-        {"NtGetContextThread",        2, NtGetContextThread},
-        {"NtSetContextThread",        2, NtSetContextThread},
-        // System info
-        {"NtQuerySystemInformation",  4, NtQuerySystemInformation},
-        {"NtQueryInformationProcess", 5, NtQueryInformationProcess},
-        {"NtSetInformationProcess",   4, NtSetInformationProcess},
-        // Registry
-        {"NtCreateKey",               7, NtCreateKey},
-        {"NtOpenKey",                 3, NtOpenKey},
-        {"NtQueryValueKey",           6, NtQueryValueKey},
-        {"NtSetValueKey",             6, NtSetValueKey},
-        {"NtDeleteKey",               2, NtDeleteKey},
-        {"NtDeleteValueKey",          3, NtDeleteValueKey},
-        // Sections
-        {"NtCreateSection",           7, NtCreateSection},
-        {"NtOpenSection",             4, NtOpenSection},
-        {"NtMapViewOfSection",        10, NtMapViewOfSection},
-        {"NtUnmapViewOfSection",      2, NtUnmapViewOfSection},
-        // Sync
-        {"NtCreateEvent",             5, NtCreateEvent},
-        {"NtOpenEvent",               4, NtOpenEvent},
-        {"NtCreateMutant",            4, NtCreateMutant},
-        {"NtOpenMutant",              4, NtOpenMutant},
-        {"NtWaitForSingleObject",     3, NtWaitForSingleObject},
-        {"NtDelayExecution",          2, NtDelayExecution},
-        // String / utility
-        {"RtlInitUnicodeString",      2, RtlInitUnicodeString},
-        {"RtlInitString",             2, RtlInitString},
-        {"RtlAnsiStringToUnicodeString", 3, RtlAnsiStringToUnicodeString},
-        {"RtlFreeUnicodeString",      1, RtlFreeUnicodeString},
-        {"RtlNtStatusToDosError",     1, RtlNtStatusToDosError},
-        {"CsrGetProcessId",           0, CsrGetProcessId},
-        // Volume / object
-        {"NtQueryVolumeInformationFile", 5, NtQueryVolumeInformationFile},
-        {"NtQueryObject",             5, NtQueryObject},
-        {"NtDuplicateObject",         6, NtDuplicateObject},
-        // Additional ntdll APIs (ported from Python reference)
-        {"RtlGetLastWin32Error",      0, RtlGetLastWin32Error},
-        {"RtlFlushSecureMemoryCache", 2, RtlFlushSecureMemoryCache},
-        {"RtlAddVectoredExceptionHandler", 2, RtlAddVectoredExceptionHandler},
-        {"RtlRemoveVectoredExceptionHandler", 1, RtlRemoveVectoredExceptionHandler},
-        {"NtYieldExecution",          0, NtYieldExecution},
-        {"LdrLoadDll",                4, LdrLoadDll},
-        {"LdrGetProcedureAddress",    4, LdrGetProcedureAddress},
-        {"LdrFindResource_U",         4, LdrFindResource_U},
-        {"LdrAccessResource",         4, LdrAccessResource},
-        {"RtlZeroMemory",             2, RtlZeroMemory},
-        {"RtlMoveMemory",             3, RtlMoveMemory},
-        {"RtlEncodePointer",          1, RtlEncodePointer},
-        {"RtlDecodePointer",          1, RtlDecodePointer},
-        {"RtlComputeCrc32",           3, RtlComputeCrc32},
-        {"RtlGetNtVersionNumbers",    3, RtlGetNtVersionNumbers},
-        {"RtlGetCurrentPeb",          0, RtlGetCurrentPeb},
-        {"RtlGetVersion",             1, RtlGetVersion},
-    };
+    INIT_API_TABLE(Ntdll)
+    // Heap
+    REG(Ntdll, RtlAllocateHeap, 3)          REG(Ntdll, RtlFreeHeap, 3)
+    REG(Ntdll, RtlReAllocateHeap, 4)        REG(Ntdll, RtlCreateHeap, 5)
+    REG(Ntdll, RtlDestroyHeap, 1)           REG(Ntdll, RtlGetProcessHeap, 0)
+    // Virtual memory
+    REG(Ntdll, NtAllocateVirtualMemory, 6)  REG(Ntdll, NtFreeVirtualMemory, 4)
+    REG(Ntdll, NtProtectVirtualMemory, 5)   REG(Ntdll, NtQueryVirtualMemory, 6)
+    // File I/O
+    REG(Ntdll, NtCreateFile, 11)            REG(Ntdll, NtOpenFile, 6)
+    REG(Ntdll, NtReadFile, 9)               REG(Ntdll, NtWriteFile, 9)
+    REG(Ntdll, NtClose, 1)                  REG(Ntdll, NtDeviceIoControlFile, 10)
+    // Process / thread
+    REG(Ntdll, NtCreateProcess, 8)          REG(Ntdll, NtCreateThread, 8)
+    REG(Ntdll, NtOpenThread, 4)             REG(Ntdll, NtTerminateProcess, 2)
+    REG(Ntdll, NtTerminateThread, 2)        REG(Ntdll, NtGetContextThread, 2)
+    REG(Ntdll, NtSetContextThread, 2)
+    // System info
+    REG(Ntdll, NtQuerySystemInformation, 4) REG(Ntdll, NtQueryInformationProcess, 5)
+    REG(Ntdll, NtSetInformationProcess, 4)
+    // Registry
+    REG(Ntdll, NtCreateKey, 7)              REG(Ntdll, NtOpenKey, 3)
+    REG(Ntdll, NtQueryValueKey, 6)          REG(Ntdll, NtSetValueKey, 6)
+    REG(Ntdll, NtDeleteKey, 2)              REG(Ntdll, NtDeleteValueKey, 3)
+    // Sections
+    REG(Ntdll, NtCreateSection, 7)          REG(Ntdll, NtOpenSection, 4)
+    REG(Ntdll, NtMapViewOfSection, 10)      REG(Ntdll, NtUnmapViewOfSection, 2)
+    // Sync
+    REG(Ntdll, NtCreateEvent, 5)            REG(Ntdll, NtOpenEvent, 4)
+    REG(Ntdll, NtCreateMutant, 4)           REG(Ntdll, NtOpenMutant, 4)
+    REG(Ntdll, NtWaitForSingleObject, 3)    REG(Ntdll, NtDelayExecution, 2)
+    // String / utility
+    REG(Ntdll, RtlInitUnicodeString, 2)     REG(Ntdll, RtlInitString, 2)
+    REG(Ntdll, RtlAnsiStringToUnicodeString, 3) REG(Ntdll, RtlFreeUnicodeString, 1)
+    REG(Ntdll, RtlNtStatusToDosError, 1)    REG(Ntdll, CsrGetProcessId, 0)
+    // Volume / object
+    REG(Ntdll, NtQueryVolumeInformationFile, 5) REG(Ntdll, NtQueryObject, 5)
+    REG(Ntdll, NtDuplicateObject, 6)
+    // Additional ntdll APIs
+    REG(Ntdll, RtlGetLastWin32Error, 0)     REG(Ntdll, RtlFlushSecureMemoryCache, 2)
+    REG(Ntdll, RtlAddVectoredExceptionHandler, 2) REG(Ntdll, RtlRemoveVectoredExceptionHandler, 1)
+    REG(Ntdll, NtYieldExecution, 0)         REG(Ntdll, LdrLoadDll, 4)
+    REG(Ntdll, LdrGetProcedureAddress, 4)   REG(Ntdll, LdrFindResource_U, 4)
+    REG(Ntdll, LdrAccessResource, 4)
+    REG(Ntdll, RtlZeroMemory, 2)            REG(Ntdll, RtlMoveMemory, 3)
+    REG(Ntdll, RtlEncodePointer, 1)         REG(Ntdll, RtlDecodePointer, 1)
+    REG(Ntdll, RtlComputeCrc32, 3)          REG(Ntdll, RtlGetNtVersionNumbers, 3)
+    REG(Ntdll, RtlGetCurrentPeb, 0)         REG(Ntdll, RtlGetVersion, 1)
+    END_API_TABLE
 }
 
 // 

@@ -33,57 +33,67 @@ static std::map<uint64_t, WindowHook>& window_hooks() {
     return h;
 }
 
-//  Constructor 
 User32::User32(void* emu) : ApiHandler(emu) {
-    apis_.push_back({"MessageBoxA",4,MessageBoxA});
-    apis_.push_back({"MessageBoxW",4,MessageBoxW});
-    apis_.push_back({"GetMessageA",4,GetMessageA});
-    apis_.push_back({"GetMessageW",4,GetMessageW});
-    apis_.push_back({"PeekMessageA",5,PeekMessageA});
-    apis_.push_back({"PeekMessageW",5,PeekMessageW});
-    apis_.push_back({"FindWindowA",2,FindWindowA});
-    apis_.push_back({"FindWindowW",2,FindWindowW});
-    apis_.push_back({"SendMessageA",4,SendMessageA});
-    apis_.push_back({"SendMessageW",4,SendMessageW});
-    apis_.push_back({"GetWindowTextA",3,GetWindowTextA});
-    apis_.push_back({"GetWindowTextW",3,GetWindowTextW});
-    apis_.push_back({"SetWindowTextA",2,SetWindowTextA});
-    apis_.push_back({"SetWindowTextW",2,SetWindowTextW});
-    apis_.push_back({"GetForegroundWindow",0,GetForegroundWindow});
-    apis_.push_back({"GetDesktopWindow",0,GetDesktopWindow});
-    apis_.push_back({"CreateWindowExA",12,CreateWindowEx_hook});
-    apis_.push_back({"CreateWindowExW",12,CreateWindowEx_hook});
-    apis_.push_back({"RegisterClassExA",1,RegisterClassExA});
-    apis_.push_back({"RegisterClassExW",1,RegisterClassExW});
-    apis_.push_back({"ShowWindow",2,ShowWindow});
-    apis_.push_back({"UpdateWindow",1,UpdateWindow});
-    apis_.push_back({"GetDC",1,GetDC});
-    apis_.push_back({"GetSystemMetrics",1,GetSystemMetrics});
-    apis_.push_back({"LoadCursorA",2,LoadCursorA});
-    apis_.push_back({"LoadCursorW",2,LoadCursorA});
-    apis_.push_back({"SetWindowsHookExA",4,SetWindowsHookExA});
-    apis_.push_back({"SetWindowsHookExW",4,SetWindowsHookExA});
-    apis_.push_back({"CallNextHookEx",4,CallNextHookEx});
-    apis_.push_back({"GetAsyncKeyState",1,GetAsyncKeyState});
-    apis_.push_back({"GetKeyboardType",1,GetKeyboardType});
-    apis_.push_back({"wsprintfA",0,wsprintfA});
-    apis_.push_back({"wsprintfW",0,wsprintfA});
-    apis_.push_back({"LoadStringA",4,LoadStringA});
-    apis_.push_back({"LoadStringW",4,LoadStringA});
-    apis_.push_back({"TranslateMessage",1,TranslateMessage});
-    apis_.push_back({"DispatchMessageA",1,DispatchMessageA});
-    apis_.push_back({"DispatchMessageW",1,DispatchMessageW});
-    apis_.push_back({"PostQuitMessage",1,PostQuitMessage});
-    apis_.push_back({"DefWindowProcA",4,DefWindowProcA});
-    apis_.push_back({"DefWindowProcW",4,DefWindowProcW});
-    apis_.push_back({"DestroyWindow",1,DestroyWindow});
+    INIT_API_TABLE(User32)
+    REG(User32, MessageBoxA, 4)         REG(User32, MessageBoxW, 4)
+    REG(User32, GetMessageA, 4)         REG(User32, GetMessageW, 4)
+    REG(User32, PeekMessageA, 5)        REG(User32, PeekMessageW, 5)
+    REG(User32, FindWindowA, 2)         REG(User32, FindWindowW, 2)
+    REG(User32, SendMessageA, 4)        REG(User32, SendMessageW, 4)
+    REG(User32, GetWindowTextA, 3)      REG(User32, GetWindowTextW, 3)
+    REG(User32, SetWindowTextA, 2)      REG(User32, SetWindowTextW, 2)
+    REG(User32, GetForegroundWindow, 0) REG(User32, GetDesktopWindow, 0)
+    REG(User32, CreateWindowExA, 12)    REG(User32, CreateWindowExW, 12)
+    REG(User32, RegisterClassExA, 1)    REG(User32, RegisterClassExW, 1)
+    REG(User32, ShowWindow, 2)          REG(User32, UpdateWindow, 1)
+    REG(User32, GetDC, 1)               REG(User32, GetSystemMetrics, 1)
+    REG(User32, LoadCursorA, 2)         REG(User32, LoadCursorW, 2)
+    REG(User32, SetWindowsHookExA, 4)   REG(User32, SetWindowsHookExW, 4)
+    REG(User32, CallNextHookEx, 4)      REG(User32, GetAsyncKeyState, 1)
+    REG(User32, GetKeyboardType, 1)
+    REG(User32, wsprintfA, 0)           REG(User32, wsprintfW, 0)
+    REG(User32, LoadStringA, 4)         REG(User32, LoadStringW, 4)
+    REG(User32, TranslateMessage, 1)    REG(User32, DispatchMessageA, 1)
+    REG(User32, DispatchMessageW, 1)    REG(User32, PostQuitMessage, 1)
+    REG(User32, DefWindowProcA, 4)      REG(User32, DefWindowProcW, 4)
+    REG(User32, DestroyWindow, 1)
+    END_API_TABLE
 }
 
-// 
-// API implementations
-// 
+//
+// A/W wrappers that share a single implementation
+//
+static uint64_t CreateWindowEx_hook(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    if (a.size()<3) return 0;
+    uint64_t cn = a[1], wn = a[2];
+    if (cn) { std::string s = be(e)->read_mem_string(cn,1); (void)s; }
+    if (wn) { std::string s = be(e)->read_mem_string(wn,1); (void)s; }
+    return next_hwnd();
+}
+uint64_t User32::CreateWindowExA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return CreateWindowEx_hook(e, a, ctx);
+}
+uint64_t User32::CreateWindowExW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return CreateWindowEx_hook(e, a, ctx);
+}
+uint64_t User32::LoadCursorW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return LoadCursorA(e, a, ctx);
+}
+uint64_t User32::SetWindowsHookExW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return SetWindowsHookExA(e, a, ctx);
+}
+uint64_t User32::wsprintfW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return wsprintfA(e, a, ctx);
+}
+uint64_t User32::LoadStringW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    return LoadStringA(e, a, ctx);
+}
 
-//  MessageBoxA / MessageBoxW 
+//
+// API implementations
+//
+
+//  MessageBoxA / MessageBoxW
 uint64_t User32::MessageBoxA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     if (a.size()<4) return 2;
     uint64_t lpText = a[1], lpCaption = a[2];
@@ -193,15 +203,6 @@ uint64_t User32::GetForegroundWindow(void* e, const std::vector<uint64_t>& a, vo
 //  GetDesktopWindow 
 uint64_t User32::GetDesktopWindow(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return next_hwnd();
-}
-
-//  CreateWindowEx_hook 
-uint64_t User32::CreateWindowEx_hook(void* e, const std::vector<uint64_t>& a, void* ctx) {
-    if (a.size()<3) return 0;
-    uint64_t cn = a[1], wn = a[2];
-    if (cn) { std::string s = be(e)->read_mem_string(cn,1); (void)s; }
-    if (wn) { std::string s = be(e)->read_mem_string(wn,1); (void)s; }
-    return next_hwnd();
 }
 
 //  RegisterClassExA / RegisterClassExW

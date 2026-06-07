@@ -80,11 +80,11 @@ Ntoskrnl::Ntoskrnl(void* emu) : ApiHandler(emu) {
     REG(Ntoskrnl, ObMakeTemporaryObject, 1)        REG(Ntoskrnl, ObGetFilterVersion, 0)
     REG(Ntoskrnl, ObRegisterCallbacks, 2)          REG(Ntoskrnl, ObSetSecurityObjectByPointer, 3)
     // Debug/Print
-    REG(Ntoskrnl, DbgPrint, 0)                     REG(Ntoskrnl, DbgPrintEx, 0)
+    REG2(Ntoskrnl, DbgPrint, 0)                     REG2(Ntoskrnl, DbgPrintEx, 0)
     // String/Format
-    REG(Ntoskrnl, _vsnprintf, 4)                   REG(Ntoskrnl, vsprintf_s, 4)
-    REG(Ntoskrnl, _snwprintf, 0)                   REG(Ntoskrnl, sprintf, 0)
-    REG(Ntoskrnl, _snprintf, 0)
+    REG2(Ntoskrnl, _vsnprintf, 4)                   REG2(Ntoskrnl, vsprintf_s, 4)
+    REG2(Ntoskrnl, _snwprintf, 0)                   REG2(Ntoskrnl, sprintf, 0)
+    REG2(Ntoskrnl, _snprintf, 0)
     // Rtl string
     REG(Ntoskrnl, RtlAnsiStringToUnicodeString, 3) REG(Ntoskrnl, RtlInitAnsiString, 2)
     REG(Ntoskrnl, RtlInitUnicodeString, 2)         REG(Ntoskrnl, RtlFreeUnicodeString, 1)
@@ -103,12 +103,12 @@ Ntoskrnl::Ntoskrnl(void* emu) : ApiHandler(emu) {
     REG(Ntoskrnl, memmove, 3)                      REG(Ntoskrnl, memcpy, 3)
     REG(Ntoskrnl, memset, 3)
     // Wide char string
-    REG(Ntoskrnl, wcscpy, 2)                       REG(Ntoskrnl, wcsncpy, 3)
-    REG(Ntoskrnl, wcslen, 1)                       REG(Ntoskrnl, wcschr, 2)
-    REG(Ntoskrnl, wcscat, 2)                       REG(Ntoskrnl, wcsnlen, 2)
-    REG(Ntoskrnl, strrchr, 2)                      REG(Ntoskrnl, strchr, 2)
-    REG(Ntoskrnl, _wcsnicmp, 3)                    REG(Ntoskrnl, _stricmp, 2)
-    REG(Ntoskrnl, _wcsicmp, 2)                     REG(Ntoskrnl, mbstowcs, 3)
+    REG2(Ntoskrnl, wcscpy, 2)                       REG2(Ntoskrnl, wcsncpy, 3)
+    REG2(Ntoskrnl, wcslen, 1)                       REG2(Ntoskrnl, wcschr, 2)
+    REG2(Ntoskrnl, wcscat, 2)                       REG2(Ntoskrnl, wcsnlen, 2)
+    REG2(Ntoskrnl, strrchr, 2)                      REG2(Ntoskrnl, strchr, 2)
+    REG2(Ntoskrnl, _wcsnicmp, 3)                    REG2(Ntoskrnl, _stricmp, 2)
+    REG2(Ntoskrnl, _wcsicmp, 2)                     REG2(Ntoskrnl, mbstowcs, 3)
     // I/O
     REG(Ntoskrnl, IoDeleteDriver, 1)               REG(Ntoskrnl, IoCreateDevice, 7)
     REG(Ntoskrnl, IoCreateDeviceSecure, 9)         REG(Ntoskrnl, IoCreateSymbolicLink, 2)
@@ -183,7 +183,7 @@ Ntoskrnl::Ntoskrnl(void* emu) : ApiHandler(emu) {
     REG(Ntoskrnl, RtlGetCompressionWorkSpaceSize, 3) REG(Ntoskrnl, RtlDecompressBuffer, 6)
     // Misc
     REG(Ntoskrnl, RtlTimeToTimeFields, 2)
-    REG(Ntoskrnl, _allshl, 2)
+    REG2(Ntoskrnl, _allshl, 2)
     END_API_TABLE
 }
 
