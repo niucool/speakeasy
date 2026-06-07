@@ -63,6 +63,13 @@ FetchContent_Declare(
     GIT_TAG        3.0.2
 )
 
+# utfcpp — header-only UTF-8/16/32 conversion (replaces manual UTF-16LE handling)
+FetchContent_Declare(
+    utf8cpp
+    GIT_REPOSITORY https://github.com/nemtrif/utfcpp.git
+    GIT_TAG        v4.0.6
+)
+
 # unicorn static compilation
 set(UNICORN_BUILD_SHARED OFF CACHE BOOL "Build shared library" FORCE)
 set(UNICORN_BUILD_STATIC ON CACHE BOOL "Build static library" FORCE)
@@ -75,7 +82,7 @@ FetchContent_Declare(
 )
 
 # Make pe-parse, capstone, and miniz available with CMAKE_MSVC_RUNTIME_LIBRARY fully set
-FetchContent_MakeAvailable(pe-parse capstone miniz)
+FetchContent_MakeAvailable(pe-parse capstone miniz utf8cpp)
 
 # Workaround for Unicorn's custom MSVC runtime flag enforcement
 if(MSVC)
@@ -155,6 +162,7 @@ target_link_libraries(speakeasy PUBLIC
     unicorn::unicorn
     pe-parse::pe-parse
     miniz::miniz
+    utf8cpp
 )
 
 if(TARGET capstone::capstone)

@@ -1087,7 +1087,16 @@ uint64_t Msvcrt::_except_handler4_common(void* e, const std::vector<uint64_t>& a
         curr_frame = next;
     }
 
-    return 0;
+    // After setting up SEH frames, trigger SEH dispatch to handle the
+    // exception properly. Calling dispatch_seh directly walks the frame
+    // chain and executes the appropriate handler/filter.
+    // Return EXCEPTION_EXECUTE_HANDLER if handler was found, else
+    // EXCEPTION_CONTINUE_SEARCH so the CRT continues searching.
+    if (!seh.get_frames_ref().empty()) {
+        bool handled = we(e)->dispatch_seh(0xC0000005);
+        if (handled) return 1;  // EXCEPTION_EXECUTE_HANDLER
+    }
+    return 0;  // EXCEPTION_CONTINUE_SEARCH
 }
 
 uint64_t Msvcrt::_except_handler3(void* e, const std::vector<uint64_t>& a, void* ctx) {

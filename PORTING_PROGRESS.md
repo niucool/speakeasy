@@ -223,3 +223,6 @@ NtStructTest       ×  3  ✅ (双架构 <4> + <8>)
 10. ✅ **仿真执行 Bug 修复** — `_unset_emu_hooks` 权限（RW→RWX）+ `start()` 错误恢复（2026-06-06）
 11. ✅ **user32 A/W 函数补全** — 9 个缺失的 WideChar 函数（2026-06-06）
 12. ✅ **日志对比系统** — Python/C++ 执行日志对比方法与诊断日志（2026-06-06）
+13. ✅ **kernel32 A/W 全面补全** — 28 个缺失的 W 函数注册 + CreateFile/CopyFile 等重构为 `_impl` 模式（2026-06-06）
+14. ✅ **utf8cpp 集成** — 替代手动 UTF-16LE 转换，统一使用 `utf8::utf16to8`/`utf8::utf8to16`（2026-06-06）
+15. ✅ **A/W 重构测试** — CopyFile A/W 等价性、CreateFile A/W 等价性、read_mem_string 往返转换、Unicode 测试（2026-06-06）

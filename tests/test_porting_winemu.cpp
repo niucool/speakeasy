@@ -492,4 +492,89 @@ TEST(WindowsEmulatorTest, LogApiValidation) {
     EXPECT_EQ(j_args[3].get<std::string>(), "\"test_unicode_event_name\"");
 }
 
+//
+//  A/W API function pair refactoring tests
+//  Verify that A and W versions produce identical results for
+//  string-based functions (the only difference should be in string decoding).
+//
+
+TEST(ApiAWRefactorTest, CopyFileAAndWProduceSameResult) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // Write test strings at known addresses (ANSI and UTF-16LE)
+    std::string ansi_src = "C:\\test\\src.txt";
+    std::string ansi_dst = "C:\\test\\dst.txt";
+    auto write_str = [&](uint64_t addr, const std::string& s, int w) {
+        be(&emu)->write_mem_string(s, addr, w);
+    };
+
+    uint64_t src_a = emu.mem_map(256, 0, PERM_MEM_RW, "test.src_a");
+    uint64_t dst_a = emu.mem_map(256, 0, PERM_MEM_RW, "test.dst_a");
+    uint64_t src_w = emu.mem_map(256, 0, PERM_MEM_RW, "test.src_w");
+    uint64_t dst_w = emu.mem_map(256, 0, PERM_MEM_RW, "test.dst_w");
+    write_str(src_a, ansi_src, 1);
+    write_str(dst_a, ansi_dst, 1);
+    write_str(src_w, ansi_src, 2);
+    write_str(dst_w, ansi_dst, 2);
+
+    // Both should return 1 (TRUE)
+    std::vector<uint64_t> args_a = {src_a, dst_a, 0};
+    std::vector<uint64_t> args_w = {src_w, dst_w, 0};
+    EXPECT_EQ(Kernel32::CopyFileA(&emu, args_a, nullptr), 1ULL);
+    EXPECT_EQ(Kernel32::CopyFileW(&emu, args_w, nullptr), 1ULL);
+}
+
+TEST(ApiAWRefactorTest, CreateFileAAndWProduceSameHandle) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    std::string fname = "C:\\Windows\\system32\\kernel32.dll";
+    uint64_t name_a = emu.mem_map(512, 0, PERM_MEM_RW, "test.cfa");
+    uint64_t name_w = emu.mem_map(512, 0, PERM_MEM_RW, "test.cfw");
+    be(&emu)->write_mem_string(fname, name_a, 1);
+    be(&emu)->write_mem_string(fname, name_w, 2);
+
+    // Both A and W should succeed (return != INVALID_HANDLE)
+    std::vector<uint64_t> args_a = {name_a, 0x80000000, 1, 0, 3, 0x80, 0};
+    std::vector<uint64_t> args_w = {name_w, 0x80000000, 1, 0, 3, 0x80, 0};
+    auto rv_a = Kernel32::CreateFileA(&emu, args_a, nullptr);
+    auto rv_w = Kernel32::CreateFileW(&emu, args_w, nullptr);
+    EXPECT_NE(rv_a, static_cast<uint64_t>(-1));
+    EXPECT_NE(rv_w, static_cast<uint64_t>(-1));
+}
+
+TEST(ApiAWRefactorTest, ReadMemStringUtf16leRoundTrip) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // Write UTF-16LE string, read back, verify round-trip
+    std::string original = "Hello World! Test 123.";
+    uint64_t addr = emu.mem_map(256, 0, PERM_MEM_RW, "test.roundtrip");
+    be(&emu)->write_mem_string(original, addr, 2);  // write as UTF-16LE
+    std::string decoded = be(&emu)->read_mem_string(addr, 2);  // read as UTF-16LE
+    EXPECT_EQ(original, decoded);
+
+    // Same for ANSI
+    be(&emu)->write_mem_string(original, addr, 1);
+    decoded = be(&emu)->read_mem_string(addr, 1);
+    EXPECT_EQ(original, decoded);
+}
+
+TEST(ApiAWRefactorTest, ReadMemStringUnicode) {
+    SpeakeasyConfig cfg;
+    Win32Emulator emu(cfg);
+    emu.setup();
+
+    // Unicode characters that span multiple UTF-8 bytes
+    std::string unicode_str = u8"H€llo Wörld — test";
+    uint64_t addr = emu.mem_map(256, 0, PERM_MEM_RW, "test.unicode");
+    be(&emu)->write_mem_string(unicode_str, addr, 2);
+    std::string decoded = be(&emu)->read_mem_string(addr, 2);
+    EXPECT_EQ(unicode_str, decoded);
+}
+
 

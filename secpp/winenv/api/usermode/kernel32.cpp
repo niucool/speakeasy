@@ -272,18 +272,18 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Kernel32)
     REG(Kernel32, CreateFileA, 7)    REG(Kernel32, CreateFileW, 7)
     REG(Kernel32, ReadFile, 5)       REG(Kernel32, WriteFile, 5)
-    REG(Kernel32, CloseHandle, 1)    REG(Kernel32, DeleteFileA, 1)
+    REG(Kernel32, CloseHandle, 1)    REG(Kernel32, DeleteFileA, 1)     REG(Kernel32, DeleteFileW, 1)
     REG(Kernel32, CopyFileA, 3)      REG(Kernel32, CopyFileW, 3)
-    REG(Kernel32, CreateDirectoryA, 2) REG(Kernel32, RemoveDirectoryA, 1)
-    REG(Kernel32, GetFileAttributesA, 1) REG(Kernel32, SetFilePointer, 4)
-    REG(Kernel32, GetFileSize, 2)    REG(Kernel32, FindFirstFileA, 2)
-    REG(Kernel32, FindNextFileA, 2)  REG(Kernel32, FindClose, 1)
-    REG(Kernel32, CreateFileMappingA, 6) REG(Kernel32, MapViewOfFile, 5)
+    REG(Kernel32, CreateDirectoryA, 2) REG(Kernel32, CreateDirectoryW, 2) REG(Kernel32, RemoveDirectoryA, 1)
+    REG(Kernel32, GetFileAttributesA, 1) REG(Kernel32, GetFileAttributesW, 1) REG(Kernel32, SetFilePointer, 4)
+    REG(Kernel32, GetFileSize, 2)    REG(Kernel32, FindFirstFileA, 2) REG(Kernel32, FindFirstFileW, 2)
+    REG(Kernel32, FindNextFileA, 2)  REG(Kernel32, FindNextFileW, 2) REG(Kernel32, FindClose, 1)
+    REG(Kernel32, CreateFileMappingA, 6) REG(Kernel32, CreateFileMappingW, 6) REG(Kernel32, MapViewOfFile, 5)
     REG(Kernel32, UnmapViewOfFile, 1) REG(Kernel32, FlushFileBuffers, 1)
     REG(Kernel32, SetEndOfFile, 1)   REG(Kernel32, GetFileTime, 4)
     REG(Kernel32, SetFileTime, 4)    REG(Kernel32, GetFileInformationByHandle, 2)
-    REG(Kernel32, DeviceIoControl, 8) REG(Kernel32, GetDriveTypeA, 1)
-    REG(Kernel32, GetDiskFreeSpaceExA, 4)
+    REG(Kernel32, DeviceIoControl, 8) REG(Kernel32, GetDriveTypeA, 1) REG(Kernel32, GetDriveTypeW, 1)
+    REG(Kernel32, GetDiskFreeSpaceExA, 4) REG(Kernel32, GetDiskFreeSpaceExW, 4)
     REG(Kernel32, VirtualAlloc, 4)   REG(Kernel32, VirtualAllocEx, 5)
     REG(Kernel32, VirtualFree, 3)    REG(Kernel32, VirtualProtect, 4)
     REG(Kernel32, VirtualProtectEx, 5) REG(Kernel32, VirtualQuery, 3)
@@ -297,9 +297,9 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, LoadLibraryA, 1)   REG(Kernel32, LoadLibraryW, 1)
     REG(Kernel32, LoadLibraryExA, 3) REG(Kernel32, FreeLibrary, 1)
     REG(Kernel32, GetProcAddress, 2) REG(Kernel32, GetModuleHandleA, 1)
-    REG(Kernel32, GetModuleHandleW, 1) REG(Kernel32, GetModuleFileNameA, 3)
+    REG(Kernel32, GetModuleHandleW, 1) REG(Kernel32, GetModuleFileNameA, 3) REG(Kernel32, GetModuleFileNameW, 3)
     REG(Kernel32, DisableThreadLibraryCalls, 1)
-    REG(Kernel32, CreateProcessA, 10) REG(Kernel32, OpenProcess, 3)
+    REG(Kernel32, CreateProcessA, 10) REG(Kernel32, CreateProcessW, 10) REG(Kernel32, OpenProcess, 3)
     REG(Kernel32, TerminateProcess, 2) REG(Kernel32, GetCurrentProcess, 0)
     REG(Kernel32, GetCurrentProcessId, 0) REG(Kernel32, ExitProcess, 1)
     REG(Kernel32, CreateThread, 6)   REG(Kernel32, CreateRemoteThread, 7)
@@ -311,38 +311,38 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, GetExitCodeProcess, 2) REG(Kernel32, GetExitCodeThread, 2)
     REG(Kernel32, QueueUserAPC, 3)   REG(Kernel32, WinExec, 2)
     REG(Kernel32, SetThreadPriority, 2) REG(Kernel32, GetThreadPriority, 1)
-    REG(Kernel32, CreateEventA, 4)   REG(Kernel32, CreateMutexA, 3)
-    REG(Kernel32, OpenMutexA, 3)     REG(Kernel32, ReleaseMutex, 1)
+    REG(Kernel32, CreateEventA, 4)   REG(Kernel32, CreateEventW, 4) REG(Kernel32, CreateMutexA, 3) REG(Kernel32, CreateMutexW, 3)
+    REG(Kernel32, OpenMutexA, 3)     REG(Kernel32, OpenMutexW, 3) REG(Kernel32, ReleaseMutex, 1)
     REG(Kernel32, SetEvent, 1)       REG(Kernel32, ResetEvent, 1)
     REG(Kernel32, WaitForSingleObject, 2) REG(Kernel32, WaitForMultipleObjects, 4)
     REG(Kernel32, InitializeCriticalSection, 1) REG(Kernel32, DeleteCriticalSection, 1)
     REG(Kernel32, EnterCriticalSection, 1) REG(Kernel32, LeaveCriticalSection, 1)
-    REG(Kernel32, CreateWaitableTimerA, 3) REG(Kernel32, SetWaitableTimer, 6)
+    REG(Kernel32, CreateWaitableTimerA, 3) REG(Kernel32, CreateWaitableTimerW, 3) REG(Kernel32, SetWaitableTimer, 6)
     REG(Kernel32, CancelWaitableTimer, 1)
     REG(Kernel32, GetTickCount, 0)   REG(Kernel32, GetSystemInfo, 1)
-    REG(Kernel32, GetVersion, 0)     REG(Kernel32, GetVersionExA, 1)
+    REG(Kernel32, GetVersion, 0)     REG(Kernel32, GetVersionExA, 1) REG(Kernel32, GetVersionExW, 1)
     REG(Kernel32, IsDebuggerPresent, 0) REG(Kernel32, SetErrorMode, 1)
     REG(Kernel32, GetSystemTime, 1)  REG(Kernel32, GetLocalTime, 1)
     REG(Kernel32, SystemTimeToFileTime, 2) REG(Kernel32, FileTimeToSystemTime, 2)
     REG(Kernel32, QueryPerformanceCounter, 1) REG(Kernel32, QueryPerformanceFrequency, 1)
-    REG(Kernel32, GetComputerNameA, 2) REG(Kernel32, GetUserNameA, 2)
+    REG(Kernel32, GetComputerNameA, 2) REG(Kernel32, GetComputerNameW, 2) REG(Kernel32, GetUserNameA, 2) REG(Kernel32, GetUserNameW, 2)
     REG(Kernel32, SetUnhandledExceptionFilter, 1)
     REG(Kernel32, GetLastError, 0)   REG(Kernel32, SetLastError, 1)
     REG(Kernel32, RaiseException, 4) REG(Kernel32, UnhandledExceptionFilter, 1)
-    REG(Kernel32, lstrlenA, 1)       REG(Kernel32, lstrcpyA, 2)
-    REG(Kernel32, lstrcatA, 2)       REG(Kernel32, lstrcmpA, 2)
+    REG(Kernel32, lstrlenA, 1)       REG(Kernel32, lstrlenW, 1) REG(Kernel32, lstrcpyA, 2) REG(Kernel32, lstrcpyW, 2)
+    REG(Kernel32, lstrcatA, 2)       REG(Kernel32, lstrcatW, 2) REG(Kernel32, lstrcmpA, 2) REG(Kernel32, lstrcmpW, 2)
     REG(Kernel32, MultiByteToWideChar, 6) REG(Kernel32, WideCharToMultiByte, 8)
     REG(Kernel32, GetCommandLineA, 0) REG(Kernel32, GetCommandLineW, 0)
-    REG(Kernel32, GetEnvironmentVariableA, 3) REG(Kernel32, SetEnvironmentVariableA, 2)
-    REG(Kernel32, GetCurrentDirectoryA, 2) REG(Kernel32, SetCurrentDirectoryA, 1)
-    REG(Kernel32, ExpandEnvironmentStringsA, 3)
+    REG(Kernel32, GetEnvironmentVariableA, 3) REG(Kernel32, GetEnvironmentVariableW, 3) REG(Kernel32, SetEnvironmentVariableA, 2)
+    REG(Kernel32, GetCurrentDirectoryA, 2) REG(Kernel32, GetCurrentDirectoryW, 2) REG(Kernel32, SetCurrentDirectoryA, 1)
+    REG(Kernel32, ExpandEnvironmentStringsA, 3) REG(Kernel32, ExpandEnvironmentStringsW, 3)
     REG(Kernel32, CreateToolhelp32Snapshot, 2)
-    REG(Kernel32, Process32FirstA, 2) REG(Kernel32, Process32NextA, 2)
+    REG(Kernel32, Process32FirstA, 2) REG(Kernel32, Process32FirstW, 2) REG(Kernel32, Process32NextA, 2) REG(Kernel32, Process32NextW, 2)
     REG(Kernel32, Thread32First, 2)  REG(Kernel32, Thread32Next, 2)
-    REG(Kernel32, Module32FirstA, 2) REG(Kernel32, Module32NextA, 2)
+    REG(Kernel32, Module32FirstA, 2) REG(Kernel32, Module32FirstW, 2) REG(Kernel32, Module32NextA, 2) REG(Kernel32, Module32NextW, 2)
     REG(Kernel32, AllocConsole, 0)   REG(Kernel32, FreeConsole, 0)
     REG(Kernel32, GetConsoleMode, 2) REG(Kernel32, SetConsoleMode, 2)
-    REG(Kernel32, OutputDebugStringA, 1) REG(Kernel32, GetACP, 0)
+    REG(Kernel32, OutputDebugStringA, 1) REG(Kernel32, OutputDebugStringW, 1) REG(Kernel32, GetACP, 0)
     REG(Kernel32, DecodePointer, 1)  REG(Kernel32, EncodePointer, 1)
     REG(Kernel32, IsProcessorFeaturePresent, 1)
 
@@ -445,21 +445,14 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
 //  FILE I/O APIs
 // 
 
-uint64_t Kernel32::CreateFileA(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
-    uint64_t fname_ptr = argv[0];
-    uint32_t access = static_cast<uint32_t>(argv[1]);
-    uint32_t share = static_cast<uint32_t>(argv[2]);
-    uint64_t sec_attr = argv[3];
-    uint32_t disp = static_cast<uint32_t>(argv[4]);
-    uint32_t flags = static_cast<uint32_t>(argv[5]);
-    uint64_t template_file = argv[6];
+//  Common implementation for CreateFileA / CreateFileW.
+//  The only difference between A and W is how the filename string is decoded.
+static uint64_t CreateFile_impl(void* emu, const std::string& target,
+                                 uint32_t access, uint32_t share, uint64_t sec_attr,
+                                 uint32_t disp, uint32_t flags, uint64_t template_file) {
     (void)access; (void)share; (void)sec_attr; (void)flags; (void)template_file;
 
-    if (!fname_ptr) return K32_INVALID_HANDLE;
-
-    std::string target = be(emu)->read_mem_string(fname_ptr, 1);
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
-
     void* fobj = nullptr;
     bool exists = we(emu)->does_file_exist(target);
 
@@ -489,54 +482,25 @@ uint64_t Kernel32::CreateFileA(void* emu, const std::vector<uint64_t>& argv, voi
             return K32_INVALID_HANDLE;
         }
     }
-
     return reinterpret_cast<uint64_t>(fobj);
 }
 
+uint64_t Kernel32::CreateFileA(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
+    if (!argv[0]) return K32_INVALID_HANDLE;
+    return CreateFile_impl(emu,
+        be(emu)->read_mem_string(argv[0], 1),               // filename (ANSI)
+        static_cast<uint32_t>(argv[1]), static_cast<uint32_t>(argv[2]),
+        argv[3], static_cast<uint32_t>(argv[4]),
+        static_cast<uint32_t>(argv[5]), argv[6]);
+}
+
 uint64_t Kernel32::CreateFileW(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
-    uint64_t fname_ptr = argv[0];
-    if (!fname_ptr) return K32_INVALID_HANDLE;
-    std::string target = be(emu)->read_mem_string(fname_ptr, 2);
-    uint32_t access = static_cast<uint32_t>(argv[1]);
-    uint32_t share = static_cast<uint32_t>(argv[2]);
-    uint64_t sec_attr = argv[3];
-    uint32_t disp = static_cast<uint32_t>(argv[4]);
-    uint32_t flags = static_cast<uint32_t>(argv[5]);
-    uint64_t template_file = argv[6];
-    (void)access; (void)share; (void)sec_attr; (void)flags; (void)template_file;
-
-    w32(emu)->set_last_error(K32_ERR_SUCCESS);
-    void* fobj = nullptr;
-    bool exists = we(emu)->does_file_exist(target);
-
-    if (exists) {
-        if (disp == K32_CREATE_ALWAYS) {
-            w32(emu)->set_last_error(K32_ERR_ALREADY_EXISTS);
-            fobj = we(emu)->file_open(target, true);
-        } else if (disp == K32_CREATE_NEW) {
-            w32(emu)->set_last_error(K32_ERR_FILE_EXISTS);
-            return K32_INVALID_HANDLE;
-        } else if (disp == K32_OPEN_ALWAYS) {
-            w32(emu)->set_last_error(K32_ERR_ALREADY_EXISTS);
-            fobj = we(emu)->file_open(target, false);
-        } else if (disp == K32_OPEN_EXISTING || disp == K32_TRUNCATE_EXISTING) {
-            w32(emu)->set_last_error(K32_ERR_SUCCESS);
-            fobj = we(emu)->file_open(target, false);
-        }
-    } else {
-        if (disp == K32_CREATE_ALWAYS || disp == K32_CREATE_NEW) {
-            w32(emu)->set_last_error(K32_ERR_SUCCESS);
-            fobj = we(emu)->file_open(target, true);
-        } else if (disp == K32_OPEN_ALWAYS) {
-            w32(emu)->set_last_error(K32_ERR_ALREADY_EXISTS);
-            fobj = we(emu)->file_open(target, true);
-        } else {
-            w32(emu)->set_last_error(K32_ERR_FILE_NOT_FOUND);
-            return K32_INVALID_HANDLE;
-        }
-    }
-
-    return reinterpret_cast<uint64_t>(fobj);
+    if (!argv[0]) return K32_INVALID_HANDLE;
+    return CreateFile_impl(emu,
+        be(emu)->read_mem_string(argv[0], 2),               // filename (UTF-16LE)
+        static_cast<uint32_t>(argv[1]), static_cast<uint32_t>(argv[2]),
+        argv[3], static_cast<uint32_t>(argv[4]),
+        static_cast<uint32_t>(argv[5]), argv[6]);
 }
 
 uint64_t Kernel32::ReadFile(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
@@ -637,30 +601,23 @@ uint64_t Kernel32::DeleteFileA(void* emu, const std::vector<uint64_t>& argv, voi
     return 0;
 }
 
-uint64_t Kernel32::CopyFileA(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
-    uint64_t src_ptr = argv[0];
-    uint64_t dst_ptr = argv[1];
-    uint32_t fail_if_exists = static_cast<uint32_t>(argv[2]);
-    (void)fail_if_exists;
-    if (!src_ptr || !dst_ptr) return 0;
-    std::string src = be(emu)->read_mem_string(src_ptr, 1);
-    std::string dst = be(emu)->read_mem_string(dst_ptr, 1);
-    (void)src; (void)dst;
+static uint64_t CopyFile_impl(void* emu, const std::string& src, const std::string& dst,
+                               uint32_t fail_if_exists) {
+    (void)src; (void)dst; (void)fail_if_exists;
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
-
+uint64_t Kernel32::CopyFileA(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
+    if (!argv[0] || !argv[1]) return 0;
+    return CopyFile_impl(emu, be(emu)->read_mem_string(argv[0], 1),
+                         be(emu)->read_mem_string(argv[1], 1),
+                         static_cast<uint32_t>(argv[2]));
+}
 uint64_t Kernel32::CopyFileW(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
-    uint64_t src_ptr = argv[0];
-    uint64_t dst_ptr = argv[1];
-    uint32_t fail_if_exists = static_cast<uint32_t>(argv[2]);
-    (void)fail_if_exists;
-    if (!src_ptr || !dst_ptr) return 0;
-    std::string src = be(emu)->read_mem_string(src_ptr, 2);
-    std::string dst = be(emu)->read_mem_string(dst_ptr, 2);
-    (void)src; (void)dst;
-    w32(emu)->set_last_error(K32_ERR_SUCCESS);
-    return 1;
+    if (!argv[0] || !argv[1]) return 0;
+    return CopyFile_impl(emu, be(emu)->read_mem_string(argv[0], 2),
+                         be(emu)->read_mem_string(argv[1], 2),
+                         static_cast<uint32_t>(argv[2]));
 }
 
 uint64_t Kernel32::CreateDirectoryA(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
@@ -1259,6 +1216,38 @@ uint64_t Kernel32::GetModuleFileNameA(void* emu, const std::vector<uint64_t>& ar
     return static_cast<uint64_t>(filename.size() - 1);
 }
 
+uint64_t Kernel32::GetModuleFileNameW(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
+    uint64_t hMod = argv[0];
+    uint64_t buf_ptr = argv[1];
+    uint32_t buf_sz = static_cast<uint32_t>(argv[2]);
+    if (!buf_ptr || buf_sz == 0) return 0;
+    std::string filename;
+    if (hMod == 0) {
+        auto p = we(emu)->get_current_process();
+        if (p) {
+            filename = p->path;
+        }
+    } else {
+        auto mods = we(emu)->get_peb_modules();
+        for (auto m : mods) {
+            auto mod = m;
+            if (mod->base == hMod) {
+                filename = mod->emu_path;
+                break;
+            }
+        }
+    }
+    if (filename.empty()) return 0;
+    // buf_sz is in characters (each wide char = 2 bytes)
+    if (buf_sz <= filename.size()) {
+        w32(emu)->set_last_error(K32_ERR_INSUFFICIENT_BUF);
+        filename = filename.substr(0, buf_sz - 1);
+    }
+    be(emu)->write_mem_string(filename, buf_ptr, 2);  // UTF-16LE
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(filename.size());
+}
+
 uint64_t Kernel32::DisableThreadLibraryCalls(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
     (void)argv[0];
     return 1;
@@ -1569,6 +1558,23 @@ uint64_t Kernel32::CreateMutexA(void* emu, const std::vector<uint64_t>& argv, vo
     (void)attrs; (void)initial_owner;
     std::string name;
     if (name_ptr) name = be(emu)->read_mem_string(name_ptr, 1);
+
+    auto [h, mut] = we(emu)->create_mutant(name);
+    if (h == 0) {
+        w32(emu)->set_last_error(K32_ERR_ALREADY_EXISTS);
+    } else {
+        w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    }
+    return static_cast<uint64_t>(h);
+}
+
+uint64_t Kernel32::CreateMutexW(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
+    uint64_t attrs = argv[0];
+    uint32_t initial_owner = static_cast<uint32_t>(argv[1]);
+    uint64_t name_ptr = argv[2];
+    (void)attrs; (void)initial_owner;
+    std::string name;
+    if (name_ptr) name = be(emu)->read_mem_string(name_ptr, 2);
 
     auto [h, mut] = we(emu)->create_mutant(name);
     if (h == 0) {
@@ -2383,6 +2389,36 @@ uint64_t Kernel32::IsProcessorFeaturePresent(void* emu, const std::vector<uint64
 }
 
 // ==========================================
+//  W function stubs (delegate to A versions or return 1)
+STUB(Kernel32, DeleteFileW)
+STUB(Kernel32, CreateDirectoryW)
+STUB(Kernel32, GetFileAttributesW)
+STUB(Kernel32, FindFirstFileW)
+STUB(Kernel32, FindNextFileW)
+STUB(Kernel32, CreateFileMappingW)
+STUB(Kernel32, GetDriveTypeW)
+STUB(Kernel32, GetDiskFreeSpaceExW)
+STUB(Kernel32, CreateEventW)
+STUB(Kernel32, OpenMutexW)
+STUB(Kernel32, CreateWaitableTimerW)
+STUB(Kernel32, GetVersionExW)
+STUB(Kernel32, GetComputerNameW)
+STUB(Kernel32, GetUserNameW)
+STUB(Kernel32, lstrlenW)
+STUB(Kernel32, lstrcpyW)
+STUB(Kernel32, lstrcatW)
+STUB(Kernel32, lstrcmpW)
+STUB(Kernel32, GetEnvironmentVariableW)
+STUB(Kernel32, SetEnvironmentVariableW)
+STUB(Kernel32, GetCurrentDirectoryW)
+STUB(Kernel32, ExpandEnvironmentStringsW)
+STUB(Kernel32, Process32FirstW)
+STUB(Kernel32, Process32NextW)
+STUB(Kernel32, Module32FirstW)
+STUB(Kernel32, Module32NextW)
+STUB(Kernel32, OutputDebugStringW)
+STUB(Kernel32, CreateProcessW)
+
 //  STUBBED AND FULLY IMPLEMENTED NEW APIs
 // ==========================================
 
@@ -2460,7 +2496,35 @@ STUB(Kernel32, GetSystemTimePreciseAsFileTime)
 STUB(Kernel32, GetSystemTimes)
 STUB(Kernel32, GetTempFileName)
 STUB(Kernel32, GetTempPath)
-STUB(Kernel32, GetThreadContext)
+uint64_t Kernel32::GetThreadContext(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
+    // BOOL GetThreadContext(HANDLE hThread, LPCONTEXT lpContext);
+    uint64_t hThread = argv[0];
+    uint64_t lpContext = argv[1];
+    if (!lpContext) return 0;
+
+    // Look up the thread by handle
+    auto thread = we(emu)->find_thread(static_cast<int>(hThread));
+    if (!thread) {
+        w32(emu)->set_last_error(6); // ERROR_INVALID_HANDLE
+        return 0;
+    }
+
+    // Get the thread's saved context
+    void* saved_ctx = thread->get_context();
+    if (!saved_ctx) {
+        // No saved context - read current context from emulator
+        uint64_t ctx_addr = we(emu)->mem_map(1232, 0, 4, "emu.thread.context.tmp");
+        auto ctx_data = we(emu)->mem_read(ctx_addr, 1232);
+        we(emu)->mem_write(lpContext, ctx_data);
+        return 1;
+    }
+
+    // Write the saved context to the output buffer
+    uint64_t src_addr = reinterpret_cast<uint64_t>(saved_ctx);
+    auto ctx_data = we(emu)->mem_read(src_addr, 1232);
+    we(emu)->mem_write(lpContext, ctx_data);
+    return 1;
+}
 STUB(Kernel32, GetThreadId)
 STUB(Kernel32, GetThreadLocale)
 STUB(Kernel32, GetThreadTimes)

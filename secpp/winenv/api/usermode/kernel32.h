@@ -180,7 +180,7 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(LoadLibraryA, 1)      API_ENTRY(LoadLibraryW, 1)
     API_ENTRY(LoadLibraryExA, 3)    API_ENTRY(FreeLibrary, 1)
     API_ENTRY(GetProcAddress, 2)    API_ENTRY(GetModuleHandleA, 1)
-    API_ENTRY(GetModuleHandleW, 1)  API_ENTRY(GetModuleFileNameA, 3)
+    API_ENTRY(GetModuleHandleW, 1)  API_ENTRY(GetModuleFileNameA, 3)  API_ENTRY(GetModuleFileNameW, 3)
     API_ENTRY(DisableThreadLibraryCalls, 1)
     // Process / Thread
     API_ENTRY(CreateProcessA, 10)   API_ENTRY(OpenProcess, 3)
@@ -196,7 +196,7 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(QueueUserAPC, 3)      API_ENTRY(WinExec, 2)
     API_ENTRY(SetThreadPriority, 2) API_ENTRY(GetThreadPriority, 1)
     // Sync
-    API_ENTRY(CreateEventA, 4)      API_ENTRY(CreateMutexA, 3)
+    API_ENTRY(CreateEventA, 4)      API_ENTRY(CreateMutexA, 3)      API_ENTRY(CreateMutexW, 3)
     API_ENTRY(OpenMutexA, 3)        API_ENTRY(ReleaseMutex, 1)
     API_ENTRY(SetEvent, 1)          API_ENTRY(ResetEvent, 1)
     API_ENTRY(WaitForSingleObject, 2) API_ENTRY(WaitForMultipleObjects, 4)
@@ -329,6 +329,21 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(lstrcmpiA, 2)     API_ENTRY(lstrcmpiW, 2)
     API_ENTRY(lstrcpyn, 3)
     API_ENTRY(lstrcpynA, 3)     API_ENTRY(lstrcpynW, 3)
+    //  W function stubs (delegate to A versions or return 1)
+    API_ENTRY(DeleteFileW, 1)    API_ENTRY(CreateDirectoryW, 2)
+    API_ENTRY(GetFileAttributesW, 1)  API_ENTRY(FindFirstFileW, 2)
+    API_ENTRY(FindNextFileW, 2)  API_ENTRY(CreateFileMappingW, 6)
+    API_ENTRY(GetDriveTypeW, 1)  API_ENTRY(GetDiskFreeSpaceExW, 4)
+    API_ENTRY(CreateEventW, 4)   API_ENTRY(OpenMutexW, 3)
+    API_ENTRY(CreateWaitableTimerW, 3)  API_ENTRY(GetVersionExW, 1)
+    API_ENTRY(GetComputerNameW, 2)  API_ENTRY(GetUserNameW, 2)
+    API_ENTRY(lstrlenW, 1)       API_ENTRY(lstrcpyW, 2)
+    API_ENTRY(lstrcatW, 2)       API_ENTRY(lstrcmpW, 2)
+    API_ENTRY(GetEnvironmentVariableW, 3)  API_ENTRY(SetEnvironmentVariableW, 2)
+    API_ENTRY(GetCurrentDirectoryW, 2)  API_ENTRY(ExpandEnvironmentStringsW, 3)
+    API_ENTRY(Process32FirstW, 2)  API_ENTRY(Process32NextW, 2)
+    API_ENTRY(Module32FirstW, 2)  API_ENTRY(Module32NextW, 2)
+    API_ENTRY(OutputDebugStringW, 1)  API_ENTRY(CreateProcessW, 10)
     API_LIST_END
 
 public:

@@ -5,6 +5,32 @@
 
 ## [Unreleased]
 
+### 2026-06-06 (continues)
+
+#### Changed
+
+- **secpp/winenv/api/usermode/kernel32**: 全面补全了 A/W API 函数对——为 28 个仅有 ANSI (A) 实现的函数新增 WideChar (W) 版本注册（STUB），同时将 `CreateFileA/W`、`CopyFileA/W` 等已实现的 A/W 对重构为 `_impl` 模式（A/W 包装器仅负责字符串解码后委托给公共实现）
+- **secpp/winenv/api/usermode/kernel32.h**: 新增 28 个 W 函数声明
+- **secpp/binemu.cpp**: 引入 `utf8cpp` (v4.0.6) 替代手动 UTF-16LE 转换：
+  - **Windows 平台**：优先使用 `WideCharToMultiByte(CP_UTF8, ...)` 进行原生的 UTF-16LE → UTF-8 转换，正确处理所有 Unicode 字符（含增补平面和代理对）
+  - **通用回退**：改进的手动 UTF-16LE → UTF-8 转换，新增代理对支持（`0xD800-0xDFFF`）和 4 字节 UTF-8 编码（`U+10000` 以上码点），对齐 Python 的 `.decode('utf-16le', 'ignore')` 行为
+- **secpp/winenv/api/usermode/kernel32.cpp**: 重构了 `CreateFileA`/`CreateFileW` 为统一的 A/W 模式：
+  - 提取公共逻辑到 `CreateFile_impl(emu, target, access, share, ...)` 静态函数
+  - `CreateFileA` / `CreateFileW` 仅负责参数预处理——调用 `read_mem_string(argv[0], 1)` 或 `read_mem_string(argv[0], 2)` 后委托给 `CreateFile_impl`
+  - 消除了 ~45 行重复代码，确保 A/W 行为完全一致
+
+#### Fixed
+
+- **secpp/winenv/api/usermode/msvcrt.cpp**: 修复了 `_except_handler4_common` API 导致的死循环——该函数设置 SEH 帧后返回 0（EXCEPTION_CONTINUE_SEARCH），但仿真器在返回地址处重新执行异常触发指令，导致同一异常无限循环。修复为在设置 SEH 帧后主动调用 `dispatch_seh(0xC0000005)` 完成异常分发
+- **secpp/winenv/api/usermode/kernel32.cpp**: 实现了 3 个关键 API：
+  - **`GetThreadContext`**：从存根升级为完整实现，从线程对象读取保存的 CONTEXT 并写入仿真内存
+  - **`CreateMutexW`**：新增 WideChar 版本，正确读取 UTF-16LE 名称字符串
+  - **`GetModuleFileNameW`**：新增 WideChar 版本，正确写入 UTF-16LE 路径字符串
+
+#### Added
+
+- **secpp/winenv/api/usermode/user32**: 继续补全 A/W 函数对——`CreateWindowEx_hook`、`SetWindowsHookExA`、`wsprintfA`、`LoadStringA` 等函数的 W 版本需要独立的宽字符字符串处理逻辑
+
 ### 2026-06-06
 
 #### Fixed

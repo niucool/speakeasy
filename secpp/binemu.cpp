@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstring>
 #include <plog/Log.h>
+#include <utf8.h>
 
 // Python binemu.py:59-78 doc: "Base class for emulating binaries\n\nSubclasses must define the following attributes:\n    arch: Architecture constant (e.g., ARCH_X86, ARCH_AMD64)\n    modules: List of loaded modules\n    input: Input metadata dictionary (or None)"
 // Constructor
@@ -975,10 +976,10 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
     if (width != 1 && width != 2) {
         throw EmuException("Invalid width for string: " + std::to_string(width));
     }
-    // Supports width=1 (UTF-8) and width=2 (UTF-16LE) decoding
+    // Read raw bytes until null terminator (single null for width=1, double-null for width=2)
     std::vector<uint8_t> raw;
     for (int i = 0; max_chars == 0 || i < max_chars; ++i) {
-        auto data = mem_read(address + i * width, width);
+        auto data = mem_read(address + static_cast<uint64_t>(i) * static_cast<uint64_t>(width), width);
         if (data.empty()) break;
         bool zero = true;
         for (auto b : data) if (b != 0) { zero = false; break; }
@@ -986,27 +987,31 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
         raw.insert(raw.end(), data.begin(), data.end());
     }
     if (width == 2) {
-        // Python: decode as UTF-16LE with 'ignore' error mode, then strip nulls
-        std::string result;
-        result.reserve(raw.size() / 2);
-        for (size_t i = 0; i + 1 < raw.size(); i += 2) {
-            uint16_t ch = static_cast<uint16_t>(raw[i]) | (static_cast<uint16_t>(raw[i+1]) << 8);
-            if (ch == 0) break;
-            // Python binemu.py:681-684 : .decode('utf-16le', 'ignore') : best-effort
-            if (ch < 0x80) {
-                result += static_cast<char>(ch);
-            } else if (ch < 0x800) {
-                result += static_cast<char>(0xC0 | (ch >> 6));
-                result += static_cast<char>(0x80 | (ch & 0x3F));
-            } else {
-                result += static_cast<char>(0xE0 | (ch >> 12));
-                result += static_cast<char>(0x80 | ((ch >> 6) & 0x3F));
-                result += static_cast<char>(0x80 | (ch & 0x3F));
+        // Python: .decode('utf-16le', 'ignore')
+        // Convert UTF-16LE bytes → UTF-8 string via utfcpp.
+        // char16_t is native-endian (LE on x86/amd64), matching emulated memory.
+        if (!raw.empty()) {
+            const char16_t* utf16_begin = reinterpret_cast<const char16_t*>(raw.data());
+            const char16_t* utf16_end   = utf16_begin + raw.size() / 2;
+            std::string result;
+            try {
+                utf8::utf16to8(utf16_begin, utf16_end, std::back_inserter(result));
+            } catch (const utf8::invalid_utf16&) {
+                // Python: .decode('utf-16le', 'ignore') — best-effort, skip bad sequences
+                result.clear();
+                for (const char16_t* p = utf16_begin; p < utf16_end; ++p) {
+                    try {
+                        utf8::utf16to8(p, p + 1, std::back_inserter(result));
+                    } catch (const utf8::invalid_utf16&) {}
+                }
             }
+            // Strip trailing nulls matching Python .rstrip('\x00')
+            while (!result.empty() && result.back() == '\0') result.pop_back();
+            return result;
         }
-        return result;
+        return {};
     }
-    // width == 1: UTF-8 / ASCII filtering
+    // width == 1: ANSI / ASCII — raw bytes are already the string content
     std::string result(raw.begin(), raw.end());
     return result;
 }
@@ -1076,49 +1081,30 @@ size_t BinaryEmulator::mem_copy(uint64_t dst, uint64_t src, size_t n) {
 
 void BinaryEmulator::write_mem_string(const std::string& str, uint64_t address, int width) {
     // Python binemu.py:746-762 doc: "Write string data to an emulated memory address"
-    // Appends terminating zero byte if not present; supports width=1 (UTF-8) and width=2 (UTF-16LE)
+    // Appends terminating zero byte if not present; supports width=1 (ANSI) and width=2 (UTF-16LE)
     std::string data = str;
     if (data.empty() || data.back() != '\0') data += '\0';
     if (width == 2) {
-        // Python binemu.py:753-761: .encode('utf-16le')
-        std::vector<uint8_t> encoded;
-        encoded.reserve(data.length() * 2);
-        for (size_t i = 0; i < data.length(); ++i) {
-            unsigned char c = static_cast<unsigned char>(data[i]);
-            if (c == '\0') {
-                encoded.push_back(0);
-                encoded.push_back(0);
-            } else if (c < 0x80) {
-                // ASCII: single UTF-16 code unit
-                encoded.push_back(c);
-                encoded.push_back(0);
-            } else {
-                // Extended ASCII / UTF-8 multibyte: decode to codepoint then encode as UTF-16LE
-                uint32_t cp;
-                if ((c & 0xE0) == 0xC0 && i + 1 < data.length()) {
-                    cp = (c & 0x1F) << 6 | (static_cast<unsigned char>(data[++i]) & 0x3F);
-                } else if ((c & 0xF0) == 0xE0 && i + 2 < data.length()) {
-                    cp = (c & 0x0F) << 12 | (static_cast<unsigned char>(data[++i]) & 0x3F) << 6 |
-                         (static_cast<unsigned char>(data[++i]) & 0x3F);
-                } else {
-                    cp = c; // fallback
-                }
-                if (cp > 0xFFFF) {
-                    // Surrogate pair (BMP only for simplicity : matches Python 'utf-16le' encoder)
-                    cp -= 0x10000;
-                    encoded.push_back(static_cast<uint8_t>(0xD800 | (cp >> 10)));
-                    encoded.push_back(static_cast<uint8_t>(((0xD800 | (cp >> 10)) >> 8) & 0xFF));
-                    encoded.push_back(static_cast<uint8_t>(0xDC00 | (cp & 0x3FF)));
-                    encoded.push_back(static_cast<uint8_t>(((0xDC00 | (cp & 0x3FF)) >> 8) & 0xFF));
-                } else {
-                    encoded.push_back(static_cast<uint8_t>(cp & 0xFF));
-                    encoded.push_back(static_cast<uint8_t>((cp >> 8) & 0xFF));
-                }
-            }
+        // Python: .encode('utf-16le')
+        // Convert UTF-8 string → UTF-16LE bytes via utfcpp.
+        // char16_t is native-endian (LE on x86/amd64), matching emulated memory.
+        std::vector<char16_t> utf16;
+        try {
+            utf8::utf8to16(data.begin(), data.end(), std::back_inserter(utf16));
+        } catch (const utf8::invalid_utf8&) {
+            // Best-effort: fall back to direct char→char16_t (latin-1 compatible)
+            utf16.clear();
+            for (char ch : data)
+                utf16.push_back(static_cast<char16_t>(static_cast<unsigned char>(ch)));
         }
+        // Add double-null terminator if not present
+        if (utf16.empty() || utf16.back() != 0)
+            utf16.push_back(0);
+        const uint8_t* bytes_ptr = reinterpret_cast<const uint8_t*>(utf16.data());
+        std::vector<uint8_t> encoded(bytes_ptr, bytes_ptr + utf16.size() * 2);
         mem_write(address, encoded);
     } else {
-        // width == 1: UTF-8
+        // width == 1: ANSI / ASCII — raw bytes are already the content
         std::vector<uint8_t> bytes(data.begin(), data.end());
         mem_write(address, bytes);
     }
