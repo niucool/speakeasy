@@ -1,12 +1,12 @@
 """
-sptest.py — Speakeasy Python test runner for log comparison with C++ port.
+sptest.py  Speakeasy Python test runner for log comparison with C++ port.
 
 Usage:
   python sptest.py -v d:/path/to/sample.exe          # verbose to stderr
   python sptest.py -v -l py.log d:/path/to/sample.exe  # verbose to file
 
 Compare with C++ logs:
-  .\build\Debug\speakeasy-cli.exe -v -t d:\path\to\sample.exe 2> cpp.log
+  .\\build\\Debug\\speakeasy-cli.exe -v -t d:\\path\\to\\sample.exe 2> cpp.log
 """
 
 import sys
@@ -28,7 +28,7 @@ def main():
         print(f"Error: File not found: {args.file}", file=sys.stderr)
         sys.exit(1)
 
-    # Configure logging — format matches C++ CleanFormatter style for easy diff
+    # Configure logging  format matches C++ CleanFormatter style for easy diff
     log_fmt = "%(asctime)s %(levelname)-5s [%(thread)d] %(name)s: %(message)s"
     log_level = logging.DEBUG if args.verbose else logging.INFO
 

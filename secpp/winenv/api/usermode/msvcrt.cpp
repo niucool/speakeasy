@@ -997,37 +997,40 @@ uint64_t Msvcrt::rand(void* e, const std::vector<uint64_t>& a, void* ctx) {
     return static_cast<uint64_t>(msvc_rand_state);
 }
 
-// 
+//
 //  EXIT / TERMINATION
-// 
+//
 
 uint64_t Msvcrt::exit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
-    we(e)->stop();
+    // Python msvcrt.py:427: self.exit_process()
+    //   → ApiHandler.exit_process() → self.emu.exit_process()
+    //   → Win32Emulator.exit_process(): enable_code_hook() + run_complete = True
+    we(e)->exit_process();
     return 0;
 }
 
 uint64_t Msvcrt::_exit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
-    we(e)->stop();
+    we(e)->exit_process();
     return 0;
 }
 
 uint64_t Msvcrt::_cexit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
-    we(e)->stop();
+    we(e)->exit_process();
     return 0;
 }
 
 uint64_t Msvcrt::_c_exit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
-    we(e)->stop();
+    we(e)->exit_process();
     return 0;
 }
 
 uint64_t Msvcrt::terminate(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
-    we(e)->stop();
+    we(e)->exit_process();
     return 0;
 }
 
