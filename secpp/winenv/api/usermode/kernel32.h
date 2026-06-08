@@ -148,6 +148,13 @@
 
 namespace speakeasy { namespace api {
 
+#ifdef RtlMoveMemory
+#undef RtlMoveMemory
+#endif
+#ifdef RtlZeroMemory
+#undef RtlZeroMemory
+#endif
+
 class Kernel32 : public ApiHandler {
     API_LIST_BEGIN
     // File I/O
@@ -174,8 +181,8 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(HeapCreate, 3)        API_ENTRY(HeapDestroy, 1)
     API_ENTRY(GetProcessHeap, 0)    API_ENTRY(GlobalAlloc, 2)
     API_ENTRY(GlobalFree, 1)        API_ENTRY(LocalAlloc, 2)
-    API_ENTRY(LocalFree, 1)         API_ENTRY(RtlMoveMemory, 3)
-    API_ENTRY(RtlZeroMemory, 2)
+    API_ENTRY(LocalFree, 1)             API_ENTRY(RtlMoveMemory, 3)
+        API_ENTRY(RtlZeroMemory, 2)
     // DLL / Module
     API_ENTRY(LoadLibraryA, 1)      API_ENTRY(LoadLibraryW, 1)
     API_ENTRY(LoadLibraryExA, 3)    API_ENTRY(FreeLibrary, 1)

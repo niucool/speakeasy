@@ -28,6 +28,13 @@
 namespace speakeasy {
 namespace api {
 
+#ifdef RtlMoveMemory
+#undef RtlMoveMemory
+#endif
+#ifdef RtlZeroMemory
+#undef RtlZeroMemory
+#endif
+
 class Ntdll : public ApiHandler {
 public:
     Ntdll(void* emu);
