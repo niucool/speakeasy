@@ -13,22 +13,7 @@
 #include "config.h"
 #include "report.h"
 #include "profiler_events.h"
-
-namespace {
-
-std::vector<uint8_t> load_test_bin(const std::string& name) {
-    std::string cmd = "xz -d -c tests/bins/" + name + ".xz 2>/dev/null";
-    auto* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) return {};
-    std::vector<uint8_t> data;
-    char buf[4096];
-    while (size_t n = std::fread(buf, 1, sizeof(buf), pipe))
-        data.insert(data.end(), buf, buf + n);
-    pclose(pipe);
-    return data;
-}
-
-} // namespace
+#include "test_helper.h"
 
 TEST(ModuleSystemTest, StaticImportDispatchesApiHandler) {
     auto data = load_test_bin("dll_test_x86.dll");
