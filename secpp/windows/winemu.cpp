@@ -2543,12 +2543,30 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         }
 
         if (!hook_called && api) {
+            // Save callee-saved registers (x86 ABI: EBX, ESI, EDI, EBP).
+            // C++ API handlers are real functions that the compiler may clobber,
+            // but emulated code expects them preserved across calls.
+            int arch = get_arch();
+            uint64_t saved_ebx = 0, saved_esi = 0, saved_edi = 0, saved_ebp = 0;
+            if (arch == speakeasy::arch::ARCH_X86) {
+                saved_ebx = reg_read(speakeasy::arch::REG_EBX);
+                saved_esi = reg_read(speakeasy::arch::REG_ESI);
+                saved_edi = reg_read(speakeasy::arch::REG_EDI);
+                saved_ebp = reg_read(speakeasy::arch::REG_EBP);
+            }
             try {
                 void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, argv, nullptr);
                 rv = reinterpret_cast<uintptr_t>(rv_ptr);
             } catch (...) {
                 on_run_complete();
                 return;
+            }
+            // Restore callee-saved registers
+            if (arch == speakeasy::arch::ARCH_X86) {
+                reg_write(speakeasy::arch::REG_EBX, saved_ebx);
+                reg_write(speakeasy::arch::REG_ESI, saved_esi);
+                reg_write(speakeasy::arch::REG_EDI, saved_edi);
+                reg_write(speakeasy::arch::REG_EBP, saved_ebp);
             }
         }
 

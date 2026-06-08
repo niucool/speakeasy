@@ -9,6 +9,26 @@
 
 #### Fixed
 
+- **secpp/winenv/api/usermode/kernel32.cpp**: 修复了 `GetProcAddress` 硬编码 `"kernel32"` 模块名的问题——当通过 `hMod` 从 `ntdll` 获取函数时，`get_proc` 会创建一个 `import_table[哨兵] = {"kernel32", "NtSetInformationThread"}` 条目，导致后续调用通过错误的模块分发。修复为从 `hMod` 解析模块名，找不到时回退到 `get_proc("ntdll", proc)`
+- **secpp/winenv/api/usermode/ntdll.cpp**: 修复了 `NtQueryInformationProcess` 返回 `0`（STATUS_SUCCESS）而不是 `0xC0000024`（STATUS_OBJECT_TYPE_MISMATCH）用于未处理的 info class（ProcessDebugPort=7、ProcessDebugFlags=0x1F）的问题——与 Python 的 `ntoskrnl.ZwQueryInformationProcess` 对齐，其对未识别的类返回 STATUS_OBJECT_TYPE_MISMATCH
+- **secpp/winenv/api/usermode/msvcrt.cpp**: 修复了 `_except_handler4_common` 在 `handle_import_func` 的 `do_call_return` 覆盖 SEH 处理程序 PC 导致无限 CRT 异常搜索循环——添加了 `on_run_complete()` + `stop()` 以在 C++ 无法模拟本机 CRT SEH 解析时干净地终止运行
+- **secpp/winenv/api/usermode/msvcrt.cpp**: 修复了 `__p___argv`、`__p___initenv`、`_get_initial_narrow_environment` 分配内存但不写入数据——生成的代码执行 `mov esi, [eax]` 从返回地址读取，读取到未初始化的零值，导致后续的 `mov ecx, [ebp+0xc]` 加载 NULL 并在 `0x401cb1: mov edx, [ecx+eax]` 处崩溃
+- **secpp/windows/winemu.cpp**: 在 `handle_import_func` 中的每个 API 调用前后添加了被调用者保存寄存器（EBX/ESI/EDI/EBP）的保存/恢复——C++ API 处理程序是编译器可能破坏的本地函数，但模拟代码期望它们按照 x86 ABI 约定被保留（Python API 处理程序永远不会触及 Unicorn 寄存器，所以不需要这个修复）
+- **secpp/windows/winemu.cpp**: 修复了 `_handle_invalid_fetch` 在 `on_run_complete()` 阻止 `do_call_return` 后重新分发 API 的无限获取-未映射循环——添加了 `!run_complete` 检查以防止重新分发
+- **secpp/binemu.cpp**: 修复了 `do_call_return` 在返回值为 0（例如 `FindWindowW` 返回 0）时不写入 EAX 的问题——EAX 保留了过期值（例如 `0x4042d4`），导致 `cmp [ebp-4], 0` 比较失败，`je 0x401290` 跳转走错误路径
+- **secpp/memmgr.cpp**: 修复了 `mem_unmap` 从不更新内部 `maps_` 跟踪，导致 `get_valid_ranges` 认为旧的哨兵页面仍然被占用，并将新映射重定向到不同地址（`0xfeedf000` → `0xfeee3000` → `0xfeee7000` → ...），哨兵地址漂移破坏了 IAT 补丁
+
+#### Added
+
+- **secpp/binemu.cpp**: 集成 `utf8cpp` (v4.0.6)——`read_mem_string` 使用 `utf8::utf16to8()`，`write_mem_string` 使用 `utf8::utf8to16()`，替代了 150+ 行手动编码，在所有平台上正确处理所有 Unicode
+- **secpp/windows/winemu.cpp**: 修复了 `read_string_heuristic` 在 ANSI 搜索因 UTF-16LE 的第一个 `0x00` 字节提前终止时优先选择更长的 UTF-16LE 字符串——`FindWindowW("Qt5QWindowIcon")` 现在可以正确显示
+- **Python 诊断日志**: 在 `_hook_code_core`、`_set_emu_hooks`、`_unset_emu_hooks` 中添加了 `[code-core]`、`[emu-hooks]`、`[engine]` 日志，用于钩子链对比
+
+#### Changed
+
+- **secpp/winenv/api**: 向 `ApiEntry` 添加了 `int conv` 字段 + `REG`（STDCLL）/ `REG2`（CDECL）宏 + 将 `crypt32.cpp`、`ntdll.cpp`、`shell32.cpp`、`user32.cpp` 转换为 `INIT_API_TABLE` 模式——所有 API 处理程序现在使用与 `kernel32.cpp` 相同的宏注册
+- **secpp/winenv/api/usermode/msvcrt.cpp**: 所有函数切换到 `REG2`（CDECL 调用约定）——修复了 `do_call_return` 因 STDCLL 默认值错误地清理了 6 个参数（24 字节），而调用代码也清理它们（CDECL 是调用者清理）导致的双重栈清理
+
 - **secpp/windows/winemu.cpp**: 修复了 `_handle_invalid_fetch` 中 `import_table.erase()` 导致的第二次 API 调用失败——同一 IAT 地址的连续调用命中同一哨兵地址，被删除后无法再找到导入条目。改为 `get_pc() == addr` 守卫 + 始终调用 `_unset_emu_hooks()` 映射哨兵页面
 - **secpp/windows/winemu.cpp**: 修复了 `_hook_code_core` 在哨兵地址处调用 `_set_emu_hooks()` 取消映射页面导致的无限 FETCH_UNMAPPED 循环——当 `addr` 在 EMU_RESERVED 范围内时跳过取消映射，仅在返回地址处执行取消映射
 - **secpp/windows/winemu.cpp**: 修复了 `_set_emu_hooks` / `_unset_emu_hooks` 的状态腐蚀问题——`mem_unmap`/`mem_map` 失败时仍设置 `emu_hooks_set`，导致后续调用状态不一致。添加了 double-map 检测和正确的失败处理

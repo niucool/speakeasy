@@ -13,6 +13,7 @@
 #include <map>
 #include <sstream>
 #include "windows/winemu.h"
+#include "windows/win32.h"
 #include "struct.h"
 #include "winenv/arch.h"
 
@@ -21,6 +22,9 @@ using namespace speakeasy;
 namespace speakeasy { namespace api {
 
 //  Helper: typed casts from void* 
+static inline Win32Emulator* we32(void* e) {
+    return static_cast<Win32Emulator*>(e);
+}
 static inline WindowsEmulator* we(void* e) {
     return static_cast<WindowsEmulator*>(e);
 }
@@ -1246,10 +1250,44 @@ uint64_t Msvcrt::__p___wargv(void* e, const std::vector<uint64_t>& a, void* ctx)
 }
 
 uint64_t Msvcrt::__p___argv(void* e, const std::vector<uint64_t>& a, void* ctx) {
+    // Python msvcrt.py:320-348 — matches layout exactly.
+    // Layout: [arg_mem] -> ptr to str-ptr-array -> [str_ptr, NULL, str_data...]
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
-    uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 4), 0, 4, "api.argv");
-    return mem;
+    // get_argv() is on Win32Emulator (not WindowsEmulator)
+    std::vector<std::string> _argv = we32(e)->get_argv();
+
+    // Encode each arg as zero-padded UTF-8 (Python: (a+"\x00\x00\x00\x00").encode("utf-8"))
+    std::vector<std::vector<uint8_t>> argv_encoded;
+    for (auto& arg : _argv) {
+        std::string padded = arg + std::string("\x00\x00\x00\x00", 4);
+        argv_encoded.push_back(std::vector<uint8_t>(padded.begin(), padded.end()));
+    }
+
+    size_t array_size = static_cast<size_t>(ptr_sz) * (argv_encoded.size() + 2); // +1 for NULL terminator
+    size_t total = array_size;
+    for (auto& enc : argv_encoded) total += enc.size();
+
+    uint64_t arg_mem = we(e)->mem_map(total, 0, 4, "api.argv");
+    uint64_t pptr = arg_mem + static_cast<uint64_t>(ptr_sz);
+    std::vector<uint8_t> pptr_buf(static_cast<size_t>(ptr_sz), 0);
+    write_le(pptr_buf, 0, pptr, static_cast<size_t>(ptr_sz));
+    we(e)->mem_write(arg_mem, pptr_buf);  // [arg_mem] = &array[0]
+
+    uint64_t sptr = pptr + array_size;
+    for (auto& enc : argv_encoded) {
+        std::vector<uint8_t> ptr_buf(static_cast<size_t>(ptr_sz), 0);
+        write_le(ptr_buf, 0, sptr, static_cast<size_t>(ptr_sz));
+        we(e)->mem_write(pptr, ptr_buf);     // ptr[i] = &str[i]
+        pptr += static_cast<uint64_t>(ptr_sz);
+        we(e)->mem_write(sptr, enc);           // write string data
+        sptr += static_cast<uint64_t>(enc.size());
+    }
+    // NULL terminator for pointer array
+    std::vector<uint8_t> null_term(static_cast<size_t>(ptr_sz), 0);
+    we(e)->mem_write(pptr, null_term);
+
+    return arg_mem;
 }
 
 uint64_t Msvcrt::__p___argc(void* e, const std::vector<uint64_t>& a, void* ctx) {
@@ -1265,13 +1303,18 @@ uint64_t Msvcrt::__p___initenv(void* e, const std::vector<uint64_t>& a, void* ct
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
     uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz), 0, 4, "api.initenv");
+    std::vector<uint8_t> zero(static_cast<size_t>(ptr_sz), 0);
+    we(e)->mem_write(mem, zero); // null env pointer
     return mem;
 }
 
 uint64_t Msvcrt::_get_initial_narrow_environment(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
+    // envp = array of ptr_sz * 2 (first ptr = env string, second = NULL terminator)
     uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), 0, 4, "api.envp");
+    std::vector<uint8_t> zero(static_cast<size_t>(ptr_sz * 2), 0);
+    we(e)->mem_write(mem, zero); // empty environment
     return mem;
 }
 

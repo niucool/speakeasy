@@ -1,10 +1,10 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-07
+> Last Updated: 2026-06-07 (late)
 > Build Status: ✅ **0 compiler errors** (MSVC C++17, /W4 warning-free)
-> Emulation Status: ✅ **Antidbg.exe runs to completion** (28 APIs dispatched, full anti-debug sequence)
-> Remaining TODOs: **22** (+3 from 2026-06-07 audit)
-> Known Issue: None (UC_ERR_MAP fixed via MemoryManager mem_unmap tracking)
+> Emulation Status: ✅ **Antidbg.exe runs to completion** (244 APIs dispatched, exits cleanly)
+> Remaining TODOs: **22**
+> Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
 
 ---
 
@@ -285,3 +285,10 @@ NtStructTest       ×  3  ✅ (双架构 <4> + <8>)
 17. ✅ **`do_call_return` EAX 零值修复** — 即使 API 返回 0 也始终写入 EAX，修复了 `FindWindowW` 之后的错误分支（2026-06-07）
 18. ✅ **`read_string_heuristic` UTF-16LE 修复** — 当 UTF-16LE 找到更长的字符串时优先选择（2026-06-07）
 19. ✅ **Python/C++ 内存映射对比** — UC 级别的 MAP/UNMAP 跟踪，确认修复后行为一致（2026-06-07）
+20. ✅ **GetProcAddress 模块解析** — 从 hMod 解析模块名，不再硬编码 "kernel32"（2026-06-07）
+21. ✅ **NtQueryInformationProcess 返回值** — 未处理的 info class 返回 STATUS_OBJECT_TYPE_MISMATCH，对齐 Python（2026-06-07）
+22. ✅ **被调用者保存寄存器修复** — C++ API 处理程序调用前后保存/恢复 EBX/ESI/EDI/EBP（2026-06-07）
+23. ✅ **CRT 初始化 API 数据写入** — `__p___argv`、`_get_initial_narrow_environment` 正确写入数据结构（2026-06-07）
+24. ✅ **do_call_return EAX 零值** — 始终写入 EAX，即使 API 返回 0（2026-06-07）
+25. ✅ **ApiEntry conv 字段** — REG/REG2 宏 + 所有处理程序转换为 INIT_API_TABLE 模式（2026-06-07）
+26. ✅ **MSVCRT CDECL 调用约定** — 所有 120+ 个 MSVCRT API 切换到 CDECL，消除双重栈清理（2026-06-07）
