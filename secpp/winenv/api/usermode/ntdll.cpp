@@ -934,7 +934,6 @@ uint64_t Ntdll::NtTerminateProcess(void* emu, const std::vector<uint64_t>& argv,
     if (proc_handle == static_cast<uint64_t>(-1) || proc_handle == 0) {
         // Terminate the current process
         w32emu->exit_process();
-        w32emu->stop();
         return NT_SUCCESS;
     }
 

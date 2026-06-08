@@ -500,7 +500,7 @@ std::map<std::string, std::string> ApiHandler::get_os_version() {
 }
 
 void ApiHandler::exit_process() {
-    winemu(emu_)->stop();
+    winemu32(emu_)->exit_process();
 }
 
 // 
