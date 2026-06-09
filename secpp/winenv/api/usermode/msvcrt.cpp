@@ -733,21 +733,35 @@ uint64_t Msvcrt::fprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
 
 uint64_t Msvcrt::__stdio_common_vfprintf(void* e, const std::vector<uint64_t>& a, void* ctx) {
     // Options vary by arch; try to extract format and va_list
-    if (a.size() < 5) return 0;
+    //if (a.size() < 5) return 0;
+
     uint64_t fmt_addr, va_list;
-    // Try to detect layout: on x64: opts, stream, fmt, locale, argptr
-    // on x86: opts_lo, opts_hi, stream, fmt, locale, argptr
-    if (a.size() >= 6) {
-        fmt_addr = a[3];
-        va_list  = a[5];
-    } else {
-        fmt_addr = a[2];
-        va_list  = a[4];
+    std::vector<uint64_t> argv;
+
+    /*
+        arch = emu.get_arch()
+        if arch == e_arch.ARCH_AMD64:
+            opts, stream, fmt, _, va_list = emu.get_func_argv(e_arch.CALL_CONV_CDECL, 5)[:5]
+        else:
+            opts, opts2, stream, fmt, _, va_list = emu.get_func_argv(e_arch.CALL_CONV_CDECL, 6)[:6]
+    */
+    int arch = be(e)->get_arch();
+    if (arch == speakeasy::arch::ARCH_AMD64) {
+        argv = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 6);
+        fmt_addr = argv[4];
+        va_list = argv[5];
     }
+    else {
+        argv = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 5);
+        fmt_addr = argv[3];
+        va_list = argv[4];
+    }
+
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 1);
     int fmt_cnt = msvc_va_arg_count(fmt_str);
     std::vector<uint64_t> vargs = msvc_read_va_args(e, va_list, fmt_cnt);
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
+
     return static_cast<uint64_t>(result.size());
 }
 
