@@ -460,7 +460,8 @@ uint64_t Wininet::InternetOpenUrl(void* e, const std::vector<uint64_t>& a, void*
     uint64_t url_ptr = a[1];
     uint64_t headers_ptr = a[2];
     uint32_t dwHeadersLength = static_cast<uint32_t>(a[3]);
-    uint32_t dwFlags = static_cast<uint32_t>(a[4]);
+    uint32_t dwFlags = static_cast<uint32_t>(a[4]); (void)dwFlags;
+    // TODO: dwFlags not yet used — InternetOpenUrl flag handling incomplete
     uint64_t dwContext = a[5];
     (void)dwHeadersLength; (void)dwContext;
 

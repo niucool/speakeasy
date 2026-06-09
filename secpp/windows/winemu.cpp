@@ -1451,6 +1451,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
             auto& first_region = img->regions[0];
             uint64_t mod_start = first_region.base ? first_region.base : img->base;
             uint64_t mod_end = mod_start + first_region.data.size();
+            (void)mod_end;
             // Deferred: would need a code hook with correct signature
         }
 
@@ -2290,7 +2291,7 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
     if (seh_chain == 0 || seh_chain == 0xFFFFFFFF) return false;
 
     // Read EXCEPTION_REGISTRATION record: [next_ptr] [handler]
-    uint64_t next_ptr = read_ptr(seh_chain);
+    uint64_t next_ptr = read_ptr(seh_chain); (void)next_ptr;
     uint64_t handler = read_ptr(seh_chain + ptr_size);
     if (handler == 0 || handler == 0xFFFFFFFF) return false;
 

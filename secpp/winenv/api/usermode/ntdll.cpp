@@ -122,8 +122,8 @@ static inline void write_ptr(void* emu, uint64_t addr, uint64_t val) {
 /// Read a UNICODE_STRING structure from emulated memory and return the string content
 static inline std::string read_unicode_string_content(void* emu, uint64_t us_addr) {
     if (us_addr == 0) return "";
-    int psz = get_ptr_size(emu);
-    // UNICODE_STRING: Length(2), MaximumLength(2), Buffer(ptr)
+    // TODO: ptr_size not yet used — UNICODE_STRING parsing incomplete
+    int psz = get_ptr_size(emu); (void)psz;
     // On x64: offset 0=Length(2), 2=MaxLength(2), 4=padding? or pointer
     // The apihandler code reads buffer from offset 4 (after Length+MaxLength)
     auto raw_len = static_cast<MemoryManager*>(emu)->mem_read(us_addr, 2);
@@ -1002,8 +1002,9 @@ uint64_t Ntdll::NtQuerySystemInformation(void* emu, const std::vector<uint64_t>&
     // PVOID SystemInformation, ULONG SystemInformationLength,
     // PULONG ReturnLength
     uint32_t info_class = static_cast<uint32_t>(argv[0]);
-    uint64_t info_ptr = argv[1];
-    uint32_t info_len = static_cast<uint32_t>(argv[2]);
+    // TODO: info_ptr not yet used — system info struct write incomplete
+    uint64_t info_ptr = argv[1]; (void)info_ptr;
+    uint32_t info_len = static_cast<uint32_t>(argv[2]); (void)info_len;
     uint64_t ret_len_ptr = argv[3];
 
     auto* mm = static_cast<MemoryManager*>(emu);
@@ -1658,8 +1659,8 @@ uint64_t Ntdll::RtlInitUnicodeString(void* emu, const std::vector<uint64_t>& arg
     // PUNICODE_STRING DestinationString, PWSTR SourceString
     uint64_t dest = argv[0];
     uint64_t src = argv[1];
-    int psz = get_ptr_size(emu);
-
+    // TODO: ptr_size not yet used — memory copy length calculation incomplete
+    int psz = get_ptr_size(emu); (void)psz;
     if (dest == 0) return STATUS_INVALID_PARAMETER;
 
     if (src == 0) {
@@ -1686,8 +1687,8 @@ uint64_t Ntdll::RtlInitString(void* emu, const std::vector<uint64_t>& argv, void
     // PANSI_STRING DestinationString, PCHAR SourceString
     uint64_t dest = argv[0];
     uint64_t src = argv[1];
-    int psz = get_ptr_size(emu);
-
+    // TODO: ptr_size not yet used — memory copy length calculation incomplete
+    int psz = get_ptr_size(emu); (void)psz;
     if (dest == 0) return STATUS_INVALID_PARAMETER;
 
     if (src == 0) {
@@ -2197,7 +2198,7 @@ uint64_t Ntdll::NtQueryObject(void* emu, const std::vector<uint64_t>& argv, void
         return STATUS_INVALID_HANDLE;
     }
 
-    if (info_class == 1 && info_ptr != 0 && info_len >= 4 + get_ptr_size(emu)) {
+    if (info_class == 1 && info_ptr != 0 && info_len >= static_cast<uint32_t>(4 + get_ptr_size(emu))) {
         // ObjectNameInformation: return a UNICODE_STRING with an empty name
         // (we don't track object names in the generic object manager)
         int psz = get_ptr_size(emu);

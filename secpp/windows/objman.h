@@ -113,8 +113,8 @@ public:
 
 public:
     KernelObject(void* emu);
-    KernelObject() : emu_(nullptr), address_(0), object_(nullptr),
-                     ref_cnt(0), arch_(0), id(0) {
+    KernelObject() : emu_(nullptr), address_(0), name_(), object_(nullptr),
+                     arch_(0), ref_cnt(0), handles(), id(0) {
         id = KernelObject::curr_id;
         KernelObject::curr_id += 4;
     }

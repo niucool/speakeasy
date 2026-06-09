@@ -157,11 +157,11 @@ PeLoader::PeLoader(const std::string& path,
     const std::vector<uint8_t>& data,
     int base_override,
     const std::string& emu_path)
-    : path_(path), 
+    : path_(path),
     data_(data),
-    pefile(path, data),
-    base_override_(base_override), 
-    emu_path_(emu_path) {
+    base_override_(base_override),
+    emu_path_(emu_path),
+    pefile(path, data) {
 }
 
 PeLoader::~PeLoader() {
@@ -226,7 +226,7 @@ void PeLoader::parse_pe() {
         // AddressOfCallBacks is at offset 3*ptr_size within TLS dir
         auto tls_data = read_bytes_at_va(pe, tls_dir.VirtualAddress,
                                          4 * ptr_size + ptr_size);
-        if (tls_data.size() >= 4 * ptr_size) {
+        if (tls_data.size() >= static_cast<size_t>(4 * ptr_size)) {
             // AddressOfCallBacks at offset 3*ptr_size
             for (int j = 3 * ptr_size; j < 4 * ptr_size && j + ptr_size <= (int)tls_data.size(); ++j) {
                 callbacks_rva |= static_cast<uint64_t>(tls_data[j]) << ((j - 3 * ptr_size) * 8);

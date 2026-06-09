@@ -612,7 +612,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::init_sys_m
     for (auto& modconf : modules_config) {
         // Check if this is a SystemModule with a driver
         // SystemModule inherits from Module (non-polymorphic in config); check driver field
-        auto& drv_devices = modconf->path;  // placeholder  driver info is on SystemModule only
+        (void)modconf->path;  // placeholder  driver info is on SystemModule only
         // C++ note: SystemModule::driver.devices requires the concrete type;
         // the config modules are stored as shared_ptr<Module>, so we check for driver via name pattern
         auto sysmod =
