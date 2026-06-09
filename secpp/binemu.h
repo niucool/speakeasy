@@ -197,7 +197,11 @@ public:
     // Python binemu.py:327-381 doc: "Get the arguments for a function given the supplied calling convention"
     std::vector<uint64_t> get_func_argv(int callconv, int argc);
     // Python binemu.py:383-418 doc: "Set the emulation state after a call has completed"
-    void do_call_return(int argc, uint64_t ret_addr = 0, uint64_t ret_value = 0, int conv = 0);
+    // Python: `if ret_value is not None: self.reg_write(rr, ret_value)`
+    // Zero is a valid return value (e.g. FindWindowW returns 0).
+    // std::optional matches Python's None semantics exactly.
+    void do_call_return(int argc, uint64_t ret_addr = 0,
+                        std::optional<uint64_t> ret_value = std::nullopt, int conv = 0);
     
     // Stack methods
     // Python binemu.py:420-430 doc: "Get the return address from the stack"

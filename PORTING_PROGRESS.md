@@ -3,7 +3,7 @@
 > Last Updated: 2026-06-09
 > Build Status: ✅ **0 compiler errors** (MSVC C++17, /W4 warning-free)
 > Emulation Status: ✅ **Antidbg.exe runs to completion and exits cleanly**
-> Remaining TODOs: **6**
+> Remaining TODOs: **0**
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
 
 ---
@@ -257,20 +257,26 @@ secpp/winenv/
 
 ---
 
-## 剩余 TODO（6 项）
+## 剩余 TODO（0 项）
 
-| 文件 | 数量 | 描述 |
-|------|------|------|
-| `profiler.h` | 3 | `ExceptionEvent`、`ModuleLoadEvent` 和 `DroppedFilesEvent` 的类型化事件 |
-| `ntdll.cpp` | 1 | **NtDeviceIoControlFile**：需要将 `dev_ioctl` 接线以支持设备 I/O 控制仿真 |
-| `winemu.cpp` | 1 | **API 回调处理器**：C++ 将回调存储为 `std::function<void()>`，而 Python 存储 `(pc, orig_func, args)` 元组 |
-| `binemu.cpp` | 1 | **`do_call_return` 返回值为零**：代码质量改进，将签名改为 `std::optional<uint64_t>` |
+🎉 **所有 22 个 TODO 已全部解决！**
 
-### 2026-06-09 已解决
+### 2026-06-09 最终 TODO 清理
+
+最终 6 个 TODO 全部解决：
 
 | 文件 | 描述 |
 |------|------|
-| `kernel32.cpp/user32.cpp` | ✅ **A/W 函数对 STUB 消除**：所有 187 个 `STUB(Kernel32, ...)` 替换为完整实现。28 个 W 函数现正确读取 UTF-16LE 宽字符串。所有同步原语、获取器、内存/堆、进程/线程、异常/SEH 函数均已实现 |
+| `profiler.h` (3) | ✅ ExceptionEvent 和 ModuleLoadEvent 已存在；新增 `DroppedFileEvent` 类型化事件 |
+| `ntdll.cpp` (1) | ✅ NtDeviceIoControlFile 已接线：通过 ObjectManager 解析设备句柄，调用 `dev_ioctl`，读写缓冲区 |
+| `winemu.cpp` (1) | ✅ API 回调处理器：`api_callbacks` 改为 `vector<tuple<uint64_t, function, vector<uint64_t>>>`，在回调调用后执行 `do_call_return(len(args), pc)` |
+| `binemu.cpp` (1) | ✅ do_call_return：签名改为 `std::optional<uint64_t> ret_value = std::nullopt`，匹配 Python 的 `if ret_value is not None` 语义 |
+
+### 2026-06-09 kernel32 STUB 已解决
+
+| 文件 | 描述 |
+|------|------|
+| `kernel32.cpp/user32.cpp` | ✅ **A/W 函数对 STUB 消除**：所有 187 个 `STUB(Kernel32, ...)` 替换为完整实现。28 个 W 函数现正确读取 UTF-16LE 宽字符串 |
 
 ### 2026-06-08 已解决
 
@@ -388,3 +394,5 @@ NtStructTest       ×  3  ✅ (双架构 <4> + <8>)
 34. ✅ **test_helper.h** — 共享的 `load_test_bin()` 辅助函数，支持 .xz 解压（2026-06-08）
 35. ✅ **kernel32.cpp STUB 消除** — 187 个 STUB 函数全部替换为完整实现，0 个剩余（2026-06-09）
 36. ✅ **TODO 减少** — 从 7 个 TODO 减少至 6 个（2026-06-09）
+37. ✅ **最终 TODO 清除** — 剩余 6 个 TODO 全部解决：profiler typed events、NtDeviceIoControlFile、API callbacks、do_call_return optional（2026-06-09）
+38. ✅ **TODO 计数归零** — 所有 22 个原始 TODO 已全部关闭（2026-06-09）

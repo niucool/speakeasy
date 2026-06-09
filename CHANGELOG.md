@@ -19,6 +19,14 @@
   - **异常/SEH (6)**：`RtlCaptureContext`、`RtlLookupFunctionEntry`、`RtlUnwind`、`AddVectoredExceptionHandler`/`ContinueHandler`、`RemoveVectoredExceptionHandler`
   - **其他 (59)**：`MulDiv`、`VerSetConditionMask`、`VerifyVersionInfo`、`SetConsoleCtrlHandler`、`SetDefaultDllDirectories`、`Wow64DisableWow64FsRedirection`/`Revert`、`WTSGetActiveConsoleSessionId`、`WerGetFlags`/`WerSetFlags`、`VirtualAllocExNuma`、`SystemTimeToTzSpecificLocalTime`、`ProcessIdToSessionId` 等
 - **STUB 总数**：`kernel32.cpp` 中从 187 个 STUB 减少至 **0 个**
+- **secpp/winenv/api/usermode/ntdll.cpp**: `NtDeviceIoControlFile` 已接线 — 通过 ObjectManager 解析设备句柄，调用 `dev_ioctl`，读写模拟内存中的缓冲区
+- **secpp/profiler.h**: `api_callbacks` 重构为 `std::vector<std::tuple<uint64_t, std::function<void()>, std::vector<uint64_t>>>` — API 回调处理器现可访问 PC 和参数，在回调调用后正确执行 `do_call_return(len(args), pc)`，匹配 Python 的 `winemu.py:1773-1789`
+- **secpp/profiler_events.h**: 新增 `DroppedFileEvent` 类型化事件（含 `path`、`sha256`、`size`、`data_ref`）
+
+#### Changed
+
+- **secpp/binemu.h/cpp**: `do_call_return` 签名改进 — `ret_value` 参数从 `uint64_t`（默认 0）改为 `std::optional<uint64_t>`（默认 `std::nullopt`），匹配 Python 的 `if ret_value is not None` 语义。0 现在被视为有效的返回值
+- **所有 TODO 已解决**：PORTING_PROGRESS.md 中的 22 个 TODO 全部关闭
 
 ### 2026-06-08
 

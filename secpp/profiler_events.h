@@ -282,6 +282,27 @@ struct FileWriteEvent : Event {
     }
 };
 
+// Dropped files
+inline const std::string FILE_DROPPED = "file_dropped";
+
+struct DroppedFileEvent : Event {
+    std::string path;
+    std::string sha256;
+    size_t size = 0;
+    std::optional<std::string> data_ref;
+
+    DroppedFileEvent() { event = FILE_DROPPED; }
+
+    nlohmann::json to_json() const override {
+        nlohmann::json j = Event::to_json();
+        j["path"] = path;
+        j["sha256"] = sha256;
+        j["size"] = size;
+        if (data_ref.has_value()) j["data_ref"] = *data_ref;
+        return j;
+    }
+};
+
 struct FileOpenEvent : Event {
     std::string path;
 

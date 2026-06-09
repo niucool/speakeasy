@@ -563,10 +563,10 @@ void ApiHandler::setup_callback(uint64_t func, const std::vector<uint64_t>& args
         // Set up the call frame
         binemu(emu_)->set_func_args(sp, 0xEBDA /* API_CALLBACK_HANDLER_ADDR */, args);
         binemu(emu_)->set_pc(func);
-        run->api_callbacks.push_back([ret, func, caller_argv](){ (void)ret; (void)func; (void)caller_argv; });
+        run->api_callbacks.push_back({ret, [ret, func, caller_argv](){ (void)ret; (void)func; (void)caller_argv; }, caller_argv});
     } else {
         // Nested callback: just push onto the stack
-        run->api_callbacks.push_back([func, args](){ (void)func; (void)args; });
+        run->api_callbacks.push_back({0, [func, args](){ (void)func; (void)args; }, args});
     }
 }
 

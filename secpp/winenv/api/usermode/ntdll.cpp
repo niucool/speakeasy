@@ -791,16 +791,39 @@ uint64_t Ntdll::NtDeviceIoControlFile(void* emu, const std::vector<uint64_t>& ar
 
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
 
-    //TODO:
-    //wemu->dev_ioctl(wemu->get_ptr_size(), ctl_code, reinterpret_cast<void*>(in_buf), in_len,
-    //                reinterpret_cast<void*>(out_buf), out_len);
+    // Resolve the device from the file handle
+    auto dev_obj = wemu->get_object_from_handle(file_handle);
+    auto* dev = dynamic_cast<Device*>(dev_obj.get());
 
-    if (io_status_ptr != 0) {
-        write_u32(emu, io_status_ptr, NT_SUCCESS);
-        write_ptr(emu, io_status_ptr + get_ptr_size(emu), 0);
+    // Read input buffer from emulated memory
+    std::vector<uint8_t> in_data;
+    if (in_buf != 0 && in_len > 0) {
+        in_data = static_cast<MemoryManager*>(emu)->mem_read(in_buf, in_len);
     }
 
-    return NT_SUCCESS;
+    std::vector<uint8_t> out_data;
+    uint32_t io_status = NT_SUCCESS;
+
+    if (dev) {
+        auto result = wemu->dev_ioctl(wemu->get_ptr_size(), dev, ctl_code, in_data);
+        io_status = result.first;
+        out_data = result.second;
+    }
+
+    // Write output to emulated memory
+    if (out_buf != 0 && out_len > 0 && !out_data.empty()) {
+        size_t write_sz = std::min(static_cast<size_t>(out_len), out_data.size());
+        static_cast<MemoryManager*>(emu)->mem_write(out_buf,
+            std::vector<uint8_t>(out_data.begin(), out_data.begin() + static_cast<ptrdiff_t>(write_sz)));
+    }
+
+    if (io_status_ptr != 0) {
+        write_u32(emu, io_status_ptr, io_status);
+        write_ptr(emu, io_status_ptr + get_ptr_size(emu),
+                  static_cast<uint64_t>(out_data.size()));
+    }
+
+    return io_status == NT_SUCCESS ? NT_SUCCESS : STATUS_UNSUCCESSFUL;
 }
 
 // 

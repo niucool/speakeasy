@@ -104,7 +104,9 @@ public:
     std::string type;                  // Python:119
     std::map<std::string,std::string> error; // Python:120
     int num_apis = 0;                  // Python:121
-    std::vector<std::function<void()>> api_callbacks;  // Python:112
+    // Python: run.api_callbacks = [(pc, orig_func, args), ...]
+    // Stores (return_pc, callback_fn, original_args) for API_CALLBACK_HANDLER_ADDR dispatch
+    std::vector<std::tuple<uint64_t, std::function<void()>, std::vector<uint64_t>>> api_callbacks;
     std::set<uint64_t> coverage;       // Python:122
     std::vector<std::map<std::string,std::string>> memory_regions;   // Python:123
     std::vector<std::map<std::string,std::string>> loaded_modules;   // Python:124

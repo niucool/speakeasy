@@ -891,8 +891,8 @@ void BinaryEmulator::set_pc(uint64_t addr) {
     }
 }
 
-void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_value, int conv) {
-    // Python binemu.py:383-418 doc: "Set the emulation state after a call has completed"
+void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr,
+                                     std::optional<uint64_t> ret_value, int conv) {
     int arch = get_arch();
     int sp_reg = 0;
     int pc_reg = 0;
@@ -923,13 +923,10 @@ void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr, uint64_t ret_va
         reg_write(pc_reg, ret_addr);
     }
     // Python: `if ret_value is not None: self.reg_write(rr, ret_value)`
-    // In Python, 0 is not None, so EAX is written even when the API returns 0.
-    // In C++, we can't distinguish "no value" (default 0) from "returned 0"
-    // without std::optional, but all callers pass explicit return values so
-    // always writing is safe.  Not writing EAX=0 caused FindWindowW's return
-    // value to be lost (EAX retained 0x4042d4), taking the wrong branch at
-    // "cmp [ebp-4], 0 / je 0x401290".
-    reg_write(ret_reg, ret_value);
+    // std::optional matches this exactly — 0 is a valid return value.
+    if (ret_value.has_value()) {
+        reg_write(ret_reg, *ret_value);
+    }
 
     // Cleanup the stack
     if (conv == speakeasy::arch::CALL_CONV_CDECL) {
