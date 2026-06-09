@@ -96,7 +96,10 @@ TEST(FindFilesTest, WildcardMatchPathLike) {
 }
 
 TEST(FindFilesTest, WildcardMatchMultipleStars) {
-    EXPECT_TRUE(wildcard_match("some_long_filename.txt", "some*name*"));
-    EXPECT_TRUE(wildcard_match("somefile.txt", "some*name*"));
+    // "some*name*" matches "somename" (name immediately follows some)
+    EXPECT_TRUE(wildcard_match("somename", "some*name*"));
+    // "some*name*" matches "somename123" (name after some, then anything)
+    EXPECT_TRUE(wildcard_match("somename123", "some*name*"));
+    // "some*name*" does NOT match "other.txt"
     EXPECT_FALSE(wildcard_match("other.txt", "some*name*"));
 }

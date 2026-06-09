@@ -42,7 +42,6 @@ TEST(VolumesTest, ParseVolumeSpecRelativePath) {
 }
 
 TEST(VolumesTest, ExpandVolumeToEntries) {
-    // Create a temp directory with a test file
     fs::path tmpdir = fs::temp_directory_path() / "speakeasy_vol_test";
     fs::create_directories(tmpdir);
     std::ofstream(tmpdir / "test.dll") << "MZ" << std::string(100, '\x00');
@@ -54,11 +53,20 @@ TEST(VolumesTest, ExpandVolumeToEntries) {
 }
 
 TEST(VolumesTest, ApplyVolumesPreprendsEntries) {
-    // Test that apply_volumes adds entries to the config map
-    std::map<std::string, std::map<std::string, std::vector<std::map<std::string, std::string>>>> config;
-    apply_volumes(config, {"/tmp/a.dll:c:\\windows\\a.dll"});
+    // Create a dummy file first so the volume host path exists
+    fs::path dummy = fs::temp_directory_path() / "speakeasy_vol_a.dll";
+    {
+        std::ofstream f(dummy);
+        f << "MZ" << std::string(100, '\x00');
+    }
+
+    using VolumeConfig = std::map<std::string, std::map<std::string, std::vector<std::map<std::string, std::string>>>>;
+    VolumeConfig config;
+    std::string spec = dummy.string() + ":c:\\windows\\a.dll";
+    apply_volumes(config, {spec});
 
     // The config should now contain filesystem entries
-    // (even if host doesn't exist, the function should not crash)
-    SUCCEED() << "apply_volumes completed without crash";
+    EXPECT_FALSE(config.empty());
+
+    fs::remove(dummy);
 }

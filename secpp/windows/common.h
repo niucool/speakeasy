@@ -151,9 +151,9 @@ class PeFile;
 // Structure to represent a PE export
 struct ExportEntry {
     std::string name;
-    uint64_t address;
+    uint64_t address = 0;
     std::string forwarder;
-    uint32_t ordinal;
+    uint32_t ordinal = 0;
     std::string execution_mode;  // "user" or "kernel"
 };
 

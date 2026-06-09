@@ -212,6 +212,8 @@ public:
     //     next run from the run queue and emulate it."""
     virtual void on_run_complete() = 0;
     virtual void on_emu_complete() = 0;
+    // Python win32.py:603: def exit_process(self)
+    void exit_process();
     // Python winemu.py:64
     // @abstractmethod
     // def alloc_peb(self, proc: Any) -> None:

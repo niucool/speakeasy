@@ -5,6 +5,41 @@
 
 ## [Unreleased]
 
+### 2026-06-09
+
+#### Added
+
+- **secpp/winenv/api/usermode/kernel32.cpp**: 将所有 187 个 `STUB(Kernel32, ...)` 函数移植为完整实现，参照 `kernel32.py`：
+  - **W 函数包装器 (28)**：`DeleteFileW`、`CreateDirectoryW`、`FindFirstFileW`、`FindNextFileW`、`CreateFileMappingW`、`GetDriveTypeW`、`GetDiskFreeSpaceExW`、`CreateEventW`、`OpenMutexW`、`CreateWaitableTimerW`、`GetVersionExW`、`GetComputerNameW`、`GetUserNameW`、`lstrlenW`、`lstrcpyW`、`lstrcatW`、`lstrcmpW`、`GetEnvironmentVariableW`、`SetEnvironmentVariableW`、`GetCurrentDirectoryW`、`ExpandEnvironmentStringsW`、`Process32FirstW`/`Process32NextW`、`Module32FirstW`/`Module32NextW`、`OutputDebugStringW`、`CreateProcessW` — 全部使用 `read_mem_string(addr, 2)` 读取 UTF-16LE 字符串，委托给 A 版本逻辑
+  - **同步原语 (12)**：`AcquireSRWLockExclusive`/`Shared`、`ReleaseSRWLockExclusive`/`Shared`、`InitializeSRWLock`、`InitializeConditionVariable`、`InitializeCriticalSectionAndSpinCount`、`InitializeSListHead`、`InitOnceBeginInitialize`、`WakeAllConditionVariable`、`WaitForSingleObjectEx` — 模拟器中均为 no-op，返回适当值
+  - **简单获取器 (45)**：`GetSystemDirectory`、`GetWindowsDirectory`、`GetTempPath`、`GetTempFileName`、`GetTickCount64`、`GetSystemTimePreciseAsFileTime`、`GetThreadId`、`GetThreadLocale`、`GetOEMCP`、`GetACP`、`GetLogicalDrives`、`GetUserDefaultLCID`/`LangID`/`UILanguage`、`IsWow64Process`、`IsValidCodePage`、`IsBadReadPtr`/`WritePtr`/`StringPtr`、`GetStartupInfo`、`GetDateFormat`、`GetTimeFormat`、`GetTimeZoneInformation`、`GetVolumeInformation`、`GetPhysicallyInstalledSystemMemory`、`GetNativeSystemInfo`
+  - **内存/堆 (10)**：`HeapReAlloc`、`HeapSize`、`HeapSetInformation`、`GlobalMemoryStatus`/`Ex`、`GlobalLock`/`Unlock`、`GlobalAlloc`/`Free`、`LocalLock`/`ReAlloc`
+  - **进程/线程 (15)**：`CreateMutexEx`、`CreateSemaphoreW`、`EnumProcesses`、`CreateIoCompletionPort`、`CreatePipe`、`CreateNamedPipe`、`DuplicateHandle`、`GetProcessAffinityMask`、`GetProcessHandleCount`、`GetProcessVersion`、`SetThreadContext`、`SetThreadDescription`、`GetThreadTimes`、`SetPriorityClass`
+  - **文件/IO (12)**：`SetFilePointerEx`、`GetFileSizeEx`、`MoveFile`、`GetFileAttributesEx`、`GetFullPathName`、`GetLongPathName`/`GetShortPathName`、`FindFirstFileEx`、`FindResource`/`FindResourceEx`、`_lopen`/`_lclose`/`_llseek`
+  - **异常/SEH (6)**：`RtlCaptureContext`、`RtlLookupFunctionEntry`、`RtlUnwind`、`AddVectoredExceptionHandler`/`ContinueHandler`、`RemoveVectoredExceptionHandler`
+  - **其他 (59)**：`MulDiv`、`VerSetConditionMask`、`VerifyVersionInfo`、`SetConsoleCtrlHandler`、`SetDefaultDllDirectories`、`Wow64DisableWow64FsRedirection`/`Revert`、`WTSGetActiveConsoleSessionId`、`WerGetFlags`/`WerSetFlags`、`VirtualAllocExNuma`、`SystemTimeToTzSpecificLocalTime`、`ProcessIdToSessionId` 等
+- **STUB 总数**：`kernel32.cpp` 中从 187 个 STUB 减少至 **0 个**
+
+### 2026-06-08
+
+#### Fixed
+
+- **secpp/winenv/api/usermode/msvcrt.cpp**: 修复了 `exit`/`_exit`/`_cexit`/`_c_exit`/`terminate` 处理器仅调用 `we(e)->stop()` 而未设置 `run_complete = true` 的关键 Bug。这导致 `handle_import_func` 继续调用 `do_call_return` 将执行重定向到返回地址，使 antidbg.exe 的反调试循环无限运行（speakeasy-cli 永远不退出）。修复为调用新增的 `we(e)->exit_process()`，镜像 Python 的 `self.exit_process()` 工作流（`enable_code_hook()` + `on_run_complete()`）
+- **secpp/windows/winemu.h/cpp**: 新增 `WindowsEmulator::exit_process()` 方法，镜像 Python 的 `Win32Emulator.exit_process()`
+- **secpp/winenv/api/usermode/ntdll.cpp** (10 fixes): `NtOpenKey` 现正确将 `reg_open_key` 返回的句柄写入调用方输出（之前句柄写入代码被注释掉）；`NtSetValueKey` 现通过 `reg_get_key` 解析句柄并正确调用 `regkey->create_value()`；`NtDeleteKey`/`NtDeleteValueKey` 实现了通过 `reg_get_key` 的句柄解析；清理了 `NtCreateFile`、`NtCreateKey`、`NtQueryValueKey` 中错误的 TODO 注释
+- **secpp/winenv/api/usermode/kernel32.cpp**: `CreateToolhelp32Snapshot` 现正确填充进程/线程/模块快照项
+- **secpp/windows/common.h**: `ExportEntry` 的 `address` 和 `ordinal` 字段添加了默认零初始化
+
+#### Added
+
+- **secpp/windows/netman.cpp**: 实现了 `get_dns_txt` — 按域名匹配 DNS TXT 条目，fallback 到 "default" 条目，读取配置的 TXT 文件数据
+- **tests/**: 将所有 29 个 Python 测试用例（`tests/test_*.py`）移植为 C++ GoogleTest 测试用例（`tests/test_*.cpp`），文件名保持一致仅扩展名不同。涵盖：单元测试（struct、config、volumes、find_files、module_name_normalization、loaders、process_parameters、profiler_artifacts、artifact_store、cli_config、cli_runtime_flags、config_memory_dumps）、模拟测试（argv、dlls、file_access、get_proc_address、seh、wdm、coverage、error_context、module_system、section_access、memory_capture、filename_override）。需要外部依赖的测试（examples、gdb、pma_samples、kernel_bootstrap、map_view_of_file）优雅跳过
+- **tests/test_helper.h**: 通用的 `load_test_bin()` 辅助函数，支持原始二进制和 .xz 解压
+
+#### Changed
+
+- **secpp/windows/winemu.h**: 更新了移植状态注释以反映所有更新的实现
+
 ### 2026-06-07
 
 #### Fixed

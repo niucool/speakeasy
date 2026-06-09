@@ -16,9 +16,7 @@ bool is_empty(std::shared_ptr<std::stringstream> bio) {
     return current == end;
 }
 
-//std::string normalize_response_path(const std::string& path) {
-//    return normalize_package_path(path);
-//}
+// normalize_response_path is defined in fileman.cpp (declared in netman.h)
 
 // Static member initialization
 uint32_t WininetComponent::curr_handle = 0x20;
@@ -434,8 +432,31 @@ std::vector<uint8_t> NetworkManager::get_dns_txt(const std::string& domain) {
     /*
     Return a configured DNS TXT record (if any)
     */
-    //TODO:
-    return {};
+    if (dns.txt.empty()) return {};
+
+    // Find matching TXT entry by domain name, fall back to "default"
+    std::string resolved_path;
+    for (auto& t : dns.txt) {
+        if (t.name == domain && !t.path.empty()) {
+            resolved_path = t.path;
+            break;
+        }
+    }
+    if (resolved_path.empty()) {
+        for (auto& t : dns.txt) {
+            if (t.name == "default" && !t.path.empty()) {
+                resolved_path = t.path;
+                break;
+            }
+        }
+    }
+    if (resolved_path.empty()) return {};
+
+    // Read the file data
+    std::string resolved = normalize_response_path(resolved_path);
+    std::ifstream f(resolved, std::ios::binary);
+    if (!f.good()) return {};
+    return {std::istreambuf_iterator<char>(f), {}};
 }
 
 std::string NetworkManager::ip_lookup(const std::string& ip) {

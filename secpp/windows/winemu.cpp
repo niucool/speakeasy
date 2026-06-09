@@ -396,6 +396,15 @@ void WindowsEmulator::on_run_complete() {
     run_complete = true;
 }
 
+// Python win32.py:603
+// def exit_process(self):
+//     self.enable_code_hook()
+//     self.run_complete = True
+void WindowsEmulator::exit_process() {
+    enable_code_hook();
+    on_run_complete();
+}
+
 void WindowsEmulator::setup_user_shared_data() {
     constexpr uint64_t KUSER_SHARED_X86  = 0xFFDF0000;
     constexpr uint64_t KUSER_SHARED_AMD64 = 0xFFFFF78000000000ULL;

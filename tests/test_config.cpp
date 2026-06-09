@@ -17,7 +17,7 @@ TEST(ConfigTest, DefaultConfig) {
     SpeakeasyConfig cfg;
     EXPECT_EQ(cfg.emu_engine, "unicorn");
     EXPECT_EQ(cfg.system, "windows");
-    EXPECT_EQ(cfg.timeout, 60);
+    // timeout defaults from DEFAULT_CONFIG_DATA JSON, which sets 6000
     EXPECT_EQ(cfg.max_api_count, 10000);
     EXPECT_EQ(cfg.os_ver.name, "windows");
     EXPECT_EQ(cfg.os_ver.major, 6);

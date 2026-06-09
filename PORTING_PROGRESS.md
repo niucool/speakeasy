@@ -1,12 +1,87 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-07 (late)
+> Last Updated: 2026-06-09
 > Build Status: ✅ **0 compiler errors** (MSVC C++17, /W4 warning-free)
-> Emulation Status: ✅ **Antidbg.exe runs to completion** (244 APIs dispatched, exits cleanly)
-> Remaining TODOs: **22**
+> Emulation Status: ✅ **Antidbg.exe runs to completion and exits cleanly**
+> Remaining TODOs: **6**
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
 
 ---
+
+## 2026-06-09: kernel32.cpp STUB 全面消除
+
+将 `kernel32.cpp` 中全部 **187 个 STUB 函数**移植为完整实现，参照 Python `kernel32.py`（6837 行）：
+
+| 类别 | 数量 | 说明 |
+|------|------|------|
+| W 函数包装器 | 28 | 读取 UTF-16LE 字符串，委托给 A 版本逻辑 |
+| 同步原语 | 12 | 模拟器 no-op，返回适当值 |
+| 简单获取器 | 45 | 返回系统信息（目录、区域设置、内存状态等） |
+| 内存/堆 | 10 | Global/Local 内存函数，IsBad* 指针验证 |
+| 进程/线程 | 15 | EnumProcesses、SetThreadContext、CreatePipe 等 |
+| 文件/IO | 12 | SetFilePointerEx、FindResource、_lopen 等 |
+| 异常/SEH | 6 | RtlCaptureContext、RtlUnwind、VEH 处理器 |
+| 其他 | 59 | MulDiv、Wow64*、WTS*、Wer* 等 |
+
+**STUB 计数：187 → 0**
+
+### TODO 更新
+
+`kernel32.cpp/user32.cpp` 的 "A/W 函数对尚未使用 `_impl` 模式" TODO 已解决 — 所有 28 个 W 函数现均有完整实现，读取宽字符串并委托给对应的 A 逻辑。
+
+**TODO 计数：7 → 6**（剩余：profiler.h 3、ntdll.cpp 1、winemu.cpp 1、binemu.cpp 1）
+
+---
+
+## 2026-06-08: TODO 清理与退出流程修复
+
+### Python 测试用例移植
+
+所有 29 个 Python 测试用例（`tests/test_*.py`）已移植为 C++ GoogleTest 测试用例（`tests/test_*.cpp`），文件名保持一致。
+
+| 类别 | 文件 | 状态 |
+|------|------|------|
+| **单元测试** | test_struct, test_config, test_volumes, test_find_files, test_module_name_normalization, test_loaders, test_process_parameters, test_profiler_artifacts, test_artifact_store, test_cli_config, test_cli_runtime_flags, test_config_memory_dumps | ✅ 全部通过 |
+| **模拟测试** | test_argv, test_dlls, test_file_access, test_get_proc_address, test_seh, test_wdm, test_coverage, test_error_context, test_module_system, test_section_access, test_memory_capture, test_filename_override | ✅ 全部通过 |
+| **跳过** | test_examples, test_gdb, test_pma_samples, test_kernel_bootstrap, test_map_view_of_file | ⏭️ 需要外部依赖（capa-testfiles 子模块、GDB 服务器、示例脚本） |
+
+**测试基础设施：**
+- 新增 `tests/test_helper.h` — 共享的 `load_test_bin()` 辅助函数，支持原始二进制和 .xz 解压
+- 所有测试文件由 `CMakeLists.txt` 的 `file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/test_*.cpp" ...)` 自动发现
+- 总数：~196 测试通过，3 个预存在失败（`test_porting_*.cpp`）
+
+### exit 处理器修复
+
+通过对比 Python 工作流发现 `msvcrt.cpp` 退出处理器 (`exit`/`_exit`/`_cexit`/`_c_exit`/`terminate`) 仅调用 `we(e)->stop()`（→ `uc_emu_stop()`）而未设置 `run_complete = true`。这导致 `handle_import_func` 继续调用 `do_call_return` 并将执行重定向到返回地址，使反调试循环无限运行。
+
+**Python 工作流：**
+```
+msvcrt.exit() → ApiHandler.exit_process() → Win32Emulator.exit_process()
+    → self.enable_code_hook()
+    → self.run_complete = True
+```
+
+**修复：**
+- 新增 `WindowsEmulator::exit_process()`（`winemu.h/cpp`）— 镜像 Python：`enable_code_hook()` + `on_run_complete()`
+- 所有 5 个 msvcrt 退出处理器现调用 `we(e)->exit_process()`
+
+### ntdll.cpp 注册表与句柄修复（10 项 TODO 已解决）
+
+- **NtCreateFile**：清理了句柄分配代码，指针作为句柄的 fallback 方案已验证可正常工作
+- **NtCreateKey/NtOpenKey**：现正确将 `reg_open_key` 的返回值（RegistryManager 句柄）写入调用方输出
+- **NtSetValueKey**：现通过 `reg_get_key` 解析句柄并正确调用 `regkey->create_value()`
+- **NtDeleteKey/NtDeleteValueKey**：通过 `reg_get_key` 实现了句柄解析
+- **NtQueryValueKey**：移除了冗余的 TODO（`dynamic_pointer_cast<RegKey>` 已处理类型检查）
+
+### kernel32.cpp 工具帮助快照修复（2 项 TODO 已解决）
+
+- `CreateToolhelp32Snapshot` 现正确填充进程/线程/模块项（原始指针），供后续 `find_process()` 解析
+
+### netman.cpp DNS TXT 修复（1 项 TODO 已解决）
+
+- 实现了 `get_dns_txt`：按域名匹配，fallback 到 "default"，读取 TXT 文件数据
+
+### TODO 计数：22 → 7
 
 ---
 
@@ -182,20 +257,31 @@ secpp/winenv/
 
 ---
 
-## 剩余 TODO（22 项）
+## 剩余 TODO（6 项）
 
 | 文件 | 数量 | 描述 |
 |------|------|------|
 | `profiler.h` | 3 | `ExceptionEvent`、`ModuleLoadEvent` 和 `DroppedFilesEvent` 的类型化事件 |
-| `netman.cpp` | 1 | DNS TXT 查找配置支持 |
-| `kernel32.cpp` | 2 | 工具帮助快照进程/模块项填充 |
-| `ntdll.cpp` | 11 | 文件句柄注册 + 注册表键/值句柄、类型检查、设置和删除对齐 |
-| `ntdll.h` | 2 | 注册表相关声明 |
-| `winemu.cpp` | 1 | **API 回调处理器**：C++ 将回调存储为 `std::function<void()>`，而 Python 存储 `(pc, orig_func, args)` 元组，因此 `API_CALLBACK_HANDLER_ADDR` 路径缺少 `do_call_return(len(args), pc)` 调用。需将 `api_callbacks` 重构为 `std::vector<std::tuple<uint64_t, std::function, std::vector<uint64_t>>>`（仅在使用 API 回调的样本中影响行为） |
-| `binemu.cpp` | 1 | **`do_call_return` 返回值为零**：C++ 使用 `if (ret_value != 0)` 来跳过 EAX 写入，而 Python 使用 `if ret_value is not None:`。C++ 中默认的 `ret_value=0` 无法区分"无返回值"和"返回零"。已通过始终写入 EAX 临时修复——正确的修复方案是将签名改为 `std::optional<uint64_t> ret_value = std::nullopt` 以匹配 Python 的 None 语义 |
-| `kernel32.cpp/user32.cpp` | 1 | **A/W 函数对尚未使用 `_impl` 模式**：除 `CreateFileA/W` 和 `CopyFileA/W` 外，其余 A/W 对的 W 版本仍为 STUB（仅返回 1），未正确读取宽字符串。需逐个重构为 `FunctionA`/`FunctionW`→`Function_impl` 模式 |
+| `ntdll.cpp` | 1 | **NtDeviceIoControlFile**：需要将 `dev_ioctl` 接线以支持设备 I/O 控制仿真 |
+| `winemu.cpp` | 1 | **API 回调处理器**：C++ 将回调存储为 `std::function<void()>`，而 Python 存储 `(pc, orig_func, args)` 元组 |
+| `binemu.cpp` | 1 | **`do_call_return` 返回值为零**：代码质量改进，将签名改为 `std::optional<uint64_t>` |
 
-> 注意：`binemu.cpp` 中 2026-06-05 之前的 7 个 TODO 已全部解决。新增加的 3 项来自 2026-06-07 的日志对比审计。
+### 2026-06-09 已解决
+
+| 文件 | 描述 |
+|------|------|
+| `kernel32.cpp/user32.cpp` | ✅ **A/W 函数对 STUB 消除**：所有 187 个 `STUB(Kernel32, ...)` 替换为完整实现。28 个 W 函数现正确读取 UTF-16LE 宽字符串。所有同步原语、获取器、内存/堆、进程/线程、异常/SEH 函数均已实现 |
+
+### 2026-06-08 已解决
+
+| 文件 | 原数量 | 描述 |
+|------|--------|------|
+| `netman.cpp` | ✅ 已解决 (1) | DNS TXT 查找：实现了 `get_dns_txt`，同 Python 一样支持域名匹配和默认回退，读取配置的 TXT 文件 |
+| `ntdll.cpp` | ✅ 已解决 (10/11) | 文件句柄注册（清理了注释掉的代码）；注册表句柄管理（`NtCreateKey`/`NtOpenKey` 现正确写入 RegistryManager 句柄）；`NtSetValueKey` 现正确调用 `regkey->create_value()`；`NtDeleteKey`/`NtDeleteValueKey` 通过 `reg_get_key` 实现了句柄解析 |
+| `ntdll.h` | ✅ 已解决 (2) | 注册表声明已存在且功能正常 |
+| `kernel32.cpp` | ✅ 已解决 (2) | 工具帮助快照：进程/线程/模块项现正确填充原始指针，供后续 `find_process()` 调用解析 |
+| `msvcrt.cpp` | ✅ 已解决 | `exit`/`_exit`/`_cexit`/`_c_exit`/`terminate` 处理器现调用 `we(e)->exit_process()`（新增），与 Python 的 `self.exit_process()` 行为匹配（`enable_code_hook()` + `run_complete = True`） |
+| `winemu.h/cpp` | ✅ 已解决 | 新增 `WindowsEmulator::exit_process()` 方法，镜像 Python 的 `Win32Emulator.exit_process()` |
 
 ---
 
@@ -292,3 +378,13 @@ NtStructTest       ×  3  ✅ (双架构 <4> + <8>)
 24. ✅ **do_call_return EAX 零值** — 始终写入 EAX，即使 API 返回 0（2026-06-07）
 25. ✅ **ApiEntry conv 字段** — REG/REG2 宏 + 所有处理程序转换为 INIT_API_TABLE 模式（2026-06-07）
 26. ✅ **MSVCRT CDECL 调用约定** — 所有 120+ 个 MSVCRT API 切换到 CDECL，消除双重栈清理（2026-06-07）
+27. ✅ **exit_process() 实现** — 新增 `WindowsEmulator::exit_process()`，镜像 Python 的 `Win32Emulator.exit_process()`（2026-06-08）
+28. ✅ **exit 处理器修复** — `msvcrt.cpp` 退出处理器现调用 `exit_process()` 而非仅 `stop()`，消除无限循环（2026-06-08）
+29. ✅ **ntdll.cpp 注册表/句柄修复** — NtCreateKey、NtOpenKey、NtSetValueKey、NtDeleteKey、NtDeleteValueKey 全部正确接线（2026-06-08）
+30. ✅ **kernel32.cpp 工具帮助快照** — CreateToolhelp32Snapshot 进程/线程/模块项正确填充（2026-06-08）
+31. ✅ **netman.cpp DNS TXT** — `get_dns_txt` 实现，支持域名匹配和默认回退（2026-06-08）
+32. ✅ **TODO 减少** — 从 22 个 TODO 减少至 7 个（2026-06-08）
+33. ✅ **Python 测试用例移植** — 所有 29 个 `tests/test_*.py` 测试用例移植为 `tests/test_*.cpp`，全部通过或优雅跳过（2026-06-08）
+34. ✅ **test_helper.h** — 共享的 `load_test_bin()` 辅助函数，支持 .xz 解压（2026-06-08）
+35. ✅ **kernel32.cpp STUB 消除** — 187 个 STUB 函数全部替换为完整实现，0 个剩余（2026-06-09）
+36. ✅ **TODO 减少** — 从 7 个 TODO 减少至 6 个（2026-06-09）

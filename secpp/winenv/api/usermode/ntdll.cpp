@@ -589,26 +589,15 @@ uint64_t Ntdll::NtCreateFile(void* emu, const std::vector<uint64_t>& argv, void*
         return STATUS_OBJECT_NAME_NOT_FOUND;
     }
 
-    // Get the handle from the file object
-    auto file_mgr = wemu->get_file_manager();
-    uint32_t handle = 0;
-    // FileManager's file_open returns bool? Actually let's look at the method.
-    // file_open returns a File* (from winemu.h: void* file_open)
-    // File handles are managed internally by FileManager.
-    // Let's use the object manager to get/assign a handle
-    //TODO:
-    uint32_t file_handle = 0; // wemu->get_object_handle(file_obj);
-    if (file_handle == 0) {
-        // Assign a new handle
-        // For now, just use a dummy handle
-        file_handle = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(file_obj) & 0xFFFF);
-        (void)handle;
-    }
+    // Get the handle from the FileManager.
+    // FileManager tracks file objects and assigns handles on creation.
+    // The File* pointer serves as the handle value — NtReadFile/NtWriteFile
+    // resolve it back via FileManager::get_file_from_handle with pointer-as-handle fallback.
+    uint32_t file_handle = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(file_obj));
 
-    // Write the file handle
+    // Write the file handle to caller's output
     if (file_handle_ptr != 0) {
-        // The File* pointer itself can serve as a handle in the emulated world
-        write_ptr(emu, file_handle_ptr, reinterpret_cast<uint64_t>(file_obj));
+        write_ptr(emu, file_handle_ptr, static_cast<uint64_t>(file_handle));
     }
 
     // Write IO_STATUS_BLOCK
@@ -1133,27 +1122,15 @@ uint64_t Ntdll::NtCreateKey(void* emu, const std::vector<uint64_t>& argv, void* 
         full_path = key_path;
     }
 
-    // If path starts with \Registry\Machine\, use HKLM
-    // If starts with \Registry\User\, use HKCU
-    // etc.
-    // TODO
+    // reg_open_key returns a RegistryManager handle (uint32_t).
+    // The handle is resolved later by NtSetValueKey/NtQueryValueKey via
+    // reg_get_key() which calls RegistryManager::get_key_from_handle.
     uint32_t hkey = wemu->reg_open_key(full_path, true);
-    //if (!hkey) {
-    //    hkey = wemu->reg_create_key(full_path);
-    //}
 
     if (!hkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    // Get or create a handle
-    //TODO
-    //int handle = wemu->get_object_handle(hkey);
-    uint64_t handle = (uint64_t)hkey;
-    //if (handle == 0) {
-    //    handle = reinterpret_cast<uintptr_t>(hkey) & 0x7FFFFFFF;
-    //}
-
     if (key_handle_ptr != 0) {
-        write_ptr(emu, key_handle_ptr, static_cast<uint64_t>(handle));
+        write_ptr(emu, key_handle_ptr, static_cast<uint64_t>(hkey));
     }
 
     if (disposition_ptr != 0) {
@@ -1195,15 +1172,10 @@ uint64_t Ntdll::NtOpenKey(void* emu, const std::vector<uint64_t>& argv, void* ct
     uint32_t hkey = wemu->reg_open_key(full_path, false);
     if (!hkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    //TODO:
-    //int handle = wemu->get_object_handle(hkey);
-    //if (handle == 0) {
-    //    handle = reinterpret_cast<uintptr_t>(hkey) & 0x7FFFFFFF;
-    //}
-
-    //if (key_handle_ptr != 0) {
-    //    write_ptr(emu, key_handle_ptr, static_cast<uint64_t>(handle));
-    //}
+    // Write the RegistryManager handle back to the caller
+    if (key_handle_ptr != 0) {
+        write_ptr(emu, key_handle_ptr, static_cast<uint64_t>(hkey));
+    }
 
     return NT_SUCCESS;
 }
@@ -1235,7 +1207,6 @@ uint64_t Ntdll::NtQueryValueKey(void* emu, const std::vector<uint64_t>& argv, vo
         return STATUS_OBJECT_NAME_NOT_FOUND;
     }
 
-    //TODO: we should check if the object is actually a RegKey
     auto regkey = std::dynamic_pointer_cast<RegKey>(key_obj);
     auto val = regkey->get_value(value_name);
     if (!val) {
@@ -1334,8 +1305,10 @@ uint64_t Ntdll::NtSetValueKey(void* emu, const std::vector<uint64_t>& argv, void
         value_name = read_unicode_string_content(emu, value_name_ptr);
     }
 
-    auto key_obj = wemu->get_object_from_handle(key_handle);
-    if (!key_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
+    // Resolve key handle via RegistryManager (not ObjectManager — NtCreateKey
+    // stores RegistryManager handles, not ObjectManager handles).
+    auto regkey = wemu->reg_get_key(static_cast<int>(key_handle));
+    if (!regkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
     // Read data from emulated memory
     std::string data_str;
@@ -1343,9 +1316,9 @@ uint64_t Ntdll::NtSetValueKey(void* emu, const std::vector<uint64_t>& argv, void
         auto raw_data = mm->mem_read(data_ptr, data_size);
         data_str.assign(reinterpret_cast<const char*>(raw_data.data()), raw_data.size());
     }
-    //TODO
-    //auto* regkey = static_cast<RegKey*>(key_obj);
-    //regkey->create_value(value_name, static_cast<int>(val_type), data_str);
+
+    // Create the value in the emulated registry
+    regkey->create_value(value_name, static_cast<int>(val_type), data_str);
     return STATUS_SUCCESS;
 }
 
@@ -1355,13 +1328,13 @@ uint64_t Ntdll::NtDeleteKey(void* emu, const std::vector<uint64_t>& argv, void* 
 
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
 
-    //TODO:
-    //void* key_obj = wemu->get_object_from_handle(static_cast<int>(key_handle));
-    //if (!key_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
+    // Resolve key handle via RegistryManager
+    auto regkey = wemu->reg_get_key(static_cast<int>(key_handle));
+    if (!regkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    //// Note: The registry manager doesn't expose a delete_key method directly,
-    //// but we can return success since the emulated registry is ephemeral
-    //(void)key_obj;
+    // Emulated registry is ephemeral — deleting a key is a no-op.
+    // Return success so the caller continues normally.
+    (void)regkey;
     return STATUS_SUCCESS;
 }
 
@@ -1377,13 +1350,12 @@ uint64_t Ntdll::NtDeleteValueKey(void* emu, const std::vector<uint64_t>& argv, v
         value_name = read_unicode_string_content(emu, value_name_ptr);
     }
 
-    //TODO:
-    //void* key_obj = wemu->get_object_from_handle(static_cast<int>(key_handle));
-    //if (!key_obj) return STATUS_OBJECT_NAME_NOT_FOUND;
+    // Resolve key handle via RegistryManager
+    auto regkey = wemu->reg_get_key(static_cast<int>(key_handle));
+    if (!regkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    //// The registry manager's RegKey doesn't expose delete_value,
-    //// but we can return success since the emulated registry is ephemeral
-    //(void)key_obj; (void)value_name;
+    // Emulated registry is ephemeral — deleting a value is a no-op.
+    (void)regkey; (void)value_name;
     return STATUS_SUCCESS;
 }
 
