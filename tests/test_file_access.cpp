@@ -1,5 +1,5 @@
 /**
- * test_file_access.cpp — Port of test_file_access.py
+ * test_file_access.cpp -- Port of test_file_access.py
  * Tests file access emulation: NtCreateFile, NtReadFile, and printf output.
  */
 

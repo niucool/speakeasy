@@ -447,9 +447,18 @@ void* Speakeasy::get_registry_key(int handle, const std::string& path) {
 
 void* Speakeasy::get_address_map(uint64_t addr) { (void)addr; return nullptr; }
 
-std::vector<void*> Speakeasy::get_user_modules() { return {}; }
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Speakeasy::get_user_modules() {
+    if (!emu) return {};
+    auto* win32 = dynamic_cast<Win32Emulator*>(emu);
 
-std::vector<void*> Speakeasy::get_sys_modules() { return {}; }
+    return win32->get_user_modules();
+}
+
+std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Speakeasy::get_sys_modules() {
+    if (!emu) return {};
+    // System modules are not yet separately tracked; return empty for now
+    return {};
+}
 
 uint64_t Speakeasy::mem_alloc(size_t size, uint64_t base, const std::string& tag) {
     return emu->mem_map(size, base, PERM_MEM_READ | PERM_MEM_WRITE, tag);

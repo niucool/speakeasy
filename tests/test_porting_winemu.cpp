@@ -450,6 +450,11 @@ TEST(WindowsEmulatorTest, LogApiValidation) {
     emu.set_curr_run(mock_run);
     emu.add_run(mock_run);
 
+    // Add to profiler's run tracking (normally done by _prepare_run_context)
+    auto prof = emu.get_profiler();
+    ASSERT_NE(prof, nullptr);
+    prof->add_run(mock_run);
+
     // Map some memory in the emulator so we can write a test string
     uint64_t str_addr = emu.mem_map(0x1000, 0x200000, common::PERM_MEM_RWX, "test.string");
     ASSERT_NE(str_addr, 0ULL);
@@ -470,9 +475,6 @@ TEST(WindowsEmulatorTest, LogApiValidation) {
     });
 
     // Check if the event was correctly logged to the profiler report
-    auto prof = emu.get_profiler();
-    ASSERT_NE(prof, nullptr);
-
     auto report = prof->get_report();
     ASSERT_EQ(report.entry_points.size(), 1ULL);
 

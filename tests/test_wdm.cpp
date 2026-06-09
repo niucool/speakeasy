@@ -1,5 +1,5 @@
 /**
- * test_wdm.cpp — Port of test_wdm.py
+ * test_wdm.cpp -- Port of test_wdm.py
  * Tests WDM driver emulation: device creation, symbolic links, IRP handlers.
  */
 

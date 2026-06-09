@@ -1,5 +1,5 @@
 /**
- * test_kernel_bootstrap.cpp — Port of test_kernel_bootstrap.py
+ * test_kernel_bootstrap.cpp -- Port of test_kernel_bootstrap.py
  * Tests kernel emulator bootstrap phase and import data allocation.
  *
  * NOTE: These tests require the WinKernelEmulator which is available
@@ -21,8 +21,8 @@ TEST(KernelBootstrapTest, CurrentProcessRequiresBootstrapPhase) {
     // This verifies the bootstrap phase guard in WinKernelEmulator
 
     speakeasy::SpeakeasyConfig cfg;
-    // Direct kernel emulator access — requires bootstrap
-    SUCCEED() << "Kernel bootstrap phase guard test — "
+    // Direct kernel emulator access -- requires bootstrap
+    SUCCEED() << "Kernel bootstrap phase guard test -- "
               << "requires full WinKernelEmulator instantiation";
 }
 

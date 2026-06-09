@@ -1,5 +1,5 @@
 /**
- * test_filename_override.cpp — Port of test_filename_override.py
+ * test_filename_override.cpp -- Port of test_filename_override.py
  * Tests the filename parameter on load_module.
  *
  * The Python Speakeasy.load_module accepts a `filename` keyword argument

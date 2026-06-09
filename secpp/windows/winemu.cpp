@@ -33,7 +33,9 @@ WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg,
       mem_tracing_enabled(false), tmp_code_hook(nullptr),
       run_complete(false), emu_complete(false),
       curr_exception_code(0), prev_pc(0), unhandled_exception_filter(0),
-      fs_addr(0), gs_addr(0) {
+      fs_addr(0), gs_addr(0),
+      return_hook(EMU_RETURN_ADDR),
+      exit_hook(EXIT_RETURN_ADDR) {
     regman = std::make_shared<RegistryManager>(config_.registry);
     fileman = std::make_shared<FileManager>(config_, this);
     netman = std::make_shared<NetworkManager>(config_.network);
@@ -3367,6 +3369,7 @@ bool WindowsEmulator::_hook_code_debug(void* emu, uint64_t addr, size_t size) {
 // def set_coverage_hooks(self):
 //     """Install coverage tracking code hook if enabled in config."""
 void WindowsEmulator::set_coverage_hooks() {
+    if (!config_.analysis.coverage) return;
     _register_code_hook(reinterpret_cast<void*>(code_coverage_trampoline), 1, 0);
 }
 

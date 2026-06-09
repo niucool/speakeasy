@@ -1,5 +1,5 @@
 /**
- * test_module_system.cpp — Port of test_module_system.py
+ * test_module_system.cpp -- Port of test_module_system.py
  * Tests the module system: static imports, GetProcAddress, module lookup,
  * PEB module list, and loader provenance.
  */
@@ -28,17 +28,19 @@ TEST(ModuleSystemTest, StaticImportDispatchesApiHandler) {
         se.run_module(module, true);
         auto report = se.get_report();
 
-        auto& ep = report.entry_points[0];
         bool found_msgbox = false;
-        if (ep.events.has_value()) {
-            for (auto* evt : *ep.events) {
-                if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
-                if (api && api->api_name.find("MessageBox") != std::string::npos) {
-                    found_msgbox = true;
-                    break;
+        for (auto& ep : report.entry_points) {
+            if (ep.events.has_value()) {
+                for (auto* evt : *ep.events) {
+                    if (!evt || evt->event != "api") continue;
+                    auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
+                    if (api && api->api_name.find("MessageBox") != std::string::npos) {
+                        found_msgbox = true;
+                        break;
+                    }
                 }
             }
+            if (found_msgbox) break;
         }
         EXPECT_TRUE(found_msgbox) << "MessageBox API not dispatched via static import";
     } catch (...) {
@@ -61,16 +63,17 @@ TEST(ModuleSystemTest, GetProcAddressDynamicResolution) {
         se.run_module(module, true);
         auto report = se.get_report();
 
-        auto& ep = report.entry_points[0];
         bool found_gpa = false, found_success = false;
-        if (ep.events.has_value()) {
-            for (auto* evt : *ep.events) {
-                if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
-                if (api && api->api_name == "kernel32.GetProcAddress") {
-                    found_gpa = true;
-                    if (!api->ret_val.empty() && api->ret_val != "0x0")
-                        found_success = true;
+        for (auto& ep : report.entry_points) {
+            if (ep.events.has_value()) {
+                for (auto* evt : *ep.events) {
+                    if (!evt || evt->event != "api") continue;
+                    auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
+                    if (api && api->api_name == "kernel32.GetProcAddress") {
+                        found_gpa = true;
+                        if (!api->ret_val.empty() && api->ret_val != "0x0")
+                            found_success = true;
+                    }
                 }
             }
         }

@@ -323,6 +323,8 @@ struct Report {
     std::optional<StringsReport> strings;
     std::optional<std::map<std::string, DataArtifact>> data;
     std::vector<EntryPoint> entry_points;
+    // Owns typed Event objects; raw pointers in EntryPoint::events point here.
+    std::vector<std::unique_ptr<events::Event>> event_store;
 
     nlohmann::json to_json() const {
         nlohmann::json j;

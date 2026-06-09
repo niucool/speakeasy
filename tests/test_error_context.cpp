@@ -1,5 +1,5 @@
 /**
- * test_error_context.cpp — Port of test_error_context.py
+ * test_error_context.cpp -- Port of test_error_context.py
  * Tests enriched exception context in ErrorInfo for invalid memory access.
  */
 
@@ -13,13 +13,13 @@
 
 namespace {
 
-// x86 shellcode: mov eax, 0xdeadbeef; mov eax, [eax]  — invalid read
+// x86 shellcode: mov eax, 0xdeadbeef; mov eax, [eax]  -- invalid read
 const std::vector<uint8_t> SC_INVALID_READ = {
     0xB8, 0xEF, 0xBE, 0xAD, 0xDE,  // mov eax, 0xDEADBEEF
     0x8B, 0x00                       // mov eax, [eax]
 };
 
-// x86 shellcode: mov eax, 0xdeadbeef; mov [eax], ebx  — invalid write
+// x86 shellcode: mov eax, 0xdeadbeef; mov [eax], ebx  -- invalid write
 const std::vector<uint8_t> SC_INVALID_WRITE = {
     0xB8, 0xEF, 0xBE, 0xAD, 0xDE,  // mov eax, 0xDEADBEEF
     0x89, 0x18                       // mov [eax], ebx

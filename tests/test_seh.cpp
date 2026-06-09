@@ -1,5 +1,5 @@
 /**
- * test_seh.cpp — Port of test_seh.py
+ * test_seh.cpp -- Port of test_seh.py
  * Tests SEH (Structured Exception Handling) dispatch during emulation.
  */
 

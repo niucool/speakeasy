@@ -1,5 +1,5 @@
 /**
- * test_memory_capture.cpp — Port of test_memory_capture.py
+ * test_memory_capture.cpp -- Port of test_memory_capture.py
  * Tests memory region capture/dump behavior during emulation.
  */
 

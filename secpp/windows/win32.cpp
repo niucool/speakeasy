@@ -204,7 +204,10 @@ std::shared_ptr<speakeasy::RuntimeModule> Win32Emulator::load_module(const std::
     if (!input_.empty()) {
         input_["image_base"] = std::to_string(pe->base);
     }
-    
+
+    // Register the loaded module so get_user_modules() can find it
+    modules.push_back(pe);
+
     return pe;
 }
 

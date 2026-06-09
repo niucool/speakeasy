@@ -1,5 +1,5 @@
 /**
- * test_dlls.cpp — Port of test_dlls.py
+ * test_dlls.cpp -- Port of test_dlls.py
  * Tests DLL emulation with entry points and API call verification.
  */
 

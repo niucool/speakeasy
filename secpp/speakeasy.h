@@ -214,12 +214,12 @@ public:
     /**
      * Get the address ranges of loaded user modules
      */
-    std::vector<void*> get_user_modules();
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> get_user_modules();
     
     /**
      * Get the address ranges of loaded system modules
      */
-    std::vector<void*> get_sys_modules();
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> get_sys_modules();
     
     /**
      * Allocate a block of memory in the emulation space

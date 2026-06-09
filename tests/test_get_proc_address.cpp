@@ -1,5 +1,5 @@
 /**
- * test_get_proc_address.cpp — Port of test_get_proc_address.py
+ * test_get_proc_address.cpp -- Port of test_get_proc_address.py
  * Tests GetProcAddress behavior for existing and missing functions.
  */
 
@@ -43,12 +43,12 @@ TEST(GetProcAddressTest, MissingFunctionReturnsZero) {
 
         ASSERT_GE(gpa_calls.size(), 4);
 
-        // 3rd call (index 2): AreFileApisANSI — should succeed
+        // 3rd call (index 2): AreFileApisANSI -- should succeed
         ASSERT_GE(gpa_calls[2]->args.size(), 2);
         EXPECT_EQ(gpa_calls[2]->args[1], "AreFileApisANSI");
         EXPECT_NE(gpa_calls[2]->ret_val, "0x0");
 
-        // 4th call (index 3): ThisFunctionIsNotExportedByKernel32 — should fail
+        // 4th call (index 3): ThisFunctionIsNotExportedByKernel32 -- should fail
         ASSERT_GE(gpa_calls[3]->args.size(), 2);
         EXPECT_EQ(gpa_calls[3]->args[1], "ThisFunctionIsNotExportedByKernel32");
         EXPECT_EQ(gpa_calls[3]->ret_val, "0x0");

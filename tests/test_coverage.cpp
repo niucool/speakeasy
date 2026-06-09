@@ -1,5 +1,5 @@
 /**
- * test_coverage.cpp — Port of test_coverage.py
+ * test_coverage.cpp -- Port of test_coverage.py
  * Tests that code coverage data is collected when coverage analysis is enabled.
  */
 

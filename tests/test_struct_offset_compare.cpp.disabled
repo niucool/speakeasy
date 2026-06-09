@@ -1,0 +1,265 @@
+// test_struct_offset_compare.cpp — Debug struct layout mismatches
+//
+// This test compares every field's offset and size against the corresponding
+// Windows SDK struct. It outputs diagnostic information to help identify
+// alignment/padding issues.
+//
+// NOTE: Our structs use #pragma pack(push, 1) while Windows SDK structs use
+// natural alignment. Field offsets WILL differ between pack(1) and natural
+// alignment. This test documents the differences for diagnostic purposes.
+// The key validation that struct sizes match is done in test_win_size_validation.cpp.
+
+#include <gtest/gtest.h>
+#include <cstddef>  // offsetof
+
+// ── Our struct defs ───────────────────────────────────────────
+#pragma push_macro("DELETE")
+#pragma push_macro("READ_CONTROL")
+#pragma push_macro("WRITE_DAC")
+#pragma push_macro("WRITE_OWNER")
+#pragma push_macro("SYNCHRONIZE")
+#pragma push_macro("GENERIC_READ")
+#pragma push_macro("GENERIC_WRITE")
+#pragma push_macro("GENERIC_EXECUTE")
+#pragma push_macro("GENERIC_ALL")
+#pragma push_macro("STATUS_SUCCESS")
+#pragma push_macro("STATUS_BREAKPOINT")
+#pragma push_macro("STATUS_SINGLE_STEP")
+#pragma push_macro("STATUS_ACCESS_VIOLATION")
+#pragma push_macro("STATUS_INVALID_HANDLE")
+#pragma push_macro("STATUS_INVALID_PARAMETER")
+#pragma push_macro("STATUS_UNSUCCESSFUL")
+#pragma push_macro("STATUS_INFO_LENGTH_MISMATCH")
+#pragma push_macro("STATUS_BUFFER_TOO_SMALL")
+#pragma push_macro("STATUS_NOT_SUPPORTED")
+#pragma push_macro("STATUS_OBJECT_NAME_NOT_FOUND")
+#pragma push_macro("STATUS_PROCEDURE_NOT_FOUND")
+#pragma push_macro("STATUS_OBJECT_TYPE_MISMATCH")
+#pragma push_macro("NonPagedPool")
+#pragma push_macro("PagedPool")
+#pragma push_macro("FILE_ATTRIBUTE_READONLY")
+#pragma push_macro("FILE_ATTRIBUTE_HIDDEN")
+#pragma push_macro("FILE_ATTRIBUTE_DIRECTORY")
+#pragma push_macro("FILE_ATTRIBUTE_NORMAL")
+
+#include "winenv/deffs/nt/ntoskrnl.h"
+#include "winenv/deffs/nt/ddk.h"
+#include "winenv/deffs/registry/reg.h"
+#include "winenv/deffs/usb.h"
+#include "winenv/deffs/wdf.h"
+#include "winenv/deffs/wsk.h"
+#include "winenv/deffs/wininet.h"
+#include "winenv/deffs/ndis/ndis.h"
+#include "winenv/deffs/wfp/fwpmtypes.h"
+#include "winenv/deffs/winsock/ws2_32.h"
+#include "winenv/deffs/winsock/winsock.h"
+#include "winenv/deffs/windows/windef.h"
+#include "winenv/deffs/windows/kernel32.h"
+#include "winenv/deffs/windows/user32.h"
+#include "winenv/deffs/windows/shell32.h"
+#include "winenv/deffs/windows/advapi32.h"
+#include "winenv/deffs/windows/iphlpapi.h"
+#include "winenv/deffs/windows/netapi32.h"
+#include "winenv/deffs/windows/windows.h"
+#include "winenv/deffs/windows/com.h"
+
+#pragma pop_macro("DELETE")
+#pragma pop_macro("READ_CONTROL")
+#pragma pop_macro("WRITE_DAC")
+#pragma pop_macro("WRITE_OWNER")
+#pragma pop_macro("SYNCHRONIZE")
+#pragma pop_macro("GENERIC_READ")
+#pragma pop_macro("GENERIC_WRITE")
+#pragma pop_macro("GENERIC_EXECUTE")
+#pragma pop_macro("GENERIC_ALL")
+#pragma pop_macro("STATUS_SUCCESS")
+#pragma pop_macro("STATUS_BREAKPOINT")
+#pragma pop_macro("STATUS_SINGLE_STEP")
+#pragma pop_macro("STATUS_ACCESS_VIOLATION")
+#pragma pop_macro("STATUS_INVALID_HANDLE")
+#pragma pop_macro("STATUS_INVALID_PARAMETER")
+#pragma pop_macro("STATUS_UNSUCCESSFUL")
+#pragma pop_macro("STATUS_INFO_LENGTH_MISMATCH")
+#pragma pop_macro("STATUS_BUFFER_TOO_SMALL")
+#pragma pop_macro("STATUS_NOT_SUPPORTED")
+#pragma pop_macro("STATUS_OBJECT_NAME_NOT_FOUND")
+#pragma pop_macro("STATUS_PROCEDURE_NOT_FOUND")
+#pragma pop_macro("STATUS_OBJECT_TYPE_MISMATCH")
+#pragma pop_macro("NonPagedPool")
+#pragma pop_macro("PagedPool")
+#pragma pop_macro("FILE_ATTRIBUTE_READONLY")
+#pragma pop_macro("FILE_ATTRIBUTE_HIDDEN")
+#pragma pop_macro("FILE_ATTRIBUTE_DIRECTORY")
+#pragma pop_macro("FILE_ATTRIBUTE_NORMAL")
+
+// ── Windows SDK ───────────────────────────────────────────────
+#define WIN32_LEAN_AND_MEAN
+#define _WIN32_WINNT 0x0601
+#include <windows.h>
+#include <tlhelp32.h>
+#include <winternl.h>
+#include <winuser.h>
+#include <winbase.h>
+#include <winnt.h>
+#include <ws2def.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#include <shellapi.h>
+#include <winreg.h>
+#include <wininet.h>
+#include <lmwksta.h>
+
+namespace ns = speakeasy::deffs;
+
+// ── Helpers ───────────────────────────────────────────────────
+#define CHECK_SIZE(struct_name, our_sz, win_sz) \
+    EXPECT_EQ((our_sz), (win_sz)) \
+        << "  " << struct_name << ": our=" << (our_sz) << " win=" << (win_sz)
+
+// Field diagnostic: prints our field offset vs Windows SDK offset.
+// Does NOT assert equality — just outputs the values for debugging.
+// pack(1) structs will naturally have different offsets than native-aligned SDK.
+#define DIAG_FIELD(struct_name, field, our_type, win_type, our_pod, win_sdk) \
+    do { \
+        auto o = offsetof(our_pod, field); \
+        auto w = offsetof(win_sdk, field); \
+        auto os = sizeof(our_type); \
+        auto ws = sizeof(win_type); \
+        std::cout << "  " << struct_name << "::" << #field \
+                  << ": our_offset=" << o << " win_offset=" << w \
+                  << " our_size=" << os << " win_size=" << ws; \
+        if (o != w) std::cout << " *** DIFF (pack(1) vs natural alignment)"; \
+        std::cout << std::endl; \
+    } while(0)
+
+// ═══════════════════════════════════════════════════════════════
+// MEMORY_BASIC_INFORMATION — SIZE ONLY (pack(1) offsets differ)
+// ═══════════════════════════════════════════════════════════════
+
+TEST(OffsetCompare, MEMORY_BASIC_INFORMATION) {
+    size_t win_sz = sizeof(::MEMORY_BASIC_INFORMATION);
+    size_t our_sz = ns::MEMORY_BASIC_INFORMATION<sizeof(void*)>().sizeof_obj();
+    CHECK_SIZE("MEMORY_BASIC_INFORMATION", our_sz, win_sz);
+
+    DIAG_FIELD("MBI", BaseAddress, void*, void*,
+        ns::MEMORY_BASIC_INFORMATION_POD<sizeof(void*)>, ::MEMORY_BASIC_INFORMATION);
+    DIAG_FIELD("MBI", AllocationBase, void*, void*,
+        ns::MEMORY_BASIC_INFORMATION_POD<sizeof(void*)>, ::MEMORY_BASIC_INFORMATION);
+    DIAG_FIELD("MBI", AllocationProtect, uint32_t, DWORD,
+        ns::MEMORY_BASIC_INFORMATION_POD<sizeof(void*)>, ::MEMORY_BASIC_INFORMATION);
+    DIAG_FIELD("MBI", RegionSize, void*, void*,
+        ns::MEMORY_BASIC_INFORMATION_POD<sizeof(void*)>, ::MEMORY_BASIC_INFORMATION);
+    DIAG_FIELD("MBI", State, uint32_t, DWORD,
+        ns::MEMORY_BASIC_INFORMATION_POD<sizeof(void*)>, ::MEMORY_BASIC_INFORMATION);
+    DIAG_FIELD("MBI", Protect, uint32_t, DWORD,
+        ns::MEMORY_BASIC_INFORMATION_POD<sizeof(void*)>, ::MEMORY_BASIC_INFORMATION);
+    DIAG_FIELD("MBI", Type, uint32_t, DWORD,
+        ns::MEMORY_BASIC_INFORMATION_POD<sizeof(void*)>, ::MEMORY_BASIC_INFORMATION);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OSVERSIONINFOEX
+// ═══════════════════════════════════════════════════════════════
+
+TEST(OffsetCompare, OSVERSIONINFOEX) {
+    auto win_sz = sizeof(::OSVERSIONINFOEX);
+    auto our_sz = ns::OSVERSIONINFOEX().sizeof_obj();
+    CHECK_SIZE("OSVERSIONINFOEX", our_sz, win_sz);
+
+    DIAG_FIELD("OSVINFOEX", dwOSVersionInfoSize, uint32_t, DWORD,
+        ns::OSVERSIONINFOEX_POD, ::OSVERSIONINFOEX);
+    DIAG_FIELD("OSVINFOEX", dwMajorVersion, uint32_t, DWORD,
+        ns::OSVERSIONINFOEX_POD, ::OSVERSIONINFOEX);
+    DIAG_FIELD("OSVINFOEX", dwBuildNumber, uint32_t, DWORD,
+        ns::OSVERSIONINFOEX_POD, ::OSVERSIONINFOEX);
+    DIAG_FIELD("OSVINFOEX", szCSDVersion, uint8_t[128], CHAR[128],
+        ns::OSVERSIONINFOEX_POD, ::OSVERSIONINFOEX);
+    DIAG_FIELD("OSVINFOEX", wServicePackMajor, uint16_t, WORD,
+        ns::OSVERSIONINFOEX_POD, ::OSVERSIONINFOEX);
+    DIAG_FIELD("OSVINFOEX", wSuiteMask, uint16_t, WORD,
+        ns::OSVERSIONINFOEX_POD, ::OSVERSIONINFOEX);
+    DIAG_FIELD("OSVINFOEX", wProductType, uint8_t, BYTE,
+        ns::OSVERSIONINFOEX_POD, ::OSVERSIONINFOEX);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WNDCLASSEX
+// ═══════════════════════════════════════════════════════════════
+
+TEST(OffsetCompare, WNDCLASSEX) {
+    ::WNDCLASSEX wc_win;
+    auto win_sz = sizeof(wc_win);
+    auto our_sz = ns::WNDCLASSEX<sizeof(void*)>().sizeof_obj();
+    CHECK_SIZE("WNDCLASSEX", our_sz, win_sz);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WSAData
+// ═══════════════════════════════════════════════════════════════
+
+TEST(OffsetCompare, WSAData) {
+    auto win_sz = sizeof(::WSADATA);
+    auto our_sz = ns::WSAData<sizeof(void*)>().sizeof_obj();
+    CHECK_SIZE("WSAData", our_sz, win_sz);
+
+    DIAG_FIELD("WSAData", wVersion, uint16_t, WORD,
+        ns::WSAData_POD<sizeof(void*)>, ::WSADATA);
+    DIAG_FIELD("WSAData", wHighVersion, uint16_t, WORD,
+        ns::WSAData_POD<sizeof(void*)>, ::WSADATA);
+    DIAG_FIELD("WSAData", szDescription, uint8_t[257], CHAR[257],
+        ns::WSAData_POD<sizeof(void*)>, ::WSADATA);
+    DIAG_FIELD("WSAData", szSystemStatus, uint8_t[129], CHAR[129],
+        ns::WSAData_POD<sizeof(void*)>, ::WSADATA);
+    DIAG_FIELD("WSAData", iMaxSockets, uint16_t, WORD,
+        ns::WSAData_POD<sizeof(void*)>, ::WSADATA);
+    DIAG_FIELD("WSAData", iMaxUdpDg, uint16_t, WORD,
+        ns::WSAData_POD<sizeof(void*)>, ::WSADATA);
+    DIAG_FIELD("WSAData", lpVendorInfo, void*, char*,
+        ns::WSAData_POD<sizeof(void*)>, ::WSADATA);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WKSTA_INFO_101 / WKSTA_INFO_102
+// ═══════════════════════════════════════════════════════════════
+
+TEST(OffsetCompare, WKSTA_INFO_101) {
+    auto win_sz = sizeof(::WKSTA_INFO_101);
+    auto our_sz = ns::WKSTA_INFO_101<sizeof(void*)>().sizeof_obj();
+    CHECK_SIZE("WKSTA_INFO_101", our_sz, win_sz);
+}
+
+TEST(OffsetCompare, WKSTA_INFO_102) {
+    auto win_sz = sizeof(::WKSTA_INFO_102);
+    auto our_sz = ns::WKSTA_INFO_102<sizeof(void*)>().sizeof_obj();
+    CHECK_SIZE("WKSTA_INFO_102", our_sz, win_sz);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLIENT_ID
+// ═══════════════════════════════════════════════════════════════
+
+TEST(OffsetCompare, CLIENT_ID) {
+    auto win_sz = sizeof(::CLIENT_ID);
+    auto our_sz = ns::CLIENT_ID().sizeof_obj();
+    CHECK_SIZE("CLIENT_ID", our_sz, win_sz);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONTEXT (x86) — size-only check, layout differs from x64
+// ═══════════════════════════════════════════════════════════════
+
+TEST(OffsetCompare, CONTEXT_x86) {
+    EXPECT_EQ(ns::CONTEXT().sizeof_obj(), 204);  // x86 CONTEXT is always 204
+    EXPECT_EQ(ns::CONTEXT64().sizeof_obj(), 1144);  // x64 minimal CONTEXT
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXCEPTION_RECORD
+// ═══════════════════════════════════════════════════════════════
+
+TEST(OffsetCompare, EXCEPTION_RECORD) {
+    auto win_sz = sizeof(::EXCEPTION_RECORD);
+    auto our_sz = ns::EXCEPTION_RECORD<sizeof(void*)>().sizeof_obj();
+    CHECK_SIZE("EXCEPTION_RECORD", our_sz, win_sz);
+}

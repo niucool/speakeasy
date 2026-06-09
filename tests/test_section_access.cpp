@@ -1,5 +1,5 @@
 /**
- * test_section_access.cpp — Port of test_section_access.py
+ * test_section_access.cpp -- Port of test_section_access.py
  * Tests PE section memory access tracking (reads, writes, execs per section).
  */
 

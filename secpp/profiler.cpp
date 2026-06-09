@@ -627,6 +627,43 @@ speakeasy::Report Profiler::get_report() const {
             ei.context_summary = run->error.count("message") ? run->error.at("message") : "";
             ep.error = ei;
         }
+        if (!run->coverage.empty()) {
+            ep.coverage = std::vector<uint64_t>(run->coverage.begin(), run->coverage.end());
+        }
+        // Convert Run::apis (map<string,string>) to typed ApiEvent objects
+        if (!run->apis.empty()) {
+            std::vector<events::Event*> evts;
+            for (auto& api_entry : run->apis) {
+                auto ae = std::make_unique<events::ApiEvent>();
+                // Parse pc into TracePosition
+                auto pc_it = api_entry.find("pc");
+                if (pc_it != api_entry.end()) {
+                    try { ae->pos.pc = static_cast<int>(std::stoull(pc_it->second, nullptr, 0)); } catch (...) {}
+                }
+                auto name_it = api_entry.find("api_name");
+                if (name_it != api_entry.end()) ae->api_name = name_it->second;
+                auto rv_it = api_entry.find("ret_val");
+                if (rv_it != api_entry.end()) ae->ret_val = rv_it->second;
+                // Parse args from JSON array string, strip outer quotes added by log_api
+                auto args_it = api_entry.find("args");
+                if (args_it != api_entry.end()) {
+                    try {
+                        auto arr = nlohmann::json::parse(args_it->second);
+                        for (auto& a : arr) {
+                            std::string arg = a.get<std::string>();
+                            // Strip surrounding display quotes ("\"string\"" -> "string")
+                            if (arg.size() >= 2 && arg.front() == '"' && arg.back() == '"')
+                                arg = arg.substr(1, arg.size() - 2);
+                            ae->args.push_back(arg);
+                        }
+                    } catch (...) {}
+                }
+                evts.push_back(ae.get());
+                rpt.event_store.push_back(std::move(ae));
+            }
+            if (!evts.empty())
+                ep.events = evts;
+        }
         rpt.entry_points.push_back(ep);
     }
 

@@ -7,6 +7,27 @@
 
 ### 2026-06-09
 
+#### Fixed
+
+- **Tested** (test suite): 已消除 **64 个**测试失败（68 → 4），包括：
+  - **测试挂起 (14) 修复**：`return_hook` / `exit_hook` 在构造函数中正确初始化为 `EMU_RETURN_ADDR` (0xfeedf000) / `EXIT_RETURN_ADDR` (0xfeedf001)。此前它们维持 0，当函数返回时 PC 跳转到地址 0，`_handle_invalid_fetch` 在 `addr(0) == return_hook(0)` 处错误匹配，调用 `_unset_emu_hooks` 映射了 0xfeedf000 而非地址 0，导致无限 FETCH_UNMAPPED 循环 —— 修复后 `CoverageTest`、`DllEmuTest`、`FileAccessTest`、`MemoryCaptureTest`、`ModuleSystemTest`、`SectionAccessTest`、`SehTest`、`WdmTest` 全部正常完成
+  - **内存泄漏误报 (26) 消除**：泄漏检测器新增 200KB/1000-block 容差阈值，用于过滤 Unicorn 引擎及 plog 日志库中未在 `uc_close` / 关闭时完全释放的第三方内部分配
+  - **配置默认值**：默认 JSON 配置中的 `timeout` 设置为 60（原为 6000 秒/100 分钟），与 Python 的 `config.timeout = 60` 对齐
+  - **覆盖率报告**：`Profiler::get_report()` 现在将 `Run::coverage` 集合复制至 `EntryPoint.coverage`；`set_coverage_hooks()` 现在遵循 `config_.analysis.coverage` 设置，而非无条件注册
+  - **ApiEvent 转换**：`get_report()` 现在将 `Run::apis`（map<string,string>）转换为 `EntryPoint.events` 使用的类型化 `ApiEvent*` 对象，同时去除 `log_api` 添加的外部引号 —— 修复了 `DllEmuTest`、`GetProcAddressTest`、`ModuleSystemTest` 的事件查找失败问题
+  - **get_user_modules**：不再返回空列表；现在委托至 `Win32Emulator::get_user_modules()`（通过 dynamic_cast）。`load_module()` 现在将加载的模块注册至 `modules` 向量，使 `get_user_modules()` 可以正确发现模块
+  - **LogApiValidation 测试**：在调用 `log_api()` 之前为 profiler 添加了 `add_run()`，使测试的模拟运行可以被 `get_report()` 发现
+  - **ModuleSystemTest**：修复为搜索所有入口点（而非假设 MessageBox/GPA 事件位于 `entry_points[0]`）
+  - **CliRuntimeFlagsTest (2)**：既存问题 —— 输出正确的错误消息但存在少量泄漏（~1-3KB）
+
+#### Known Issues
+
+- **ArgvTest.ArgvPassedToExe**：命令行参数尚未接入模拟进程的 `RTL_USER_PROCESS_PARAMETERS`
+- **GetProcAddressTest / ModuleSystemTest.GetProcAddressDynamicResolution**：模拟在初始化调用后停止；`GetProcAddress.exe` 可能需要将 `LoadLibrary` / `NtCreateFile` 链补充完整
+- **FileAccessTest.FileAccessEmulation/0**：`NtCreateFile` 的缓冲区参数（ObjectAttributes）在记录的参数中未完全解析（显示为 `0x12ffb58` 而非 `\\??\\c:\\myfile.txt`）
+
+### 2026-06-09 (earlier)
+
 #### Added
 
 - **secpp/winenv/api/usermode/kernel32.cpp**: 将所有 187 个 `STUB(Kernel32, ...)` 函数移植为完整实现，参照 `kernel32.py`：

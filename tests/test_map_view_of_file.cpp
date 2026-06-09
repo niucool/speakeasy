@@ -1,5 +1,5 @@
 /**
- * test_map_view_of_file.cpp — Port of test_map_view_of_file.py
+ * test_map_view_of_file.cpp -- Port of test_map_view_of_file.py
  * Tests that MapViewOfFile produces regions with readable protections.
  *
  * NOTE: This test requires capa-testfiles submodule with PMA samples.

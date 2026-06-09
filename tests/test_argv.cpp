@@ -1,5 +1,5 @@
 /**
- * test_argv.cpp — Port of test_argv.py
+ * test_argv.cpp -- Port of test_argv.py
  * Tests that command-line arguments are correctly passed to emulated executables.
  */
 
