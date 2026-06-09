@@ -124,7 +124,7 @@ struct USB_ENDPOINT_DESCRIPTOR_POD {
     uint8_t  bmAttributes       = 0;   // offset 3
     uint16_t wMaxPacketSize     = 0;   // offset 4
     uint8_t  bInterval          = 0;   // offset 6
-    uint8_t  pad                = 0;   // offset 7 → natural alignment pad to 8
+    uint8_t  pad                = 0;   // offset 7  natural alignment pad to 8
     // total = 8
 };
 

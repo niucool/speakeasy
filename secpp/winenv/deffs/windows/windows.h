@@ -47,7 +47,7 @@ struct SID_POD {
     uint8_t  Revision             = 0;   // offset 0
     uint8_t  SubAuthorityCount    = 0;   // offset 1
     uint8_t  IdentifierAuthority[6] = {};// offset 2
-    uint32_t SubAuthority         = 0;   // offset 8 → minimum 1 DWORD
+    uint32_t SubAuthority         = 0;   // offset 8  minimum 1 DWORD
     // Followed by more SubAuthority[SubAuthorityCount-1] of uint32 (variable)
     // Fixed header total = 12 (minimum SID size with 1 SubAuthority)
 };
@@ -158,7 +158,7 @@ struct EH4_SCOPETABLE_RECORD_POD<4> {
 template <>
 struct EH4_SCOPETABLE_RECORD_POD<8> {
     uint32_t EnclosingLevel  = 0;    // offset 0
-    uint32_t pad1            = 0;    // offset 4 → align FilterFunc
+    uint32_t pad1            = 0;    // offset 4  align FilterFunc
     uint64_t FilterFunc      = 0;    // offset 8
     uint64_t HandlerAddress  = 0;    // offset 16
     // total = 24
@@ -194,10 +194,10 @@ template <>
 struct EXCEPTION_RECORD_POD<8> {
     uint32_t ExceptionCode          = 0;   // offset  0
     uint32_t ExceptionFlags         = 0;   // offset  4
-    uint64_t ExceptionRecord        = 0;   // offset  8 (8-aligned ✓)
+    uint64_t ExceptionRecord        = 0;   // offset  8 (8-aligned )
     uint64_t ExceptionAddress       = 0;   // offset 16
     uint32_t NumberParameters       = 0;   // offset 24
-    uint32_t pad1                   = 0;   // offset 28 → align ExceptionInformation to 8
+    uint32_t pad1                   = 0;   // offset 28  align ExceptionInformation to 8
     uint64_t ExceptionInformation[15] = {};// offset 32 (120 bytes)
     // total = 152
 };
@@ -292,7 +292,7 @@ struct CONTEXT64_POD {
     uint16_t SegFs = 0;    // offset  62
     uint16_t SegGs = 0;    // offset  64
     uint16_t SegSs = 0;    // offset  66
-    uint8_t  _pad_eflags[4] = {}; // offset  68 → align EFlags to 72
+    uint8_t  _pad_eflags[4] = {}; // offset  68  align EFlags to 72
     uint64_t EFlags = 0;   // offset  72
     uint64_t Dr0    = 0;   // offset  80
     uint64_t Dr1    = 0;   // offset  88
@@ -317,11 +317,11 @@ struct CONTEXT64_POD {
     uint64_t R14 = 0;      // offset 240
     uint64_t R15 = 0;      // offset 248
     uint64_t Rip = 0;      // offset 256
-    // Header: M128A[2] = 32 bytes → offset 264
+    // Header: M128A[2] = 32 bytes  offset 264
     M128A_POD Header[2];   // offset 264
-    // Legacy: M128A[8] = 128 bytes → offset 296
+    // Legacy: M128A[8] = 128 bytes  offset 296
     M128A_POD Legacy[8];   // offset 296
-    // Xmm0-Xmm15: M128A[16] = 256 bytes → offset 424
+    // Xmm0-Xmm15: M128A[16] = 256 bytes  offset 424
     M128A_POD Xmm0;        // offset 424
     M128A_POD Xmm1;        // offset 440
     M128A_POD Xmm2;        // offset 456
@@ -338,7 +338,7 @@ struct CONTEXT64_POD {
     M128A_POD Xmm13;       // offset 632
     M128A_POD Xmm14;       // offset 648
     M128A_POD Xmm15;       // offset 664
-    // VectorRegister: M128A[26] = 416 bytes → offset 680
+    // VectorRegister: M128A[26] = 416 bytes  offset 680
     M128A_POD VectorRegister[26]; // offset 680
     // Remaining u64 fields
     uint64_t VectorControl        = 0; // offset 1096
@@ -349,19 +349,19 @@ struct CONTEXT64_POD {
     uint64_t LastExceptionFromRip = 0; // offset 1136
     // total = 1144
     // Hmm, let me verify:
-    // 0-48: P1-P6 = 48 bytes ✓
-    // 48-52: ContextFlags(4) ✓
-    // 52-56: MxCsr(4) ✓
-    // 56-68: SegCs-SegSs(6*u16=12) = 56→68 ✓
-    // 68-72: pad(4) ✓
-    // 72-80: EFlags(8) ✓
-    // 80-128: Dr0-Dr7(6*u64=48) ✓
-    // 128-264: Rax-Rip(17*u64=136) ✓
-    // 264-296: Header[2](32) ✓
-    // 296-424: Legacy[8](128) ✓
-    // 424-680: Xmm0-Xmm15(16*16=256) ✓
-    // 680-1096: VectorRegister[26](26*16=416) ✓
-    // 1096-1144: 6*u64(48) ✓
+    // 0-48: P1-P6 = 48 bytes 
+    // 48-52: ContextFlags(4) 
+    // 52-56: MxCsr(4) 
+    // 56-68: SegCs-SegSs(6*u16=12) = 5668 
+    // 68-72: pad(4) 
+    // 72-80: EFlags(8) 
+    // 80-128: Dr0-Dr7(6*u64=48) 
+    // 128-264: Rax-Rip(17*u64=136) 
+    // 264-296: Header[2](32) 
+    // 296-424: Legacy[8](128) 
+    // 424-680: Xmm0-Xmm15(16*16=256) 
+    // 680-1096: VectorRegister[26](26*16=416) 
+    // 1096-1144: 6*u64(48) 
     // total = 1144
 };
 

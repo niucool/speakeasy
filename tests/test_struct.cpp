@@ -1,5 +1,5 @@
 /**
- * test_struct.cpp — Port of test_struct.py
+ * test_struct.cpp  Port of test_struct.py
  * Tests EmuStruct byte emission with nested structures and pointer fields.
  */
 

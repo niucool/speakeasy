@@ -221,10 +221,10 @@ void WindowsEmulator::_set_emu_hooks() {
             PLOG_DEBUG << "[emu-hooks] SET: unmapped 0x" << std::hex << EMU_RETURN_ADDR
                         << " size=0x" << EMU_RESERVE_SIZE << std::dec;
         } catch (const std::exception& ex) {
-            // If unmap fails, the region is already unmapped — that's fine.
+            // If unmap fails, the region is already unmapped  that's fine.
             // Only set emu_hooks_set if the unmap actually worked.
             PLOG_DEBUG << "[emu-hooks] SET: unmap failed (already unmapped?): " << ex.what();
-            emu_hooks_set = true;  // still mark as set — the region IS unmapped
+            emu_hooks_set = true;  // still mark as set  the region IS unmapped
         }
     }
 }
@@ -233,7 +233,7 @@ void WindowsEmulator::_unset_emu_hooks() {
     if (emu_hooks_set) {
         // Map the reserved region with RWX so Unicorn can fetch the sentinel
         // instruction.  If the region is already mapped (e.g. by a tmp_map),
-        // mem_map will fail gracefully — we log and do NOT corrupt emu_hooks_set.
+        // mem_map will fail gracefully  we log and do NOT corrupt emu_hooks_set.
         try {
             mem_map(EMU_RESERVE_SIZE, EMU_RETURN_ADDR, PERM_MEM_RWX, "emu.reserved");
             emu_hooks_set = false;
@@ -336,7 +336,7 @@ bool WindowsEmulator::_hook_code_core(void* emu, uint64_t addr, size_t size) {
     }
 
     // At a sentinel address (in the reserved range): DON'T unmap the page.
-    // Unmapping here would cause an infinite FETCH_UNMAPPED → map → hook → unmap
+    // Unmapping here would cause an infinite FETCH_UNMAPPED  map  hook  unmap
     // loop because the instruction at the sentinel hasn't executed yet.
     // The sentinel page will be unmapped in the NEXT _hook_code_core call
     // that fires at the return address (after the RET/nop executes).
@@ -875,7 +875,7 @@ void WindowsEmulator::start() {
                 if (err != UC_ERR_OK) {
                     // UC_ERR_FETCH_PROT (14): sentinel page was mapped RW but
                     // not executable. do_call_return already set PC to the
-                    // to the return address — just restart emulation from there.
+                    // to the return address  just restart emulation from there.
                     if ((err == UC_ERR_FETCH_UNMAPPED || err == UC_ERR_FETCH_PROT
                          || err == UC_ERR_MAP)
                         && !run_complete && curr_run) {
@@ -2740,7 +2740,7 @@ std::optional<std::string> WindowsEmulator::read_string_heuristic(uint64_t addr)
         } else if (c == '\0') {
             break;
         } else {
-            ansi_len = 0; // non-printable — invalidate ANSI
+            ansi_len = 0; // non-printable  invalidate ANSI
             break;
         }
     }
@@ -2755,17 +2755,17 @@ std::optional<std::string> WindowsEmulator::read_string_heuristic(uint64_t addr)
             break;
         }
         // ASCII in UTF-16LE: high byte is 0, low byte is printable
-        if (buf[i+1] != 0) break; // non-ASCII high byte — not simple UTF-16LE ASCII
+        if (buf[i+1] != 0) break; // non-ASCII high byte  not simple UTF-16LE ASCII
         char c = static_cast<char>(buf[i]);
         if ((c >= 0x20 && c <= 0x7E) || c == '\r' || c == '\n' || c == '\t') {
             unicode_len = i / 2 + 1;
         } else {
-            break; // non-printable — stop
+            break; // non-printable  stop
         }
     }
 
     // Prefer UTF-16LE when it finds a LONGER string than ANSI.
-    // This fixes "Qt5QWindowIcon" in UTF-16LE where ANSI sees "Q\0" → "Q"
+    // This fixes "Qt5QWindowIcon" in UTF-16LE where ANSI sees "Q\0"  "Q"
     // but UTF-16LE correctly sees "Qt5QWindowIcon\0\0".
     if (unicode_valid && unicode_len > 0 && unicode_len > ansi_len) {
         std::string utf8_str;
@@ -3098,7 +3098,7 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
                 _unset_emu_hooks();
                 return true;
             }
-            // API callback handler — Python winemu.py:1773-1789
+            // API callback handler  Python winemu.py:1773-1789
             if (addr == API_CALLBACK_HANDLER_ADDR) {
                 if (!curr_run->api_callbacks.empty()) {
                     auto [pc, func, args] = curr_run->api_callbacks.front();

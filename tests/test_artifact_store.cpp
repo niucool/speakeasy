@@ -1,5 +1,5 @@
 /**
- * test_artifact_store.cpp — Port of test_artifact_store.py
+ * test_artifact_store.cpp  Port of test_artifact_store.py
  * Tests the ArtifactStore deduplication and report data roundtrip.
  */
 
@@ -39,7 +39,7 @@ TEST(ArtifactStoreTest, ReportDataRoundtripJson) {
     art.compression = "zlib";
     art.encoding = "base64";
     art.size = 4;
-    art.data = "eJwrSS1iAQAEXwHb";  // zlib+base64 of "data" — approximate
+    art.data = "eJwrSS1iAQAEXwHb";  // zlib+base64 of "data"  approximate
 
     report.data = std::map<std::string, DataArtifact>{{"deadbeef", art}};
 

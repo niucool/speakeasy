@@ -923,7 +923,7 @@ void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr,
         reg_write(pc_reg, ret_addr);
     }
     // Python: `if ret_value is not None: self.reg_write(rr, ret_value)`
-    // std::optional matches this exactly — 0 is a valid return value.
+    // std::optional matches this exactly  0 is a valid return value.
     if (ret_value.has_value()) {
         reg_write(ret_reg, *ret_value);
     }
@@ -991,7 +991,7 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
     }
     if (width == 2) {
         // Python: .decode('utf-16le', 'ignore')
-        // Convert UTF-16LE bytes → UTF-8 string via utfcpp.
+        // Convert UTF-16LE bytes  UTF-8 string via utfcpp.
         // char16_t is native-endian (LE on x86/amd64), matching emulated memory.
         if (!raw.empty()) {
             const char16_t* utf16_begin = reinterpret_cast<const char16_t*>(raw.data());
@@ -1000,7 +1000,7 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
             try {
                 utf8::utf16to8(utf16_begin, utf16_end, std::back_inserter(result));
             } catch (const utf8::invalid_utf16&) {
-                // Python: .decode('utf-16le', 'ignore') — best-effort, skip bad sequences
+                // Python: .decode('utf-16le', 'ignore')  best-effort, skip bad sequences
                 result.clear();
                 for (const char16_t* p = utf16_begin; p < utf16_end; ++p) {
                     try {
@@ -1014,7 +1014,7 @@ std::string BinaryEmulator::read_mem_string(uint64_t address, int width, int max
         }
         return {};
     }
-    // width == 1: ANSI / ASCII — raw bytes are already the string content
+    // width == 1: ANSI / ASCII  raw bytes are already the string content
     std::string result(raw.begin(), raw.end());
     return result;
 }
@@ -1089,13 +1089,13 @@ void BinaryEmulator::write_mem_string(const std::string& str, uint64_t address, 
     if (data.empty() || data.back() != '\0') data += '\0';
     if (width == 2) {
         // Python: .encode('utf-16le')
-        // Convert UTF-8 string → UTF-16LE bytes via utfcpp.
+        // Convert UTF-8 string  UTF-16LE bytes via utfcpp.
         // char16_t is native-endian (LE on x86/amd64), matching emulated memory.
         std::vector<char16_t> utf16;
         try {
             utf8::utf8to16(data.begin(), data.end(), std::back_inserter(utf16));
         } catch (const utf8::invalid_utf8&) {
-            // Best-effort: fall back to direct char→char16_t (latin-1 compatible)
+            // Best-effort: fall back to direct charchar16_t (latin-1 compatible)
             utf16.clear();
             for (char ch : data)
                 utf16.push_back(static_cast<char16_t>(static_cast<unsigned char>(ch)));
@@ -1107,7 +1107,7 @@ void BinaryEmulator::write_mem_string(const std::string& str, uint64_t address, 
         std::vector<uint8_t> encoded(bytes_ptr, bytes_ptr + utf16.size() * 2);
         mem_write(address, encoded);
     } else {
-        // width == 1: ANSI / ASCII — raw bytes are already the content
+        // width == 1: ANSI / ASCII  raw bytes are already the content
         std::vector<uint8_t> bytes(data.begin(), data.end());
         mem_write(address, bytes);
     }

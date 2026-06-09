@@ -59,13 +59,13 @@ struct SHELLEXECUTEINFOA_POD<8> {
     uint64_t lpParameters    = 0; // offset 32
     uint64_t lpDirectory     = 0; // offset 40
     int32_t  nShow           = 0; // offset 48
-    uint32_t pad1            = 0; // offset 52 → align hInstApp
+    uint32_t pad1            = 0; // offset 52  align hInstApp
     uint64_t hInstApp        = 0; // offset 56
     uint64_t lpIDList        = 0; // offset 64
     uint64_t lpClass         = 0; // offset 72
     uint64_t hkeyClass       = 0; // offset 80
     uint32_t dwHotKey        = 0; // offset 88
-    uint32_t pad2            = 0; // offset 92 → align DummyUnionName
+    uint32_t pad2            = 0; // offset 92  align DummyUnionName
     uint64_t DummyUnionName  = 0; // offset 96
     uint64_t handle          = 0; // offset 104
     // total = 112

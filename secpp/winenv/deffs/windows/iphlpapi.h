@@ -57,7 +57,7 @@ struct IP_ADDR_STRING_POD<8> {
     uint8_t   IpAddress[16]             = {}; // offset  8
     uint8_t   IpMask[16]                = {}; // offset 24
     uint32_t  Context                   = 0;  // offset 40
-    uint32_t  pad1                      = 0;  // offset 44 → round to 48
+    uint32_t  pad1                      = 0;  // offset 44  round to 48
     // total = 48
 };
 
@@ -79,7 +79,7 @@ struct IP_ADDR_STRING : public EmuStructHelper<IP_ADDR_STRING<PtrSize>>, public 
 //  412: Index(4)
 //  416: Type(4)
 //  420: DhcpEnabled(1)
-//  421: pad1[3] → align CurrentIpAddress to 4
+//  421: pad1[3]  align CurrentIpAddress to 4
 //  424: CurrentIpAddress(4)
 //  428: IpAddressList(IP_ADDR_STRING<4>) 40 bytes: Next(4)+IpAddress[16]+IpMask[16]+Context(4)
 //  468: GatewayList(40)
@@ -101,13 +101,13 @@ struct IP_ADDR_STRING : public EmuStructHelper<IP_ADDR_STRING<PtrSize>>, public 
 //  416: Index(4)
 //  420: Type(4)
 //  424: DhcpEnabled(1)
-//  425: pad1[7] → align CurrentIpAddress to 8
+//  425: pad1[7]  align CurrentIpAddress to 8
 //  432: CurrentIpAddress(8)
 //  440: IpAddressList(IP_ADDR_STRING<8>) 48 bytes: Next(8)+IpAddress[16]+IpMask[16]+Context(4)+pad(4)
 //  488: GatewayList(48)
 //  536: DhcpServer(48)
 //  584: HaveWins(4)
-//  588: pad2[4] → align PrimaryWinsServer.Next to 8
+//  588: pad2[4]  align PrimaryWinsServer.Next to 8
 //  592: PrimaryWinsServer(48)
 //  640: SecondaryWinsServer(48)
 //  688: LeaseObtained(8)
@@ -128,9 +128,9 @@ struct IP_ADAPTER_INFO_POD<4> {
     uint32_t  Index                                 = 0;  // offset 412
     uint32_t  Type                                  = 0;  // offset 416
     uint8_t   DhcpEnabled                           = 0;  // offset 420
-    uint8_t   pad1[3]                               = {}; // offset 421 → align CurrentIpAddress
+    uint8_t   pad1[3]                               = {}; // offset 421  align CurrentIpAddress
     uint32_t  CurrentIpAddress                      = 0;  // offset 424
-    // IpAddressList (IP_ADDR_STRING<4> = 40 bytes) — flattened
+    // IpAddressList (IP_ADDR_STRING<4> = 40 bytes)  flattened
     IP_ADDR_STRING_POD<4> IpAddressList;               // offset 428 (nested, size=40)
     IP_ADDR_STRING_POD<4> GatewayList;                 // offset 468 (nested, size=40)
     IP_ADDR_STRING_POD<4> DhcpServer;                  // offset 508 (nested, size=40)
@@ -153,9 +153,9 @@ struct IP_ADAPTER_INFO_POD<8> {
     uint32_t  Index                                 = 0;  // offset 416
     uint32_t  Type                                  = 0;  // offset 420
     uint8_t   DhcpEnabled                           = 0;  // offset 424
-    uint8_t   pad1[7]                               = {}; // offset 425 → align CurrentIpAddress to 432
+    uint8_t   pad1[7]                               = {}; // offset 425  align CurrentIpAddress to 432
     uint64_t  CurrentIpAddress                      = 0;  // offset 432
-    // IpAddressList (IP_ADDR_STRING<8> = 48 bytes) — flattened
+    // IpAddressList (IP_ADDR_STRING<8> = 48 bytes)  flattened
     IP_ADDR_STRING_POD<8> IpAddressList;    uint32_t  IpAddressList_pad                     = 0;  // offset 484
     // GatewayList (48 bytes)
     uint64_t  GatewayList_Next                      = 0;  // offset 488
@@ -170,7 +170,7 @@ struct IP_ADAPTER_INFO_POD<8> {
     uint32_t  DhcpServer_Context                    = 0;  // offset 576
     uint32_t  DhcpServer_pad                        = 0;  // offset 580
     uint32_t  HaveWins                              = 0;  // offset 584
-    uint32_t  pad2                                  = 0;  // offset 588 → align PrimaryWinsServer.Next
+    uint32_t  pad2                                  = 0;  // offset 588  align PrimaryWinsServer.Next
     // PrimaryWinsServer (48 bytes)
     uint64_t  PrimaryWinsServer_Next                = 0;  // offset 592
     uint8_t   PrimaryWinsServer_IpAddress[16]       = {}; // offset 600

@@ -81,7 +81,7 @@ struct PROCESSENTRY32_POD<8> {
     uint32_t dwSize              = 0;   // offset   0
     uint32_t cntUsage            = 0;   // offset   4
     uint32_t th32ProcessID       = 0;   // offset   8
-    uint32_t pad1                = 0;   // offset  12 → align th32DefaultHeapID
+    uint32_t pad1                = 0;   // offset  12  align th32DefaultHeapID
     uint64_t th32DefaultHeapID   = 0;   // offset  16
     uint32_t th32ModuleID        = 0;   // offset  24
     uint32_t cntThreads          = 0;   // offset  28
@@ -146,14 +146,14 @@ struct MODULEENTRY32_POD<8> {
     uint32_t th32ProcessID       = 0;   // offset   8
     uint32_t GlblcntUsage        = 0;   // offset  12
     uint32_t ProccntUsage        = 0;   // offset  16
-    uint32_t pad1                = 0;   // offset  20 → align modBaseAddr
+    uint32_t pad1                = 0;   // offset  20  align modBaseAddr
     uint64_t modBaseAddr         = 0;   // offset  24
     uint32_t modBaseSize         = 0;   // offset  32
-    uint32_t pad2                = 0;   // offset  36 → align hModule
+    uint32_t pad2                = 0;   // offset  36  align hModule
     uint64_t hModule             = 0;   // offset  40
     uint8_t  szModule[256]       = {};  // offset  48
     uint8_t  szExePath[260]      = {};  // offset 304
-    uint32_t pad3                = 0;   // offset 564 → trailing 8-byte struct alignment
+    uint32_t pad3                = 0;   // offset 564  trailing 8-byte struct alignment
     // total = 568
 };
 
@@ -218,12 +218,12 @@ struct MEMORY_BASIC_INFORMATION_POD<8> {
     uint64_t BaseAddress        = 0;   // offset  0
     uint64_t AllocationBase     = 0;   // offset  8
     uint32_t AllocationProtect  = 0;   // offset 16
-    uint32_t pad1               = 0;   // offset 20 → align RegionSize
+    uint32_t pad1               = 0;   // offset 20  align RegionSize
     uint64_t RegionSize         = 0;   // offset 24
     uint32_t State              = 0;   // offset 32
     uint32_t Protect            = 0;   // offset 36
     uint32_t Type               = 0;   // offset 40
-    uint32_t pad2               = 0;   // offset 44 → trailing pad for 8-byte struct alignment
+    uint32_t pad2               = 0;   // offset 44  trailing pad for 8-byte struct alignment
     // total = 48
 };
 
@@ -249,7 +249,7 @@ struct WIN32_FIND_DATA_POD {
     uint32_t dwReserved1                = 0;   // offset  40
     uint8_t  cFileName[260]             = {};  // offset  44
     uint8_t  cAlternateFileName[14]     = {};  // offset 304
-    uint8_t  pad[2]                     = {};  // offset 318 → trailing pad
+    uint8_t  pad[2]                     = {};  // offset 318  trailing pad
     // total = 320
 };
 struct WIN32_FIND_DATA : public EmuStructHelper<WIN32_FIND_DATA>, public WIN32_FIND_DATA_POD {
@@ -284,7 +284,7 @@ struct SYSTEM_INFO_POD;
 template <>
 struct SYSTEM_INFO_POD<4> {
     uint16_t wProcessorArchitecture        = 0;   // offset  0
-    uint8_t  _pad0[2]                     = {};  // offset  2 → align dwPageSize to 4
+    uint8_t  _pad0[2]                     = {};  // offset  2  align dwPageSize to 4
     uint32_t dwPageSize                    = 0;   // offset  4
     uint32_t lpMinimumApplicationAddress   = 0;   // offset  8
     uint32_t lpMaximumApplicationAddress   = 0;   // offset 12
@@ -301,7 +301,7 @@ struct SYSTEM_INFO_POD<4> {
 template <>
 struct SYSTEM_INFO_POD<8> {
     uint16_t wProcessorArchitecture        = 0;   // offset  0
-    uint8_t  _pad0[2]                     = {};  // offset  2 → align dwPageSize to 4
+    uint8_t  _pad0[2]                     = {};  // offset  2  align dwPageSize to 4
     uint32_t dwPageSize                    = 0;   // offset  4
     uint64_t lpMinimumApplicationAddress   = 0;   // offset  8
     uint64_t lpMaximumApplicationAddress   = 0;   // offset 16
@@ -375,7 +375,7 @@ struct STARTUPINFO_POD<4> {
 template <>
 struct STARTUPINFO_POD<8> {
     uint32_t cb              = 0;   // offset  0
-    uint32_t pad1            = 0;   // offset  4 → align lpReserved
+    uint32_t pad1            = 0;   // offset  4  align lpReserved
     uint64_t lpReserved      = 0;   // offset  8
     uint64_t lpDesktop       = 0;   // offset 16
     uint64_t lpTitle         = 0;   // offset 24
@@ -389,7 +389,7 @@ struct STARTUPINFO_POD<8> {
     uint32_t dwFlags         = 0;   // offset 60
     uint16_t wShowWindow     = 0;   // offset 64
     uint16_t cbReserved2     = 0;   // offset 66
-    uint32_t pad2            = 0;   // offset 68 → align lpReserved2
+    uint32_t pad2            = 0;   // offset 68  align lpReserved2
     uint64_t lpReserved2     = 0;   // offset 72
     uint64_t hStdInput       = 0;   // offset 80
     uint64_t hStdOutput      = 0;   // offset 88

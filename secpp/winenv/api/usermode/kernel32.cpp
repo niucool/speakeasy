@@ -1106,7 +1106,7 @@ uint64_t Kernel32::FreeLibrary(void* emu, const std::vector<uint64_t>& argv, voi
 }
 
 uint64_t Kernel32::GetProcAddress(void* emu, const std::vector<uint64_t>& argv, void* ctx) {
-    // Python kernel32.py:1959-1992 — matches Python logic step by step.
+    // Python kernel32.py:1959-1992  matches Python logic step by step.
     uint64_t hMod = argv[0];
     uint64_t proc_name_ptr = argv[1];
     uint64_t rv = 0;
@@ -1122,11 +1122,11 @@ uint64_t Kernel32::GetProcAddress(void* emu, const std::vector<uint64_t>& argv, 
         }
     }
 
-    // Python kernel32.py:1980-1992 — matches Python logic.
-    // get_proc() creates a sentinel; normalize_import_miss bridges ntdll Nt* →
+    // Python kernel32.py:1980-1992  matches Python logic.
+    // get_proc() creates a sentinel; normalize_import_miss bridges ntdll Nt* 
     // ntoskrnl Zw* during dispatch, so we don't need to verify exports here.
-    // Python kernel32.py:1980-1992 — matches Python logic.
-    // get_proc() creates a sentinel; normalize_import_miss bridges ntdll Nt* →
+    // Python kernel32.py:1980-1992  matches Python logic.
+    // get_proc() creates a sentinel; normalize_import_miss bridges ntdll Nt* 
     // ntoskrnl Zw* during dispatch.
     // Fallback: if hMod doesn't match any loaded module, try get_proc with
     // a generic lookup (e.g. hMod=0 or the handle is a LoadLibrary return).
@@ -2653,7 +2653,7 @@ uint64_t Kernel32::InitializeSListHead(void* e, const std::vector<uint64_t>& a, 
     (void)e; (void)a; (void)c; return 0;
 }
 uint64_t Kernel32::InitOnceBeginInitialize(void* e, const std::vector<uint64_t>& a, void* c) {
-    (void)a; return 1; // INIT_ONCE_ASYNC — caller should call InitOnceComplete
+    (void)a; return 1; // INIT_ONCE_ASYNC  caller should call InitOnceComplete
 }
 uint64_t Kernel32::WakeAllConditionVariable(void* e, const std::vector<uint64_t>& a, void* c) {
     (void)e; (void)a; (void)c; return 0;
@@ -2756,7 +2756,7 @@ uint64_t Kernel32::FindNextVolume(void* e, const std::vector<uint64_t>& a, void*
     (void)a; w32(e)->set_last_error(K32_ERR_NO_MORE_FILES); return 0;
 }
 uint64_t Kernel32::FindResource(void* e, const std::vector<uint64_t>& a, void* c) {
-    (void)a; return 0; // NULL — resource not found
+    (void)a; return 0; // NULL  resource not found
 }
 uint64_t Kernel32::FindResourceEx(void* e, const std::vector<uint64_t>& a, void* c) {
     (void)a; return 0;
@@ -2787,7 +2787,7 @@ uint64_t Kernel32::GetCPInfo(void* e, const std::vector<uint64_t>& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
 uint64_t Kernel32::GetCommProperties(void* e, const std::vector<uint64_t>& a, void* c) {
-    (void)a; return 0; // fail — no comm port in emulator
+    (void)a; return 0; // fail  no comm port in emulator
 }
 uint64_t Kernel32::GetCommTimeouts(void* e, const std::vector<uint64_t>& a, void* c) {
     (void)a; return 0;
@@ -2805,7 +2805,7 @@ uint64_t Kernel32::GetConsoleTitle(void* e, const std::vector<uint64_t>& a, void
     (void)a; return 0; // no console
 }
 uint64_t Kernel32::GetConsoleWindow(void* e, const std::vector<uint64_t>& a, void* c) {
-    (void)e; (void)a; (void)c; return 0; // NULL — no console window
+    (void)e; (void)a; (void)c; return 0; // NULL  no console window
 }
 uint64_t Kernel32::GetCurrentPackageId(void* e, const std::vector<uint64_t>& a, void* c) {
     (void)a; w32(e)->set_last_error(15700); return 0; // APPMODEL_ERROR_NO_PACKAGE
@@ -2816,7 +2816,7 @@ uint64_t Kernel32::GetDateFormat(void* e, const std::vector<uint64_t>& a, void* 
     return 11; // strlen("2026-06-09") + 1 (including null)
 }
 uint64_t Kernel32::GetEnvironmentStrings(void* e, const std::vector<uint64_t>& a, void* c) {
-    (void)a; return 0; // Not implemented — return NULL
+    (void)a; return 0; // Not implemented  return NULL
 }
 uint64_t Kernel32::GetErrorMode(void* e, const std::vector<uint64_t>& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // SEM_FAILCRITICALERRORS = 0
@@ -3140,7 +3140,7 @@ uint64_t Kernel32::IsValidLocale(void* e, const std::vector<uint64_t>& a, void* 
 }
 uint64_t Kernel32::IsWow64Process(void* e, const std::vector<uint64_t>& a, void* c) {
     uint64_t out_ptr = a[1];
-    if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0, 0}); // FALSE — we're 32-bit native
+    if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0, 0}); // FALSE  we're 32-bit native
     return 1;
 }
 uint64_t Kernel32::LCMapString(void* e, const std::vector<uint64_t>& a, void* c) {
@@ -3155,7 +3155,7 @@ uint64_t Kernel32::LCMapStringEx(void* e, const std::vector<uint64_t>& a, void* 
     return LCMapString(e, a, c); // same behavior
 }
 uint64_t Kernel32::LoadResource(void* e, const std::vector<uint64_t>& a, void* c) {
-    (void)a; return 0; // NULL — not found
+    (void)a; return 0; // NULL  not found
 }
 uint64_t Kernel32::LocalLock(void* e, const std::vector<uint64_t>& a, void* c) {
     return a[0]; // hMem == locked address
@@ -3208,7 +3208,7 @@ uint64_t Kernel32::RtlUnwind(void* e, const std::vector<uint64_t>& a, void* c) {
     (void)a; we(e)->on_run_complete(); return 0;
 }
 uint64_t Kernel32::RtlLookupFunctionEntry(void* e, const std::vector<uint64_t>& a, void* c) {
-    (void)a; return 0; // NULL — no function table
+    (void)a; return 0; // NULL  no function table
 }
 uint64_t Kernel32::SetConsoleCtrlHandler(void* e, const std::vector<uint64_t>& a, void* c) {
     (void)a; return 1; // success

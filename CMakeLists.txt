@@ -15,23 +15,23 @@ project(speakeasy
     LANGUAGES CXX
 )
 
-# ── C++ Standard ──────────────────────────────────────────────
+#  C++ Standard 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# ── vcpkg Integration ─────────────────────────────────────────
+#  vcpkg Integration 
 # Build with:
 #   cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake (Linux/Mac)
 #   cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake (Windows)
 #
 # Required vcpkg packages (install with: vcpkg install <name>):
-#   nlohmann-json   – JSON parsing / serialization
-#   plog            – Logging framework
-#   unicorn         – CPU emulation engine
-#   pe-parse        – PE file parser
+#   nlohmann-json    JSON parsing / serialization
+#   plog             Logging framework
+#   unicorn          CPU emulation engine
+#   pe-parse         PE file parser
 
-# ── Local Dependencies via FetchContent ───────────────────────
+#  Local Dependencies via FetchContent 
 include(FetchContent)
 set(BUILD_COMMAND_LINE_TOOLS OFF CACHE BOOL "Build Command Line Tools" FORCE)
 set(PEPARSE_ENABLE_EXAMPLES OFF CACHE BOOL "Enable building examples" FORCE)
@@ -63,7 +63,7 @@ FetchContent_Declare(
     GIT_TAG        3.0.2
 )
 
-# utfcpp — header-only UTF-8/16/32 conversion (replaces manual UTF-16LE handling)
+# utfcpp  header-only UTF-8/16/32 conversion (replaces manual UTF-16LE handling)
 FetchContent_Declare(
     utf8cpp
     GIT_REPOSITORY https://github.com/nemtrif/utfcpp.git
@@ -118,14 +118,14 @@ if(NOT TARGET miniz::miniz)
     add_library(miniz::miniz ALIAS miniz)
 endif()
 
-# ── Dependencies ──────────────────────────────────────────────
+#  Dependencies 
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(plog CONFIG REQUIRED)
 find_package(cxxopts CONFIG REQUIRED)
 
 
 
-# ── Platform Detection ────────────────────────────────────────
+#  Platform Detection 
 if(WIN32)
     add_definitions(-DPLATFORM_WINDOWS)
     add_definitions(-DWIN32_LEAN_AND_MEAN)
@@ -134,7 +134,7 @@ elseif(UNIX)
     add_definitions(-DPLATFORM_LINUX)
 endif()
 
-# ── Source Files (re-evaluating for ApiHandler2) ──────────────
+#  Source Files (re-evaluating for ApiHandler2) 
 file(GLOB_RECURSE SPEAKEASY_SOURCES
     "secpp/*.h"
     "secpp/*.cpp"
@@ -147,14 +147,14 @@ list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/secpp" FILES ${SPEAKEASY_SOURCES})
 
-# ── Library Target ────────────────────────────────────────────
+#  Library Target 
 add_library(speakeasy STATIC ${SPEAKEASY_SOURCES})
 
 target_include_directories(speakeasy PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/secpp
 )
 
-# (compression stub — miniz not bundled; artifacts.cpp uses "none")
+# (compression stub  miniz not bundled; artifacts.cpp uses "none")
 
 target_link_libraries(speakeasy PUBLIC
     nlohmann_json::nlohmann_json
@@ -172,7 +172,7 @@ else()
 endif()
 target_compile_definitions(speakeasy PRIVATE HAS_CAPSTONE)
 
-# ── Compiler Flags ────────────────────────────────────────────
+#  Compiler Flags 
 if(MSVC)
     target_compile_options(speakeasy PRIVATE /W4 /utf-8 /FS)
     target_compile_definitions(speakeasy PRIVATE _CRT_SECURE_NO_WARNINGS)
@@ -183,12 +183,12 @@ else()
     )
 endif()
 
-# ── CLI Executable ────────────────────────────────────────────
+#  CLI Executable 
 add_executable(speakeasy-cli secpp/main.cpp secpp/cli.cpp secpp/cli_config.cpp)
 target_link_libraries(speakeasy-cli PRIVATE speakeasy cxxopts::cxxopts)
 target_include_directories(speakeasy-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/secpp)
 
-# ── Tests ─────────────────────────────────────────────────────
+#  Tests 
 option(BUILD_TESTS "Build test targets" ON)
 if(BUILD_TESTS)
     enable_testing()
@@ -204,7 +204,7 @@ if(BUILD_TESTS)
     FetchContent_MakeAvailable(googletest)
     include(GoogleTest)
 
-    # Unit tests (Google Test) — includes smoke_test + all test_*.cpp
+    # Unit tests (Google Test)  includes smoke_test + all test_*.cpp
     file(GLOB_RECURSE UNIT_TEST_SOURCES "tests/test_*.cpp" "tests/smoke_test.cpp")
     if(UNIT_TEST_SOURCES)
         add_executable(speakeasy_tests ${UNIT_TEST_SOURCES})
@@ -226,7 +226,7 @@ if(BUILD_TESTS)
     # Future: add_subdirectory(tests) for full test suite
 endif()
 
-# ── Install Rules ─────────────────────────────────────────────
+#  Install Rules 
 include(GNUInstallDirs)
 
 install(TARGETS speakeasy

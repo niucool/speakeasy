@@ -153,7 +153,7 @@ struct FWPM_SUBLAYER0_POD<8> {
     GUID_FWP_POD              providerKey;     // offset 40 (16 bytes)
     FWP_BYTE_BLOB_POD<8>      providerData;    // offset 56 (16 bytes)
     uint16_t                  weight;          // offset 72
-    uint8_t                   pad2[6];         // offset 74 → align to 8
+    uint8_t                   pad2[6];         // offset 74  align to 8
     // total = 80
 };
 
@@ -161,13 +161,13 @@ struct FWPM_SUBLAYER0_POD<8> {
 // subLayerKey(16) @0
 // displayData(16) @16
 // flags(4) @32
-// pad1(4) @36 → align providerKey? providerKey is GUID (no pointers), but next is providerData which has a Ptr
+// pad1(4) @36  align providerKey? providerKey is GUID (no pointers), but next is providerData which has a Ptr
 // Actually let me just be safe: after flags(4) at 32-35, we have providerKey(GUID, 16 bytes)
 // GUID is all uint types, so no alignment needed for it. But FWP_BYTE_BLOB<8> needs 8-byte alignment of its data field.
 // Actually, FWP_BYTE_BLOB<8> starts with uint32(4)+pad(4)+Ptr(8). So within the struct, the Ptr is at offset 8.
 // The struct itself only needs 4-byte alignment since its first member is uint32.
 // So after providerKey(16) at 40-55, providerData starts at 56 (8-byte aligned, good).
-// weight(2) at 72-73, pad to 8: 74→80 (6 bytes padding).
+// weight(2) at 72-73, pad to 8: 7480 (6 bytes padding).
 
 template <int PtrSize>
 struct FWPM_SUBLAYER0 : public EmuStructHelper<FWPM_SUBLAYER0<PtrSize>>,
@@ -244,7 +244,7 @@ struct FWPM_CALLOUT0_POD<8> {
     FWP_BYTE_BLOB_POD<8>      providerData;     // offset 56 (16)
     GUID_FWP_POD              applicableLayer;  // offset 72 (16)
     uint32_t                  calloutId;        // offset 88
-    uint32_t                  pad2;             // offset 92 → natural alignment to 8
+    uint32_t                  pad2;             // offset 92  natural alignment to 8
     // total = 96
 };
 

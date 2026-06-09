@@ -936,7 +936,7 @@ void Win32Emulator::_ensure_core_dlls_loaded() {
 // Python win32.py:589
 // def _init_user_modules_from_config(self):
 void Win32Emulator::_init_user_modules_from_config() {
-    // Python win32.py:589-601 — find main exe from config processes, prepend to user_modules
+    // Python win32.py:589-601  find main exe from config processes, prepend to user_modules
     using speakeasy::ProcessEntry;
     using speakeasy::Module;
     

@@ -1,5 +1,5 @@
 /**
- * test_cli_runtime_flags.cpp — Port of test_cli_runtime_flags.py
+ * test_cli_runtime_flags.cpp  Port of test_cli_runtime_flags.py
  * Tests that removed/legacy CLI flags are properly rejected.
  */
 

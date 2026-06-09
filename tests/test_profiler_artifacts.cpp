@@ -1,5 +1,5 @@
 /**
- * test_profiler_artifacts.cpp — Port of test_profiler_artifacts.py
+ * test_profiler_artifacts.cpp  Port of test_profiler_artifacts.py
  * Tests profiler artifact recording: dropped files, file writes, registry writes.
  *
  * NOTE: The Python tests create Profiler/Run objects directly and record events.

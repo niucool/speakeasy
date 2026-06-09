@@ -1,5 +1,5 @@
 /**
- * test_cli_config.cpp — Port of test_cli_config.py
+ * test_cli_config.cpp  Port of test_cli_config.py
  * Tests CLI configuration precedence, merging, and validation.
  */
 

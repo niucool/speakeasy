@@ -126,7 +126,7 @@ struct URL_COMPONENTS_POD<4> {
     // lpszUserName(Ptr)+...
     // After nPort(u16) at 24+2=26, next is lpszUserName(Ptr,4 bytes on x86).
     // 26 is not 4-aligned, so pad(2)=28.
-    uint8_t  pad1[2];             // offset 26 → align next Ptr to 4
+    uint8_t  pad1[2];             // offset 26  align next Ptr to 4
     uint32_t lpszUserName;        // offset 28 (Ptr)
     uint32_t dwUserNameLength;    // offset 32
     uint32_t lpszPassword;        // offset 36 (Ptr)
@@ -164,22 +164,22 @@ struct URL_COMPONENTS_POD<8> {
     uint64_t lpszScheme;          // offset   8 (Ptr)
     uint32_t dwSchemeLength;      // offset  16
     uint32_t nScheme;             // offset  20
-    uint64_t lpszHostName;        // offset  24 (Ptr) — 24 is 8-byte aligned
+    uint64_t lpszHostName;        // offset  24 (Ptr)  24 is 8-byte aligned
     uint32_t dwHostNameLength;    // offset  32
     uint16_t nPort;               // offset  36
-    uint8_t  pad2[2];             // offset  38 → align to 40 (for next Ptr)
+    uint8_t  pad2[2];             // offset  38  align to 40 (for next Ptr)
     uint64_t lpszUserName;        // offset  40 (Ptr)
     uint32_t dwUserNameLength;    // offset  48
-    uint32_t pad3;                // offset  52 → align next Ptr to 8 (52+4=56)
+    uint32_t pad3;                // offset  52  align next Ptr to 8 (52+4=56)
     uint64_t lpszPassword;        // offset  56 (Ptr)
     uint32_t dwPasswordLength;    // offset  64
-    uint32_t pad4;                // offset  68 → align next Ptr to 8 (68+4=72)
+    uint32_t pad4;                // offset  68  align next Ptr to 8 (68+4=72)
     uint64_t lpszUrlPath;         // offset  72 (Ptr)
     uint32_t dwUrlPathLength;     // offset  80
-    uint32_t pad5;                // offset  84 → align next Ptr to 8 (84+4=88)
+    uint32_t pad5;                // offset  84  align next Ptr to 8 (84+4=88)
     uint64_t lpszExtraInfo;       // offset  88 (Ptr)
     uint32_t dwExtraInfoLength;   // offset  96
-    uint32_t pad6;                // offset 100 → natural alignment to 8 (100+4=104)
+    uint32_t pad6;                // offset 100  natural alignment to 8 (100+4=104)
     // total = 104
 };
 
@@ -190,7 +190,7 @@ struct URL_COMPONENTS_POD<8> {
 // lpszPassword(8)=64, dwPasswordLength(4)=68, pad4(4)=72
 // lpszUrlPath(8)=80, dwUrlPathLength(4)=84, pad5(4)=88
 // lpszExtraInfo(8)=96, dwExtraInfoLength(4)=100, pad6(4)=104
-// Total = 104 ✓
+// Total = 104 
 
 template <int PtrSize>
 struct URL_COMPONENTS : public EmuStructHelper<URL_COMPONENTS<PtrSize>>,

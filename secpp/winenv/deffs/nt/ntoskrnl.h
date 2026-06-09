@@ -25,11 +25,11 @@ namespace speakeasy { namespace deffs { namespace nt {
 
 #pragma pack(push, 1)
 
-// ────────────────────────────────────────────────────────────────────────
+// 
 // Core POD types defined FIRST (needed as nested members)
-// ────────────────────────────────────────────────────────────────────────
+// 
 
-// ── LIST_ENTRY_POD ──────────────────────────────────────────────────────
+//  LIST_ENTRY_POD 
 template <int PtrSize>
 struct LIST_ENTRY_POD;
 template <>
@@ -43,7 +43,7 @@ struct LIST_ENTRY_POD<8> {
     uint64_t Blink = 0;
 };
 
-// ── UNICODE_STRING_POD ──────────────────────────────────────────────────
+//  UNICODE_STRING_POD 
 template <int PtrSize>
 struct UNICODE_STRING_POD;
 template <>
@@ -60,7 +60,7 @@ struct UNICODE_STRING_POD<8> {
     uint64_t Buffer = 0;
 };
 
-// ── IO_STATUS_BLOCK_POD ─────────────────────────────────────────────────
+//  IO_STATUS_BLOCK_POD 
 template <int PtrSize>
 struct IO_STATUS_BLOCK_POD;
 template <>
@@ -74,7 +74,7 @@ struct IO_STATUS_BLOCK_POD<8> {
     uint64_t Information = 0;
 };
 
-// ── KEVENT_POD (4096-byte opaque event object) ──────────────────────────
+//  KEVENT_POD (4096-byte opaque event object) 
 struct KEVENT_POD { uint8_t Data[4096] = {}; };
 
 // ==========================================================================================================
@@ -112,7 +112,7 @@ struct SSDT_POD<8> {
     uint64_t pServiceTable    = 0; // offset  0
     uint64_t pCounterTable    = 0; // offset  8
     uint32_t NumberOfServices = 0; // offset 16
-    uint32_t pad              = 0; // offset 20 → align next Ptr to 8
+    uint32_t pad              = 0; // offset 20  align next Ptr to 8
     uint64_t pArgumentTable   = 0; // offset 24
     // total = 32
 };
@@ -142,7 +142,7 @@ struct DeviceIoControl_POD<8> {
     uint32_t OutputBufferLength = 0; // offset  0
     uint32_t InputBufferLength  = 0; // offset  4
     uint32_t IoControlCode      = 0; // offset  8
-    uint32_t pad                = 0; // offset 12 → align Type3InputBuffer
+    uint32_t pad                = 0; // offset 12  align Type3InputBuffer
     uint64_t Type3InputBuffer   = 0; // offset 16
     // total = 24
 };
@@ -182,7 +182,7 @@ struct SYSTEM_MODULE_POD<4> {
 // Size = u32 = 4, Flags = u32 = 4, Index = u16=2, Unknown=u16=2, LoadCount=u16=2, ModuleNameOffset=u16=2
 // ImageName = u8[256]
 // Total x64: 16 + 8 + 4 + 4 + 2 + 2 + 2 + 2 + 256 = 296
-// Wait, after Flags (u32) at offset 28, Index (u16) at 32 is 2-aligned ✓
+// Wait, after Flags (u32) at offset 28, Index (u16) at 32 is 2-aligned 
 template <>
 struct SYSTEM_MODULE_POD<8> {
     uint64_t Reserved[2]      = {};  // offset  0 (2*8 = 16)
@@ -235,7 +235,7 @@ struct CLIENT_ID : public EmuStructHelper<CLIENT_ID<PtrSize>>, public CLIENT_ID_
 //   0: NextEntryOffset (u32) = 4
 //   4: NumberOfThreads (u32) = 4
 //   8: Reserved1[48] = 48 bytes
-//  56: UNICODE_STRING<4> ImageName = 8 bytes (uint16+uint16+uint32) - starts at 56, which is 4-aligned ✓
+//  56: UNICODE_STRING<4> ImageName = 8 bytes (uint16+uint16+uint32) - starts at 56, which is 4-aligned 
 //  64: BasePriority (u32) = 4
 //  68: UniqueProcessId (u32) = 4
 //  72: InheritedFromUniqueProcessId (u32) = 4
@@ -261,9 +261,9 @@ struct CLIENT_ID : public EmuStructHelper<CLIENT_ID<PtrSize>>, public CLIENT_ID_
 //   0: NextEntryOffset (u32) = 4
 //   4: NumberOfThreads (u32) = 4
 //   8: Reserved1[48] = 48 bytes
-//  56: UNICODE_STRING<8> ImageName = 16 bytes - starts at 56. 56%8=0 ✓
+//  56: UNICODE_STRING<8> ImageName = 16 bytes - starts at 56. 56%8=0 
 //  72: BasePriority (u32) = 4
-//  76: pad (4) → align next Ptr to 8
+//  76: pad (4)  align next Ptr to 8
 //  80: UniqueProcessId (u64) = 8
 //  88: InheritedFromUniqueProcessId (u64) = 8
 //  96: HandleCount (u32) = 4
@@ -272,7 +272,7 @@ struct CLIENT_ID : public EmuStructHelper<CLIENT_ID<PtrSize>>, public CLIENT_ID_
 // 112: PeakVirtualSize (u64) = 8
 // 120: VirtualSize (u64) = 8
 // 128: PageFaultCount (u32) = 4
-// 132: pad (4) → align PeakWorkingSetSize to 8
+// 132: pad (4)  align PeakWorkingSetSize to 8
 // 136: PeakWorkingSetSize (u64) = 8
 // 144: WorkingSetSize (u64) = 8
 // 152: QuotaPeakPagedPoolUsage (u64) = 8
@@ -293,7 +293,7 @@ struct SYSTEM_PROCESS_INFORMATION_POD<4> {
     uint32_t NextEntryOffset                 = 0; // offset   0
     uint32_t NumberOfThreads                 = 0; // offset   4
     uint8_t  Reserved1[48]                   = {};// offset   8 (56)
-    // UNICODE_STRING<4> ImageName (8 bytes) @ offset 56 (4-aligned ✓)
+    // UNICODE_STRING<4> ImageName (8 bytes) @ offset 56 (4-aligned )
     uint16_t ImageName_Length                = 0; // offset  56
     uint16_t ImageName_MaximumLength         = 0; // offset  58
     uint32_t ImageName_Buffer                = 0; // offset  60
@@ -324,13 +324,13 @@ struct SYSTEM_PROCESS_INFORMATION_POD<8> {
     uint32_t NextEntryOffset                 = 0; // offset   0
     uint32_t NumberOfThreads                 = 0; // offset   4
     uint8_t  Reserved1[48]                   = {};// offset   8 (56)
-    // UNICODE_STRING<8> ImageName (16 bytes) @ offset 56 (8-aligned ✓)
+    // UNICODE_STRING<8> ImageName (16 bytes) @ offset 56 (8-aligned )
     uint16_t ImageName_Length                = 0; // offset  56
     uint16_t ImageName_MaximumLength         = 0; // offset  58
-    uint32_t ImageName_pad                   = 0; // offset  60 → align Buffer to 8
+    uint32_t ImageName_pad                   = 0; // offset  60  align Buffer to 8
     uint64_t ImageName_Buffer                = 0; // offset  64
     uint32_t BasePriority                    = 0; // offset  72
-    uint32_t pad1                            = 0; // offset  76 → align UniqueProcessId to 8
+    uint32_t pad1                            = 0; // offset  76  align UniqueProcessId to 8
     uint64_t UniqueProcessId                 = 0; // offset  80
     uint64_t InheritedFromUniqueProcessId    = 0; // offset  88
     uint32_t HandleCount                     = 0; // offset  96
@@ -339,7 +339,7 @@ struct SYSTEM_PROCESS_INFORMATION_POD<8> {
     uint64_t PeakVirtualSize                 = 0; // offset 112
     uint64_t VirtualSize                     = 0; // offset 120
     uint32_t PageFaultCount                  = 0; // offset 128
-    uint32_t pad2                            = 0; // offset 132 → align PeakWorkingSetSize
+    uint32_t pad2                            = 0; // offset 132  align PeakWorkingSetSize
     uint64_t PeakWorkingSetSize              = 0; // offset 136
     uint64_t WorkingSetSize                  = 0; // offset 144
     uint64_t QuotaPeakPagedPoolUsage        = 0; // offset 152
@@ -384,7 +384,7 @@ template <>
 struct SYSTEM_THREAD_INFORMATION_POD<8> {
     uint64_t Reserved1[3]   = {}; // offset  0 (24)
     uint32_t Reserved2      = 0;  // offset 24
-    uint32_t pad            = 0;  // offset 28 → align StartAddress to 8
+    uint32_t pad            = 0;  // offset 28  align StartAddress to 8
     uint64_t StartAddress   = 0;  // offset 32
     CLIENT_ID_POD<8> ClientId;       // offset 40 (nested, size=16)
     uint32_t Priority        = 0;  // offset 48
@@ -426,7 +426,7 @@ struct MDL_POD<8> {
     uint64_t Next           = 0;  // offset  0
     uint16_t Size           = 0;  // offset  8
     uint16_t MdlFlags       = 0;  // offset 10
-    uint32_t pad            = 0;  // offset 12 → align Process to 8
+    uint32_t pad            = 0;  // offset 12  align Process to 8
     uint64_t Process        = 0;  // offset 16
     uint64_t MappedSystemVa = 0;  // offset 24
     uint64_t StartVa        = 0;  // offset 32
@@ -460,7 +460,7 @@ struct KIDTENTRY64_POD {
     uint16_t Selector     = 0; // offset  2
     uint16_t Reserved0    = 0; // offset  4
     uint16_t OffsetMiddle = 0; // offset  6
-    uint32_t OffsetHigh   = 0; // offset  8 (4-aligned ✓)
+    uint32_t OffsetHigh   = 0; // offset  8 (4-aligned )
     uint32_t Reserved1    = 0; // offset 12
 };
 struct KIDTENTRY64 : public EmuStructHelper<KIDTENTRY64>, public KIDTENTRY64_POD {
@@ -538,14 +538,14 @@ struct IDT_POD;
 template <>
 struct IDT_POD<4> {
     uint16_t Limit       = 0; // offset 0
-    uint32_t Descriptors = 0; // offset 2 (2 bytes after uint16, 4-aligned ✓)
+    uint32_t Descriptors = 0; // offset 2 (2 bytes after uint16, 4-aligned )
     // total = 6
 };
 
 template <>
 struct IDT_POD<8> {
     uint16_t Limit       = 0; // offset 0
-    uint8_t  pad[6]      = {}; // offset 2 → align Descriptors to 8
+    uint8_t  pad[6]      = {}; // offset 2  align Descriptors to 8
     uint64_t Descriptors = 0; // offset 8
     // total = 16
 };
@@ -558,8 +558,8 @@ struct IDT : public EmuStructHelper<IDT<PtrSize>>, public IDT_POD<PtrSize> {
 // ==========================================================================================================
 // ------ KAPC (Kernel Asynchronous Procedure Call) ---------------------------------------------------------
 // ==========================================================================================================
-// x86: 4*u8(4) + u32(4) + Ptr(4) + LIST_ENTRY(8) + 6*Ptr(24) + 3*u8(3) = 47 → round to 48
-// x64: 4*u8(4) + u32(4) + Ptr(8) + LIST_ENTRY(16) + 6*Ptr(48) + 3*u8(3) = 83 → round to 88
+// x86: 4*u8(4) + u32(4) + Ptr(4) + LIST_ENTRY(8) + 6*Ptr(24) + 3*u8(3) = 47  round to 48
+// x64: 4*u8(4) + u32(4) + Ptr(8) + LIST_ENTRY(16) + 6*Ptr(48) + 3*u8(3) = 83  round to 88
 // NOTE: LIST_ENTRY starts immediately after Thread; the LIST_ENTRY fields are:
 //   Flink (pointer), Blink (pointer)
 template <int PtrSize>
@@ -572,7 +572,7 @@ struct KAPC_POD<4> {
     uint8_t  Size         = 0;   // offset  2
     uint8_t  SpareByte1   = 0;   // offset  3
     uint32_t SpareLong0   = 0;   // offset  4
-    uint32_t Thread       = 0;   // offset  8  (4-aligned ✓)
+    uint32_t Thread       = 0;   // offset  8  (4-aligned )
     LIST_ENTRY_POD<4> ApcListEntry;     // offset 12 (nested, size=8)
     uint32_t KernelRoutine  = 0;     // offset 20
     uint32_t RundownRoutine = 0;     // offset 24
@@ -593,7 +593,7 @@ struct KAPC_POD<8> {
     uint8_t  Size         = 0;   // offset  2
     uint8_t  SpareByte1   = 0;   // offset  3
     uint32_t SpareLong0   = 0;   // offset  4
-    // NOTE: offset 8 is 8-aligned, so Thread goes at offset 8 ✓
+    // NOTE: offset 8 is 8-aligned, so Thread goes at offset 8 
     uint64_t Thread       = 0;   // offset  8
     LIST_ENTRY_POD<8> ApcListEntry;     // offset 16 (nested, size=16)
     uint64_t KernelRoutine  = 0;     // offset 32
@@ -719,13 +719,13 @@ template <>
 struct DRIVER_OBJECT_POD<8> {
     uint16_t Type              = 0;  // offset   0
     uint16_t Size              = 0;  // offset   2
-    uint32_t pad1              = 0;  // offset   4 → align DeviceObject to 8
+    uint32_t pad1              = 0;  // offset   4  align DeviceObject to 8
     uint64_t DeviceObject      = 0;  // offset   8
     uint32_t Flags             = 0;  // offset  16
-    uint32_t pad2              = 0;  // offset  20 → align DriverStart to 8
+    uint32_t pad2              = 0;  // offset  20  align DriverStart to 8
     uint64_t DriverStart       = 0;  // offset  24
     uint32_t DriverSize        = 0;  // offset  32
-    uint32_t pad3              = 0;  // offset  36 → align DriverSection to 8
+    uint32_t pad3              = 0;  // offset  36  align DriverSection to 8
     uint64_t DriverSection     = 0;  // offset  40
     uint64_t DriverExtension   = 0;  // offset  48
     UNICODE_STRING_POD<8> DriverName;    // offset  56 (nested, size=16)
@@ -746,8 +746,8 @@ struct DRIVER_OBJECT : public EmuStructHelper<DRIVER_OBJECT<PtrSize>>, public DR
 // ==========================================================================================================
 // ------ KDEVICE_QUEUE -------------------------------------------------------------------------------------
 // ==========================================================================================================
-// x86: u16(2)+u16(2)+LIST_ENTRY(8)+u64(8)+u8(1) = 21 → round to 24
-// x64: u16(2)+u16(2)+pad(4)+LIST_ENTRY(16)+u64(8)+u8(1) = 33 → round to 40
+// x86: u16(2)+u16(2)+LIST_ENTRY(8)+u64(8)+u8(1) = 21  round to 24
+// x64: u16(2)+u16(2)+pad(4)+LIST_ENTRY(16)+u64(8)+u8(1) = 33  round to 40
 template <int PtrSize>
 struct KDEVICE_QUEUE_POD;
 
@@ -765,7 +765,7 @@ template <>
 struct KDEVICE_QUEUE_POD<8> {
     uint16_t Type = 0;   // offset  0
     uint16_t Size = 0;   // offset  2
-    uint32_t pad1 = 0;   // offset  4 → align LIST_ENTRY to 8
+    uint32_t pad1 = 0;   // offset  4  align LIST_ENTRY to 8
     LIST_ENTRY_POD<8> DeviceListHead;   // offset  8 (nested, size=16)
     uint64_t Lock                = 0;  // offset 24
     uint8_t  Busy                = 0;  // offset 32
@@ -804,7 +804,7 @@ struct KDPC_POD<8> {
     uint8_t  Type          = 0;  // offset  0
     uint8_t  Importance    = 0;  // offset  1
     uint16_t Number        = 0;  // offset  2
-    uint32_t pad1          = 0;  // offset  4 → align LIST_ENTRY to 8
+    uint32_t pad1          = 0;  // offset  4  align LIST_ENTRY to 8
     LIST_ENTRY_POD<8> DpcListEntry;     // offset  8 (nested, size=16)
     uint64_t DeferredRoutine   = 0;      // offset 24
     uint64_t DeferredContext   = 0;      // offset 32
@@ -1234,7 +1234,7 @@ struct PEB_POD<8> {
     uint32_t ImageSubsystem              = 0;
     // offset 300:  ImageSubsystemMajorVersion u32
     uint32_t ImageSubsystemMajorVersion  = 0;
-    // offset 304:  pad3 (4) → align ImageSubsystemMinorVersion to 8
+    // offset 304:  pad3 (4)  align ImageSubsystemMinorVersion to 8
     uint32_t pad3                        = 0;
     // offset 308:  ImageSubsystemMinorVersion Ptr (u64)
     uint64_t ImageSubsystemMinorVersion  = 0;
@@ -1310,7 +1310,7 @@ struct PEB : public EmuStructHelper<PEB<PtrSize>>, public PEB_POD<PtrSize> {
 // ==========================================================================================================
 // x86: u32(4)+u8[4](4)+Ptr(4)+3*LIST_ENTRY(24)+Ptr(4)+u8(1)+pad(3)+Ptr(4) = 48
 // x64: u32(4)+u8[4](4)+pad(4)+Ptr(8)+3*LIST_ENTRY(48)+Ptr(8)+u8(1)+pad(7)+Ptr(8) = 88... let me recalc
-// x64: u32(4) + u8[4](4) + pad(4) = 12 → SsHandle @12... no, 12 not 8-aligned.
+// x64: u32(4) + u8[4](4) + pad(4) = 12  SsHandle @12... no, 12 not 8-aligned.
 // Actually the Python code:
 //   self.Length = u32 [4]
 //   self.Initialized = u8[4] [4]
@@ -1336,7 +1336,7 @@ struct PEB_LDR_DATA_POD<4> {
     LIST_ENTRY_POD<4> InInitializationOrderModuleList;   // offset 28 (nested, size=8)
     uint32_t EntryInProgress         = 0; // offset 36
     uint8_t  ShutdownInProgress      = 0; // offset 40
-    uint8_t  pad[3]                 = {}; // offset 41 → align ShutdownThreadId to 4
+    uint8_t  pad[3]                 = {}; // offset 41  align ShutdownThreadId to 4
     uint32_t ShutdownThreadId        = 0; // offset 44
     // total = 48
 };
@@ -1345,14 +1345,14 @@ template <>
 struct PEB_LDR_DATA_POD<8> {
     uint32_t Length              = 0; // offset  0
     uint8_t  Initialized[4]      = {}; // offset  4
-    // SsHandle @8 (8-aligned ✓)
+    // SsHandle @8 (8-aligned )
     uint64_t SsHandle            = 0; // offset  8
     LIST_ENTRY_POD<8> InLoadOrderModuleList;            // offset 16 (nested, size=16)
     LIST_ENTRY_POD<8> InMemoryOrderModuleList;           // offset 32 (nested, size=16)
     LIST_ENTRY_POD<8> InInitializationOrderModuleList;   // offset 48 (nested, size=16)
     uint64_t EntryInProgress         = 0; // offset 64
     uint8_t  ShutdownInProgress      = 0; // offset 72
-    uint8_t  pad[7]                 = {}; // offset 73 → align ShutdownThreadId to 8
+    uint8_t  pad[7]                 = {}; // offset 73  align ShutdownThreadId to 8
     uint64_t ShutdownThreadId        = 0; // offset 80
     // total = 88
 };
@@ -1366,13 +1366,13 @@ struct PEB_LDR_DATA : public EmuStructHelper<PEB_LDR_DATA<PtrSize>>, public PEB_
 // ------ LDR_DATA_TABLE_ENTRY -----------------------------------------------------------------------------
 // ==========================================================================================================
 // x86: 3*LIST_ENTRY(24) + 2*Ptr(8) + u32(4) + 2*UNICODE_STRING(16) + u32(4) + u16(2) = 58
-// x64: 3*LIST_ENTRY(48) + 2*Ptr(16) + u32(4) + pad(4) + 2*UNICODE_STRING(32) + u32(4) + u16(2) = 110 → round to 112
+// x64: 3*LIST_ENTRY(48) + 2*Ptr(16) + u32(4) + pad(4) + 2*UNICODE_STRING(32) + u32(4) + u16(2) = 110  round to 112
 // Let me recalc x64 carefully:
 //   0: 3*LIST_ENTRY<8> = 48 bytes
 //  48: DllBase Ptr = 8 bytes
 //  56: EntryPoint Ptr = 8 bytes
 //  64: SizeOfImage u32 = 4 bytes
-//  68: pad = 4 → align FullDllName to 8
+//  68: pad = 4  align FullDllName to 8
 //  72: FullDllName UNICODE_STRING<8> = 16 bytes
 //  88: BaseDllName UNICODE_STRING<8> = 16 bytes
 // 104: Flags u32 = 4
@@ -1404,7 +1404,7 @@ struct LDR_DATA_TABLE_ENTRY_POD<8> {
     uint64_t DllBase                = 0;  // offset 48
     uint64_t EntryPoint             = 0;  // offset 56
     uint32_t SizeOfImage            = 0;  // offset 64
-    uint32_t pad1                   = 0;  // offset 68 → align UNICODE_STRING to 8
+    uint32_t pad1                   = 0;  // offset 68  align UNICODE_STRING to 8
     UNICODE_STRING_POD<8> FullDllName;          // offset 72 (nested, size=16)
     UNICODE_STRING_POD<8> BaseDllName;          // offset 88 (nested, size=16)
     uint32_t Flags                  = 0;  // offset 104
@@ -1491,7 +1491,7 @@ struct RTL_USER_PROCESS_PARAMETERS_POD<8> {
     uint32_t DebugFlags       = 0; // offset  12
     uint64_t ConsoleHandle    = 0; // offset  16
     uint32_t ConsoleFlags     = 0; // offset  24
-    uint32_t pad1             = 0; // offset  28 → align StandardInput to 8
+    uint32_t pad1             = 0; // offset  28  align StandardInput to 8
     uint64_t StandardInput    = 0; // offset  32
     uint64_t StandardOutput   = 0; // offset  40
     uint64_t StandardError    = 0; // offset  48
@@ -1509,7 +1509,7 @@ struct RTL_USER_PROCESS_PARAMETERS_POD<8> {
     uint32_t FillAttribute  = 0; // offset 160
     uint32_t WindowFlags    = 0; // offset 164
     uint32_t ShowWindowFlags = 0; // offset 168
-    uint32_t pad2           = 0; // offset 172 → align WindowTitle to 8
+    uint32_t pad2           = 0; // offset 172  align WindowTitle to 8
     UNICODE_STRING_POD<8> WindowTitle;               // offset 176 (nested, size=16)
     UNICODE_STRING_POD<8> DesktopInfo;               // offset 192 (nested, size=16)
     UNICODE_STRING_POD<8> ShellInfo;                 // offset 208 (nested, size=16)
@@ -1546,7 +1546,7 @@ struct DEVICE_OBJECT_POD<4> {
     uint32_t DeviceType          = 0;  // offset   44
     uint8_t  StackSize           = 0;  // offset   48
     // LIST_ENTRY<4> Queue (8 bytes) - needs 4-alignment from offset 49
-    uint8_t  pad1[3]             = {}; // offset   49 → align Queue to 4
+    uint8_t  pad1[3]             = {}; // offset   49  align Queue to 4
     LIST_ENTRY_POD<4> Queue;             // offset   52 (nested, size=8)
     uint32_t AlignmentRequirement = 0; // offset   60
     KDEVICE_QUEUE_POD<4> DeviceQueue;  // offset   64 (nested, size=21)
@@ -1567,7 +1567,7 @@ template <>
 struct DEVICE_OBJECT_POD<8> {
     uint16_t Type                = 0;  // offset    0
     uint16_t Size                = 0;  // offset    2
-    uint32_t pad1                = 0;  // offset    4 → align DriverObject to 8
+    uint32_t pad1                = 0;  // offset    4  align DriverObject to 8
     uint64_t DriverObject        = 0;  // offset    8
     uint64_t NextDevice          = 0;  // offset   16
     uint64_t AttachedDevice      = 0;  // offset   24
@@ -1579,21 +1579,21 @@ struct DEVICE_OBJECT_POD<8> {
     uint64_t DeviceExtension     = 0;  // offset   64
     uint32_t DeviceType          = 0;  // offset   72
     uint8_t  StackSize           = 0;  // offset   76
-    uint8_t  pad2[3]             = {}; // offset   77 → align Queue to 8
+    uint8_t  pad2[3]             = {}; // offset   77  align Queue to 8
     LIST_ENTRY_POD<8> Queue;             // offset   80 (nested, size=16)
     uint32_t AlignmentRequirement = 0; // offset   96
-    uint32_t pad3                = 0;  // offset  100 → align DeviceQueue to 8
+    uint32_t pad3                = 0;  // offset  100  align DeviceQueue to 8
     KDEVICE_QUEUE_POD<8> DeviceQueue;  // offset  104 (nested, size=33)
     // After DeviceQueue (104-136=33 bytes), pad to align KDPC
-    uint8_t  pad4[7]             = {}; // offset  137 → align Dpc to 8
+    uint8_t  pad4[7]             = {}; // offset  137  align Dpc to 8
     KDPC_POD<8> Dpc;                       // offset  144 (nested, size=64)
     uint32_t ActiveThreadCount     = 0;      // offset  208
-    uint32_t pad5                  = 0;      // offset  212 → align SecurityDescriptor
+    uint32_t pad5                  = 0;      // offset  212  align SecurityDescriptor
     uint64_t SecurityDescriptor    = 0;      // offset  216
     KEVENT_POD DeviceLock;                 // offset  224 (nested, size=4096)
     uint16_t SectorSize            = 0;      // offset 4320
     uint16_t Spare1                = 0;      // offset 4322
-    uint32_t pad6                  = 0;      // offset 4324 → align to 8
+    uint32_t pad6                  = 0;      // offset 4324  align to 8
     uint64_t DeviceObjectExtension = 0;      // offset 4328
     uint64_t Reserved              = 0;      // offset 4336
     // total = 4344
@@ -1630,7 +1630,7 @@ struct FILE_OBJECT_POD<4> {
     uint8_t  SharedRead               = 0;  // offset    41
     uint8_t  SharedWrite              = 0;  // offset    42
     uint8_t  SharedDelete             = 0;  // offset    43
-    uint32_t Flags                    = 0;  // offset    44 (4-aligned ✓)
+    uint32_t Flags                    = 0;  // offset    44 (4-aligned )
     UNICODE_STRING_POD<4> FileName;      // offset    48 (nested, size=8)
     LARGE_INTEGER_POD CurrentByteOffset;  // offset    56 (LARGE_INTEGER)
     uint32_t Waiters                  = 0;  // offset    64
@@ -1649,7 +1649,7 @@ template <>
 struct FILE_OBJECT_POD<8> {
     uint16_t Type                     = 0;  // offset     0
     uint16_t Size                     = 0;  // offset     2
-    uint32_t pad1                     = 0;  // offset     4 → align DeviceObject to 8
+    uint32_t pad1                     = 0;  // offset     4  align DeviceObject to 8
     uint64_t DeviceObject             = 0;  // offset     8
     uint64_t Vpb                      = 0;  // offset    16
     uint64_t FsContext                = 0;  // offset    24
@@ -1657,7 +1657,7 @@ struct FILE_OBJECT_POD<8> {
     uint64_t SectionObjectPointer     = 0;  // offset    40
     uint64_t PrivateCacheMap          = 0;  // offset    48
     uint32_t FinalStatus              = 0;  // offset    56
-    uint32_t pad2                     = 0;  // offset    60 → align RelatedFileObject
+    uint32_t pad2                     = 0;  // offset    60  align RelatedFileObject
     uint64_t RelatedFileObject        = 0;  // offset    64
     uint8_t  LockOperation            = 0;  // offset    72
     uint8_t  DeletePending            = 0;  // offset    73
@@ -1668,18 +1668,18 @@ struct FILE_OBJECT_POD<8> {
     uint8_t  SharedWrite              = 0;  // offset    78
     uint8_t  SharedDelete             = 0;  // offset    79
     uint32_t Flags                    = 0;  // offset    80
-    uint32_t pad3                     = 0;  // offset    84 → align FileName to 8
+    uint32_t pad3                     = 0;  // offset    84  align FileName to 8
     UNICODE_STRING_POD<8> FileName;      // offset    88 (nested, size=16)
     LARGE_INTEGER_POD CurrentByteOffset;  // offset   104 (LARGE_INTEGER)
     uint32_t Waiters                  = 0;  // offset   112
     uint32_t Busy                     = 0;  // offset   116
-    uint32_t pad4                     = 0;  // offset   120 → align LastLock
+    uint32_t pad4                     = 0;  // offset   120  align LastLock
     uint64_t LastLock                 = 0;  // offset   128
     KEVENT_POD Lock;                       // offset   136 (nested, size=4096)
     KEVENT_POD Event;                      // offset  4232 (nested, size=4096)
     uint64_t CompletionContext        = 0;  // offset  8328
     uint32_t IrpListLock              = 0;  // offset  8336
-    uint32_t pad5                     = 0;  // offset  8340 → align IrpList to 8
+    uint32_t pad5                     = 0;  // offset  8340  align IrpList to 8
     LIST_ENTRY_POD<8> IrpList;           // offset  8344 (nested, size=16)
     uint64_t FileObjectExtension      = 0;  // offset  8360
     // total = 8368
@@ -1749,7 +1749,7 @@ struct IO_STACK_LOCATION_POD<8> {
     uint8_t  MinorFunction  = 0;  // offset  1
     uint8_t  Flags          = 0;  // offset  2
     uint8_t  Control        = 0;  // offset  3
-    uint8_t  _pad[8]        = {}; // offset  4 → x86_64 ABI extra padding before Parameters
+    uint8_t  _pad[8]        = {}; // offset  4  x86_64 ABI extra padding before Parameters
     // DeviceIoControl<8> (24 bytes) @12... wait, no. In Python:
     //   if ptr_size == 8: self._padding = ct.c_uint8 * 8
     // The padding is 8 bytes after the 4 control bytes. Then Parameters follows.
@@ -1786,7 +1786,7 @@ struct IO_STACK_LOCATION_POD<8> {
     // 16-39: DeviceIoControl<8> (24 bytes)
     // 40-71: 4*Ptr (32 bytes)
     // total = 72
-    uint8_t  pad2[4]        = {}; // offset 12 → align Parameters to 8
+    uint8_t  pad2[4]        = {}; // offset 12  align Parameters to 8
     DeviceIoControl_POD<8> Parameters;  // offset 16 (nested, size=24)
     uint64_t DeviceObject    = 0;  // offset 40
     uint64_t FileObject      = 0;  // offset 48
@@ -1836,7 +1836,7 @@ struct TAIL_OVERLAY_POD<4> {
 template <>
 struct TAIL_OVERLAY_POD<8> {
     KDEVICE_QUEUE_ENTRY_POD<8> DeviceQueueEntry;  // offset  0 (nested, size=21)
-    uint8_t  _pad8[8]          = {}; // offset 21 → x64 padding
+    uint8_t  _pad8[8]          = {}; // offset 21  x64 padding
     // Reserved1[2] = 16 bytes @29 (29 is not 8-aligned!)
     uint8_t  pad2[3]           = {}; // offset 29
     uint64_t Reserved1[2]       = {}; // offset 32
@@ -1901,10 +1901,10 @@ template <>
 struct IRP_POD<8> {
     uint16_t Type              = 0;  // offset   0
     uint16_t Size              = 0;  // offset   2
-    uint32_t pad1              = 0;  // offset   4 → align MdlAddress to 8
+    uint32_t pad1              = 0;  // offset   4  align MdlAddress to 8
     uint64_t MdlAddress        = 0;  // offset   8
     uint32_t Flags             = 0;  // offset  16
-    uint32_t pad2              = 0;  // offset  20 → align AssociatedIrp to 8
+    uint32_t pad2              = 0;  // offset  20  align AssociatedIrp to 8
     uint64_t AssociatedIrp     = 0;  // offset  24
     LIST_ENTRY_POD<8> ThreadListEntry;   // offset  32 (nested, size=16)
     IO_STATUS_BLOCK_POD<8> IoStatus;     // offset  48 (nested, size=16)
@@ -1916,7 +1916,7 @@ struct IRP_POD<8> {
     uint8_t  CancelIrql       = 0;  // offset  69
     uint8_t  ApcEnvironment   = 0;  // offset  70
     uint8_t  AllocationFlags  = 0;  // offset  71
-    uint32_t pad3             = 0;  // offset  72 → align UserIosb to 8
+    uint32_t pad3             = 0;  // offset  72  align UserIosb to 8
     uint64_t UserIosb         = 0;  // offset  80
     uint64_t UserEvent        = 0;  // offset  88
     IRP_OVERLAY_POD<8> Overlay;         // offset  96 (nested, size=16)
@@ -1935,14 +1935,14 @@ struct IRP : public EmuStructHelper<IRP<PtrSize>>, public IRP_POD<PtrSize> {
 // Core structs moved from struct.h
 // ==========================================================================================================
 
-// ── LIST_ENTRY (POD defined at top) ──────────────────────────────────────
+//  LIST_ENTRY (POD defined at top) 
 // LIST_ENTRY_POD defined at top of file
 template <int PtrSize>
 struct LIST_ENTRY : public EmuStructHelper<LIST_ENTRY<PtrSize>>, public LIST_ENTRY_POD<PtrSize> {
     std::string get_mem_tag() const override { return "list_entry"; }
 };
 
-// ── KSYSTEM_TIME ────────────────────────────────────────────────────────
+//  KSYSTEM_TIME 
 struct KSYSTEM_TIME : public EmuStructHelper<KSYSTEM_TIME> {
     uint32_t LowPart    = 0;
     uint32_t High1Time  = 0;
@@ -1950,14 +1950,14 @@ struct KSYSTEM_TIME : public EmuStructHelper<KSYSTEM_TIME> {
     std::string get_mem_tag() const override { return "ksystem_time"; }
 };
 
-// ── UNICODE_STRING (POD defined at top) ──────────────────────────────────
+//  UNICODE_STRING (POD defined at top) 
 // UNICODE_STRING_POD defined at top of file
 template <int PtrSize>
 struct UNICODE_STRING : public EmuStructHelper<UNICODE_STRING<PtrSize>>, public UNICODE_STRING_POD<PtrSize> {
     std::string get_mem_tag() const override { return "unicode_string"; }
 };
 
-// ── STRING ──────────────────────────────────────────────────────────────
+//  STRING 
 template <int PtrSize>
 struct STRING_POD : public UNICODE_STRING_POD<PtrSize> {};
 
@@ -1966,7 +1966,7 @@ struct STRING : public EmuStructHelper<STRING<PtrSize>>, public STRING_POD<PtrSi
     std::string get_mem_tag() const override { return "string"; }
 };
 
-// ── OBJECT_ATTRIBUTES ───────────────────────────────────────────────────
+//  OBJECT_ATTRIBUTES 
 template <int PtrSize>
 struct OBJECT_ATTRIBUTES_POD;
 
@@ -1997,21 +1997,21 @@ struct OBJECT_ATTRIBUTES : public EmuStructHelper<OBJECT_ATTRIBUTES<PtrSize>>, p
     std::string get_mem_tag() const override { return "object_attributes"; }
 };
 
-// ── IO_STATUS_BLOCK (POD defined at top) ─────────────────────────────────
+//  IO_STATUS_BLOCK (POD defined at top) 
 // IO_STATUS_BLOCK_POD defined at top of file
 template <int PtrSize>
 struct IO_STATUS_BLOCK : public EmuStructHelper<IO_STATUS_BLOCK<PtrSize>>, public IO_STATUS_BLOCK_POD<PtrSize> {
     std::string get_mem_tag() const override { return "io_status_block"; }
 };
 
-// ── LARGE_INTEGER ───────────────────────────────────────────────────────
+//  LARGE_INTEGER 
 // LARGE_INTEGER_POD defined earlier (near FILE_STANDARD_INFORMATION)
 
 struct LARGE_INTEGER : public EmuStructHelper<LARGE_INTEGER>, public LARGE_INTEGER_POD {
     std::string get_mem_tag() const override { return "large_integer"; }
 };
 
-// ── SYSTEM_TIMEOFDAY_INFORMATION ────────────────────────────────────────
+//  SYSTEM_TIMEOFDAY_INFORMATION 
 struct SYSTEM_TIMEOFDAY_INFORMATION : public EmuStructHelper<SYSTEM_TIMEOFDAY_INFORMATION> {
     uint64_t BootTime       = 0;
     uint64_t CurrentTime    = 0;
@@ -2023,7 +2023,7 @@ struct SYSTEM_TIMEOFDAY_INFORMATION : public EmuStructHelper<SYSTEM_TIMEOFDAY_IN
     std::string get_mem_tag() const override { return "system_timeofday_info"; }
 };
 
-// ── DISK_EXTENT ─────────────────────────────────────────────────────────
+//  DISK_EXTENT 
 struct DISK_EXTENT_POD {
     uint32_t DiskNumber = 0;
     uint8_t  padding[4] = {};
@@ -2035,7 +2035,7 @@ struct DISK_EXTENT : public EmuStructHelper<DISK_EXTENT>, public DISK_EXTENT_POD
     std::string get_mem_tag() const override { return "disk_extent"; }
 };
 
-// ── VOLUME_DISK_EXTENTS ─────────────────────────────────────────────────
+//  VOLUME_DISK_EXTENTS 
 struct VOLUME_DISK_EXTENTS : public EmuStructHelper<VOLUME_DISK_EXTENTS> {
     uint32_t NumberOfDiskExtents = 0;
     uint8_t  padding[4] = {};

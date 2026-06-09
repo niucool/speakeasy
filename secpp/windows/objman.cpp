@@ -32,14 +32,14 @@
 using namespace speakeasy;
 using speakeasy::deffs::nt::IRP_MJ_MAXIMUM_FUNCTION;
 
-// ────────────────────────────────────────────────────────────────────────────
+// 
 //  Runtime pointer-size dispatch helpers for the 6 KernelObject subclasses
 //  that hold pointer-size-dependent deffs structs (PEB/TEB/PEB_LDR_DATA/
 //  LDR_DATA_TABLE_ENTRY/RTL_USER_PROCESS_PARAMETERS/IDT).
 //  ptr_sz is always 4 or 8, so we branch at runtime instead of baking the
 //  host sizeof(void*) into a template parameter (which would be wrong when
 //  emulating a 32-bit PE on a 64-bit host).
-// ────────────────────────────────────────────────────────────────────────────
+// 
 
 // Free function template: Process::add_module_to_peb body, templated on PtrSize.
 // Defined after Process; declared here so the two explicit instantiations
@@ -1200,12 +1200,12 @@ std::shared_ptr<KernelObject> ObjectManager::get_object_from_handle(uint64_t han
     return nullptr;
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+// 
 //  Template helpers for runtime pointer-size dispatch (PtrSize = 4 or 8).
 //  These are free functions so they don't require header changes.
-// ════════════════════════════════════════════════════════════════════════════
+// 
 
-// ── add_module_to_peb_impl ──────────────────────────────────────────────────
+//  add_module_to_peb_impl 
 //  Body of Process::add_module_to_peb, templated on the emulated pointer size.
 //  Called from the runtime dispatch in Process::add_module_to_peb().
 template <int PtrSize>
@@ -1331,7 +1331,7 @@ static void add_module_to_peb_impl(
     proc->peb->write_back();
 }
 
-// ── populate_runtime_params_impl ────────────────────────────────────────────
+//  populate_runtime_params_impl 
 //  Field population for RTL_USER_PROCESS_PARAMETERS, templated on PtrSize.
 //  Called from the RTL_USER_PROCESS_PARAMETERS constructor after common setup.
 template <int PtrSize>
@@ -1376,7 +1376,7 @@ static void populate_runtime_params_impl(
     param->DesktopInfo.Buffer = desktop_addr;
 }
 
-// Explicit template instantiations — both pointer sizes.
+// Explicit template instantiations  both pointer sizes.
 template void add_module_to_peb_impl<4>(Process*, void*, std::shared_ptr<speakeasy::RuntimeModule>);
 template void add_module_to_peb_impl<8>(Process*, void*, std::shared_ptr<speakeasy::RuntimeModule>);
 template void populate_runtime_params_impl<4>(void*, Process*, KernelObject*, uint64_t, uint64_t, uint64_t, uint64_t, int, const std::vector<uint8_t>&, const std::vector<uint8_t>&, const std::vector<uint8_t>&, const std::vector<uint8_t>&);

@@ -68,7 +68,7 @@ struct NDIS_GENERIC_OBJECT : public EmuStructHelper<NDIS_GENERIC_OBJECT<PtrSize>
 // NET_BUFFER_LIST_POOL_PARAMETERS: Header(4)+u8+u8+u16+u32+u32 = 16
 //   x86: 4+1+1+2+4+4 = 16
 //   x64: 4+1+1+2+4+4 = 16  (no pointers, no padding needed)
-// This struct has no pointer fields — fixed size regardless of ptr_size.
+// This struct has no pointer fields  fixed size regardless of ptr_size.
 // ==========================================================================================================
 struct NET_BUFFER_LIST_POOL_PARAMETERS_POD {
     NDIS_OBJECT_HEADER Header;                     // offset  0
@@ -151,7 +151,7 @@ struct NET_BUFFER_LIST_POD<8> {
     uint32_t NblFlags;                 // offset 120
     uint32_t ChildRefCount;            // offset 124
     uint32_t Flags;                    // offset 128
-    uint32_t pad;                      // offset 132 → align next Ptr to 8
+    uint32_t pad;                      // offset 132  align next Ptr to 8
     uint64_t NetBufferListInfo[11];    // offset 136
 };
 
@@ -196,7 +196,7 @@ struct NET_BUFFER_DATA_POD<8> {
     uint32_t NbDataLength;          // offset 20
     uint64_t MdlChain;              // offset 24 (20+4=24, 8-byte aligned)
     uint32_t DataOffset;            // offset 32
-    uint32_t pad;                   // offset 36 → round to 8-byte boundary
+    uint32_t pad;                   // offset 36  round to 8-byte boundary
     // total = 40
 };
 
@@ -247,7 +247,7 @@ struct NET_BUFFER_POD;
 template <>
 struct NET_BUFFER_POD<4> {
     uint32_t Link;                        // offset   0
-    NET_BUFFER_DATA_POD<4> NetBufferHeader;// offset  4 (24 bytes) → offset 28
+    NET_BUFFER_DATA_POD<4> NetBufferHeader;// offset  4 (24 bytes)  offset 28
     uint32_t ChecksumBias;                // offset 28
     uint32_t Reserved;                    // offset 32
     uint32_t NdisPoolHandle;              // offset 36
@@ -278,7 +278,7 @@ struct NET_BUFFER_POD<4> {
 template <>
 struct NET_BUFFER_POD<8> {
     uint64_t Link;                        // offset   0
-    NET_BUFFER_DATA_POD<8> NetBufferHeader;// offset  8 (40 bytes) → offset 48
+    NET_BUFFER_DATA_POD<8> NetBufferHeader;// offset  8 (40 bytes)  offset 48
     uint64_t ChecksumBias;                // offset  48
     uint64_t Reserved;                    // offset  56
     uint64_t NdisPoolHandle;              // offset  64

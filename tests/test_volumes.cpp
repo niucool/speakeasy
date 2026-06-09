@@ -1,5 +1,5 @@
 /**
- * test_volumes.cpp — Port of test_volumes.py
+ * test_volumes.cpp  Port of test_volumes.py
  * Tests volume spec parsing and filesystem volume application.
  */
 

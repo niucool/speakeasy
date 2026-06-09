@@ -192,7 +192,7 @@ struct WDF_USB_PIPE_INFORMATION_POD {
     uint8_t  EndpointAddress;     // offset  8
     uint8_t  Interval;            // offset  9
     uint8_t  SettingIndex;        // offset 10
-    uint8_t  pad;                 // offset 11 → align PipeType to 4
+    uint8_t  pad;                 // offset 11  align PipeType to 4
     uint32_t PipeType;            // offset 12
     uint32_t MaximumTransferSize; // offset 16
     // total = 20
@@ -445,7 +445,7 @@ struct SingleInterface_POD;
 template <>
 struct SingleInterface_POD<4> {
     uint8_t  NumberConfiguredPipes;  // offset 0
-    uint8_t  pad[3];                 // offset 1 → align Ptr
+    uint8_t  pad[3];                 // offset 1  align Ptr
     uint32_t ConfiguredUsbInterface; // offset 4 (Ptr)
     // total = 8
 };
@@ -453,7 +453,7 @@ struct SingleInterface_POD<4> {
 template <>
 struct SingleInterface_POD<8> {
     uint8_t  NumberConfiguredPipes;  // offset 0
-    uint8_t  pad[7];                 // offset 1 → align Ptr
+    uint8_t  pad[7];                 // offset 1  align Ptr
     uint64_t ConfiguredUsbInterface; // offset 8 (Ptr)
     // total = 16
 };
@@ -471,20 +471,20 @@ struct MultiInterface_POD;
 template <>
 struct MultiInterface_POD<4> {
     uint8_t  NumberInterfaces;               // offset 0
-    uint8_t  pad[3];                         // offset 1 → align Ptr
+    uint8_t  pad[3];                         // offset 1  align Ptr
     uint32_t Pairs;                          // offset 4 (Ptr)
     uint8_t  NumberOfConfiguredInterfaces;   // offset 8
-    uint8_t  pad2[3];                        // offset 9 → natural alignment
+    uint8_t  pad2[3];                        // offset 9  natural alignment
     // total = 12
 };
 
 template <>
 struct MultiInterface_POD<8> {
     uint8_t  NumberInterfaces;               // offset 0
-    uint8_t  pad[7];                         // offset 1 → align Ptr
+    uint8_t  pad[7];                         // offset 1  align Ptr
     uint64_t Pairs;                          // offset 8 (Ptr)
     uint8_t  NumberOfConfiguredInterfaces;   // offset 16
-    uint8_t  pad2[7];                        // offset 17 → natural alignment to 8
+    uint8_t  pad2[7];                        // offset 17  natural alignment to 8
     // total = 24
 };
 

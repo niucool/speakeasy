@@ -1,5 +1,5 @@
 /**
- * test_gdb.cpp — Port of test_gdb.py
+ * test_gdb.cpp  Port of test_gdb.py
  * Tests GDB server integration (RSP protocol client).
  *
  * NOTE: The Python test_gdb.py requires:

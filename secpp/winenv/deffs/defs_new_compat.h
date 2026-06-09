@@ -1,8 +1,8 @@
-// defs_new_compat.h — Migration bridge from old defs (runtime ptr_sz) to new deffs (compile-time templates)
+// defs_new_compat.h  Migration bridge from old defs (runtime ptr_sz) to new deffs (compile-time templates)
 //
 // This header provides:
 //   1. Aggregated includes for all deffs headers
-//   2. new_by_ptr_sz<T8,T4>(ptr_sz) factory helper: dispatch runtime ptr_sz → compile-time template
+//   2. new_by_ptr_sz<T8,T4>(ptr_sz) factory helper: dispatch runtime ptr_sz  compile-time template
 //   3. compat::static_typed<T8,T4>(ptr_sz, code) helper: dispatch static_cast + field access
 //
 // Usage patterns:

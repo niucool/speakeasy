@@ -1,5 +1,5 @@
 /**
- * test_module_name_normalization.cpp — Port of test_module_name_normalization.py
+ * test_module_name_normalization.cpp  Port of test_module_name_normalization.py
  * Tests that module names are normalized (case-insensitive, no extension).
  */
 

@@ -591,7 +591,7 @@ uint64_t Ntdll::NtCreateFile(void* emu, const std::vector<uint64_t>& argv, void*
 
     // Get the handle from the FileManager.
     // FileManager tracks file objects and assigns handles on creation.
-    // The File* pointer serves as the handle value — NtReadFile/NtWriteFile
+    // The File* pointer serves as the handle value  NtReadFile/NtWriteFile
     // resolve it back via FileManager::get_file_from_handle with pointer-as-handle fallback.
     uint32_t file_handle = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(file_obj));
 
@@ -1068,11 +1068,11 @@ uint64_t Ntdll::NtQueryInformationProcess(void* emu, const std::vector<uint64_t>
             }
             break;
         }
-        case 0x1E: { // ProcessDebugObjectHandle — return STATUS_PORT_NOT_SET
+        case 0x1E: { // ProcessDebugObjectHandle  return STATUS_PORT_NOT_SET
             if (ret_len_ptr) write_u32(emu, ret_len_ptr, 0);
             return 0xC0000353; // STATUS_PORT_NOT_SET
         }
-        case 0x1F: { // ProcessDebugFlags — anti-debug: return 0 (no debugger)
+        case 0x1F: { // ProcessDebugFlags  anti-debug: return 0 (no debugger)
             if (ret_len_ptr) write_u32(emu, ret_len_ptr, 0);
             return 0xC0000353; // STATUS_PORT_NOT_SET
         }
@@ -1328,7 +1328,7 @@ uint64_t Ntdll::NtSetValueKey(void* emu, const std::vector<uint64_t>& argv, void
         value_name = read_unicode_string_content(emu, value_name_ptr);
     }
 
-    // Resolve key handle via RegistryManager (not ObjectManager — NtCreateKey
+    // Resolve key handle via RegistryManager (not ObjectManager  NtCreateKey
     // stores RegistryManager handles, not ObjectManager handles).
     auto regkey = wemu->reg_get_key(static_cast<int>(key_handle));
     if (!regkey) return STATUS_OBJECT_NAME_NOT_FOUND;
@@ -1355,7 +1355,7 @@ uint64_t Ntdll::NtDeleteKey(void* emu, const std::vector<uint64_t>& argv, void* 
     auto regkey = wemu->reg_get_key(static_cast<int>(key_handle));
     if (!regkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    // Emulated registry is ephemeral — deleting a key is a no-op.
+    // Emulated registry is ephemeral  deleting a key is a no-op.
     // Return success so the caller continues normally.
     (void)regkey;
     return STATUS_SUCCESS;
@@ -1377,7 +1377,7 @@ uint64_t Ntdll::NtDeleteValueKey(void* emu, const std::vector<uint64_t>& argv, v
     auto regkey = wemu->reg_get_key(static_cast<int>(key_handle));
     if (!regkey) return STATUS_OBJECT_NAME_NOT_FOUND;
 
-    // Emulated registry is ephemeral — deleting a value is a no-op.
+    // Emulated registry is ephemeral  deleting a value is a no-op.
     (void)regkey; (void)value_name;
     return STATUS_SUCCESS;
 }

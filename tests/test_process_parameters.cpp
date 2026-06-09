@@ -1,5 +1,5 @@
 /**
- * test_process_parameters.cpp — Port of test_process_parameters.py
+ * test_process_parameters.cpp  Port of test_process_parameters.py
  * Tests RTL_USER_PROCESS_PARAMETERS struct offsets and CURDIR sizes.
  */
 

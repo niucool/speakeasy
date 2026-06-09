@@ -36,10 +36,10 @@ constexpr auto     NetSetupDomainName     = kNetSetupDomainName;
 // WKSTA_INFO_100: ptr-size polymorphic
 // x86: wki_platform_id(4) + wki_computername(4) + wki_langroup(4) + wki_ver_major(4) + wki_ver_minor(4) = 20
 // x64: wki_platform_id(8) + wki_computername(8) + wki_langroup(8) + wki_ver_major(4) + wki_ver_minor(4) = 32
-//      + pad(4) → but no, wki_ver_major is a u32 so no padding needed after 3 consecutive ptrs? Under pack(1) there's no implicit padding.
+//      + pad(4)  but no, wki_ver_major is a u32 so no padding needed after 3 consecutive ptrs? Under pack(1) there's no implicit padding.
 //      Actually, wki_platform_id is Ptr, wki_computername is Ptr, wki_langroup is Ptr
 //      then wki_ver_major is u32, wki_ver_minor is u32.
-//      x64: 8+8+8+4+4 = 32 (all 8-alignments satisfied ✓ since 8+8+8 = 24, then u32 at 24 is 4-aligned ✓)
+//      x64: 8+8+8+4+4 = 32 (all 8-alignments satisfied  since 8+8+8 = 24, then u32 at 24 is 4-aligned )
 // ==========================================================================================================
 template <int PtrSize>
 struct WKSTA_INFO_100_POD;
@@ -91,7 +91,7 @@ struct WKSTA_INFO_101_POD<4> {
 template <>
 struct WKSTA_INFO_101_POD<8> {
     uint32_t wki_platform_id  = 0;  // offset  0
-    uint32_t pad0                = 0;  // offset  4 → align next Ptr
+    uint32_t pad0                = 0;  // offset  4  align next Ptr
     uint64_t wki_computername = 0;  // offset  8
     uint64_t wki_langroup     = 0;  // offset 16
     uint32_t wki_ver_major    = 0;  // offset 24
@@ -128,7 +128,7 @@ struct WKSTA_INFO_102_POD<4> {
 template <>
 struct WKSTA_INFO_102_POD<8> {
     uint32_t wki_platform_id      = 0;  // offset  0
-    uint32_t pad0                    = 0;  // offset  4 → align next Ptr
+    uint32_t pad0                    = 0;  // offset  4  align next Ptr
     uint64_t wki_computername     = 0;  // offset  8
     uint64_t wki_langroup         = 0;  // offset 16
     uint32_t wki_ver_major        = 0;  // offset 24

@@ -2,7 +2,7 @@
 //
 // Maps to: speakeasy/winenv/defs/windows/com.py
 //
-// COM interfaces are vtable-based — each entry is a Ptr (function pointer).
+// COM interfaces are vtable-based  each entry is a Ptr (function pointer).
 // These are NOT plain data structs but describe a COM vtable layout.
 //
 // Uses the new EmuStructHelper CRTP approach for auto serialize/deserialize.

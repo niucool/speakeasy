@@ -1004,8 +1004,8 @@ uint64_t Msvcrt::rand(void* e, const std::vector<uint64_t>& a, void* ctx) {
 uint64_t Msvcrt::exit(void* e, const std::vector<uint64_t>& a, void* ctx) {
     (void)a;
     // Python msvcrt.py:427: self.exit_process()
-    //   → ApiHandler.exit_process() → self.emu.exit_process()
-    //   → Win32Emulator.exit_process(): enable_code_hook() + run_complete = True
+    //    ApiHandler.exit_process()  self.emu.exit_process()
+    //    Win32Emulator.exit_process(): enable_code_hook() + run_complete = True
     we32(e)->exit_process();
     return 0;
 }
@@ -1095,7 +1095,7 @@ uint64_t Msvcrt::_except_handler4_common(void* e, const std::vector<uint64_t>& a
     }
 
     // Python returns 0 and native CRT in Unicorn handles the SEH chain.
-    // C++ cannot — on_run_complete() + stop() ends the run cleanly.
+    // C++ cannot  on_run_complete() + stop() ends the run cleanly.
     we(e)->on_run_complete();
     we(e)->stop();
     return 0;
@@ -1253,7 +1253,7 @@ uint64_t Msvcrt::__p___wargv(void* e, const std::vector<uint64_t>& a, void* ctx)
 }
 
 uint64_t Msvcrt::__p___argv(void* e, const std::vector<uint64_t>& a, void* ctx) {
-    // Python msvcrt.py:320-348 — matches layout exactly.
+    // Python msvcrt.py:320-348  matches layout exactly.
     // Layout: [arg_mem] -> ptr to str-ptr-array -> [str_ptr, NULL, str_data...]
     (void)a;
     int ptr_sz = msvc_ptr_size(e);

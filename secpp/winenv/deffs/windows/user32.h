@@ -35,7 +35,7 @@ namespace speakeasy { namespace deffs { namespace windows {
 // hwnd(Ptr=8) at 0, message(u32=4) at 8, wParam(Ptr=8) at 12 (not 8-aligned!), lParam(Ptr=8) at 20...
 // Actually wait, Python ctypes by default uses natural alignment for each field.
 // Under natural alignment:
-// x64: hwnd(Ptr=8)@0, message(u32=4)@8, wParam(Ptr=8)@12(but Ptr needs 8-alignment)→@16, lParam(Ptr=8)@24, time(u32=4)@32, pt_x(Ptr=8)@36→@40, pt_y(Ptr=8)@48, lPrivate(u32=4)@56 = 60
+// x64: hwnd(Ptr=8)@0, message(u32=4)@8, wParam(Ptr=8)@12(but Ptr needs 8-alignment)@16, lParam(Ptr=8)@24, time(u32=4)@32, pt_x(Ptr=8)@36@40, pt_y(Ptr=8)@48, lPrivate(u32=4)@56 = 60
 // But EmuStruct packs things??? Let me check... the Python EmuStruct uses ctypes with manual field layout.
 
 // Actually, looking at the original Python more carefully: MSG uses Ptr which is pointer-sized,
@@ -53,8 +53,8 @@ namespace speakeasy { namespace deffs { namespace windows {
 // non-8-byte fields. Under pack(1), there's no automatic padding, but we add explicit padding
 // fields to match what ctypes natural alignment would produce.
 
-// For MSG on x64: hwnd(Ptr=8)@0, message(u32=4)@8, pad(4)@12→align wParam to 16,
-// wParam(Ptr=8)@16, lParam(Ptr=8)@24, time(u32=4)@32, pad(4)@36→align pt_x to 40,
+// For MSG on x64: hwnd(Ptr=8)@0, message(u32=4)@8, pad(4)@12align wParam to 16,
+// wParam(Ptr=8)@16, lParam(Ptr=8)@24, time(u32=4)@32, pad(4)@36align pt_x to 40,
 // pt_x(Ptr=8)@40, pt_y(Ptr=8)@48, lPrivate(u32=4)@56, pad(4)@60
 // Total: 64 bytes
 
@@ -74,24 +74,24 @@ namespace speakeasy { namespace deffs { namespace windows {
 
 // For MSG, let me recalculate with this approach:
 // x64 (PtrSize=8):
-//   hwnd(Ptr=8)         @0  (0%8=0 ✓)
+//   hwnd(Ptr=8)         @0  (0%8=0 )
 //   message(u32=4)      @8
-//   pad(u32=4)          @12 → align wParam to 16
+//   pad(u32=4)          @12  align wParam to 16
 //   wParam(Ptr=8)       @16
 //   lParam(Ptr=8)       @24
 //   time(u32=4)         @32
-//   pad(u32=4)          @36 → align pt_x to 40
+//   pad(u32=4)          @36  align pt_x to 40
 //   pt_x(Ptr=8)         @40
 //   pt_y(Ptr=8)         @48
 //   lPrivate(u32=4)     @56
-//   pad(u32=4)          @60 → total = 64
+//   pad(u32=4)          @60  total = 64
 
 // Wait, but the task says "MSG (48 bytes x64)" - 48 bytes? Let me recheck.
 // Original Python MSG: hwnd(Ptr) + message(u32) + wParam(Ptr) + lParam(Ptr) + time(u32) + pt_x(Ptr) + pt_y(Ptr) + lPrivate(u32)
 
 // With ctypes natural alignment on x64:
-// hwnd(Ptr=8)@0, message(u32=4)@8, wParam(Ptr=8)@12→padded to @16, lParam(Ptr=8)@24,
-// time(u32=4)@32, pt_x(Ptr=8)@36→padded to @40, pt_y(Ptr=8)@48, lPrivate(u32=4)@56
+// hwnd(Ptr=8)@0, message(u32=4)@8, wParam(Ptr=8)@12padded to @16, lParam(Ptr=8)@24,
+// time(u32=4)@32, pt_x(Ptr=8)@36padded to @40, pt_y(Ptr=8)@48, lPrivate(u32=4)@56
 // Total = 60 (no final padding)
 
 // The task says 48 bytes x64... but that doesn't match. Let me look at the actual Windows MSG struct.
@@ -115,7 +115,7 @@ namespace speakeasy { namespace deffs { namespace windows {
 // time@32(4), pt.x@36(4), pt.y@40(4), lPrivate@44(4) = 48
 
 // Wait, pt is a POINT which is two LONGs (4+4). So no padding needed within pt.
-// Total: 8+4+4(pad)+8+8+4+4+4+4 = 48 ✓
+// Total: 8+4+4(pad)+8+8+4+4+4+4 = 48 
 
 // So the C++ x64 layout should be:
 //   uint64_t hwnd;         @0
@@ -127,7 +127,7 @@ namespace speakeasy { namespace deffs { namespace windows {
 //   int32_t  pt_x;         @36
 //   int32_t  pt_y;         @40
 //   uint32_t lPrivate;     @44
-// Total: 48 ✓
+// Total: 48 
 
 // On x86: 4+4+4+4+4+4+4+4 = 32
 
@@ -155,7 +155,7 @@ template <>
 struct MSG_POD<8> {
     uint64_t hwnd      = 0; // offset  0
     uint32_t message   = 0; // offset  8
-    uint32_t pad1      = 0; // offset 12 → align wParam to 16
+    uint32_t pad1      = 0; // offset 12  align wParam to 16
     uint64_t wParam    = 0; // offset 16
     uint64_t lParam    = 0; // offset 24
     uint32_t time      = 0; // offset 32
@@ -250,7 +250,7 @@ struct WNDCLASSEX_POD<8> {
     uint64_t lpfnWndProc   = 0; // offset  8
     uint32_t cbClsExtra    = 0; // offset 16
     uint32_t cbWndExtra    = 0; // offset 20
-    uint64_t hInstance     = 0; // offset 24 (24 is 8-aligned ✓)
+    uint64_t hInstance     = 0; // offset 24 (24 is 8-aligned )
     uint64_t hIcon         = 0; // offset 32
     uint64_t hCursor       = 0; // offset 40
     uint64_t hbrBackground = 0; // offset 48

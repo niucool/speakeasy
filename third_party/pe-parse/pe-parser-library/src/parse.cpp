@@ -1185,7 +1185,7 @@ bool readNtHeader(bounded_buffer *b, nt_header_32 &header) {
 }
 
 // zero extends its first argument to 32 bits and then performs a rotate left
-// operation equal to the second arguments value of the first argument’s bits
+// operation equal to the second arguments value of the first arguments bits
 static inline std::uint32_t rol(std::uint32_t val, std::uint32_t num) {
   assert(num < 32);
   // Disable MSVC warning for unary minus operator applied to unsigned type

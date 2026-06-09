@@ -1,5 +1,5 @@
 /**
- * test_find_files.cpp — Port of test_find_files.py
+ * test_find_files.cpp  Port of test_find_files.py
  * Tests wildcard matching used by the FileManager.
  *
  * The wildcard_match function is a static helper in fileman.cpp.

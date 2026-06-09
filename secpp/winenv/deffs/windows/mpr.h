@@ -2,7 +2,7 @@
 //
 // Maps to: speakeasy/winenv/defs/windows/mpr.py
 //
-// Constants only — no struct definitions.
+// Constants only  no struct definitions.
 // Namespace speakeasy::deffs::windows.
 
 #ifndef SPEAKEASY_DEFS_NEW_WINDOWS_MPR_H

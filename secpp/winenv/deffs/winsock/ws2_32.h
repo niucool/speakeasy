@@ -45,7 +45,7 @@ struct WSAData_POD<4> {
     uint8_t  szSystemStatus[129];   // offset 261
     uint16_t iMaxSockets;           // offset 390
     uint16_t iMaxUdpDg;             // offset 392
-    uint16_t pad1;                  // offset 394 → align lpVendorInfo to 4
+    uint16_t pad1;                  // offset 394  align lpVendorInfo to 4
     uint32_t lpVendorInfo;          // offset 396 (Ptr=4 on x86)
     // total = 400
 };
@@ -58,7 +58,7 @@ struct WSAData_POD<8> {
     uint8_t  szSystemStatus[129];   // offset 261
     uint16_t iMaxSockets;           // offset 390
     uint16_t iMaxUdpDg;             // offset 392
-    uint8_t  pad_alignment[6];      // offset 394 → align lpVendorInfo to 8
+    uint8_t  pad_alignment[6];      // offset 394  align lpVendorInfo to 8
     uint64_t lpVendorInfo;          // offset 400 (Ptr=8 on x64)
     // total = 408
 };
@@ -70,7 +70,7 @@ struct WSAData : public EmuStructHelper<WSAData<PtrSize>>, public WSAData_POD<Pt
 
 // ==========================================================================================================
 // sockaddr: sa_family(u16) + sa_data(u8[14])
-//   Natural: 2+14 = 16 → no padding needed (largest alignment is 2)
+//   Natural: 2+14 = 16  no padding needed (largest alignment is 2)
 //   Packed: same = 16
 // ==========================================================================================================
 struct sockaddr_POD {
@@ -125,7 +125,7 @@ struct hostent_POD<8> {
     uint64_t h_aliases;           // offset 8
     uint16_t h_addrtype;          // offset 16
     uint16_t h_length;            // offset 18
-    uint32_t pad1;                // offset 20 → align h_addr_list to 8
+    uint32_t pad1;                // offset 20  align h_addr_list to 8
     uint64_t h_addr_list;         // offset 24
     // total = 32
 };
@@ -151,7 +151,7 @@ struct hostent : public EmuStructHelper<hostent<PtrSize>>,
 //   Hmm, actually ctypes uses ct.c_uint which is typically unsigned int (4 bytes).
 //   But in the task it says "Ptr" is used for pointer-sized fields. ai_addrlen is c_uint, which is 4 bytes.
 //   On x64, after 4*u32(16), we have ai_addrlen(u32, 4)=20, then next Ptr needs 8-byte alignment.
-//   20→pad(4)→24, then 3*Ptr(24)=48. Total = 48.
+//   20pad(4)24, then 3*Ptr(24)=48. Total = 48.
 //   x86: 4*u32(16)+u32(4)+3*Ptr(12)=32. Total = 32.
 // ==========================================================================================================
 template <int PtrSize>
@@ -177,7 +177,7 @@ struct addrinfo_POD<8> {
     uint32_t ai_socktype;     // offset  8
     uint32_t ai_protocol;     // offset 12
     uint32_t ai_addrlen;      // offset 16 (c_uint = 4 bytes)
-    uint32_t pad1;            // offset 20 → align next Ptr to 8
+    uint32_t pad1;            // offset 20  align next Ptr to 8
     uint64_t ai_canonname;    // offset 24 (Ptr)
     uint64_t ai_addr;         // offset 32 (Ptr)
     uint64_t ai_next;         // offset 40 (Ptr)

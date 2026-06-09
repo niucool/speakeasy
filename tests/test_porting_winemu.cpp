@@ -536,7 +536,7 @@ TEST(ApiRegressionTest, ReadMemStringUnicodeRoundTrip) {
     Win32Emulator emu(cfg);
     emu.setup();
 
-    std::string unicode_str = "H\xe2\x82\xacllo W\xc3\xb6rld \xe2\x80\x94 test"; // H€llo Wörld — test
+    std::string unicode_str = "H\xe2\x82\xacllo W\xc3\xb6rld \xe2\x80\x94 test"; // Hllo Wrld  test
     uint64_t addr = emu.mem_map(256, 0, PERM_MEM_RW, "test.uni");
     be(&emu)->write_mem_string(unicode_str, addr, 2);
     std::string decoded = be(&emu)->read_mem_string(addr, 2);

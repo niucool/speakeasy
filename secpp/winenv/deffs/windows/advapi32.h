@@ -65,7 +65,7 @@ template <>
 struct HCRYPTKEY_POD<8> {
     uint32_t Algid  = 0; // offset 0
     uint32_t keylen = 0; // offset 4
-    uint32_t pad1   = 0; // offset 8 → align keyp
+    uint32_t pad1   = 0; // offset 8  align keyp
     uint64_t keyp   = 0; // offset 12
     // total = 20
 };

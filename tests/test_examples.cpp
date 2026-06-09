@@ -1,5 +1,5 @@
 /**
- * test_examples.cpp — Port of test_examples.py
+ * test_examples.cpp  Port of test_examples.py
  * Tests that example scripts run correctly.
  *
  * NOTE: The Python test_examples.py uses subprocess to run example Python
@@ -14,7 +14,7 @@
 TEST(ExamplesTest, DbgviewExampleRuns) {
     // Python: Runs examples/dbgview.py with wdm_test_x86.sys
     // Expected output: "Inside IRP_MJ_CREATE handler", etc.
-    GTEST_SKIP() << "C++ dbgview example not yet available — "
+    GTEST_SKIP() << "C++ dbgview example not yet available  "
                  << "requires CLI-based WDM driver emulation example";
 }
 
@@ -34,7 +34,7 @@ TEST(ExamplesTest, EmuExeExampleModifiesNtReadFileBuffer) {
 TEST(ExamplesTest, UPXUnpackExampleRunsAndDumpsFile) {
     // Python: Runs examples/upx_unpack.py with PMA 01-02.exe,
     // verifies section hop signature hit and dumped file is valid PE
-    GTEST_SKIP() << "C++ UPX unpack example not yet available — "
+    GTEST_SKIP() << "C++ UPX unpack example not yet available  "
                  << "requires capa-testfiles submodule";
 }
 

@@ -34,7 +34,7 @@ std::shared_ptr<Process> WinKernelEmulator::get_system_process() {
 }
 
 Driver* WinKernelEmulator::create_driver_object(const std::string& name, std::shared_ptr<speakeasy::RuntimeModule> pe) {
-    // Python kernel.py:68-85 — creates driver, registers with object manager
+    // Python kernel.py:68-85  creates driver, registers with object manager
     auto drv = std::make_unique<Driver>(static_cast<void*>(this));
     drv->init_driver_object(name, pe, false);
     Driver* drv_ptr = drv.get();
@@ -281,7 +281,7 @@ uint64_t WinKernelEmulator::get_kernel_base() {
 }
 
 std::shared_ptr<speakeasy::RuntimeModule> WinKernelEmulator::get_kernel_mod() {
-    // Python kernel.py:555-562 — returns the kernel RuntimeModule (not a string)
+    // Python kernel.py:555-562  returns the kernel RuntimeModule (not a string)
     auto mod = get_mod_by_name("ntoskrnl");
     if (!mod) throw KernelEmuError("Failed to get kernel base");
     return mod;
@@ -292,7 +292,7 @@ uint64_t WinKernelEmulator::get_ssdt_ptr() {
 }
 
 void WinKernelEmulator::setup_kernel_mode() {
-    // Python kernel.py:591-611 — creates IDT, SSDT, configures MSRs and symlinks.
+    // Python kernel.py:591-611  creates IDT, SSDT, configures MSRs and symlinks.
     auto idt = std::make_shared<IDT>(static_cast<void*>(this));
     idt->init_descriptors();
 
@@ -316,7 +316,7 @@ void WinKernelEmulator::setup_kernel_mode() {
 }
 
 void WinKernelEmulator::init_sys_modules(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config) {
-    // Python kernel.py:157-171 — calls super, creates driver objects for driver configs
+    // Python kernel.py:157-171  calls super, creates driver objects for driver configs
     auto sysmods = WindowsEmulator::init_sys_modules(modules_config);
     for (auto& mcp : modules_config) {
         auto sm = std::dynamic_pointer_cast<SystemModule>(mcp);
@@ -361,7 +361,7 @@ void WinKernelEmulator::init_processes(const std::vector<speakeasy::ProcessEntry
 void* WinKernelEmulator::create_device_object(const std::string& name, void* drv,
                                                size_t ext_size, uint32_t devtype,
                                                uint32_t chars, const std::string& tag) {
-    // Python kernel.py:308-365 — full device object creation with linked list
+    // Python kernel.py:308-365  full device object creation with linked list
     auto dev = std::make_shared<Device>(static_cast<void*>(this));
     size_t alloc_size = ext_size + dev->sizeof_obj();
     std::string devname = name.empty() ? "\\Device\\" + hex_str(dev->id) : name;
@@ -376,7 +376,7 @@ void* WinKernelEmulator::create_device_object(const std::string& name, void* drv
         auto* d = static_cast<Driver*>(drv);
         d->devices.push_back(static_cast<void*>(dev.get()));
     }
-    // NOTE: full FILE_OBJECT + linked list linking deferred — see kernel.py:331-354
+    // NOTE: full FILE_OBJECT + linked list linking deferred  see kernel.py:331-354
     return static_cast<void*>(dev.get());
 }
 
@@ -388,7 +388,7 @@ void WinKernelEmulator::setup_msrs() {
     uint64_t kbase = km->base;
     auto km_data = mem_read(kbase, static_cast<size_t>(km->image_size));
 
-    // Search for 100 zero bytes (Python: b"\x00" * 100) — system call handler gap
+    // Search for 100 zero bytes (Python: b"\x00" * 100)  system call handler gap
     size_t ksc64_off = std::string::npos;
     for (size_t i = 0; i + 100 <= km_data.size(); ++i) {
         bool all_zero = true;

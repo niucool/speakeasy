@@ -60,7 +60,7 @@ struct KEY_VALUE_BASIC_INFORMATION_POD {
     uint32_t TitleIndex = 0;
     uint32_t Type       = 0;
     uint32_t NameLength = 0;
-    // Followed by Name[1] (variable-length) — handled at call site
+    // Followed by Name[1] (variable-length)  handled at call site
 };
 
 struct KEY_VALUE_BASIC_INFORMATION : public EmuStructHelper<KEY_VALUE_BASIC_INFORMATION>, public KEY_VALUE_BASIC_INFORMATION_POD {
@@ -74,7 +74,7 @@ struct KEY_VALUE_FULL_INFORMATION_POD {
     uint32_t DataOffset = 0;
     uint32_t DataLength = 0;
     uint32_t NameLength = 0;
-    // Followed by Name[1] (variable-length) — handled at call site
+    // Followed by Name[1] (variable-length)  handled at call site
 };
 
 struct KEY_VALUE_FULL_INFORMATION : public EmuStructHelper<KEY_VALUE_FULL_INFORMATION>, public KEY_VALUE_FULL_INFORMATION_POD {
@@ -121,7 +121,7 @@ inline int get_flag_value(const std::string& flag) {
 }
 
 // ==========================================================================================================
-// KEY_VALUE_PARTIAL_INFORMATION — moved from struct.h
+// KEY_VALUE_PARTIAL_INFORMATION  moved from struct.h
 // ==========================================================================================================
 struct KEY_VALUE_PARTIAL_INFORMATION : public EmuStructHelper<KEY_VALUE_PARTIAL_INFORMATION> {
     uint32_t TitleIndex = 0;
