@@ -41,7 +41,7 @@ static std::map<uint64_t, BcryptAlg>& algs() {
 // 
 //  BCryptOpenAlgorithmProvider
 // 
-uint64_t Bcrypt::BCryptOpenAlgorithmProvider(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Bcrypt::BCryptOpenAlgorithmProvider(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return BC_INVALID_HANDLE;
     uint64_t phAlgorithm = a[0];
     uint64_t pszAlgId = a[1];
@@ -78,7 +78,7 @@ uint64_t Bcrypt::BCryptOpenAlgorithmProvider(void* e, const std::vector<uint64_t
 // 
 //  BCryptImportKeyPair
 // 
-uint64_t Bcrypt::BCryptImportKeyPair(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Bcrypt::BCryptImportKeyPair(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 7) return BC_INVALID_HANDLE;
     uint64_t hAlgorithm = a[0];
     uint64_t hImportKey = a[1];
@@ -117,7 +117,7 @@ uint64_t Bcrypt::BCryptImportKeyPair(void* e, const std::vector<uint64_t>& a, vo
 // 
 //  BCryptCloseAlgorithmProvider
 // 
-uint64_t Bcrypt::BCryptCloseAlgorithmProvider(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Bcrypt::BCryptCloseAlgorithmProvider(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return BC_INVALID_HANDLE;
     uint64_t hAlgorithm = a[0];
     (void)e;
@@ -129,7 +129,7 @@ uint64_t Bcrypt::BCryptCloseAlgorithmProvider(void* e, const std::vector<uint64_
 // 
 //  BCryptGetProperty
 // 
-uint64_t Bcrypt::BCryptGetProperty(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Bcrypt::BCryptGetProperty(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 6) return BC_INVALID_HANDLE;
     uint64_t hObject = a[0];
     uint64_t pszProperty = a[1];
@@ -172,7 +172,7 @@ uint64_t Bcrypt::BCryptGetProperty(void* e, const std::vector<uint64_t>& a, void
 // 
 //  BCryptDestroyKey
 // 
-uint64_t Bcrypt::BCryptDestroyKey(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Bcrypt::BCryptDestroyKey(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return BC_INVALID_HANDLE;
     uint64_t hKey = a[0];
     (void)e;

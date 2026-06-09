@@ -27,7 +27,7 @@ Usbd::Usbd(void* emu) : ApiHandler(emu) {
 
 //  Implementations 
 
-uint64_t Usbd::USBD_ValidateConfigurationDescriptor(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Usbd::USBD_ValidateConfigurationDescriptor(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS USBD_ValidateConfigurationDescriptor(
     //     PUSB_CONFIGURATION_DESCRIPTOR ConfigurationDescriptor,
     //     ULONG BufferLength,

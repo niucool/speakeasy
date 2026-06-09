@@ -48,107 +48,107 @@ GDI32::GDI32(void* emu) : ApiHandler(emu) {
 
 //  API implementations 
 
-uint64_t GDI32::CreateBitmap(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::CreateBitmap(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return gdi_next_handle();
 }
 
-uint64_t GDI32::MoveToEx(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::MoveToEx(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t GDI32::LineTo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::LineTo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t GDI32::GetStockObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::GetStockObject(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t GDI32::GetMapMode(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::GetMapMode(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t GDI32::GetDeviceCaps(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::GetDeviceCaps(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 16;
 }
 
-uint64_t GDI32::GdiSetBatchLimit(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::GdiSetBatchLimit(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t GDI32::MaskBlt(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::MaskBlt(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t GDI32::BitBlt(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::BitBlt(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t GDI32::DeleteDC(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::DeleteDC(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t GDI32::SelectObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::SelectObject(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t GDI32::DeleteObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::DeleteObject(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
 
-uint64_t GDI32::CreateCompatibleBitmap(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::CreateCompatibleBitmap(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return gdi_next_handle();
 }
 
-uint64_t GDI32::CreateCompatibleDC(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::CreateCompatibleDC(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return gdi_next_handle();
 }
 
-uint64_t GDI32::GetDIBits(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::GetDIBits(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t GDI32::CreateDIBSection(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::CreateDIBSection(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return gdi_next_handle();
 }
 
-uint64_t GDI32::CreateDCA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::CreateDCA(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return gdi_next_handle();
 }
 
-uint64_t GDI32::GetTextCharacterExtra(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::GetTextCharacterExtra(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0x8000000;
 }
 
-uint64_t GDI32::StretchBlt(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::StretchBlt(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t GDI32::CreateFontIndirectA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::CreateFontIndirectA(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0x6000;
 }
 
-uint64_t GDI32::GetObjectA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::GetObjectA(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t h = a[0], c = a[1], pv = a[2];
     if (pv && c) {
         std::vector<uint8_t> zero(static_cast<size_t>(c), 0);
@@ -158,7 +158,7 @@ uint64_t GDI32::GetObjectA(void* e, const std::vector<uint64_t>& a, void* ctx) {
     return c;
 }
 
-uint64_t GDI32::WidenPath(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t GDI32::WidenPath(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }

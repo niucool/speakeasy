@@ -20,7 +20,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  UuidCreate
 // 
-uint64_t Rpcrt4::UuidCreate(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Rpcrt4::UuidCreate(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return 1;
     uint64_t uuidp = a[0];
 
@@ -49,7 +49,7 @@ uint64_t Rpcrt4::UuidCreate(void* e, const std::vector<uint64_t>& a, void* ctx) 
 // 
 //  UuidToStringA
 // 
-uint64_t Rpcrt4::UuidToStringA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Rpcrt4::UuidToStringA(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 2) return 1;
     uint64_t uuidp = a[0];
     uint64_t stringp = a[1];

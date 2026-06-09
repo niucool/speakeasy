@@ -18,7 +18,7 @@ class WindowsEmulator;
 class BinaryEmulator;
 class RegKey;
 
-using ApiFunc = std::function<uint64_t(void* emu, const std::vector<uint64_t>& argv, void* ctx)>;
+using ApiFunc = std::function<uint64_t(void* emu, std::vector<uint64_t>& argv, void* ctx)>;
 
 using DataFunc = std::function<uint64_t(uint64_t ptr)>;
 
@@ -218,12 +218,12 @@ public:
 #define API_LIST_BEGIN \
 private: \
     std::vector<ApiEntry> apis_; \
-    static uint64_t _stub(void* e, const std::vector<uint64_t>& a, void* c) { (void)e; (void)a; (void)c; return 1; }
+    static uint64_t _stub(void* e, std::vector<uint64_t>& a, void* c) { (void)e; (void)a; (void)c; return 1; }
 
 /// Declare an API handler method + register it in the table.
 /// Each API_ENTRY declares `static uint64_t name(...)` and adds it to the list.
 #define API_ENTRY(name, argc) \
-    static uint64_t name(void* emu, const std::vector<uint64_t>& argv, void* ctx);
+    static uint64_t name(void* emu, std::vector<uint64_t>& argv, void* ctx);
 
 #define API_LIST_END
 

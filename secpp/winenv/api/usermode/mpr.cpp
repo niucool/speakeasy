@@ -41,7 +41,7 @@ Mpr::Mpr(void* emu) : ApiHandler(emu) {
 // 
 //  WNetOpenEnum  start network resource enumeration
 // 
-uint64_t Mpr::WNetOpenEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Mpr::WNetOpenEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t dwScope = a[0];
     uint64_t dwType = a[1];
     uint64_t dwUsage = a[2];
@@ -69,7 +69,7 @@ uint64_t Mpr::WNetOpenEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
 // 
 //  WNetEnumResource  continue network resource enumeration
 // 
-uint64_t Mpr::WNetEnumResource(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Mpr::WNetEnumResource(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t hEnum = a[0];
     uint64_t lpcCount = a[1];
     uint64_t lpBuffer = a[2];
@@ -82,7 +82,7 @@ uint64_t Mpr::WNetEnumResource(void* e, const std::vector<uint64_t>& a, void* ct
 // 
 //  WNetAddConnection2  add a network connection
 // 
-uint64_t Mpr::WNetAddConnection2(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Mpr::WNetAddConnection2(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t lpNetResource = a[0];
     uint64_t lpPassword = a[1];
     uint64_t lpUserName = a[2];
@@ -104,7 +104,7 @@ uint64_t Mpr::WNetAddConnection2(void* e, const std::vector<uint64_t>& a, void* 
 // 
 //  WNetGetConnection  get remote name for redirected local device
 // 
-uint64_t Mpr::WNetGetConnection(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Mpr::WNetGetConnection(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t lpLocalName = a[0];
     uint64_t lpRemoteName = a[1];
     uint64_t lpnLength = a[2];

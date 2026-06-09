@@ -2244,7 +2244,7 @@ uint64_t Ntdll::NtDuplicateObject(void* emu, const std::vector<uint64_t>& argv, 
 // Fallback stub
 // 
 
-uint64_t Ntdll::stub_api(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntdll::stub_api(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return NT_SUCCESS;
 }
 

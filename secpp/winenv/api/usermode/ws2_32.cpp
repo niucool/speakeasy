@@ -23,7 +23,7 @@ static int next_socket_handle() {
 
 //  WSAStartup 
 // int WSAStartup(WORD wVersionRequired, LPWSADATA lpWSAData);
-uint64_t Ws2_32::WSAStartup(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::WSAStartup(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 2) return -1;
     uint64_t lpWSAData = a[1];
     if (lpWSAData) {
@@ -46,7 +46,7 @@ uint64_t Ws2_32::WSAStartup(void* e, const std::vector<uint64_t>& a, void* ctx) 
 //  WSASocketA 
 // SOCKET WSASocketA(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtocolInfo,
 //                    GROUP g, DWORD dwFlags);
-uint64_t Ws2_32::WSASocketA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::WSASocketA(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e;
     if (a.size() < 1) return -1;
     return static_cast<uint64_t>(next_socket_handle());
@@ -54,7 +54,7 @@ uint64_t Ws2_32::WSASocketA(void* e, const std::vector<uint64_t>& a, void* ctx) 
 
 //  connect 
 // int connect(SOCKET s, const sockaddr* name, int namelen);
-uint64_t Ws2_32::connect(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::connect(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 3) return -1;
     uint64_t s = a[0];
     uint64_t pname = a[1];
@@ -81,7 +81,7 @@ uint64_t Ws2_32::connect(void* e, const std::vector<uint64_t>& a, void* ctx) {
 
 //  send 
 // int send(SOCKET s, const char* buf, int len, int flags);
-uint64_t Ws2_32::send(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::send(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return -1;
     uint64_t s = a[0];
     uint64_t buf = a[1];
@@ -104,7 +104,7 @@ uint64_t Ws2_32::send(void* e, const std::vector<uint64_t>& a, void* ctx) {
 
 //  recv 
 // int recv(SOCKET s, char* buf, int len, int flags);
-uint64_t Ws2_32::recv(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::recv(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 4) return -1;
     uint64_t s = a[0];
     uint64_t buf = a[1];
@@ -119,7 +119,7 @@ uint64_t Ws2_32::recv(void* e, const std::vector<uint64_t>& a, void* ctx) {
 
 //  closesocket 
 // int closesocket(SOCKET s);
-uint64_t Ws2_32::closesocket(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::closesocket(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e;
     if (a.size() < 1) return -1;
     return 0;
@@ -127,7 +127,7 @@ uint64_t Ws2_32::closesocket(void* e, const std::vector<uint64_t>& a, void* ctx)
 
 //  bind 
 // int bind(SOCKET s, const sockaddr* addr, int namelen);
-uint64_t Ws2_32::bind(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::bind(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 3) return -1;
     uint64_t s = a[0];
     uint64_t pname = a[1];
@@ -151,7 +151,7 @@ uint64_t Ws2_32::bind(void* e, const std::vector<uint64_t>& a, void* ctx) {
 
 //  listen 
 // int listen(SOCKET s, int backlog);
-uint64_t Ws2_32::listen(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::listen(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e;
     if (a.size() < 2) return -1;
     return 0;
@@ -159,7 +159,7 @@ uint64_t Ws2_32::listen(void* e, const std::vector<uint64_t>& a, void* ctx) {
 
 //  accept 
 // SOCKET accept(SOCKET s, sockaddr* addr, int* addrlen);
-uint64_t Ws2_32::accept(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::accept(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return -1;
     uint64_t addr = a.size() > 1 ? a[1] : 0;
 
@@ -179,7 +179,7 @@ uint64_t Ws2_32::accept(void* e, const std::vector<uint64_t>& a, void* ctx) {
 
 //  gethostbyname 
 // struct hostent* gethostbyname(const char* name);
-uint64_t Ws2_32::gethostbyname(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::gethostbyname(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return 0;
     uint64_t name_ptr = a[0];
 
@@ -202,14 +202,14 @@ uint64_t Ws2_32::gethostbyname(void* e, const std::vector<uint64_t>& a, void* ct
 
 //  WSAGetLastError 
 // int WSAGetLastError();
-uint64_t Ws2_32::WSAGetLastError(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::WSAGetLastError(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
 //  inet_addr 
 // unsigned long inet_addr(const char* cp);
-uint64_t Ws2_32::inet_addr(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::inet_addr(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 1) return 0xFFFFFFFF;
     uint64_t cp = a[0];
     if (!cp) return 0xFFFFFFFF;
@@ -230,7 +230,7 @@ uint64_t Ws2_32::inet_addr(void* e, const std::vector<uint64_t>& a, void* ctx) {
 
 //  htons 
 // u_short htons(u_short hostshort);
-uint64_t Ws2_32::htons(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::htons(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e;
     if (a.size() < 1) return 0;
     uint16_t val = static_cast<uint16_t>(a[0] & 0xFFFF);
@@ -238,7 +238,7 @@ uint64_t Ws2_32::htons(void* e, const std::vector<uint64_t>& a, void* ctx) {
 }
 //  select 
 // int select(int nfds, fd_set* readfds, fd_set* writefds, fd_set* exceptfds, const timeval* timeout);
-uint64_t Ws2_32::select(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::select(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 5) return 0;
     uint64_t readfds = a[1];
     uint64_t writefds = a[2];
@@ -249,7 +249,7 @@ uint64_t Ws2_32::select(void* e, const std::vector<uint64_t>& a, void* ctx) {
     return 0;
 }
 
-uint64_t Ws2_32::stub(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ws2_32::stub(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 

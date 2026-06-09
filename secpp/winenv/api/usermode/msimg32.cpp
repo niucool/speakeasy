@@ -16,7 +16,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  TransparentBlt
 // 
-uint64_t Msimg32::TransparentBlt(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Msimg32::TransparentBlt(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1;  // TRUE
 }

@@ -20,7 +20,7 @@ static constexpr uint32_t S32_SEC_E_INVALID_HANDLE = 0x80090301;
 // 
 //  GetUserNameEx
 // 
-uint64_t Secur32::GetUserNameEx(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Secur32::GetUserNameEx(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 3) return 0;
     uint32_t NameFormat = static_cast<uint32_t>(a[0]);
     uint64_t lpNameBuffer = a[1];
@@ -60,7 +60,7 @@ uint64_t Secur32::GetUserNameEx(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  EncryptMessage
 // 
-uint64_t Secur32::EncryptMessage(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Secur32::EncryptMessage(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return S32_SEC_E_INVALID_HANDLE;
 }

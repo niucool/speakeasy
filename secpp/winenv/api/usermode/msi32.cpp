@@ -16,7 +16,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  MsiDatabaseMergeA
 // 
-uint64_t Msi32::MsiDatabaseMergeA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Msi32::MsiDatabaseMergeA(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;  // ERROR_SUCCESS
 }

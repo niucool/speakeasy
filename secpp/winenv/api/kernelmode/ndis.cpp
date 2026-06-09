@@ -62,7 +62,7 @@ static inline std::string ndis_tag_to_str(uint32_t tag) {
 
 //  Implementations 
 
-uint64_t Ndis::NdisGetVersion(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisGetVersion(void* e, std::vector<uint64_t>& a, void* ctx) {
     // UINT NdisGetVersion();
     (void)a;
     int arch = be(e)->get_arch();
@@ -71,7 +71,7 @@ uint64_t Ndis::NdisGetVersion(void* e, const std::vector<uint64_t>& a, void* ctx
     return (6 << 16) | 0x51; // NDIS 6.51 for Win10+
 }
 
-uint64_t Ndis::NdisGetRoutineAddress(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisGetRoutineAddress(void* e, std::vector<uint64_t>& a, void* ctx) {
     // PVOID NdisGetRoutineAddress(PNDIS_STRING NdisRoutineName);
     // Read the unicode string and look up the function
     uint64_t routine_name = a[0];
@@ -92,7 +92,7 @@ uint64_t Ndis::NdisGetRoutineAddress(void* e, const std::vector<uint64_t>& a, vo
     return reinterpret_cast<uint64_t>(we(e)->get_proc("ndis", ""));
 }
 
-uint64_t Ndis::NdisMRegisterMiniportDriver(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisMRegisterMiniportDriver(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NDIS_STATUS NdisMRegisterMiniportDriver(...)
     uint64_t phnd = a[4];
     if (phnd) {
@@ -104,7 +104,7 @@ uint64_t Ndis::NdisMRegisterMiniportDriver(void* e, const std::vector<uint64_t>&
     return 0; // NDIS_STATUS_SUCCESS
 }
 
-uint64_t Ndis::NdisInitializeWrapper(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisInitializeWrapper(void* e, std::vector<uint64_t>& a, void* ctx) {
     // VOID NdisInitializeWrapper(...)
     uint64_t p_handle = a[0];
     if (p_handle) {
@@ -116,22 +116,22 @@ uint64_t Ndis::NdisInitializeWrapper(void* e, const std::vector<uint64_t>& a, vo
     return 0;
 }
 
-uint64_t Ndis::NdisTerminateWrapper(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisTerminateWrapper(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ndis::NdisInitializeReadWriteLock(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisInitializeReadWriteLock(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ndis::NdisMRegisterUnloadHandler(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisMRegisterUnloadHandler(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ndis::NdisRegisterProtocol(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisRegisterProtocol(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NDIS_STATUS NdisRegisterProtocol(...)
     uint64_t p_status = a[0];
     uint64_t p_proto = a[1];
@@ -152,7 +152,7 @@ uint64_t Ndis::NdisRegisterProtocol(void* e, const std::vector<uint64_t>& a, voi
     return 0;
 }
 
-uint64_t Ndis::NdisIMRegisterLayeredMiniport(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisIMRegisterLayeredMiniport(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NDIS_STATUS NdisIMRegisterLayeredMiniport(...)
     uint64_t drv_hnd = a[3];
     if (drv_hnd) {
@@ -164,12 +164,12 @@ uint64_t Ndis::NdisIMRegisterLayeredMiniport(void* e, const std::vector<uint64_t
     return 0; // NDIS_STATUS_SUCCESS
 }
 
-uint64_t Ndis::NdisIMAssociateMiniport(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisIMAssociateMiniport(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ndis::NdisAllocateGenericObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisAllocateGenericObject(void* e, std::vector<uint64_t>& a, void* ctx) {
     // PNDIS_GENERIC_OBJECT NdisAllocateGenericObject(DRIVER_OBJECT, Tag, Size)
     uint64_t drv = a[0];
     uint32_t tag = static_cast<uint32_t>(a[1]);
@@ -192,7 +192,7 @@ uint64_t Ndis::NdisAllocateGenericObject(void* e, const std::vector<uint64_t>& a
     return ptr;
 }
 
-uint64_t Ndis::NdisAllocateMemoryWithTag(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisAllocateMemoryWithTag(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NDIS_STATUS NdisAllocateMemoryWithTag(PVOID *VirtualAddress, UINT Length, ULONG Tag)
     uint64_t pva = a[0];
     uint64_t length = a[1];
@@ -210,7 +210,7 @@ uint64_t Ndis::NdisAllocateMemoryWithTag(void* e, const std::vector<uint64_t>& a
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Ndis::NdisAllocateNetBufferListPool(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisAllocateNetBufferListPool(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NDIS_HANDLE NdisAllocateNetBufferListPool(...)
     // Allocate a NET_BUFFER_LIST structure
     size_t nbl_size = static_cast<size_t>(ptr_sz(e)) * 8; // rough estimate
@@ -219,21 +219,21 @@ uint64_t Ndis::NdisAllocateNetBufferListPool(void* e, const std::vector<uint64_t
     return ptr;
 }
 
-uint64_t Ndis::NdisFreeNetBufferListPool(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisFreeNetBufferListPool(void* e, std::vector<uint64_t>& a, void* ctx) {
     // VOID NdisFreeNetBufferListPool(NDIS_HANDLE PoolHandle)
     uint64_t handle = a[0];
     mm(e)->mem_free(handle);
     return 0;
 }
 
-uint64_t Ndis::NdisFreeMemory(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisFreeMemory(void* e, std::vector<uint64_t>& a, void* ctx) {
     // VOID NdisFreeMemory(PVOID VirtualAddress, UINT Length, ULONG Tag)
     uint64_t addr = a[0];
     mm(e)->mem_free(addr);
     return 0;
 }
 
-uint64_t Ndis::NdisFreeGenericObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ndis::NdisFreeGenericObject(void* e, std::vector<uint64_t>& a, void* ctx) {
     // VOID NdisFreeGenericObject(PNDIS_GENERIC_OBJECT GenericObject)
     uint64_t obj = a[0];
     mm(e)->mem_free(obj);

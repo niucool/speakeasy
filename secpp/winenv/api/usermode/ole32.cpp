@@ -82,17 +82,17 @@ Ole32::Ole32(void* emu) : ApiHandler(emu) {
 
 //  API implementations 
 
-uint64_t Ole32::CoInitialize(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CoInitialize(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0; // S_OK
 }
 
-uint64_t Ole32::CoUninitialize(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CoUninitialize(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ole32::CoCreateInstance(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CoCreateInstance(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t rclsid = a[0], pUnkOuter = a[1], dwClsContext = a[2];
     uint64_t riid = a[3], ppv = a[4];
     (void)pUnkOuter; (void)dwClsContext;
@@ -108,7 +108,7 @@ uint64_t Ole32::CoCreateInstance(void* e, const std::vector<uint64_t>& a, void* 
     return 0; // S_OK
 }
 
-uint64_t Ole32::CoGetClassObject(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CoGetClassObject(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t rclsid = a[0], dwClsContext = a[1], pvReserved = a[2];
     uint64_t riid = a[3], ppv = a[4];
     (void)rclsid; (void)dwClsContext; (void)pvReserved; (void)riid;
@@ -123,18 +123,18 @@ uint64_t Ole32::CoGetClassObject(void* e, const std::vector<uint64_t>& a, void* 
     return 0; // S_OK
 }
 
-uint64_t Ole32::CoTaskMemAlloc(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CoTaskMemAlloc(void* e, std::vector<uint64_t>& a, void* ctx) {
     size_t cb = static_cast<size_t>(a[0]);
     if (cb == 0) cb = 1;
     return static_cast<MemoryManager*>(we(e))->mem_map(cb, 0, PERM_MEM_RWX, "ole32.CoTaskMemAlloc");
 }
 
-uint64_t Ole32::CoTaskMemFree(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CoTaskMemFree(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ole32::CLSIDFromString(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CLSIDFromString(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t lpsz = a[0], pclsid = a[1];
     if (lpsz && pclsid) {
         std::string s = be(e)->read_mem_string(lpsz, 2);
@@ -145,7 +145,7 @@ uint64_t Ole32::CLSIDFromString(void* e, const std::vector<uint64_t>& a, void* c
     return 0; // S_OK
 }
 
-uint64_t Ole32::StringFromGUID2(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::StringFromGUID2(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t rguid = a[0], lpsz = a[1], cchMax = a[2];
     if (rguid && lpsz && cchMax > 0) {
         _OLEGUID guid = read_guid(e, rguid);
@@ -156,12 +156,12 @@ uint64_t Ole32::StringFromGUID2(void* e, const std::vector<uint64_t>& a, void* c
     return 1;
 }
 
-uint64_t Ole32::ProgIDFromCLSID(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::ProgIDFromCLSID(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0; // S_OK
 }
 
-uint64_t Ole32::CLSIDFromProgID(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CLSIDFromProgID(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t lpszProgID = a[0], lpclsid = a[1];
     if (lpclsid) {
         std::vector<uint8_t> zero_guid(16, 0);
@@ -171,37 +171,37 @@ uint64_t Ole32::CLSIDFromProgID(void* e, const std::vector<uint64_t>& a, void* c
     return 0; // S_OK
 }
 
-uint64_t Ole32::OleInitialize(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::OleInitialize(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0; // S_OK
 }
 
-uint64_t Ole32::OleUninitialize(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::OleUninitialize(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ole32::OleSetClipboard(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::OleSetClipboard(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0; // S_OK
 }
 
-uint64_t Ole32::OleGetClipboard(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::OleGetClipboard(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1; // S_FALSE
 }
 
-uint64_t Ole32::OleFlushClipboard(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::OleFlushClipboard(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0; // S_OK
 }
 
-uint64_t Ole32::OleIsCurrentClipboard(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::OleIsCurrentClipboard(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 1; // S_FALSE
 }
 
-uint64_t Ole32::CreateBindCtx(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::CreateBindCtx(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t reserved = a[0], ppbc = a[1];
     (void)reserved;
 
@@ -215,12 +215,12 @@ uint64_t Ole32::CreateBindCtx(void* e, const std::vector<uint64_t>& a, void* ctx
     return 0; // S_OK
 }
 
-uint64_t Ole32::BindMoniker(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::BindMoniker(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0; // S_OK
 }
 
-uint64_t Ole32::MkParseDisplayName(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ole32::MkParseDisplayName(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return 0; // S_OK
 }

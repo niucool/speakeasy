@@ -17,7 +17,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  NetGetJoinInformation
 // 
-uint64_t Wkscli::NetGetJoinInformation(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wkscli::NetGetJoinInformation(void* e, std::vector<uint64_t>& a, void* ctx) {
     if (a.size() < 3) return 87;  // ERROR_INVALID_PARAMETER
     uint64_t lpServer = a[0];
     uint64_t lpNameBuffer = a[1];

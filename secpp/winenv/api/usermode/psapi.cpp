@@ -81,7 +81,7 @@ static std::string get_module_file_name(void* e, std::shared_ptr<Process> proc, 
 // 
 //  EnumProcesses  enumerate running processes
 // 
-uint64_t Psapi::EnumProcesses(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Psapi::EnumProcesses(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t lpidProcess = a[0];
     uint64_t cb = a[1];
     uint64_t lpcbNeeded = a[2];
@@ -116,7 +116,7 @@ uint64_t Psapi::EnumProcesses(void* e, const std::vector<uint64_t>& a, void* ctx
 // 
 //  EnumProcessModules  enumerate modules in a process
 // 
-uint64_t Psapi::EnumProcessModules(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Psapi::EnumProcessModules(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t hProcess = a[0];
     uint64_t lphModule = a[1];
     uint64_t cb = a[2];
@@ -153,7 +153,7 @@ uint64_t Psapi::EnumProcessModules(void* e, const std::vector<uint64_t>& a, void
 // 
 //  GetModuleBaseName / GetModuleBaseNameA / GetModuleBaseNameW
 // 
-uint64_t Psapi::GetModuleBaseName(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Psapi::GetModuleBaseName(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t hProcess = a[0];
     uint64_t hModule = a[1];
     uint64_t lpBaseName = a[2];
@@ -173,11 +173,11 @@ uint64_t Psapi::GetModuleBaseName(void* e, const std::vector<uint64_t>& a, void*
     return static_cast<uint64_t>(name.size());
 }
 
-uint64_t Psapi::GetModuleBaseNameA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Psapi::GetModuleBaseNameA(void* e, std::vector<uint64_t>& a, void* ctx) {
     return GetModuleBaseName(e, a, ctx);
 }
 
-uint64_t Psapi::GetModuleBaseNameW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Psapi::GetModuleBaseNameW(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t hProcess = a[0];
     uint64_t hModule = a[1];
     uint64_t lpBaseName = a[2];
@@ -200,7 +200,7 @@ uint64_t Psapi::GetModuleBaseNameW(void* e, const std::vector<uint64_t>& a, void
 // 
 //  GetModuleFileNameEx / GetModuleFileNameExA / GetModuleFileNameExW
 // 
-uint64_t Psapi::GetModuleFileNameEx(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Psapi::GetModuleFileNameEx(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t hProcess = a[0];
     uint64_t hModule = a[1];
     uint64_t lpFilename = a[2];
@@ -220,11 +220,11 @@ uint64_t Psapi::GetModuleFileNameEx(void* e, const std::vector<uint64_t>& a, voi
     return static_cast<uint64_t>(name.size());
 }
 
-uint64_t Psapi::GetModuleFileNameExA(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Psapi::GetModuleFileNameExA(void* e, std::vector<uint64_t>& a, void* ctx) {
     return GetModuleFileNameEx(e, a, ctx);
 }
 
-uint64_t Psapi::GetModuleFileNameExW(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Psapi::GetModuleFileNameExW(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t hProcess = a[0];
     uint64_t hModule = a[1];
     uint64_t lpFilename = a[2];

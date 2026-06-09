@@ -127,7 +127,7 @@ NetApi32::NetApi32(void* emu) : ApiHandler(emu) {
 // 
 //  NetGetJoinInformation
 // 
-uint64_t NetApi32::NetGetJoinInformation(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGetJoinInformation(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NET_API_STATUS NetGetJoinInformation(
     //   LPCWSTR lpServer,        // a[0]
     //   LPWSTR *lpNameBuffer,    // a[1]
@@ -168,7 +168,7 @@ uint64_t NetApi32::NetGetJoinInformation(void* e, const std::vector<uint64_t>& a
 // 
 //  NetWkstaGetInfo
 // 
-uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetWkstaGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NET_API_STATUS NetWkstaGetInfo(
     //   LMSTR  servername,   // a[0]
     //   DWORD  level,        // a[1]
@@ -317,7 +317,7 @@ uint64_t NetApi32::NetWkstaGetInfo(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetWkstaUserEnum
 // 
-uint64_t NetApi32::NetWkstaUserEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetWkstaUserEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t servername = a[0];
     uint64_t level = a[1];
     uint64_t bufptr = a[2];
@@ -329,7 +329,7 @@ uint64_t NetApi32::NetWkstaUserEnum(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetServerEnum
 // 
-uint64_t NetApi32::NetServerEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetServerEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -337,7 +337,7 @@ uint64_t NetApi32::NetServerEnum(void* e, const std::vector<uint64_t>& a, void* 
 // 
 //  NetServerEnumEx
 // 
-uint64_t NetApi32::NetServerEnumEx(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetServerEnumEx(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -345,7 +345,7 @@ uint64_t NetApi32::NetServerEnumEx(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetServerGetInfo
 // 
-uint64_t NetApi32::NetServerGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetServerGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NET_API_STATUS NetServerGetInfo(LMSTR servername, DWORD level, LPBYTE *bufptr);
     uint64_t servername = a[0];
     uint64_t level = a[1];
@@ -403,7 +403,7 @@ uint64_t NetApi32::NetServerGetInfo(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetServerSetInfo
 // 
-uint64_t NetApi32::NetServerSetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetServerSetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -411,7 +411,7 @@ uint64_t NetApi32::NetServerSetInfo(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetUserAdd
 // 
-uint64_t NetApi32::NetUserAdd(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserAdd(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NET_API_STATUS NetUserAdd(LPCWSTR servername, DWORD level, LPBYTE buf, LPDWORD parm_err);
     uint64_t servername = a[0];
     uint64_t level = a[1];
@@ -430,7 +430,7 @@ uint64_t NetApi32::NetUserAdd(void* e, const std::vector<uint64_t>& a, void* ctx
 // 
 //  NetUserDel
 // 
-uint64_t NetApi32::NetUserDel(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserDel(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t servername = a[0];
     uint64_t username = a[1];
     (void)servername;
@@ -444,7 +444,7 @@ uint64_t NetApi32::NetUserDel(void* e, const std::vector<uint64_t>& a, void* ctx
 // 
 //  NetUserEnum
 // 
-uint64_t NetApi32::NetUserEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -452,7 +452,7 @@ uint64_t NetApi32::NetUserEnum(void* e, const std::vector<uint64_t>& a, void* ct
 // 
 //  NetUserGetGroups
 // 
-uint64_t NetApi32::NetUserGetGroups(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserGetGroups(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -460,7 +460,7 @@ uint64_t NetApi32::NetUserGetGroups(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetUserGetInfo
 // 
-uint64_t NetApi32::NetUserGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -468,7 +468,7 @@ uint64_t NetApi32::NetUserGetInfo(void* e, const std::vector<uint64_t>& a, void*
 // 
 //  NetUserSetInfo
 // 
-uint64_t NetApi32::NetUserSetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserSetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -476,7 +476,7 @@ uint64_t NetApi32::NetUserSetInfo(void* e, const std::vector<uint64_t>& a, void*
 // 
 //  NetUserGetLocalGroups
 // 
-uint64_t NetApi32::NetUserGetLocalGroups(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserGetLocalGroups(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -484,7 +484,7 @@ uint64_t NetApi32::NetUserGetLocalGroups(void* e, const std::vector<uint64_t>& a
 // 
 //  NetUserModalsGet
 // 
-uint64_t NetApi32::NetUserModalsGet(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserModalsGet(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -492,7 +492,7 @@ uint64_t NetApi32::NetUserModalsGet(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetUserModalsSet
 // 
-uint64_t NetApi32::NetUserModalsSet(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUserModalsSet(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -500,7 +500,7 @@ uint64_t NetApi32::NetUserModalsSet(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetGroupEnum
 // 
-uint64_t NetApi32::NetGroupEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGroupEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -508,7 +508,7 @@ uint64_t NetApi32::NetGroupEnum(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetGroupGetInfo
 // 
-uint64_t NetApi32::NetGroupGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGroupGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -516,7 +516,7 @@ uint64_t NetApi32::NetGroupGetInfo(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetGroupSetInfo
 // 
-uint64_t NetApi32::NetGroupSetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGroupSetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -524,7 +524,7 @@ uint64_t NetApi32::NetGroupSetInfo(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetGroupAddUser
 // 
-uint64_t NetApi32::NetGroupAddUser(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGroupAddUser(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -532,7 +532,7 @@ uint64_t NetApi32::NetGroupAddUser(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetGroupDelUser
 // 
-uint64_t NetApi32::NetGroupDelUser(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGroupDelUser(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -540,7 +540,7 @@ uint64_t NetApi32::NetGroupDelUser(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetLocalGroupEnum
 // 
-uint64_t NetApi32::NetLocalGroupEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetLocalGroupEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -548,7 +548,7 @@ uint64_t NetApi32::NetLocalGroupEnum(void* e, const std::vector<uint64_t>& a, vo
 // 
 //  NetLocalGroupGetInfo
 // 
-uint64_t NetApi32::NetLocalGroupGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetLocalGroupGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -556,7 +556,7 @@ uint64_t NetApi32::NetLocalGroupGetInfo(void* e, const std::vector<uint64_t>& a,
 // 
 //  NetLocalGroupSetInfo
 // 
-uint64_t NetApi32::NetLocalGroupSetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetLocalGroupSetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -564,7 +564,7 @@ uint64_t NetApi32::NetLocalGroupSetInfo(void* e, const std::vector<uint64_t>& a,
 // 
 //  NetLocalGroupAdd
 // 
-uint64_t NetApi32::NetLocalGroupAdd(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetLocalGroupAdd(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -572,7 +572,7 @@ uint64_t NetApi32::NetLocalGroupAdd(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetLocalGroupAddMembers
 // 
-uint64_t NetApi32::NetLocalGroupAddMembers(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetLocalGroupAddMembers(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -580,7 +580,7 @@ uint64_t NetApi32::NetLocalGroupAddMembers(void* e, const std::vector<uint64_t>&
 // 
 //  NetLocalGroupDelMembers
 // 
-uint64_t NetApi32::NetLocalGroupDelMembers(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetLocalGroupDelMembers(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -588,7 +588,7 @@ uint64_t NetApi32::NetLocalGroupDelMembers(void* e, const std::vector<uint64_t>&
 // 
 //  NetLocalGroupGetMembers
 // 
-uint64_t NetApi32::NetLocalGroupGetMembers(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetLocalGroupGetMembers(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -596,7 +596,7 @@ uint64_t NetApi32::NetLocalGroupGetMembers(void* e, const std::vector<uint64_t>&
 // 
 //  NetApiBufferAllocate
 // 
-uint64_t NetApi32::NetApiBufferAllocate(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetApiBufferAllocate(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t ByteCount = a[0];
     uint64_t Buffer = a[1];
     if (Buffer) {
@@ -612,7 +612,7 @@ uint64_t NetApi32::NetApiBufferAllocate(void* e, const std::vector<uint64_t>& a,
 // 
 //  NetApiBufferFree
 // 
-uint64_t NetApi32::NetApiBufferFree(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetApiBufferFree(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -620,7 +620,7 @@ uint64_t NetApi32::NetApiBufferFree(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetApiBufferReallocate
 // 
-uint64_t NetApi32::NetApiBufferReallocate(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetApiBufferReallocate(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -628,7 +628,7 @@ uint64_t NetApi32::NetApiBufferReallocate(void* e, const std::vector<uint64_t>& 
 // 
 //  NetApiBufferSize
 // 
-uint64_t NetApi32::NetApiBufferSize(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetApiBufferSize(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -636,7 +636,7 @@ uint64_t NetApi32::NetApiBufferSize(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetGetDCName
 // 
-uint64_t NetApi32::NetGetDCName(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGetDCName(void* e, std::vector<uint64_t>& a, void* ctx) {
     uint64_t servername = a[0];
     uint64_t domainname = a[1];
     uint64_t bufptr = a[2];
@@ -662,14 +662,14 @@ uint64_t NetApi32::NetGetDCName(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetGetAnyDCName
 // 
-uint64_t NetApi32::NetGetAnyDCName(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGetAnyDCName(void* e, std::vector<uint64_t>& a, void* ctx) {
     return NetGetDCName(e, a, ctx);
 }
 
 // 
 //  NetGetDisplayInformationIndex
 // 
-uint64_t NetApi32::NetGetDisplayInformationIndex(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetGetDisplayInformationIndex(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -677,7 +677,7 @@ uint64_t NetApi32::NetGetDisplayInformationIndex(void* e, const std::vector<uint
 // 
 //  NetQueryDisplayInformation
 // 
-uint64_t NetApi32::NetQueryDisplayInformation(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetQueryDisplayInformation(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -685,7 +685,7 @@ uint64_t NetApi32::NetQueryDisplayInformation(void* e, const std::vector<uint64_
 // 
 //  NetShareAdd
 // 
-uint64_t NetApi32::NetShareAdd(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetShareAdd(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -693,7 +693,7 @@ uint64_t NetApi32::NetShareAdd(void* e, const std::vector<uint64_t>& a, void* ct
 // 
 //  NetShareCheck
 // 
-uint64_t NetApi32::NetShareCheck(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetShareCheck(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -701,7 +701,7 @@ uint64_t NetApi32::NetShareCheck(void* e, const std::vector<uint64_t>& a, void* 
 // 
 //  NetShareDel
 // 
-uint64_t NetApi32::NetShareDel(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetShareDel(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -709,7 +709,7 @@ uint64_t NetApi32::NetShareDel(void* e, const std::vector<uint64_t>& a, void* ct
 // 
 //  NetShareEnum
 // 
-uint64_t NetApi32::NetShareEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetShareEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -717,7 +717,7 @@ uint64_t NetApi32::NetShareEnum(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetShareGetInfo
 // 
-uint64_t NetApi32::NetShareGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetShareGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -725,7 +725,7 @@ uint64_t NetApi32::NetShareGetInfo(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetShareSetInfo
 // 
-uint64_t NetApi32::NetShareSetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetShareSetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -733,7 +733,7 @@ uint64_t NetApi32::NetShareSetInfo(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetConnectionEnum
 // 
-uint64_t NetApi32::NetConnectionEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetConnectionEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -741,7 +741,7 @@ uint64_t NetApi32::NetConnectionEnum(void* e, const std::vector<uint64_t>& a, vo
 // 
 //  NetFileEnum
 // 
-uint64_t NetApi32::NetFileEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetFileEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -749,7 +749,7 @@ uint64_t NetApi32::NetFileEnum(void* e, const std::vector<uint64_t>& a, void* ct
 // 
 //  NetFileGetInfo
 // 
-uint64_t NetApi32::NetFileGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetFileGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -757,7 +757,7 @@ uint64_t NetApi32::NetFileGetInfo(void* e, const std::vector<uint64_t>& a, void*
 // 
 //  NetFileClose
 // 
-uint64_t NetApi32::NetFileClose(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetFileClose(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -765,7 +765,7 @@ uint64_t NetApi32::NetFileClose(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetSessionEnum
 // 
-uint64_t NetApi32::NetSessionEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetSessionEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -773,7 +773,7 @@ uint64_t NetApi32::NetSessionEnum(void* e, const std::vector<uint64_t>& a, void*
 // 
 //  NetSessionGetInfo
 // 
-uint64_t NetApi32::NetSessionGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetSessionGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -781,7 +781,7 @@ uint64_t NetApi32::NetSessionGetInfo(void* e, const std::vector<uint64_t>& a, vo
 // 
 //  NetSessionDel
 // 
-uint64_t NetApi32::NetSessionDel(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetSessionDel(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -789,7 +789,7 @@ uint64_t NetApi32::NetSessionDel(void* e, const std::vector<uint64_t>& a, void* 
 // 
 //  NetUseAdd
 // 
-uint64_t NetApi32::NetUseAdd(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUseAdd(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -797,7 +797,7 @@ uint64_t NetApi32::NetUseAdd(void* e, const std::vector<uint64_t>& a, void* ctx)
 // 
 //  NetUseDel
 // 
-uint64_t NetApi32::NetUseDel(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUseDel(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -805,7 +805,7 @@ uint64_t NetApi32::NetUseDel(void* e, const std::vector<uint64_t>& a, void* ctx)
 // 
 //  NetUseEnum
 // 
-uint64_t NetApi32::NetUseEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUseEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -813,7 +813,7 @@ uint64_t NetApi32::NetUseEnum(void* e, const std::vector<uint64_t>& a, void* ctx
 // 
 //  NetUseGetInfo
 // 
-uint64_t NetApi32::NetUseGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetUseGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -821,7 +821,7 @@ uint64_t NetApi32::NetUseGetInfo(void* e, const std::vector<uint64_t>& a, void* 
 // 
 //  NetScheduleJobAdd
 // 
-uint64_t NetApi32::NetScheduleJobAdd(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetScheduleJobAdd(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -829,7 +829,7 @@ uint64_t NetApi32::NetScheduleJobAdd(void* e, const std::vector<uint64_t>& a, vo
 // 
 //  NetScheduleJobDel
 // 
-uint64_t NetApi32::NetScheduleJobDel(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetScheduleJobDel(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -837,7 +837,7 @@ uint64_t NetApi32::NetScheduleJobDel(void* e, const std::vector<uint64_t>& a, vo
 // 
 //  NetScheduleJobEnum
 // 
-uint64_t NetApi32::NetScheduleJobEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetScheduleJobEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -845,7 +845,7 @@ uint64_t NetApi32::NetScheduleJobEnum(void* e, const std::vector<uint64_t>& a, v
 // 
 //  NetScheduleJobGetInfo
 // 
-uint64_t NetApi32::NetScheduleJobGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetScheduleJobGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -853,7 +853,7 @@ uint64_t NetApi32::NetScheduleJobGetInfo(void* e, const std::vector<uint64_t>& a
 // 
 //  NetRemoteComputerSupports
 // 
-uint64_t NetApi32::NetRemoteComputerSupports(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetRemoteComputerSupports(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -861,7 +861,7 @@ uint64_t NetApi32::NetRemoteComputerSupports(void* e, const std::vector<uint64_t
 // 
 //  NetRemoteTOD
 // 
-uint64_t NetApi32::NetRemoteTOD(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetRemoteTOD(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -869,7 +869,7 @@ uint64_t NetApi32::NetRemoteTOD(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetWkstaSetInfo
 // 
-uint64_t NetApi32::NetWkstaSetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetWkstaSetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -877,7 +877,7 @@ uint64_t NetApi32::NetWkstaSetInfo(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetWkstaTransportEnum
 // 
-uint64_t NetApi32::NetWkstaTransportEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetWkstaTransportEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -885,7 +885,7 @@ uint64_t NetApi32::NetWkstaTransportEnum(void* e, const std::vector<uint64_t>& a
 // 
 //  NetWkstaTransportAdd
 // 
-uint64_t NetApi32::NetWkstaTransportAdd(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetWkstaTransportAdd(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -893,7 +893,7 @@ uint64_t NetApi32::NetWkstaTransportAdd(void* e, const std::vector<uint64_t>& a,
 // 
 //  NetWkstaTransportDel
 // 
-uint64_t NetApi32::NetWkstaTransportDel(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetWkstaTransportDel(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -901,7 +901,7 @@ uint64_t NetApi32::NetWkstaTransportDel(void* e, const std::vector<uint64_t>& a,
 // 
 //  NetAccessAdd
 // 
-uint64_t NetApi32::NetAccessAdd(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetAccessAdd(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -909,7 +909,7 @@ uint64_t NetApi32::NetAccessAdd(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetAccessDel
 // 
-uint64_t NetApi32::NetAccessDel(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetAccessDel(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -917,7 +917,7 @@ uint64_t NetApi32::NetAccessDel(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetAccessEnum
 // 
-uint64_t NetApi32::NetAccessEnum(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetAccessEnum(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -925,7 +925,7 @@ uint64_t NetApi32::NetAccessEnum(void* e, const std::vector<uint64_t>& a, void* 
 // 
 //  NetAccessGetInfo
 // 
-uint64_t NetApi32::NetAccessGetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetAccessGetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -933,7 +933,7 @@ uint64_t NetApi32::NetAccessGetInfo(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetAccessSetInfo
 // 
-uint64_t NetApi32::NetAccessSetInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetAccessSetInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -941,7 +941,7 @@ uint64_t NetApi32::NetAccessSetInfo(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetAuditClear
 // 
-uint64_t NetApi32::NetAuditClear(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetAuditClear(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -949,7 +949,7 @@ uint64_t NetApi32::NetAuditClear(void* e, const std::vector<uint64_t>& a, void* 
 // 
 //  NetAuditRead
 // 
-uint64_t NetApi32::NetAuditRead(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetAuditRead(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -957,7 +957,7 @@ uint64_t NetApi32::NetAuditRead(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetAuditWrite
 // 
-uint64_t NetApi32::NetAuditWrite(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetAuditWrite(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -965,7 +965,7 @@ uint64_t NetApi32::NetAuditWrite(void* e, const std::vector<uint64_t>& a, void* 
 // 
 //  NetConfigGet
 // 
-uint64_t NetApi32::NetConfigGet(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetConfigGet(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -973,7 +973,7 @@ uint64_t NetApi32::NetConfigGet(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetConfigGetAll
 // 
-uint64_t NetApi32::NetConfigGetAll(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetConfigGetAll(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -981,7 +981,7 @@ uint64_t NetApi32::NetConfigGetAll(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetConfigSet
 // 
-uint64_t NetApi32::NetConfigSet(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetConfigSet(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -989,7 +989,7 @@ uint64_t NetApi32::NetConfigSet(void* e, const std::vector<uint64_t>& a, void* c
 // 
 //  NetErrorLogClear
 // 
-uint64_t NetApi32::NetErrorLogClear(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetErrorLogClear(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -997,7 +997,7 @@ uint64_t NetApi32::NetErrorLogClear(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  NetErrorLogRead
 // 
-uint64_t NetApi32::NetErrorLogRead(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetErrorLogRead(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -1005,7 +1005,7 @@ uint64_t NetApi32::NetErrorLogRead(void* e, const std::vector<uint64_t>& a, void
 // 
 //  NetErrorLogWrite
 // 
-uint64_t NetApi32::NetErrorLogWrite(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::NetErrorLogWrite(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }
@@ -1013,7 +1013,7 @@ uint64_t NetApi32::NetErrorLogWrite(void* e, const std::vector<uint64_t>& a, voi
 // 
 //  SetServiceBits
 // 
-uint64_t NetApi32::SetServiceBits(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t NetApi32::SetServiceBits(void* e, std::vector<uint64_t>& a, void* ctx) {
     (void)e; (void)a;
     return NET_NERR_Success;
 }

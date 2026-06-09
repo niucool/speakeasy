@@ -47,13 +47,13 @@ static constexpr int WSK_SUCCESS = 0;
 
 //  Implementations 
 
-uint64_t Wsk::WskRegister(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskRegister(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskRegister(WSK_CLIENT_NPI *ClientNpi, WSK_REGISTRATION *WskRegistration)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskCaptureProviderNPI(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskCaptureProviderNPI(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskCaptureProviderNPI(WSK_REGISTRATION *WskRegistration, ULONG WaitTimeout, WSK_PROVIDER_NPI *WskProviderNpi)
     uint64_t wsk_provider = a[2];
     if (wsk_provider) {
@@ -68,19 +68,19 @@ uint64_t Wsk::WskCaptureProviderNPI(void* e, const std::vector<uint64_t>& a, voi
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskReleaseProviderNPI(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskReleaseProviderNPI(void* e, std::vector<uint64_t>& a, void* ctx) {
     // VOID WskReleaseProviderNPI(WSK_REGISTRATION *WskRegistration)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskDeregister(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskDeregister(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskDeregister(WSK_REGISTRATION *WskRegistration)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskSocket(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskSocket(void* e, std::vector<uint64_t>& a, void* ctx) {
     // PWSK_SOCKET WskSocket(...)
     // Return a dummy socket pointer
     size_t psz = static_cast<size_t>(ptr_sz(e));
@@ -89,73 +89,73 @@ uint64_t Wsk::WskSocket(void* e, const std::vector<uint64_t>& a, void* ctx) {
     return sock;
 }
 
-uint64_t Wsk::WskSocketConnect(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskSocketConnect(void* e, std::vector<uint64_t>& a, void* ctx) {
     // PWSK_SOCKET WskSocketConnect(...)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Wsk::WskControlClient(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskControlClient(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskControlClient(...)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskGetAddressInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskGetAddressInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskGetAddressInfo(...)
     (void)e; (void)a;
     return 0x000000C0000135L; // STATUS_NOT_FOUND
 }
 
-uint64_t Wsk::WskFreeAddressInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskFreeAddressInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     // VOID WskFreeAddressInfo(...)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskGetNameInfo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskGetNameInfo(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskGetNameInfo(...)
     (void)e; (void)a;
     return 0x000000C0000135L; // STATUS_NOT_FOUND
 }
 
-uint64_t Wsk::WskControlSocket(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskControlSocket(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskControlSocket(...)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskCloseSocket(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskCloseSocket(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskCloseSocket(PWSK_SOCKET Socket, ...)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskBind(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskBind(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskBind(...)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskSendTo(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskSendTo(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskSendTo(...)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskReceiveFrom(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskReceiveFrom(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskReceiveFrom(...)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskRelease(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskRelease(void* e, std::vector<uint64_t>& a, void* ctx) {
     // VOID WskRelease(...)
     (void)e; (void)a;
     return WSK_SUCCESS;
 }
 
-uint64_t Wsk::WskGetLocalAddress(void* e, const std::vector<uint64_t>& a, void* ctx) {
+uint64_t Wsk::WskGetLocalAddress(void* e, std::vector<uint64_t>& a, void* ctx) {
     // NTSTATUS WskGetLocalAddress(...)
     (void)e; (void)a;
     return WSK_SUCCESS;
