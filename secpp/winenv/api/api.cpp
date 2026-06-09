@@ -521,7 +521,8 @@ int ApiHandler::get_char_width(const std::map<std::string, std::string>& ctx) {
 int ApiHandler::get_va_arg_count(const std::string& fmt) {
     // Count format specifiers (%d, %s, %x, etc.), ignoring escaped %%
     int count = 0;
-    bool escape = false;
+    // TODO: escape flag not yet used — Python port incomplete, needs format string state tracking
+    bool escape = false; (void)escape;
     for (size_t i = 0; i < fmt.size(); ++i) {
         if (fmt[i] == '%') {
             if (i + 1 < fmt.size() && fmt[i + 1] == '%') {

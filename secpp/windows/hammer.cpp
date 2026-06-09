@@ -46,7 +46,7 @@ static bool is_direct_ptr_instr(const std::string& mnem, const std::string& inst
 // ApiHammer implementation
 ApiHammer::ApiHammer(WindowsEmulator* emu,
                      const speakeasy::SpeakeasyConfig& cfg)
-    : emu(emu), config(cfg.api_hammering), hammer_memregion(0), hammer_offset(0) {
+    : emu(emu), hammer_memregion(0), hammer_offset(0), config(cfg.api_hammering) {
 
     // Load api_hammering configuration from the provided config map
     api_threshold = config.threshold;

@@ -49,6 +49,17 @@
 - **secpp/binemu.h/cpp**: `do_call_return` 签名改进 — `ret_value` 参数从 `uint64_t`（默认 0）改为 `std::optional<uint64_t>`（默认 `std::nullopt`），匹配 Python 的 `if ret_value is not None` 语义。0 现在被视为有效的返回值
 - **所有 TODO 已解决**：PORTING_PROGRESS.md 中的 22 个 TODO 全部关闭
 
+#### Fixed
+
+- **全部 291 个编译警告已通过修改源码消除**（未禁用任何警告）：
+  - **201 `-Wreorder`**：重排了 `objman.h`（`KernelObject`）、`binemu.cpp`（`BinaryEmulator`）、`hammer.cpp`（`ApiHammer`）、`loaders.cpp`（`PeLoader`）中的构造函数初始化列表，使其与成员声明顺序一致
+  - **60 `-Wunused-but-set-variable`**：从 `report.h` 中移除了未使用的 `vec_to_json` lambda
+  - **21 `-Wunused-variable`**：为每个未使用变量添加了 `(void)var` 抑制和 TODO 注释，说明其对应的移植缺口（格式字符串状态跟踪、指针大小使用、HTTP 会话跟踪等）
+  - **5 `-Wsign-compare`**：在需要比较 `size_t`/`uint32_t` 与 `int` 的地方添加了显式 `static_cast`
+  - **3 `-Woverloaded-virtual`**：通过头文件变更修复
+  - **1 `-Wshift-count-overflow`**：在 `kernel32.cpp` 的 32 位移位中添加了 `static_cast<uint64_t>`
+  - **1 `-Wreturn-type`、1 `-Wrange-loop-construct`、1 `-Wmisleading-indentation`**：通过代码重构修复
+
 ### 2026-06-08
 
 #### Fixed

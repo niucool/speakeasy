@@ -111,8 +111,10 @@ uint64_t Crypt32::CryptStringToBinaryA(void* e, const std::vector<uint64_t>& a, 
 
     uint32_t out_len = static_cast<uint32_t>(decoded.size());
     uint32_t cbBinary = 0;
-    uint32_t read_len = 0;
-    uint32_t test_val;
+    // TODO: read_len tracking not yet wired — Python port incomplete
+    uint32_t read_len = 0; (void)read_len;
+    // TODO: test_val placeholder — needs proper crypto context validation
+    uint32_t test_val; (void)test_val;
     if (pcbBinary) {
         raw = mm(e)->mem_read(pcbBinary, 4);
         cbBinary = static_cast<uint32_t>(raw[0]) | (static_cast<uint32_t>(raw[1]) << 8) |

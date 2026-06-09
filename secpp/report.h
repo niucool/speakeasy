@@ -279,13 +279,6 @@ struct EntryPoint {
             for (auto* e : *events) if (e) evts.push_back(e->to_json());
             j["events"] = evts;
         }
-        auto vec_to_json = [](auto& dest, const auto& src, auto fn) {
-            if (src.has_value()) {
-                nlohmann::json arr = nlohmann::json::array();
-                for (const auto& v : *src) arr.push_back((v.*fn)());
-                dest = arr;
-            }
-        };
         if (sym_accesses.has_value()) {
             nlohmann::json arr = nlohmann::json::array();
             for (const auto& s : *sym_accesses) arr.push_back(s.to_json());
