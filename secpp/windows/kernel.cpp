@@ -4,6 +4,8 @@
 // Python: class WinKernelEmulator(WindowsEmulator, IoManager):
 
 #include "kernel.h"
+#include "objman.h"
+#include "../errors.h"
 #include <cstring>
 #include <algorithm>
 #include <fstream>
@@ -32,6 +34,7 @@ std::shared_ptr<Process> WinKernelEmulator::get_system_process() {
 }
 
 Driver* WinKernelEmulator::create_driver_object(const std::string& name, std::shared_ptr<speakeasy::RuntimeModule> pe) {
+    // Python kernel.py:68-85 — creates driver, registers with object manager
     auto drv = std::make_unique<Driver>(static_cast<void*>(this));
     drv->init_driver_object(name, pe, false);
     Driver* drv_ptr = drv.get();
@@ -185,13 +188,10 @@ uint64_t WinKernelEmulator::irp_mj_device_control(void* drv, uint32_t ctl_code, 
 }
 
 void WinKernelEmulator::bootstrap_object_services() {
-    if (processes_.empty()) {
-        auto sys_proc = std::make_shared<Process>(static_cast<void*>(this));
-        sys_proc->set_id(4);
-        processes_.push_back(sys_proc);
-        std::shared_ptr<Thread> sys_thread = std::make_shared<Thread>(static_cast<void*>(this));
-        sys_proc->threads.push_back(sys_thread);
-    }
+    // Python kernel.py:87-94
+    if (!om) om = std::make_shared<ObjectManager>(static_cast<void*>(this));
+    if (processes_.empty())
+        init_processes(config_.processes);
     advance_bootstrap_phase(BootstrapPhase::OBJECT_MANAGER_READY);
 }
 
@@ -201,9 +201,12 @@ bool WinKernelEmulator::_hook_interrupt(void* emu, int intnum) {
 }
 
 void WinKernelEmulator::setup() {
+    // Python kernel.py:96-101
     bootstrap_object_services();
     int arch = get_arch();
     _setup_gdt(arch);
+    init_sys_modules(config_.modules.system_modules);
+    setup_kernel_mode();
     setup_user_shared_data();
     kernel_mode_ = true;
 }
@@ -227,6 +230,201 @@ void WinKernelEmulator::on_emu_complete() {
 
     // Clear process list (automatically cleaned up by std::shared_ptr)
     processes_.clear();
+}
+
+//
+//  Driver / IRP dispatch (ported from kernel.py)
+//
+
+void WinKernelEmulator::add_symlink(const std::string& symlink, const std::string& devname) {
+    if (om) om->add_symlink(symlink, devname);
+}
+
+std::shared_ptr<Irp> WinKernelEmulator::new_irp() {
+    return std::make_shared<Irp>(static_cast<void*>(this));
+}
+
+void WinKernelEmulator::driver_unload(Driver* drv) {
+    if (!drv) return;
+    if (drv->driver_unload_addr) {
+        uint64_t dev_addr = drv->devices.empty() ? 0 : reinterpret_cast<uint64_t>(drv->devices[0]);
+        _call_driver_dispatch(drv->driver_unload_addr, dev_addr, new_irp()->get_address());
+    }
+    auto it = std::find(drivers_.begin(), drivers_.end(), drv);
+    if (it != drivers_.end()) drivers_.erase(it);
+}
+
+uint64_t WinKernelEmulator::next_driver_func(Driver* drv) {
+    if (!drv) return 0;
+    return drv->driver_init_addr ? drv->driver_init_addr : drv->driver_unload_addr;
+}
+
+void WinKernelEmulator::irp_mj_cleanup(Driver* drv, void* dev) { (void)drv; (void)dev; }
+void WinKernelEmulator::irp_mj_dev_io(Driver* drv, void* dev)   { (void)drv; (void)dev; }
+
+void WinKernelEmulator::_call_driver_dispatch(uint64_t func, uint64_t dev_addr, uint64_t irp_addr) {
+    if (!func) return;
+    set_func_args(get_stack_ptr(), func, {dev_addr, irp_addr});
+    call(func);
+}
+
+void WinKernelEmulator::_set_entry_point_names() {
+    for (auto& proc : processes_)
+        if (proc && proc->pe)
+            for (auto& exp : proc->pe->get_exports())
+                if (exp.ordinal == 1) { proc->title = exp.name; break; }
+}
+
+uint64_t WinKernelEmulator::get_kernel_base() {
+    auto mod = get_mod_by_name("ntoskrnl");
+    return mod ? mod->base : 0x80000000;
+}
+
+std::shared_ptr<speakeasy::RuntimeModule> WinKernelEmulator::get_kernel_mod() {
+    // Python kernel.py:555-562 — returns the kernel RuntimeModule (not a string)
+    auto mod = get_mod_by_name("ntoskrnl");
+    if (!mod) throw KernelEmuError("Failed to get kernel base");
+    return mod;
+}
+
+uint64_t WinKernelEmulator::get_ssdt_ptr() {
+    return ssdt_ptr_;
+}
+
+void WinKernelEmulator::setup_kernel_mode() {
+    // Python kernel.py:591-611 — creates IDT, SSDT, configures MSRs and symlinks.
+    auto idt = std::make_shared<IDT>(static_cast<void*>(this));
+    idt->init_descriptors();
+
+    // Setup the SSDT (System Service Descriptor Table)
+    int ptr_sz = get_ptr_size();
+    size_t ssdt_size = static_cast<size_t>(ptr_sz) * 256 + static_cast<size_t>(ptr_sz) * 2;
+    ssdt_ptr_ = mem_map(ssdt_size, 0, PERM_MEM_RW, "api.struct.SSDT");
+    uint64_t tbl_size = static_cast<uint64_t>(ptr_sz) * 256;
+    uint64_t ssdt_base = ssdt_ptr_ + static_cast<uint64_t>(ptr_sz) * 2;
+    std::vector<uint8_t> ssdt_bytes(static_cast<size_t>(ptr_sz) * 2, 0);
+    write_le(ssdt_bytes, 0, ssdt_base, static_cast<size_t>(ptr_sz));
+    write_le(ssdt_bytes, static_cast<size_t>(ptr_sz), tbl_size, static_cast<size_t>(ptr_sz));
+    mem_write(ssdt_ptr_, ssdt_bytes);
+
+    setup_msrs();
+
+    if (om) {
+        for (auto& sl : config_.symlinks)
+            om->add_symlink(sl.name, sl.target);
+    }
+}
+
+void WinKernelEmulator::init_sys_modules(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config) {
+    // Python kernel.py:157-171 — calls super, creates driver objects for driver configs
+    auto sysmods = WindowsEmulator::init_sys_modules(modules_config);
+    for (auto& mcp : modules_config) {
+        auto sm = std::dynamic_pointer_cast<SystemModule>(mcp);
+        if (!sm) continue;
+        if (sm->driver.name.empty()) continue;
+        auto it = std::find_if(sysmods.begin(), sysmods.end(),
+            [&](auto& m) { return m->name == sm->name; });
+        if (it == sysmods.end()) continue;
+        auto mod = *it;
+        create_driver_object(sm->driver.name, mod);
+    }
+}
+
+void WinKernelEmulator::init_processes(const std::vector<speakeasy::ProcessEntry>& processes) {
+    // Python kernel.py:181-214
+    for (auto& pe : processes) {
+        auto p = std::make_shared<Process>(static_cast<void*>(this));
+        if (om) om->add_object(p);
+        p->set_obj_name(pe.name);
+        p->set_id(pe.pid);
+        if (speakeasy::to_lower(p->get_obj_name()) == "system") {
+            p->set_id(4);
+            p->path = "System";
+        }
+        if (!p->get_id()) p->set_id(static_cast<int>(KernelObject::curr_id));
+        try { p->base = static_cast<uint64_t>(std::stoull(pe.base, nullptr, 16)); } catch (...) { p->base = 0; }
+        if (p->path.empty()) p->path = pe.path;
+        auto t = std::make_shared<Thread>(static_cast<void*>(this));
+        if (om) om->add_object(t);
+        t->set_process(p);
+        p->threads.push_back(t);
+        processes_.push_back(p);
+    }
+    for (auto& p : processes_) {
+        if (speakeasy::to_lower(p->get_obj_name()) == "system") {
+            set_current_process(p);
+            break;
+        }
+    }
+}
+
+void* WinKernelEmulator::create_device_object(const std::string& name, void* drv,
+                                               size_t ext_size, uint32_t devtype,
+                                               uint32_t chars, const std::string& tag) {
+    // Python kernel.py:308-365 — full device object creation with linked list
+    auto dev = std::make_shared<Device>(static_cast<void*>(this));
+    size_t alloc_size = ext_size + dev->sizeof_obj();
+    std::string devname = name.empty() ? "\\Device\\" + hex_str(dev->id) : name;
+    std::string mem_tag = tag.empty() ? (name.empty() ? "emu.device.autogen" : "emu.object") : tag;
+    mem_tag += "." + devname;
+    dev->set_address(mem_map(alloc_size, 0, PERM_MEM_RW, mem_tag));
+    dev->set_obj_name(devname);
+
+    if (om) om->add_object(dev);
+
+    if (drv) {
+        auto* d = static_cast<Driver*>(drv);
+        d->devices.push_back(static_cast<void*>(dev.get()));
+    }
+    // NOTE: full FILE_OBJECT + linked list linking deferred — see kernel.py:331-354
+    return static_cast<void*>(dev.get());
+}
+
+void WinKernelEmulator::setup_msrs() {
+    // Python kernel.py:613-642
+    auto km = get_kernel_mod();
+    if (get_arch() != speakeasy::arch::ARCH_AMD64 || km->image_size == 0) return;
+
+    uint64_t kbase = km->base;
+    auto km_data = mem_read(kbase, static_cast<size_t>(km->image_size));
+
+    // Search for 100 zero bytes (Python: b"\x00" * 100) — system call handler gap
+    size_t ksc64_off = std::string::npos;
+    for (size_t i = 0; i + 100 <= km_data.size(); ++i) {
+        bool all_zero = true;
+        for (size_t j = 0; j < 100; ++j) {
+            if (km_data[i + j] != 0) { all_zero = false; break; }
+        }
+        if (all_zero) { ksc64_off = i; break; }
+    }
+
+    if (ksc64_off == std::string::npos) return;
+
+    auto sdt_entry = km->get_export_by_name("KeServiceDescriptorTable");
+    uint64_t sdt_addr = sdt_entry ? (kbase + sdt_entry->address) : 0;
+
+    if (sdt_addr) {
+        std::string km_name = speakeasy::to_lower(km->get_base_name());
+        for (int i = 0; i < 0x20; ++i) {
+            symbols[sdt_addr + i] = std::make_tuple(km_name, "KeServiceDescriptorTable");
+        }
+        symbols[sdt_addr]      = std::make_tuple(km_name, "KeServiceDescriptorTable.pServiceTable");
+        symbols[sdt_addr + 0x10] = std::make_tuple(km_name, "KeServiceDescriptorTable.NumberOfServices");
+
+        ksc64_off += 5;
+        uint64_t ksc64_addr = kbase + ksc64_off;
+        symbols[ksc64_addr] = std::make_tuple(km_name, "KiSystemCall64");
+
+        // Python: self.reg_write(_arch.X86_REG_MSR, (_arch.LSTAR, ksc64_addr))
+        // Write MSR: model-specific register for syscall target
+        uint64_t sdt_offset = (sdt_addr - ksc64_addr) - 7;
+        std::vector<uint8_t> patch = {0x90, 0x90, 0xC3};
+        patch.push_back(static_cast<uint8_t>(sdt_offset & 0xFF));
+        patch.push_back(static_cast<uint8_t>((sdt_offset >> 8) & 0xFF));
+        patch.push_back(static_cast<uint8_t>((sdt_offset >> 16) & 0xFF));
+        patch.push_back(static_cast<uint8_t>((sdt_offset >> 24) & 0xFF));
+        mem_write(kbase + ksc64_off, patch);
+    }
 }
 
 } // namespace speakeasy

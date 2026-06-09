@@ -88,10 +88,35 @@ public:
     void pool_free(uint64_t addr);
     uint64_t alloc_paged_pool(size_t size, const std::string& tag = "None");
 
-    //  Object services 
+    //  Object services
     void bootstrap_object_services();
     bool _hook_interrupt(void* emu, int intnum);
     void setup();
+
+    //  Driver / IRP dispatch
+    void add_symlink(const std::string& symlink, const std::string& devname);
+    void init_sys_modules(const std::vector<std::shared_ptr<speakeasy::Module>>& modules_config);
+    void init_processes(const std::vector<speakeasy::ProcessEntry>& processes);
+    void* create_device_object(const std::string& name = "", void* drv = nullptr,
+                                size_t ext_size = 0, uint32_t devtype = 0,
+                                uint32_t chars = 0, const std::string& tag = "");
+    std::shared_ptr<Irp> new_irp();
+    void driver_unload(Driver* drv);
+    uint64_t next_driver_func(Driver* drv);
+    void irp_mj_cleanup(Driver* drv, void* dev);
+    void irp_mj_dev_io(Driver* drv, void* dev);
+    void _set_entry_point_names();
+
+    //  Kernel helpers
+    uint64_t get_kernel_base();
+    std::shared_ptr<speakeasy::RuntimeModule> get_kernel_mod();
+    uint64_t get_ssdt_ptr();
+    void setup_kernel_mode();
+    void setup_msrs();
+    void _call_driver_dispatch(uint64_t func, uint64_t dev_addr, uint64_t irp_addr);
+
+private:
+    uint64_t ssdt_ptr_ = 0;
 
 private:
     bool kernel_mode_ = true;
