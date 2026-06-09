@@ -55,7 +55,7 @@ public:
     /**
      * Call the handler to implement the imported API
      */
-    void* call_api_func(std::shared_ptr<ApiHandler> mod, ApiFunc func, const std::vector<uint64_t>& argv, void* ctx);
+    void* call_api_func(std::shared_ptr<ApiHandler> mod, ApiFunc func, std::vector<uint64_t>& argv, void* ctx);
     
     /**
      * Call the handler to initialize and return imported data variables

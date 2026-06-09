@@ -125,7 +125,7 @@ std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> WindowsApi::get_export_fun
     return std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&>(mod, info);
 }
 
-void* WindowsApi::call_api_func(std::shared_ptr<ApiHandler> mod, ApiFunc func, const std::vector<uint64_t>& argv, void* ctx) {
+void* WindowsApi::call_api_func(std::shared_ptr<ApiHandler> mod, ApiFunc func, std::vector<uint64_t>& argv, void* ctx) {
     if (func == nullptr) {
         return nullptr;
     }
