@@ -100,7 +100,7 @@ protected:
     std::vector<std::string> drive_config_;
     std::vector <std::shared_ptr<speakeasy::Module>> modules_;
     std::map<std::string, std::string> filesystem_config_;
-    bool keep_memory_on_free_;
+    // keep_memory_on_free_ inherited from MemoryManager
     std::map<std::string, std::string> network_config_;
     std::vector<std::string> network_adapters_;
     std::string command_line_;

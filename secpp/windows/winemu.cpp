@@ -28,7 +28,6 @@ namespace fs = std::filesystem;
 WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg,
                                   void* evt, bool dbg)
     : BinaryEmulator(cfg), debug(dbg),
-      page_size(4096), 
       max_runs(100), kernel_mode(false), virtual_mem_base(0x50000),
       mem_tracing_enabled(false), tmp_code_hook(nullptr),
       run_complete(false), emu_complete(false),
@@ -197,10 +196,10 @@ void WindowsEmulator::disable_code_hook() {
 void WindowsEmulator::set_hooks() {
     BinaryEmulator::set_hooks();
 
-    if (!builtin_hooks_set) {
+    if (!builtin_hooks_set_) {
         _register_mem_hook(UC_HOOK_MEM_UNMAPPED, reinterpret_cast<void*>(mem_unmapped_trampoline));
         _register_interrupt_hook(reinterpret_cast<void*>(intr_trampoline));
-        builtin_hooks_set = true;
+        builtin_hooks_set_ = true;
     }
 
     set_mem_tracing_hooks();
@@ -413,11 +412,11 @@ void WindowsEmulator::setup_user_shared_data() {
     constexpr uint64_t KUSER_READONLY     = 0x7FFE0000;
 
     if (arch_ == speakeasy::arch::ARCH_X86) {
-        mem_map(page_size, KUSER_SHARED_X86, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
+        mem_map(page_size_, KUSER_SHARED_X86, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
     } else {
-        mem_map(page_size, KUSER_SHARED_AMD64, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
+        mem_map(page_size_, KUSER_SHARED_AMD64, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
     }
-    mem_map(page_size, KUSER_READONLY, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
+    mem_map(page_size_, KUSER_READONLY, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
     _populate_user_shared_data(KUSER_READONLY);
 }
 
@@ -587,9 +586,9 @@ bool WindowsEmulator::_handle_invalid_read(void* emu, uint64_t address,
 
     // Fake a page mapping at the faulting address
     uint64_t fakeout = address & 0xFFFFFFFFFFFFF000ULL;
-    mem_map(page_size, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
+    mem_map(page_size_, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
 
-    tmp_maps.push_back({fakeout, page_size});
+    tmp_maps.push_back({fakeout, page_size_});
     on_run_complete();
     return true;
 }
@@ -621,9 +620,9 @@ bool WindowsEmulator::_handle_invalid_write(void* emu, uint64_t address,
     }
 
     uint64_t fakeout = address & 0xFFFFFFFFFFFFF000ULL;
-    mem_map(page_size, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
+    mem_map(page_size_, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
 
-    tmp_maps.push_back({fakeout, page_size});
+    tmp_maps.push_back({fakeout, page_size_});
     on_run_complete();
     return true;
 }
@@ -954,17 +953,17 @@ std::vector<std::shared_ptr<File>> WindowsEmulator::get_dropped_files() {
 //  Process / thread 
 // Python winemu.py:635
 std::vector<std::shared_ptr<Process>>& WindowsEmulator::get_processes() {
-    return processes;
+    return processes_;
 }
 
 std::shared_ptr<Process> WindowsEmulator::find_process(void* proc_ptr) {
     if (!proc_ptr) return nullptr;
-    for (const auto& proc : processes) {
+    for (const auto& proc : processes_) {
         if (proc.get() == proc_ptr) {
             return proc;
         }
     }
-    for (const auto& proc : child_processes) {
+    for (const auto& proc : child_processes_) {
         if (proc.get() == proc_ptr) {
             return proc;
         }
@@ -1380,8 +1379,8 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         // Protect headers (before first section) as READ only
         uint32_t first_section_rva = img->sections[0].virtual_address;
         if (first_section_rva > 0) {
-            uint64_t aligned_headers = (static_cast<uint64_t>(base + first_section_rva) + page_size - 1) 
-                                        & ~(static_cast<uint64_t>(page_size) - 1);
+            uint64_t aligned_headers = (static_cast<uint64_t>(base + first_section_rva) + page_size_ - 1) 
+                                        & ~(static_cast<uint64_t>(page_size_) - 1);
             try {
                 mem_protect(base, aligned_headers - base, PERM_MEM_READ);
             } catch (...) {}
@@ -1391,11 +1390,11 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         std::map<uint64_t, int> page_perms;
         for (auto& sect : img->sections) {
             uint64_t section_addr = base + sect.virtual_address;
-            uint64_t aligned_addr = section_addr & ~(static_cast<uint64_t>(page_size) - 1);
+            uint64_t aligned_addr = section_addr & ~(static_cast<uint64_t>(page_size_) - 1);
             uint64_t end_addr = section_addr + sect.virtual_size;
-            uint64_t aligned_end = (end_addr + page_size - 1) & ~(static_cast<uint64_t>(page_size) - 1);
+            uint64_t aligned_end = (end_addr + page_size_ - 1) & ~(static_cast<uint64_t>(page_size_) - 1);
 
-            for (uint64_t page_base = aligned_addr; page_base < aligned_end; page_base += page_size) {
+            for (uint64_t page_base = aligned_addr; page_base < aligned_end; page_base += page_size_) {
                 int existing = 0;
                 auto it = page_perms.find(page_base);
                 if (it != page_perms.end()) existing = it->second;
@@ -1405,7 +1404,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
 
         for (auto& [page_base, perms] : page_perms) {
             try {
-                mem_protect(page_base, static_cast<uint64_t>(page_size), perms);
+                mem_protect(page_base, static_cast<uint64_t>(page_size_), perms);
             } catch (...) {}
         }
     }
@@ -1725,9 +1724,9 @@ std::shared_ptr<Process> WindowsEmulator::create_process(const std::string& path
     p->threads.push_back(t);
 
     if (child) {
-        child_processes.push_back(p);
+        child_processes_.push_back(p);
     } else {
-        processes.push_back(p);
+        processes_.push_back(p);
     }
 
     return p;
@@ -2283,9 +2282,9 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
 
     if (rv && faulting_address != 0) {
         // Map a page at the faulting address so we can continue execution
-        uint64_t page_addr = faulting_address & ~(page_size - 1);
+        uint64_t page_addr = faulting_address & ~(page_size_ - 1);
         try {
-            mem_map(page_size, page_addr, PERM_MEM_RW, "emu.page.fault", 0, false);
+            mem_map(page_size_, page_addr, PERM_MEM_RW, "emu.page.fault", 0, false);
         } catch (...) {}
     }
 
@@ -3014,7 +3013,7 @@ bool WindowsEmulator::_hook_mem_read(void* emu, int access, uint64_t addr,
         std::string mkey = hex_str(mmap->get_base());
         auto mac_it = curr_run->mem_access.find(mkey);
         if (mac_it == curr_run->mem_access.end()) {
-            MemAccess mac(mmap->get_base(), page_size);
+            MemAccess mac(mmap->get_base(), page_size_);
             mac_it = curr_run->mem_access.emplace(mkey, mac).first;
         }
         // Add to read_cache
@@ -3169,9 +3168,9 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
         } else if (access == INVAL_PERM_MEM_EXEC) {
             return _handle_prot_fetch(emu, addr, size, value);
         } else if (access == INVALID_MEM_WRITE) {
-            uint64_t fakeout = addr & ~(page_size - 1);
-            mem_map(page_size, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
-            tmp_maps.push_back({fakeout, page_size});
+            uint64_t fakeout = addr & ~(page_size_ - 1);
+            mem_map(page_size_, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
+            tmp_maps.push_back({fakeout, page_size_});
             return _handle_invalid_write(emu, addr, size, value);
         } else if (access == INVAL_PERM_MEM_WRITE) {
             return _handle_prot_write(emu, addr, size, value);
@@ -3233,11 +3232,11 @@ bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
         if (rv) return true;
     }
 
-    uint64_t fakeout = addr & ~(page_size - 1);
-    mem_map(page_size, fakeout, PERM_MEM_RWX, "emu.page.tmp", 0, false);
+    uint64_t fakeout = addr & ~(page_size_ - 1);
+    mem_map(page_size_, fakeout, PERM_MEM_RWX, "emu.page.tmp", 0, false);
 
     curr_run->error["error"] = get_error_info("invalid_fetch", addr);
-    tmp_maps.push_back({fakeout, page_size});
+    tmp_maps.push_back({fakeout, page_size_});
     on_run_complete();
     return true;
 }
@@ -3249,11 +3248,11 @@ bool WindowsEmulator::_handle_invalid_fetch(void* emu, uint64_t addr,
 bool WindowsEmulator::_handle_prot_write(void* emu, uint64_t addr,
                                           size_t size, uint64_t value) {
     (void)emu; (void)size; (void)value;
-    uint64_t fakeout = addr & ~(page_size - 1);
-    mem_map(page_size, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
+    uint64_t fakeout = addr & ~(page_size_ - 1);
+    mem_map(page_size_, fakeout, PERM_MEM_RW, "emu.page.tmp", 0, false);
 
     curr_run->error["error"] = get_error_info("invalid_protect_write", addr);
-    tmp_maps.push_back({fakeout, page_size});
+    tmp_maps.push_back({fakeout, page_size_});
     on_run_complete();
     return true;
 }
@@ -3343,7 +3342,7 @@ bool WindowsEmulator::_hook_code_tracing(void* emu, uint64_t addr, size_t size) 
         std::string mkey = hex_str(mmap->get_base());
         auto mac_it = curr_run->mem_access.find(mkey);
         if (mac_it == curr_run->mem_access.end()) {
-            MemAccess mac(mmap->get_base(), page_size);
+            MemAccess mac(mmap->get_base(), page_size_);
             mac_it = curr_run->mem_access.emplace(mkey, mac).first;
         }
         // Add to exec_cache
@@ -3442,14 +3441,14 @@ void WindowsEmulator::resume_thread(std::shared_ptr<Thread> thread) {
 }
 
 std::shared_ptr<Thread> WindowsEmulator::find_thread(int handle_or_id) {
-    for (const auto& proc : processes) {
+    for (const auto& proc : processes_) {
         for (const auto& t : proc->threads) {
             if (t->get_id() == handle_or_id || get_object_handle(t) == handle_or_id) {
                 return t;
             }
         }
     }
-    for (const auto& proc : child_processes) {
+    for (const auto& proc : child_processes_) {
         for (const auto& t : proc->threads) {
             if (t->get_id() == handle_or_id || get_object_handle(t) == handle_or_id) {
                 return t;
@@ -3461,14 +3460,14 @@ std::shared_ptr<Thread> WindowsEmulator::find_thread(int handle_or_id) {
 
 std::shared_ptr<Thread> WindowsEmulator::find_thread_by_ptr(void* thread_ptr) {
     if (!thread_ptr) return nullptr;
-    for (const auto& proc : processes) {
+    for (const auto& proc : processes_) {
         for (const auto& t : proc->threads) {
             if (t.get() == thread_ptr) {
                 return t;
             }
         }
     }
-    for (const auto& proc : child_processes) {
+    for (const auto& proc : child_processes_) {
         for (const auto& t : proc->threads) {
             if (t.get() == thread_ptr) {
                 return t;
@@ -3826,7 +3825,7 @@ uint64_t WindowsEmulator::_get_exception_list() {
 // def _map_faulting_page_for_exception(self, faulting_address):
 //     """Map a single page at faulting_address with RW permissions for SEH recovery"""
 void WindowsEmulator::_map_faulting_page_for_exception(uint64_t faulting_address) {
-    uint64_t fakeout = faulting_address & ~(page_size - 1);
+    uint64_t fakeout = faulting_address & ~(page_size_ - 1);
     // Check if already mapped
     for (const auto& region : get_mem_regions()) {
         uint64_t base = std::get<0>(region);
@@ -3834,8 +3833,8 @@ void WindowsEmulator::_map_faulting_page_for_exception(uint64_t faulting_address
         if (base <= fakeout && fakeout <= end)
             return;
     }
-    mem_map(page_size, fakeout, PERM_MEM_RW, "emu.seh.fault_page");
-    tmp_maps.push_back({fakeout, page_size});
+    mem_map(page_size_, fakeout, PERM_MEM_RW, "emu.seh.fault_page");
+    tmp_maps.push_back({fakeout, page_size_});
 }
 
 std::tuple<uint64_t, uint64_t> WindowsEmulator::get_reserved_ranges() {

@@ -118,21 +118,21 @@ protected:
     bool run_complete = false;
     bool emu_complete = false;
 
-    //  Processes 
-    std::vector<std::shared_ptr<Process>> processes;
-    std::vector<std::shared_ptr<Process>> child_processes;
+    //  Processes
+    std::vector<std::shared_ptr<Process>> processes_;
+    std::vector<std::shared_ptr<Process>> child_processes_;
     //std::shared_ptr<Process> curr_process = nullptr;
     std::shared_ptr<Thread> curr_thread = nullptr;
 
-    //  Memory / hooks 
-    uint64_t page_size = 4096;
+    //  Memory / hooks
+    // page_size_ inherited from MemoryManager
     //int ptr_size = 0;
     uint64_t virtual_mem_base = 0x50000;
     std::vector<void*> veh_handlers;
     std::vector<void*> mem_trace_hooks;
     bool mem_tracing_enabled = false;
     bool emu_hooks_set = false;
-    bool builtin_hooks_set = false;
+    // builtin_hooks_set_ inherited from BinaryEmulator
     void* tmp_code_hook = nullptr;
     uc_hook tmp_code_hook_handle = 0;  // Unicorn handle for the temporary code hook
     uint64_t prev_pc = 0;
@@ -167,9 +167,9 @@ protected:
     std::map<uint64_t, std::tuple<std::string, std::string>> import_table;
     std::vector<void*> pic_buffers;
 
-    //  Config fields 
+    //  Config fields
+    // command_line_ inherited from BinaryEmulator
     std::string cd;
-    std::string command_line;
     std::map<std::string, std::string> registry_config;
     bool dispatch_handlers = true;
     bool do_strings = true;

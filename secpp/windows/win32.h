@@ -61,7 +61,7 @@ private:
     std::vector<std::string> argv_;
     std::shared_ptr<SessionManager> sessman_;
     std::shared_ptr<COM> com_;
-    std::string command_line_;
+    // command_line_ inherited from BinaryEmulator
     std::string file_name_;
     std::string mod_name_;
     std::string bin_base_name_;

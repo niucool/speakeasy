@@ -41,11 +41,11 @@ std::vector<std::string> Win32Emulator::get_argv() {
         }
         out.push_back(argv0);
         out.insert(out.end(), this->argv_.begin(), this->argv_.end());
-    } else if (!command_line.empty()) {
-        std::istringstream iss(command_line);
+    } else if (!command_line_.empty()) {
+        std::istringstream iss(command_line_);
         std::string token;
         while (iss >> token) out.push_back(token);
-        if (out.empty()) out.push_back(command_line);
+        if (out.empty()) out.push_back(command_line_);
     }
     return out;
 }
@@ -116,25 +116,25 @@ void Win32Emulator::remove_vectored_exception_handler(uint64_t handler) {
 // Python win32.py:135
 // def get_processes(self):
 std::vector<void*> Win32Emulator::get_processes() {
-    if (processes.size() <= 1) {
+    if (processes_.size() <= 1) {
         init_processes(config_.processes);
     }
     std::vector<void*> result;
-    result.reserve(processes.size());
-    for (const auto& proc : processes) {
+    result.reserve(processes_.size());
+    for (const auto& proc : processes_) {
         result.push_back(proc.get());
     }
     return result;
 }
 
 // Python win32.py:140
-// def init_processes(self, processes):
+// def init_processes(self, processes_):
 //     """
-//     Initialize configured processes set in the emulator config
+//     Initialize configured processes_ set in the emulator config
 //     """
-void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& processes) {
-    // Python win32.py:140-160  initialize configured processes from emulator config
-    for (const auto& proc : processes) {
+void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& processes_) {
+    // Python win32.py:140-160  initialize configured processes_ from emulator config
+    for (const auto& proc : processes_) {
         auto p = std::make_shared<Process>(reinterpret_cast<void*>(this));
         add_object(p);
         
@@ -150,7 +150,7 @@ void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& p
         auto pos = proc.path.find_last_of("/\\");
         p->image = (pos != std::string::npos) ? proc.path.substr(pos + 1) : proc.path;
         
-        this->processes.push_back(p);
+        this->processes_.push_back(p);
     }
 }
 
@@ -247,7 +247,7 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
         run->type = "dll_entry.DLL_PROCESS_ATTACH";
         auto* container = static_cast<Process*>(init_container_process());
         if (container) {
-            for (auto& p : processes) {
+            for (auto& p : processes_) {
                 if (p.get() == container) {
                     run->process_context = p;
                     curr_process_ = p;
@@ -322,13 +322,13 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
 //     """
 void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, bool emulate_children, const std::optional<uint64_t>& entry_point) {
     prepare_module_for_emulation(module, all_entrypoints, entry_point);
-    if (processes.empty()) {
+    if (processes_.empty()) {
         auto p = std::make_shared<Process>(this, module);
         p->path = module->emu_path;
         p->base = module->base;
         curr_process_ = p;
         om->add_object(p);
-        processes.push_back(p);
+        processes_.push_back(p);
         auto mm = get_address_map(module->base);
         if (mm)
             mm->set_process(curr_process_);
@@ -346,9 +346,9 @@ void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module,
     alloc_peb(curr_process_);
     init_teb(t, curr_process_->get_peb());
     start();
-    while (emulate_children && !child_processes.empty()) {
-        auto child = child_processes.front();
-        child_processes.erase(child_processes.begin());
+    while (emulate_children && !child_processes_.empty()) {
+        auto child = child_processes_.front();
+        child_processes_.erase(child_processes_.begin());
         prepare_module_for_emulation(child->pe, all_entrypoints);
         curr_process_ = child;
         curr_thread = child->threads[0];  // child process thread deferred
@@ -497,7 +497,7 @@ void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t 
         proc = curr_process_;
     } else {
         auto p = std::make_shared<Process>(this);
-        processes.push_back(p);
+        processes_.push_back(p);
         curr_process_ = p;
         proc = p;
     }
@@ -644,7 +644,7 @@ void* Win32Emulator::init_container_process() {
                                      std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{}, name, emu_path,
                                      cmd_line, base, 0);
             curr_process_ = proc;
-            processes.push_back(proc);
+            processes_.push_back(proc);
             return proc.get();
         }
     }
@@ -686,7 +686,7 @@ bool Win32Emulator::_hook_mem_unmapped(void* emu, int access, uint64_t address,
             uint64_t pld_addr = proc->peb_ldr_data->get_address();
             // PEB_LDR_DATA struct size varies by arch (~45 bytes x86, ~81 x64)
             // Use a page-based range check for safety
-            if (address > pld_addr && address < pld_addr + page_size) {
+            if (address > pld_addr && address < pld_addr + page_size_) {
                 mem_map_reserve(pld_addr);
                 auto mods = _ordered_peb_modules();
                 init_peb(mods, nullptr);
@@ -930,7 +930,7 @@ void Win32Emulator::_ensure_core_dlls_loaded() {
 // Python win32.py:589
 // def _init_user_modules_from_config(self):
 void Win32Emulator::_init_user_modules_from_config() {
-    // Python win32.py:589-601  find main exe from config processes, prepend to user_modules
+    // Python win32.py:589-601  find main exe from config processes_, prepend to user_modules
     using speakeasy::ProcessEntry;
     using speakeasy::Module;
     

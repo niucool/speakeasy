@@ -122,7 +122,7 @@ private:
     bool kernel_mode_ = true;
     int irql_ = 0;
     uint64_t system_time_ = SYSTEM_TIME_START;
-    std::vector<std::shared_ptr<Process>> processes_;
+    // processes_ inherited from WindowsEmulator
     std::vector<Driver*> drivers_;
     std::vector<std::tuple<uint64_t, int, size_t, std::string>> pool_allocs_;
 };
