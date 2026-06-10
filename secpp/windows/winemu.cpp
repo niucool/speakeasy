@@ -1286,11 +1286,15 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         set_ptr_size(arch_);
     }
 
-    //  Initialize emulation engine if needed (Python 1006-1008) 
+    //  Initialize emulation engine if needed (Python 1006-1008)
+    // Python: `if self.emu_eng and not self.emu_eng.emu:`
+    // — only calls init_engine when the engine wrapper exists but no UC instance yet.
     if (!emu_eng_) {
+        emu_eng_ = std::make_shared<EmuEngine>();
+    }
+    if (emu_eng_ && !emu_eng_->get_engine()) {
         int eng_arch = valid_arch ? img->arch : speakeasy::arch::ARCH_X86;
         int mode = (img->arch == 64) ? speakeasy::arch::BITS_64 : speakeasy::arch::BITS_32;
-        emu_eng_ = std::make_shared<EmuEngine>();
         emu_eng_->init_engine(eng_arch, mode);
     }
     if (!ptr_size_) 
@@ -1306,9 +1310,9 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         cs_option(disasm_eng_, CS_OPT_DETAIL, CS_OPT_OFF);
     }
     
-    //  Initialize API handler (Python 1019-1022) 
+    //  Initialize API handler (Python 1019-1022)
     if (!api) {
-        api = std::make_shared<WindowsApi>(reinterpret_cast<BinaryEmulator*>(this));
+        api = std::make_shared<WindowsApi>(this);
     }
 
     advance_bootstrap_phase(BootstrapPhase::ENGINE_API_READY);
@@ -1449,18 +1453,27 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
                 has_api_exports = true;
             }
             // Data export hooks for non-primary modules (Python 1099-1103)
-            // C++ deferred: add_mem_read_hook/add_mem_write_hook use std::function<void()> 
-            // while _hook_mem_read/_hook_mem_write take 5 params. Hook registration
-            // in C++ is done via WindowsEmulator::set_hooks not here.
+            if (!is_primary) {
+                auto [data_mod, data_hndlr] = api->get_data_export_handler(mod_base_name_no_ext, exp.name);
+                if (data_hndlr.func && !config_.analysis.memory_tracing) {
+                    add_mem_read_hook([this](void* em, int acc, uint64_t a, uint32_t s, uint64_t v) -> bool {
+                        return this->_hook_mem_read(em, acc, a, s, v);
+                    }, exp.address, exp.address);
+                    add_mem_write_hook([this](void* em, int acc, uint64_t a, uint32_t s, uint64_t v) -> bool {
+                        return this->_hook_mem_write(em, acc, a, s, v);
+                    }, exp.address, exp.address);
+                }
+            }
         }
 
         // Module access hook for non-primary API modules (Python 1105-1109)
-        if (!is_primary && has_api_exports && !img->regions.empty()) {
+        if (!is_primary && has_api_exports && !img->regions.empty() && !config_.analysis.memory_tracing) {
             auto& first_region = img->regions[0];
             uint64_t mod_start = first_region.base ? first_region.base : img->base;
             uint64_t mod_end = mod_start + first_region.data.size();
-            (void)mod_end;
-            // Deferred: would need a code hook with correct signature
+            add_code_hook([this](void* em, uint64_t addr, uint32_t size) -> bool {
+                return this->_module_access_hook(em, addr, static_cast<size_t>(size), nullptr);
+            }, mod_start, mod_end);
         }
 
         // Process data imports (Python 1111-1118)
@@ -1498,14 +1511,18 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     //  Register module (Python 1126) 
     modules.push_back(mod);
 
-    //  Allocate stack for primary image (Python 1128-1130) 
+    //  Allocate stack for primary image (Python 1128-1130)
+    // Python: self.config.stack_size or image.stack_size — config takes precedence
     if (is_primary && stack_base_ == 0 && img->stack_size > 0) {
-        size_t stack_size = img->stack_size;  // use image_size as default (stack_size field not on C++ LoadedImage)
+        size_t stack_size = (config_.stack_size > 0) ? static_cast<size_t>(config_.stack_size)
+                                                      : static_cast<size_t>(img->stack_size);
         auto [sb, sp] = alloc_stack(stack_size);
         stack_base_ = sb;
     }
 
     //  Run one-time setup (Python 1132-1135) 
+    // Python winemu.py:1132-1135 — setup() internally calls advance_bootstrap_phase(FULL_SETUP_READY).
+    // C++ setup() does not, so we advance here at the same logical point in the call chain.
     if (!_setup_done) {
         _setup_done = true;
         setup();
