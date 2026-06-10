@@ -265,61 +265,61 @@ static std::string read_ansi_string_ptr(void* e, uint64_t addr, int max = 0) {
 
 //  Object/Reference 
 
-uint64_t Ntoskrnl::ObfDereferenceObject(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObfDereferenceObject(void* e, ArgList& a, void* ctx) {
     // void ObfDereferenceObject(a);
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::ObfReferenceObject(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObfReferenceObject(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::ZwClose(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwClose(void* e, ArgList& a, void* ctx) {
     // __kernel_entry NTSYSCALLAPI NTSTATUS ZwClose(HANDLE Handle);
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ObOpenObjectByPointer(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObOpenObjectByPointer(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ObReferenceObjectByName(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObReferenceObjectByName(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ObReferenceObjectByHandle(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObReferenceObjectByHandle(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ObMakeTemporaryObject(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObMakeTemporaryObject(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::ObGetFilterVersion(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObGetFilterVersion(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::ObRegisterCallbacks(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObRegisterCallbacks(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ObSetSecurityObjectByPointer(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ObSetSecurityObjectByPointer(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
 //  Debug/Print 
 
-uint64_t Ntoskrnl::DbgPrint(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::DbgPrint(void* e, ArgList& a, void* ctx) {
     // ULONG DbgPrint(PCSTR Format, ...);
     uint64_t fmt = a[0];
     std::string msg = read_ansi_string_ptr(e, fmt);
@@ -328,7 +328,7 @@ uint64_t Ntoskrnl::DbgPrint(void* e, std::vector<uint64_t>& a, void* ctx) {
     return static_cast<uint64_t>(msg.length());
 }
 
-uint64_t Ntoskrnl::DbgPrintEx(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::DbgPrintEx(void* e, ArgList& a, void* ctx) {
     // ULONG DbgPrintEx(ULONG ComponentId, ULONG Level, PCSTR Format, ...);
     uint64_t fmt = (ptr_sz(e) == 8) ? a[2] : a[2];
     (void)fmt;
@@ -339,7 +339,7 @@ uint64_t Ntoskrnl::DbgPrintEx(void* e, std::vector<uint64_t>& a, void* ctx) {
 
 //  String/Format 
 
-uint64_t Ntoskrnl::_vsnprintf(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::_vsnprintf(void* e, ArgList& a, void* ctx) {
     // int _vsnprintf(char *buffer, size_t count, const char *format, va_list argptr)
     uint64_t buffer = a[0];
     uint64_t count = a[1];
@@ -358,11 +358,11 @@ uint64_t Ntoskrnl::_vsnprintf(void* e, std::vector<uint64_t>& a, void* ctx) {
     return static_cast<uint64_t>(n);
 }
 
-uint64_t Ntoskrnl::vsprintf_s(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::vsprintf_s(void* e, ArgList& a, void* ctx) {
     return _vsnprintf(e, a, ctx);
 }
 
-uint64_t Ntoskrnl::sprintf(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::sprintf(void* e, ArgList& a, void* ctx) {
     uint64_t buf = a[0];
     uint64_t format = a[1];
     
@@ -373,18 +373,18 @@ uint64_t Ntoskrnl::sprintf(void* e, std::vector<uint64_t>& a, void* ctx) {
     return static_cast<uint64_t>(fmt.length());
 }
 
-uint64_t Ntoskrnl::_snprintf(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::_snprintf(void* e, ArgList& a, void* ctx) {
     return _vsnprintf(e, a, ctx);
 }
 
-uint64_t Ntoskrnl::_snwprintf(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::_snwprintf(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
 //  Rtl string 
 
-uint64_t Ntoskrnl::RtlInitAnsiString(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlInitAnsiString(void* e, ArgList& a, void* ctx) {
     // VOID RtlInitAnsiString(PANSI_STRING DestinationString, PCSZ SourceString)
     uint64_t dest = a[0];
     uint64_t src = a[1];
@@ -405,7 +405,7 @@ uint64_t Ntoskrnl::RtlInitAnsiString(void* e, std::vector<uint64_t>& a, void* ct
     return 0;
 }
 
-uint64_t Ntoskrnl::RtlInitUnicodeString(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlInitUnicodeString(void* e, ArgList& a, void* ctx) {
     // VOID RtlInitUnicodeString(PUNICODE_STRING DestinationString, PCWSTR SourceString)
     uint64_t dest = a[0];
     uint64_t src = a[1];
@@ -426,7 +426,7 @@ uint64_t Ntoskrnl::RtlInitUnicodeString(void* e, std::vector<uint64_t>& a, void*
     return 0;
 }
 
-uint64_t Ntoskrnl::RtlFreeUnicodeString(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlFreeUnicodeString(void* e, ArgList& a, void* ctx) {
     // VOID RtlFreeUnicodeString(PUNICODE_STRING UnicodeString)
     uint64_t us = a[0];
     if (!us) return 0;
@@ -440,7 +440,7 @@ uint64_t Ntoskrnl::RtlFreeUnicodeString(void* e, std::vector<uint64_t>& a, void*
     return 0;
 }
 
-uint64_t Ntoskrnl::RtlAnsiStringToUnicodeString(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlAnsiStringToUnicodeString(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlAnsiStringToUnicodeString(DestinationString, SourceString, AllocateDestinationString)
     uint64_t dest = a[0];
     uint64_t src = a[1];
@@ -477,7 +477,7 @@ uint64_t Ntoskrnl::RtlAnsiStringToUnicodeString(void* e, std::vector<uint64_t>& 
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::RtlCopyUnicodeString(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlCopyUnicodeString(void* e, ArgList& a, void* ctx) {
     // VOID RtlCopyUnicodeString(PUNICODE_STRING DestinationString, PUNICODE_STRING SourceString)
     uint64_t dst = a[0];
     uint64_t src = a[1];
@@ -515,7 +515,7 @@ uint64_t Ntoskrnl::RtlCopyUnicodeString(void* e, std::vector<uint64_t>& a, void*
     return 0;
 }
 
-uint64_t Ntoskrnl::RtlEqualUnicodeString(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlEqualUnicodeString(void* e, ArgList& a, void* ctx) {
     // BOOLEAN RtlEqualUnicodeString(String1, String2, CaseInSensitive)
     uint64_t s1 = a[0];
     uint64_t s2 = a[1];
@@ -534,7 +534,7 @@ uint64_t Ntoskrnl::RtlEqualUnicodeString(void* e, std::vector<uint64_t>& a, void
     return (u1 == u2) ? 1 : 0;
 }
 
-uint64_t Ntoskrnl::RtlGetVersion(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlGetVersion(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation)
     uint64_t ver = a[0];
     if (!ver) return KERN_STATUS_INVALID_PARAMETER;
@@ -550,7 +550,7 @@ uint64_t Ntoskrnl::RtlGetVersion(void* e, std::vector<uint64_t>& a, void* ctx) {
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::RtlCompareMemory(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlCompareMemory(void* e, ArgList& a, void* ctx) {
     // SIZE_T RtlCompareMemory(const void *Source1, const void *Source2, SIZE_T Length)
     uint64_t s1 = a[0];
     uint64_t s2 = a[1];
@@ -570,14 +570,14 @@ uint64_t Ntoskrnl::RtlCompareMemory(void* e, std::vector<uint64_t>& a, void* ctx
     return static_cast<uint64_t>(match);
 }
 
-uint64_t Ntoskrnl::RtlMoveMemory(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlMoveMemory(void* e, ArgList& a, void* ctx) {
     // void RtlMoveMemory(void* Destination, const void* Source, size_t Length)
     return memcpy(e, a, ctx);
 }
 
 //  Memory/Pool 
 
-uint64_t Ntoskrnl::ExAllocatePoolWithTag(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExAllocatePoolWithTag(void* e, ArgList& a, void* ctx) {
     // PVOID ExAllocatePoolWithTag(POOL_TYPE PoolType, SIZE_T NumberOfBytes, ULONG Tag)
     uint64_t pool_type = a[0];
     uint64_t num_bytes = a[1];
@@ -600,49 +600,49 @@ uint64_t Ntoskrnl::ExAllocatePoolWithTag(void* e, std::vector<uint64_t>& a, void
                           "api.pool." + tag_str);
 }
 
-uint64_t Ntoskrnl::ExFreePoolWithTag(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExFreePoolWithTag(void* e, ArgList& a, void* ctx) {
     // VOID ExFreePoolWithTag(PVOID P, ULONG Tag)
     uint64_t p = a[0];
     if (p) mm(e)->mem_free(p);
     return 0;
 }
 
-uint64_t Ntoskrnl::ExAllocatePool(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExAllocatePool(void* e, ArgList& a, void* ctx) {
     // PVOID ExAllocatePool(POOL_TYPE PoolType, SIZE_T NumberOfBytes)
     uint64_t num_bytes = a[1];
     if (num_bytes == 0) num_bytes = 1;
     return mm(e)->mem_map(static_cast<size_t>(num_bytes), 0, common::PERM_MEM_RWX, "api.pool");
 }
 
-uint64_t Ntoskrnl::ExFreePool(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExFreePool(void* e, ArgList& a, void* ctx) {
     // void ExFreePool(PVOID P)
     uint64_t p = a[0];
     if (p) mm(e)->mem_free(p);
     return 0;
 }
 
-uint64_t Ntoskrnl::FsRtlAllocatePool(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::FsRtlAllocatePool(void* e, ArgList& a, void* ctx) {
     // PVOID FsRtlAllocatePool(POOL_TYPE PoolType, SIZE_T NumberOfBytes)
     uint64_t num_bytes = a[1];
     if (num_bytes == 0) num_bytes = 1;
     return mm(e)->mem_map(static_cast<size_t>(num_bytes), 0, common::PERM_MEM_RWX, "api.fsrtl.pool");
 }
 
-uint64_t Ntoskrnl::RtlAllocateHeap(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlAllocateHeap(void* e, ArgList& a, void* ctx) {
     // PVOID RtlAllocateHeap(PVOID HeapHandle, ULONG Flags, SIZE_T Size)
     uint64_t size = a[2];
     if (size == 0) size = 1;
     return mm(e)->mem_map(static_cast<size_t>(size), 0, common::PERM_MEM_RWX, "api.heap");
 }
 
-uint64_t Ntoskrnl::RtlFreeHeap(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlFreeHeap(void* e, ArgList& a, void* ctx) {
     // BOOLEAN RtlFreeHeap(PVOID HeapHandle, ULONG Flags, PVOID HeapBase)
     uint64_t addr = a[2];
     if (addr) mm(e)->mem_free(addr);
     return 1; // TRUE
 }
 
-uint64_t Ntoskrnl::MmAllocateContiguousMemory(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::MmAllocateContiguousMemory(void* e, ArgList& a, void* ctx) {
     // PVOID MmAllocateContiguousMemory(SIZE_T NumberOfBytes, PHYSICAL_ADDRESS HighestAcceptableAddress)
     uint64_t num_bytes = a[0];
     if (num_bytes == 0) num_bytes = 1;
@@ -650,20 +650,20 @@ uint64_t Ntoskrnl::MmAllocateContiguousMemory(void* e, std::vector<uint64_t>& a,
                           "api.contiguous");
 }
 
-uint64_t Ntoskrnl::MmFreeContiguousMemory(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::MmFreeContiguousMemory(void* e, ArgList& a, void* ctx) {
     // VOID MmFreeContiguousMemory(PVOID BaseAddress)
     uint64_t addr = a[0];
     if (addr) mm(e)->mem_free(addr);
     return 0;
 }
 
-uint64_t Ntoskrnl::MmIsAddressValid(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::MmIsAddressValid(void* e, ArgList& a, void* ctx) {
     // BOOLEAN MmIsAddressValid(PVOID VirtualAddress)
     uint64_t addr = a[0];
     return we(e)->is_address_valid(addr) ? 1 : 0;
 }
 
-uint64_t Ntoskrnl::MmMapLockedPagesSpecifyCache(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::MmMapLockedPagesSpecifyCache(void* e, ArgList& a, void* ctx) {
     // PVOID MmMapLockedPagesSpecifyCache(PMDL MemoryDescriptorList, KPROCESSOR_MODE AccessMode, ...)
     uint64_t mdl = a[0];
     if (!mdl) return 0;
@@ -676,12 +676,12 @@ uint64_t Ntoskrnl::MmMapLockedPagesSpecifyCache(void* e, std::vector<uint64_t>& 
                           "api.mdl.map");
 }
 
-uint64_t Ntoskrnl::MmUnlockPages(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::MmUnlockPages(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::MmGetSystemRoutineAddress(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::MmGetSystemRoutineAddress(void* e, ArgList& a, void* ctx) {
     // PVOID MmGetSystemRoutineAddress(PUNICODE_STRING SystemRoutineName)
     uint64_t name = a[0];
     auto ustr = read_unicode_string_from_mem(e, name);
@@ -693,18 +693,18 @@ uint64_t Ntoskrnl::MmGetSystemRoutineAddress(void* e, std::vector<uint64_t>& a, 
     return reinterpret_cast<uint64_t>(we(e)->get_proc("ntoskrnl", fn_name));
 }
 
-uint64_t Ntoskrnl::MmIsDriverVerifying(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::MmIsDriverVerifying(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0; // FALSE - driver is not being verified
 }
 
 //  memcpy/memset/etc 
 
-uint64_t Ntoskrnl::memmove(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::memmove(void* e, ArgList& a, void* ctx) {
     return memcpy(e, a, ctx);
 }
 
-uint64_t Ntoskrnl::memcpy(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::memcpy(void* e, ArgList& a, void* ctx) {
     // void *memcpy(void *dest, const void *src, size_t count)
     uint64_t dest = a[0];
     uint64_t src = a[1];
@@ -717,7 +717,7 @@ uint64_t Ntoskrnl::memcpy(void* e, std::vector<uint64_t>& a, void* ctx) {
     return dest;
 }
 
-uint64_t Ntoskrnl::memset(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::memset(void* e, ArgList& a, void* ctx) {
     // void *memset(void *dest, int c, size_t count)
     uint64_t dest = a[0];
     uint64_t c = a[1] & 0xFF;
@@ -732,7 +732,7 @@ uint64_t Ntoskrnl::memset(void* e, std::vector<uint64_t>& a, void* ctx) {
 
 //  Wide char string 
 
-uint64_t Ntoskrnl::wcscpy(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::wcscpy(void* e, ArgList& a, void* ctx) {
     // wchar_t *wcscpy(wchar_t *strDestination, const wchar_t *strSource)
     uint64_t dest = a[0];
     uint64_t src = a[1];
@@ -750,7 +750,7 @@ uint64_t Ntoskrnl::wcscpy(void* e, std::vector<uint64_t>& a, void* ctx) {
     return static_cast<uint64_t>(ws.length());
 }
 
-uint64_t Ntoskrnl::wcsncpy(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::wcsncpy(void* e, ArgList& a, void* ctx) {
     // wchar_t *wcsncpy(wchar_t *strDest, const wchar_t *strSource, size_t count)
     uint64_t dest = a[0];
     uint64_t src = a[1];
@@ -769,14 +769,14 @@ uint64_t Ntoskrnl::wcsncpy(void* e, std::vector<uint64_t>& a, void* ctx) {
     return static_cast<uint64_t>(ws.length());
 }
 
-uint64_t Ntoskrnl::wcslen(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::wcslen(void* e, ArgList& a, void* ctx) {
     // size_t wcslen(const wchar_t *str)
     uint64_t str = a[0];
     auto ws = read_wide_string_ptr(e, str);
     return static_cast<uint64_t>(ws.length());
 }
 
-uint64_t Ntoskrnl::wcsnlen(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::wcsnlen(void* e, ArgList& a, void* ctx) {
     // size_t wcsnlen(const wchar_t *str, size_t max)
     uint64_t str = a[0];
     uint64_t max = a[1];
@@ -784,7 +784,7 @@ uint64_t Ntoskrnl::wcsnlen(void* e, std::vector<uint64_t>& a, void* ctx) {
     return static_cast<uint64_t>(ws.length());
 }
 
-uint64_t Ntoskrnl::wcschr(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::wcschr(void* e, ArgList& a, void* ctx) {
     // wchar_t *wcschr(const wchar_t *str, wchar_t c)
     uint64_t str = a[0];
     uint64_t c = a[1];
@@ -800,7 +800,7 @@ uint64_t Ntoskrnl::wcschr(void* e, std::vector<uint64_t>& a, void* ctx) {
     return 0; // Not found
 }
 
-uint64_t Ntoskrnl::wcscat(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::wcscat(void* e, ArgList& a, void* ctx) {
     // wchar_t *wcscat(wchar_t *strDestination, const wchar_t *strSource)
     uint64_t dest = a[0];
     uint64_t src = a[1];
@@ -827,7 +827,7 @@ uint64_t Ntoskrnl::wcscat(void* e, std::vector<uint64_t>& a, void* ctx) {
     return dest;
 }
 
-uint64_t Ntoskrnl::strrchr(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::strrchr(void* e, ArgList& a, void* ctx) {
     // char *strrchr(const char *str, int c)
     uint64_t str = a[0];
     uint64_t c = a[1];
@@ -843,7 +843,7 @@ uint64_t Ntoskrnl::strrchr(void* e, std::vector<uint64_t>& a, void* ctx) {
     return 0;
 }
 
-uint64_t Ntoskrnl::strchr(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::strchr(void* e, ArgList& a, void* ctx) {
     // char *strchr(const char *str, int c)
     uint64_t str = a[0];
     uint64_t c = a[1];
@@ -859,7 +859,7 @@ uint64_t Ntoskrnl::strchr(void* e, std::vector<uint64_t>& a, void* ctx) {
     return 0;
 }
 
-uint64_t Ntoskrnl::_wcsnicmp(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::_wcsnicmp(void* e, ArgList& a, void* ctx) {
     // int _wcsnicmp(const wchar_t *string1, const wchar_t *string2, size_t count)
     uint64_t s1 = a[0];
     uint64_t s2 = a[1];
@@ -878,7 +878,7 @@ uint64_t Ntoskrnl::_wcsnicmp(void* e, std::vector<uint64_t>& a, void* ctx) {
     return 0;
 }
 
-uint64_t Ntoskrnl::_stricmp(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::_stricmp(void* e, ArgList& a, void* ctx) {
     // int _stricmp(const char *string1, const char *string2)
     uint64_t s1 = a[0];
     uint64_t s2 = a[1];
@@ -896,7 +896,7 @@ uint64_t Ntoskrnl::_stricmp(void* e, std::vector<uint64_t>& a, void* ctx) {
     return (cs1 < cs2) ? -1 : 1;
 }
 
-uint64_t Ntoskrnl::_wcsicmp(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::_wcsicmp(void* e, ArgList& a, void* ctx) {
     // int _wcsicmp(const wchar_t *string1, const wchar_t *string2)
     uint64_t s1 = a[0];
     uint64_t s2 = a[1];
@@ -913,7 +913,7 @@ uint64_t Ntoskrnl::_wcsicmp(void* e, std::vector<uint64_t>& a, void* ctx) {
     return 0;
 }
 
-uint64_t Ntoskrnl::mbstowcs(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::mbstowcs(void* e, ArgList& a, void* ctx) {
     // size_t mbstowcs(wchar_t *dest, const char *src, size_t max)
     uint64_t dest = a[0];
     uint64_t src = a[1];
@@ -935,13 +935,13 @@ uint64_t Ntoskrnl::mbstowcs(void* e, std::vector<uint64_t>& a, void* ctx) {
 
 //  I/O 
 
-uint64_t Ntoskrnl::IoDeleteDriver(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoDeleteDriver(void* e, ArgList& a, void* ctx) {
     // VOID IoDeleteDriver(PDRIVER_OBJECT DriverObject)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::IoCreateDevice(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoCreateDevice(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IoCreateDevice(DriverObject, DeviceExtensionSize, DeviceName, DeviceType, ...)
     uint64_t drv = a[0];
     uint64_t ext_size = a[1];
@@ -974,13 +974,13 @@ uint64_t Ntoskrnl::IoCreateDevice(void* e, std::vector<uint64_t>& a, void* ctx) 
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoCreateDeviceSecure(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoCreateDeviceSecure(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IoCreateDeviceSecure(...)
     // Similar to IoCreateDevice but with SDDL string and GUID
     return IoCreateDevice(e, a, ctx);
 }
 
-uint64_t Ntoskrnl::IoCreateSymbolicLink(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoCreateSymbolicLink(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IoCreateSymbolicLink(SymbolicLinkName, DeviceName)
     uint64_t link_name = a[0];
     uint64_t dev_name = a[1];
@@ -994,25 +994,25 @@ uint64_t Ntoskrnl::IoCreateSymbolicLink(void* e, std::vector<uint64_t>& a, void*
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IofCompleteRequest(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IofCompleteRequest(void* e, ArgList& a, void* ctx) {
     // VOID IoCompleteRequest(PIRP Irp, CCHAR PriorityBoost)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::IoDeleteSymbolicLink(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoDeleteSymbolicLink(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IoDeleteSymbolicLink(PUNICODE_STRING SymbolicLinkName)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoDeleteDevice(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoDeleteDevice(void* e, ArgList& a, void* ctx) {
     // VOID IoDeleteDevice(PDEVICE_OBJECT DeviceObject)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoCreateSynchronizationEvent(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoCreateSynchronizationEvent(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IoCreateSynchronizationEvent(PUNICODE_STRING EventName, PHANDLE EventHandle)
     uint64_t evt_handle = a[1];
     if (evt_handle) {
@@ -1023,176 +1023,176 @@ uint64_t Ntoskrnl::IoCreateSynchronizationEvent(void* e, std::vector<uint64_t>& 
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoAllocateIrp(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoAllocateIrp(void* e, ArgList& a, void* ctx) {
     // PIRP IoAllocateIrp(CCHAR StackSize, BOOLEAN ChargeQuota)
     size_t irp_size = 0x100;
     return mm(e)->mem_map(irp_size, 0, common::PERM_MEM_RWX, "api.irp");
 }
 
-uint64_t Ntoskrnl::IoFreeIrp(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoFreeIrp(void* e, ArgList& a, void* ctx) {
     // VOID IoFreeIrp(PIRP Irp)
     uint64_t irp = a[0];
     if (irp) mm(e)->mem_free(irp);
     return 0;
 }
 
-uint64_t Ntoskrnl::IoReuseIrp(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoReuseIrp(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::IoAllocateMdl(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoAllocateMdl(void* e, ArgList& a, void* ctx) {
     // PMDL IoAllocateMdl(PVOID VirtualAddress, ULONG Length, BOOLEAN SecondaryBuffer, BOOLEAN ChargeQuota, PIRP Irp)
     size_t mdl_size = static_cast<size_t>(ptr_sz(e)) * 8;
     return mm(e)->mem_map(mdl_size, 0, common::PERM_MEM_RWX, "api.mdl");
 }
 
-uint64_t Ntoskrnl::IoFreeMdl(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoFreeMdl(void* e, ArgList& a, void* ctx) {
     // VOID IoFreeMdl(PMDL Mdl)
     uint64_t mdl = a[0];
     if (mdl) mm(e)->mem_free(mdl);
     return 0;
 }
 
-uint64_t Ntoskrnl::IofCallDriver(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IofCallDriver(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IofCallDriver(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoSetCompletionRoutineEx(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoSetCompletionRoutineEx(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IoSetCompletionRoutineEx(PDEVICE_OBJECT DeviceObject, PIRP Irp, PIO_COMPLETION_ROUTINE ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoGetDeviceObjectPointer(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoGetDeviceObjectPointer(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IoGetDeviceObjectPointer(PUNICODE_STRING ObjectName, ACCESS_MASK DesiredAccess, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoGetCurrentProcess(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoGetCurrentProcess(void* e, ArgList& a, void* ctx) {
     // PEPROCESS IoGetCurrentProcess()
     (void)a;
     // Return current process pointer
     return reinterpret_cast<uint64_t>(we(e)->get_current_process().get());
 }
 
-uint64_t Ntoskrnl::IoWMIRegistrationControl(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoWMIRegistrationControl(void* e, ArgList& a, void* ctx) {
     // NTSTATUS IoWMIRegistrationControl(PDEVICE_OBJECT DeviceObject, ULONG Action)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoRegisterBootDriverReinitialization(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoRegisterBootDriverReinitialization(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoRegisterShutdownNotification(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoRegisterShutdownNotification(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::IoUnregisterShutdownNotification(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::IoUnregisterShutdownNotification(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
 //  Ke (Kernel) 
 
-uint64_t Ntoskrnl::KeInitializeMutex(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeInitializeMutex(void* e, ArgList& a, void* ctx) {
     // VOID KeInitializeMutex(PRKMUTEX Mutex, ULONG Level)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeSetEvent(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeSetEvent(void* e, ArgList& a, void* ctx) {
     // LONG KeSetEvent(PKEVENT Event, KPRIORITY Increment, BOOLEAN Wait)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeInitializeEvent(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeInitializeEvent(void* e, ArgList& a, void* ctx) {
     // VOID KeInitializeEvent(PKEVENT Event, EVENT_TYPE Type, BOOLEAN State)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeResetEvent(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeResetEvent(void* e, ArgList& a, void* ctx) {
     // LONG KeResetEvent(PKEVENT Event)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeClearEvent(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeClearEvent(void* e, ArgList& a, void* ctx) {
     // VOID KeClearEvent(PKEVENT Event)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeInitializeTimer(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeInitializeTimer(void* e, ArgList& a, void* ctx) {
     // VOID KeInitializeTimer(PKTIMER Timer)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeSetTimer(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeSetTimer(void* e, ArgList& a, void* ctx) {
     // BOOLEAN KeSetTimer(PKTIMER Timer, LARGE_INTEGER DueTime, PKDPC Dpc)
     (void)e; (void)a;
     return 1; // TRUE
 }
 
-uint64_t Ntoskrnl::KeCancelTimer(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeCancelTimer(void* e, ArgList& a, void* ctx) {
     // BOOLEAN KeCancelTimer(PKTIMER Timer)
     (void)e; (void)a;
     return 1; // TRUE
 }
 
-uint64_t Ntoskrnl::KeDelayExecutionThread(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeDelayExecutionThread(void* e, ArgList& a, void* ctx) {
     // NTSTATUS KeDelayExecutionThread(KPROCESSOR_MODE WaitMode, BOOLEAN Alertable, PLARGE_INTEGER Interval)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::KeWaitForSingleObject(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeWaitForSingleObject(void* e, ArgList& a, void* ctx) {
     // NTSTATUS KeWaitForSingleObject(PVOID Object, KWAIT_REASON Reason, KPROCESSOR_MODE WaitMode, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::KeInitializeApc(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeInitializeApc(void* e, ArgList& a, void* ctx) {
     // VOID KeInitializeApc(PRKAPC Apc, PKTHREAD Thread, KAPC_ENVIRONMENT Environment, ...)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeInsertQueueApc(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeInsertQueueApc(void* e, ArgList& a, void* ctx) {
     // BOOLEAN KeInsertQueueApc(PRKAPC Apc, PVOID SystemArgument1, PVOID SystemArgument2, KPRIORITY ...)
     (void)e; (void)a;
     return 1; // TRUE
 }
 
-uint64_t Ntoskrnl::KeInitializeDpc(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeInitializeDpc(void* e, ArgList& a, void* ctx) {
     // VOID KeInitializeDpc(PRKDPC Dpc, PKDEFERRED_ROUTINE DeferredRoutine, PVOID DeferredContext)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeStackAttachProcess(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeStackAttachProcess(void* e, ArgList& a, void* ctx) {
     // VOID KeStackAttachProcess(PKPROCESS Process, PRKAPC_STATE ApcState)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeUnstackDetachProcess(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeUnstackDetachProcess(void* e, ArgList& a, void* ctx) {
     // VOID KeUnstackDetachProcess(PRKAPC_STATE ApcState)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeQuerySystemTime(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeQuerySystemTime(void* e, ArgList& a, void* ctx) {
     // VOID KeQuerySystemTime(PLARGE_INTEGER CurrentTime)
     uint64_t time_out = a[0];
     if (time_out) {
@@ -1204,30 +1204,30 @@ uint64_t Ntoskrnl::KeQuerySystemTime(void* e, std::vector<uint64_t>& a, void* ct
     return 0;
 }
 
-uint64_t Ntoskrnl::KeAcquireSpinLockRaiseToDpc(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeAcquireSpinLockRaiseToDpc(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0; // returns old IRQL
 }
 
-uint64_t Ntoskrnl::KeEnterCriticalRegion(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeEnterCriticalRegion(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::KeLeaveCriticalRegion(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KeLeaveCriticalRegion(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }
 
 //  Ps (Process) 
 
-uint64_t Ntoskrnl::PsCreateSystemThread(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsCreateSystemThread(void* e, ArgList& a, void* ctx) {
     // NTSTATUS PsCreateSystemThread(ThreadHandle, DesiredAccess, ObjectAttributes, ProcessHandle, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::PsLookupProcessByProcessId(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsLookupProcessByProcessId(void* e, ArgList& a, void* ctx) {
     // NTSTATUS PsLookupProcessByProcessId(HANDLE ProcessId, PEPROCESS *Process)
     uint64_t proc_out = a[1];
     if (proc_out) {
@@ -1238,7 +1238,7 @@ uint64_t Ntoskrnl::PsLookupProcessByProcessId(void* e, std::vector<uint64_t>& a,
     return KERN_STATUS_NOT_FOUND;
 }
 
-uint64_t Ntoskrnl::PsLookupThreadByThreadId(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsLookupThreadByThreadId(void* e, ArgList& a, void* ctx) {
     // NTSTATUS PsLookupThreadByThreadId(HANDLE ThreadId, PETHREAD *Thread)
     uint64_t thread_out = a[1];
     if (thread_out) {
@@ -1249,19 +1249,19 @@ uint64_t Ntoskrnl::PsLookupThreadByThreadId(void* e, std::vector<uint64_t>& a, v
     return KERN_STATUS_NOT_FOUND;
 }
 
-uint64_t Ntoskrnl::PsGetProcessPeb(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsGetProcessPeb(void* e, ArgList& a, void* ctx) {
     // PPEB PsGetProcessPeb(PEPROCESS Process)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::PsTerminateSystemThread(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsTerminateSystemThread(void* e, ArgList& a, void* ctx) {
     // NTSTATUS PsTerminateSystemThread(NTSTATUS ExitStatus)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::PsGetVersion(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsGetVersion(void* e, ArgList& a, void* ctx) {
     // NTSTATUS PsGetVersion(PULONG MajorVersion, PULONG MinorVersion, PULONG BuildNumber, ...)
     uint64_t major = a[0];
     uint64_t minor = a[1];
@@ -1287,35 +1287,35 @@ uint64_t Ntoskrnl::PsGetVersion(void* e, std::vector<uint64_t>& a, void* ctx) {
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::PsSetCreateProcessNotifyRoutineEx(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsSetCreateProcessNotifyRoutineEx(void* e, ArgList& a, void* ctx) {
     // NTSTATUS PsSetCreateProcessNotifyRoutineEx(PCREATE_PROCESS_NOTIFY_ROUTINE_EX NotifyRoutine, BOOLEAN Remove)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::PsSetLoadImageNotifyRoutine(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsSetLoadImageNotifyRoutine(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::PsRemoveLoadImageNotifyRoutine(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsRemoveLoadImageNotifyRoutine(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::PsSetCreateThreadNotifyRoutine(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsSetCreateThreadNotifyRoutine(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::PsRemoveCreateThreadNotifyRoutine(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PsRemoveCreateThreadNotifyRoutine(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
 //  Zw/Nt system calls 
 
-uint64_t Ntoskrnl::ZwQuerySystemInformation(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwQuerySystemInformation(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwQuerySystemInformation(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG)
     uint64_t sysclass = a[0];
     uint64_t sysinfo = a[1];
@@ -1375,13 +1375,13 @@ uint64_t Ntoskrnl::ZwQuerySystemInformation(void* e, std::vector<uint64_t>& a, v
     return nts;
 }
 
-uint64_t Ntoskrnl::ZwProtectVirtualMemory(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwProtectVirtualMemory(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwProtectVirtualMemory(HANDLE, PVOID*, PSIZE_T, ULONG, PULONG)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwWriteVirtualMemory(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwWriteVirtualMemory(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwWriteVirtualMemory(HANDLE, PVOID, PVOID, SIZE_T, PSIZE_T)
     uint64_t addr = a[1];
     uint64_t buf = a[2];
@@ -1400,7 +1400,7 @@ uint64_t Ntoskrnl::ZwWriteVirtualMemory(void* e, std::vector<uint64_t>& a, void*
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwAllocateVirtualMemory(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwAllocateVirtualMemory(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwAllocateVirtualMemory(HANDLE, PVOID*, ULONG_PTR, PSIZE_T, ULONG, ULONG)
     uint64_t paddr = a[1];
     uint64_t psize = a[3];
@@ -1429,31 +1429,31 @@ uint64_t Ntoskrnl::ZwAllocateVirtualMemory(void* e, std::vector<uint64_t>& a, vo
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwOpenEvent(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwOpenEvent(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwOpenEvent(PHANDLE EventHandle, ACCESS_MASK, POBJECT_ATTRIBUTES)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwCreateEvent(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwCreateEvent(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwCreateEvent(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, EVENT_TYPE, BOOLEAN)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwDeviceIoControlFile(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwDeviceIoControlFile(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwDeviceIoControlFile(HANDLE, HANDLE, ..., ULONG IoControlCode, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwDeleteKey(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwDeleteKey(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwDeleteKey(HANDLE KeyHandle)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwQueryInformationProcess(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwQueryInformationProcess(void* e, ArgList& a, void* ctx) {
     // Python ntoskrnl.py:2362-2401
     uint64_t hnd       = a[0];
     uint32_t info_class = static_cast<uint32_t>(a[1]);
@@ -1504,79 +1504,79 @@ uint64_t Ntoskrnl::ZwQueryInformationProcess(void* e, std::vector<uint64_t>& a, 
     return nts;
 }
 
-uint64_t Ntoskrnl::ZwOpenKey(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwOpenKey(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwOpenKey(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwQueryValueKey(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwQueryValueKey(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwQueryValueKey(HANDLE, PUNICODE_STRING, KEY_VALUE_INFORMATION_CLASS, PVOID, ULONG, PULONG)
     (void)e; (void)a;
     return KERN_STATUS_OBJECT_NAME_NOT_FOUND;
 }
 
-uint64_t Ntoskrnl::ZwCreateFile(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwCreateFile(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwCreateFile(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, PIO_STATUS_BLOCK, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwOpenFile(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwOpenFile(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwOpenFile(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, PIO_STATUS_BLOCK, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwQueryInformationFile(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwQueryInformationFile(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwQueryInformationFile(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG, FILE_INFORMATION_CLASS)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwWriteFile(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwWriteFile(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwWriteFile(HANDLE, HANDLE, ..., PVOID Buffer, ULONG Length, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwReadFile(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwReadFile(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwReadFile(HANDLE, HANDLE, ..., PVOID Buffer, ULONG Length, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwCreateSection(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwCreateSection(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwCreateSection(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwUnmapViewOfSection(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwUnmapViewOfSection(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwUnmapViewOfSection(HANDLE, PVOID BaseAddress)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwMapViewOfSection(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwMapViewOfSection(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwMapViewOfSection(HANDLE, HANDLE, PVOID*, ULONG_PTR, SIZE_T, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwGetContextThread(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwGetContextThread(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwGetContextThread(HANDLE, PCONTEXT)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ZwSetContextThread(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ZwSetContextThread(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwSetContextThread(HANDLE, PCONTEXT)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::NtSetInformationThread(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::NtSetInformationThread(void* e, ArgList& a, void* ctx) {
     // NTSTATUS NtSetInformationThread(HANDLE, THREADINFOCLASS, PVOID, ULONG)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
@@ -1584,7 +1584,7 @@ uint64_t Ntoskrnl::NtSetInformationThread(void* e, std::vector<uint64_t>& a, voi
 
 //  Mm (Memory Management) 
 
-uint64_t Ntoskrnl::MmProbeAndLockPages(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::MmProbeAndLockPages(void* e, ArgList& a, void* ctx) {
     // VOID MmProbeAndLockPages(PMDL MemoryDescriptorList, KPROCESSOR_MODE AccessMode, ...)
     (void)e; (void)a;
     return 0;
@@ -1592,49 +1592,49 @@ uint64_t Ntoskrnl::MmProbeAndLockPages(void* e, std::vector<uint64_t>& a, void* 
 
 //  Ex (Executive) 
 
-uint64_t Ntoskrnl::ExInitializeResourceLite(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExInitializeResourceLite(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ExInitializeResourceLite(PRESOURCE_LITE Resource)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ExAcquireResourceExclusiveLite(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExAcquireResourceExclusiveLite(void* e, ArgList& a, void* ctx) {
     // BOOLEAN ExAcquireResourceExclusiveLite(PRESOURCE_LITE Resource, BOOLEAN Wait)
     (void)e; (void)a;
     return 1; // TRUE
 }
 
-uint64_t Ntoskrnl::ExAcquireResourceSharedLite(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExAcquireResourceSharedLite(void* e, ArgList& a, void* ctx) {
     // BOOLEAN ExAcquireResourceSharedLite(PRESOURCE_LITE Resource, BOOLEAN Wait)
     (void)e; (void)a;
     return 1; // TRUE
 }
 
-uint64_t Ntoskrnl::ExReleaseResourceLite(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExReleaseResourceLite(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ExReleaseResourceLite(PRESOURCE_LITE Resource)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::ExAcquireFastMutex(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExAcquireFastMutex(void* e, ArgList& a, void* ctx) {
     // VOID ExAcquireFastMutex(PFAST_MUTEX FastMutex)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::ExReleaseFastMutex(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExReleaseFastMutex(void* e, ArgList& a, void* ctx) {
     // VOID ExReleaseFastMutex(PFAST_MUTEX FastMutex)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::ExQueueWorkItem(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExQueueWorkItem(void* e, ArgList& a, void* ctx) {
     // VOID ExQueueWorkItem(PWORK_QUEUE_ITEM WorkItem, WORK_QUEUE_TYPE QueueType)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Ntoskrnl::ExSystemTimeToLocalTime(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::ExSystemTimeToLocalTime(void* e, ArgList& a, void* ctx) {
     // VOID ExSystemTimeToLocalTime(PLARGE_INTEGER SystemTime, PLARGE_INTEGER LocalTime)
     uint64_t local_time = a[1];
     if (local_time) {
@@ -1647,7 +1647,7 @@ uint64_t Ntoskrnl::ExSystemTimeToLocalTime(void* e, std::vector<uint64_t>& a, vo
 
 //  Security 
 
-uint64_t Ntoskrnl::RtlLengthRequiredSid(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlLengthRequiredSid(void* e, ArgList& a, void* ctx) {
     // ULONG RtlLengthRequiredSid(ULONG SubAuthorityCount)
     uint64_t sub_auth_count = a[0];
     (void)sub_auth_count;
@@ -1655,7 +1655,7 @@ uint64_t Ntoskrnl::RtlLengthRequiredSid(void* e, std::vector<uint64_t>& a, void*
     return 8 + static_cast<uint64_t>(a[0]) * 4;
 }
 
-uint64_t Ntoskrnl::RtlInitializeSid(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlInitializeSid(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlInitializeSid(PSID Sid, PSID_IDENTIFIER_AUTHORITY IdentifierAuthority, ULONG SubAuthorityCount)
     uint64_t sid = a[0];
     uint64_t auth = a[1];
@@ -1676,7 +1676,7 @@ uint64_t Ntoskrnl::RtlInitializeSid(void* e, std::vector<uint64_t>& a, void* ctx
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::RtlSubAuthoritySid(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlSubAuthoritySid(void* e, ArgList& a, void* ctx) {
     // PULONG RtlSubAuthoritySid(PSID Sid, ULONG SubAuthority)
     uint64_t sid = a[0];
     uint64_t index = a[1];
@@ -1685,7 +1685,7 @@ uint64_t Ntoskrnl::RtlSubAuthoritySid(void* e, std::vector<uint64_t>& a, void* c
     return sid ? (sid + offset) : 0;
 }
 
-uint64_t Ntoskrnl::RtlCreateAcl(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlCreateAcl(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlCreateAcl(PACL Acl, ULONG AclLength, ULONG AceRevision)
     uint64_t acl = a[0];
     uint64_t len = a[1];
@@ -1701,7 +1701,7 @@ uint64_t Ntoskrnl::RtlCreateAcl(void* e, std::vector<uint64_t>& a, void* ctx) {
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::RtlCreateSecurityDescriptor(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlCreateSecurityDescriptor(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlCreateSecurityDescriptor(PSECURITY_DESCRIPTOR SecurityDescriptor, ULONG Revision)
     uint64_t sd = a[0];
     if (sd) {
@@ -1713,13 +1713,13 @@ uint64_t Ntoskrnl::RtlCreateSecurityDescriptor(void* e, std::vector<uint64_t>& a
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::RtlSetDaclSecurityDescriptor(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlSetDaclSecurityDescriptor(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlSetDaclSecurityDescriptor(PSECURITY_DESCRIPTOR, BOOLEAN, PACL, BOOLEAN)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::RtlAddAccessAllowedAce(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlAddAccessAllowedAce(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlAddAccessAllowedAce(PACL, ULONG, ACCESS_MASK, PSID)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
@@ -1727,7 +1727,7 @@ uint64_t Ntoskrnl::RtlAddAccessAllowedAce(void* e, std::vector<uint64_t>& a, voi
 
 //  Registry 
 
-uint64_t Ntoskrnl::RtlQueryRegistryValuesEx(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlQueryRegistryValuesEx(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlQueryRegistryValuesEx(ULONG RelativeTo, PCWSTR Path, PRTL_QUERY_REGISTRY_TABLE, ...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
@@ -1735,20 +1735,20 @@ uint64_t Ntoskrnl::RtlQueryRegistryValuesEx(void* e, std::vector<uint64_t>& a, v
 
 //  Timer/Power 
 
-uint64_t Ntoskrnl::PoDeletePowerRequest(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::PoDeletePowerRequest(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
 //  Kd 
 
-uint64_t Ntoskrnl::KdDisableDebugger(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KdDisableDebugger(void* e, ArgList& a, void* ctx) {
     // NTSTATUS KdDisableDebugger()
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::KdChangeOption(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::KdChangeOption(void* e, ArgList& a, void* ctx) {
     // NTSTATUS KdChangeOption(ULONG Option, ULONG InValue, PULONG OutValue)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
@@ -1756,19 +1756,19 @@ uint64_t Ntoskrnl::KdChangeOption(void* e, std::vector<uint64_t>& a, void* ctx) 
 
 //  Cm (Configuration Manager) 
 
-uint64_t Ntoskrnl::CmRegisterCallbackEx(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::CmRegisterCallbackEx(void* e, ArgList& a, void* ctx) {
     // NTSTATUS CmRegisterCallbackEx(...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::CmRegisterCallback(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::CmRegisterCallback(void* e, ArgList& a, void* ctx) {
     // NTSTATUS CmRegisterCallback(...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::CmUnRegisterCallback(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::CmUnRegisterCallback(void* e, ArgList& a, void* ctx) {
     // NTSTATUS CmUnRegisterCallback(...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
@@ -1776,7 +1776,7 @@ uint64_t Ntoskrnl::CmUnRegisterCallback(void* e, std::vector<uint64_t>& a, void*
 
 //  Etw 
 
-uint64_t Ntoskrnl::EtwRegister(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::EtwRegister(void* e, ArgList& a, void* ctx) {
     // NTSTATUS EtwRegister(...)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
@@ -1784,7 +1784,7 @@ uint64_t Ntoskrnl::EtwRegister(void* e, std::vector<uint64_t>& a, void* ctx) {
 
 //  Image 
 
-uint64_t Ntoskrnl::RtlImageDirectoryEntryToData(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlImageDirectoryEntryToData(void* e, ArgList& a, void* ctx) {
     // PVOID RtlImageDirectoryEntryToData(PVOID ImageBase, BOOLEAN MappedAsImage, USHORT DirectoryEntry, ...)
     (void)e; (void)a;
     return 0;
@@ -1792,13 +1792,13 @@ uint64_t Ntoskrnl::RtlImageDirectoryEntryToData(void* e, std::vector<uint64_t>& 
 
 //  Compression 
 
-uint64_t Ntoskrnl::RtlGetCompressionWorkSpaceSize(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlGetCompressionWorkSpaceSize(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlGetCompressionWorkSpaceSize(USHORT, PULONG, PULONG)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
 }
 
-uint64_t Ntoskrnl::RtlDecompressBuffer(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlDecompressBuffer(void* e, ArgList& a, void* ctx) {
     // NTSTATUS RtlDecompressBuffer(USHORT, PUCHAR, ULONG, PUCHAR, ULONG, PULONG)
     (void)e; (void)a;
     return KERN_STATUS_SUCCESS;
@@ -1806,7 +1806,7 @@ uint64_t Ntoskrnl::RtlDecompressBuffer(void* e, std::vector<uint64_t>& a, void* 
 
 //  Misc 
 
-uint64_t Ntoskrnl::RtlTimeToTimeFields(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::RtlTimeToTimeFields(void* e, ArgList& a, void* ctx) {
     // VOID RtlTimeToTimeFields(PLARGE_INTEGER Time, PTIME_FIELDS TimeFields)
     uint64_t tf = a[1];
     if (tf) {
@@ -1820,7 +1820,7 @@ uint64_t Ntoskrnl::RtlTimeToTimeFields(void* e, std::vector<uint64_t>& a, void* 
     return 0;
 }
 
-uint64_t Ntoskrnl::_allshl(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntoskrnl::_allshl(void* e, ArgList& a, void* ctx) {
     // LONGLONG _allshl(LONGLONG a, LONG b)
     uint64_t val = a[0];
     uint64_t shift = a[1] & 0x3F;

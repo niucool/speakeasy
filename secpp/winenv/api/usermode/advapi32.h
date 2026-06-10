@@ -13,20 +13,20 @@ public:
 
 private: 
     std::vector<ApiEntry> apis_;
-    static uint64_t RegOpenKeyExA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t RegQueryValueExA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t RegCloseKey(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t RegCreateKeyExA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t RegSetValueExA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t RegDeleteKeyA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t OpenProcessToken(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t LookupPrivilegeValueA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t AdjustTokenPrivileges(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t CryptAcquireContextA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t CryptGenRandom(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t CreateServiceA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t StartServiceA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t stub(void*, std::vector<uint64_t>&, void* ctx);
+    static uint64_t RegOpenKeyExA(void*, ArgList&, void* ctx);
+    static uint64_t RegQueryValueExA(void*, ArgList&, void* ctx);
+    static uint64_t RegCloseKey(void*, ArgList&, void* ctx);
+    static uint64_t RegCreateKeyExA(void*, ArgList&, void* ctx);
+    static uint64_t RegSetValueExA(void*, ArgList&, void* ctx);
+    static uint64_t RegDeleteKeyA(void*, ArgList&, void* ctx);
+    static uint64_t OpenProcessToken(void*, ArgList&, void* ctx);
+    static uint64_t LookupPrivilegeValueA(void*, ArgList&, void* ctx);
+    static uint64_t AdjustTokenPrivileges(void*, ArgList&, void* ctx);
+    static uint64_t CryptAcquireContextA(void*, ArgList&, void* ctx);
+    static uint64_t CryptGenRandom(void*, ArgList&, void* ctx);
+    static uint64_t CreateServiceA(void*, ArgList&, void* ctx);
+    static uint64_t StartServiceA(void*, ArgList&, void* ctx);
+    static uint64_t stub(void*, ArgList&, void* ctx);
 };
 }} 
 #endif

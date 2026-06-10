@@ -486,7 +486,7 @@ static uint64_t CreateFile_impl(void* emu, const std::string& target,
     return reinterpret_cast<uint64_t>(fobj);
 }
 
-uint64_t Kernel32::CreateFileA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateFileA(void* emu, ArgList& argv, void* ctx) {
     if (!argv[0]) return K32_INVALID_HANDLE;
     return CreateFile_impl(emu,
         be(emu)->read_mem_string(argv[0], 1),               // filename (ANSI)
@@ -495,7 +495,7 @@ uint64_t Kernel32::CreateFileA(void* emu, std::vector<uint64_t>& argv, void* ctx
         static_cast<uint32_t>(argv[5]), argv[6]);
 }
 
-uint64_t Kernel32::CreateFileW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateFileW(void* emu, ArgList& argv, void* ctx) {
     if (!argv[0]) return K32_INVALID_HANDLE;
     return CreateFile_impl(emu,
         be(emu)->read_mem_string(argv[0], 2),               // filename (UTF-16LE)
@@ -504,7 +504,7 @@ uint64_t Kernel32::CreateFileW(void* emu, std::vector<uint64_t>& argv, void* ctx
         static_cast<uint32_t>(argv[5]), argv[6]);
 }
 
-uint64_t Kernel32::ReadFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::ReadFile(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     uint64_t lpBuffer = argv[1];
     uint32_t num_bytes = static_cast<uint32_t>(argv[2]);
@@ -540,7 +540,7 @@ uint64_t Kernel32::ReadFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::WriteFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::WriteFile(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     uint64_t lpBuffer = argv[1];
     uint32_t num_bytes = static_cast<uint32_t>(argv[2]);
@@ -579,14 +579,14 @@ uint64_t Kernel32::WriteFile(void* emu, std::vector<uint64_t>& argv, void* ctx) 
     return 1;
 }
 
-uint64_t Kernel32::CloseHandle(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CloseHandle(void* emu, ArgList& argv, void* ctx) {
     uint64_t hObject = argv[0];
     (void)hObject;
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
-uint64_t Kernel32::DeleteFileA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::DeleteFileA(void* emu, ArgList& argv, void* ctx) {
     uint64_t fname_ptr = argv[0];
     if (!fname_ptr) {
         w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
@@ -608,20 +608,20 @@ static uint64_t CopyFile_impl(void* emu, const std::string& src, const std::stri
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
-uint64_t Kernel32::CopyFileA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CopyFileA(void* emu, ArgList& argv, void* ctx) {
     if (!argv[0] || !argv[1]) return 0;
     return CopyFile_impl(emu, be(emu)->read_mem_string(argv[0], 1),
                          be(emu)->read_mem_string(argv[1], 1),
                          static_cast<uint32_t>(argv[2]));
 }
-uint64_t Kernel32::CopyFileW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CopyFileW(void* emu, ArgList& argv, void* ctx) {
     if (!argv[0] || !argv[1]) return 0;
     return CopyFile_impl(emu, be(emu)->read_mem_string(argv[0], 2),
                          be(emu)->read_mem_string(argv[1], 2),
                          static_cast<uint32_t>(argv[2]));
 }
 
-uint64_t Kernel32::CreateDirectoryA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateDirectoryA(void* emu, ArgList& argv, void* ctx) {
     uint64_t path_ptr = argv[0];
     uint64_t sec_attr = argv[1];
     (void)sec_attr;
@@ -632,7 +632,7 @@ uint64_t Kernel32::CreateDirectoryA(void* emu, std::vector<uint64_t>& argv, void
     return 1;
 }
 
-uint64_t Kernel32::RemoveDirectoryA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::RemoveDirectoryA(void* emu, ArgList& argv, void* ctx) {
     uint64_t path_ptr = argv[0];
     if (!path_ptr) return 0;
     std::string path = be(emu)->read_mem_string(path_ptr, 1);
@@ -641,7 +641,7 @@ uint64_t Kernel32::RemoveDirectoryA(void* emu, std::vector<uint64_t>& argv, void
     return 1;
 }
 
-uint64_t Kernel32::GetFileAttributesA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetFileAttributesA(void* emu, ArgList& argv, void* ctx) {
     uint64_t fname_ptr = argv[0];
     if (!fname_ptr) return K32_INVALID_FILE_ATTR;
     std::string target = be(emu)->read_mem_string(fname_ptr, 1);
@@ -652,7 +652,7 @@ uint64_t Kernel32::GetFileAttributesA(void* emu, std::vector<uint64_t>& argv, vo
     return K32_INVALID_FILE_ATTR;
 }
 
-uint64_t Kernel32::SetFilePointer(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetFilePointer(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     int32_t dist = static_cast<int32_t>(argv[1] & 0xFFFFFFFF);
     uint64_t dist_high_ptr = argv[2];
@@ -662,7 +662,7 @@ uint64_t Kernel32::SetFilePointer(void* emu, std::vector<uint64_t>& argv, void* 
     return 0;
 }
 
-uint64_t Kernel32::GetFileSize(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetFileSize(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     uint64_t size_high_ptr = argv[1];
     (void)hFile; (void)size_high_ptr;
@@ -670,7 +670,7 @@ uint64_t Kernel32::GetFileSize(void* emu, std::vector<uint64_t>& argv, void* ctx
     return 0;
 }
 
-uint64_t Kernel32::FindFirstFileA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FindFirstFileA(void* emu, ArgList& argv, void* ctx) {
     uint64_t fname_ptr = argv[0];
     uint64_t find_data_ptr = argv[1];
     (void)fname_ptr; (void)find_data_ptr;
@@ -678,7 +678,7 @@ uint64_t Kernel32::FindFirstFileA(void* emu, std::vector<uint64_t>& argv, void* 
     return K32_INVALID_HANDLE;
 }
 
-uint64_t Kernel32::FindNextFileA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FindNextFileA(void* emu, ArgList& argv, void* ctx) {
     uint64_t find_handle = argv[0];
     uint64_t find_data_ptr = argv[1];
     (void)find_handle; (void)find_data_ptr;
@@ -686,14 +686,14 @@ uint64_t Kernel32::FindNextFileA(void* emu, std::vector<uint64_t>& argv, void* c
     return 0;
 }
 
-uint64_t Kernel32::FindClose(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FindClose(void* emu, ArgList& argv, void* ctx) {
     uint64_t find_handle = argv[0];
     (void)find_handle;
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
-uint64_t Kernel32::CreateFileMappingA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateFileMappingA(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     uint64_t map_attrs = argv[1];
     uint32_t prot = static_cast<uint32_t>(argv[2]);
@@ -710,7 +710,7 @@ uint64_t Kernel32::CreateFileMappingA(void* emu, std::vector<uint64_t>& argv, vo
     return static_cast<uint64_t>(handle);
 }
 
-uint64_t Kernel32::MapViewOfFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::MapViewOfFile(void* emu, ArgList& argv, void* ctx) {
     uint64_t hmap = argv[0];
     uint32_t access = static_cast<uint32_t>(argv[1]);
     uint32_t offset_high = static_cast<uint32_t>(argv[2]);
@@ -721,28 +721,28 @@ uint64_t Kernel32::MapViewOfFile(void* emu, std::vector<uint64_t>& argv, void* c
     return 0;
 }
 
-uint64_t Kernel32::UnmapViewOfFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::UnmapViewOfFile(void* emu, ArgList& argv, void* ctx) {
     uint64_t base = argv[0];
     (void)base;
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
-uint64_t Kernel32::FlushFileBuffers(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FlushFileBuffers(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     (void)hFile;
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
-uint64_t Kernel32::SetEndOfFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetEndOfFile(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     (void)hFile;
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
-uint64_t Kernel32::GetFileTime(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetFileTime(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     uint64_t creation_ptr = argv[1];
     uint64_t last_access_ptr = argv[2];
@@ -763,7 +763,7 @@ uint64_t Kernel32::GetFileTime(void* emu, std::vector<uint64_t>& argv, void* ctx
     return 1;
 }
 
-uint64_t Kernel32::SetFileTime(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetFileTime(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     uint64_t creation_ptr = argv[1];
     uint64_t last_access_ptr = argv[2];
@@ -773,7 +773,7 @@ uint64_t Kernel32::SetFileTime(void* emu, std::vector<uint64_t>& argv, void* ctx
     return 1;
 }
 
-uint64_t Kernel32::GetFileInformationByHandle(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetFileInformationByHandle(void* emu, ArgList& argv, void* ctx) {
     int hFile = static_cast<int>(argv[0]);
     uint64_t info_ptr = argv[1];
     (void)hFile; (void)info_ptr;
@@ -781,7 +781,7 @@ uint64_t Kernel32::GetFileInformationByHandle(void* emu, std::vector<uint64_t>& 
     return 1;
 }
 
-uint64_t Kernel32::DeviceIoControl(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::DeviceIoControl(void* emu, ArgList& argv, void* ctx) {
     int hDevice = static_cast<int>(argv[0]);
     uint32_t ctl_code = static_cast<uint32_t>(argv[1]);
     uint64_t in_buf = argv[2];
@@ -796,13 +796,13 @@ uint64_t Kernel32::DeviceIoControl(void* emu, std::vector<uint64_t>& argv, void*
     return 1;
 }
 
-uint64_t Kernel32::GetDriveTypeA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetDriveTypeA(void* emu, ArgList& argv, void* ctx) {
     uint64_t root_ptr = argv[0];
     (void)root_ptr;
     return 3; // DRIVE_FIXED
 }
 
-uint64_t Kernel32::GetDiskFreeSpaceExA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetDiskFreeSpaceExA(void* emu, ArgList& argv, void* ctx) {
     uint64_t dir_ptr = argv[0];
     uint64_t free_ptr = argv[1];
     uint64_t total_ptr = argv[2];
@@ -826,7 +826,7 @@ uint64_t Kernel32::GetDiskFreeSpaceExA(void* emu, std::vector<uint64_t>& argv, v
 //  MEMORY APIs
 // 
 
-uint64_t Kernel32::VirtualAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::VirtualAlloc(void* emu, ArgList& argv, void* ctx) {
     uint64_t addr = argv[0];
     size_t size = static_cast<size_t>(argv[1]);
     uint32_t alloc_type = static_cast<uint32_t>(argv[2]);
@@ -841,7 +841,7 @@ uint64_t Kernel32::VirtualAlloc(void* emu, std::vector<uint64_t>& argv, void* ct
     return buf;
 }
 
-uint64_t Kernel32::VirtualAllocEx(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::VirtualAllocEx(void* emu, ArgList& argv, void* ctx) {
     uint64_t hProcess = argv[0];
     uint64_t addr = argv[1];
     size_t size = static_cast<size_t>(argv[2]);
@@ -857,7 +857,7 @@ uint64_t Kernel32::VirtualAllocEx(void* emu, std::vector<uint64_t>& argv, void* 
     return buf;
 }
 
-uint64_t Kernel32::VirtualFree(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::VirtualFree(void* emu, ArgList& argv, void* ctx) {
     uint64_t addr = argv[0];
     size_t size = static_cast<size_t>(argv[1]);
     uint32_t free_type = static_cast<uint32_t>(argv[2]);
@@ -869,7 +869,7 @@ uint64_t Kernel32::VirtualFree(void* emu, std::vector<uint64_t>& argv, void* ctx
     return 1;
 }
 
-uint64_t Kernel32::VirtualProtect(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::VirtualProtect(void* emu, ArgList& argv, void* ctx) {
     uint64_t addr = argv[0];
     size_t size = static_cast<size_t>(argv[1]);
     uint32_t new_prot = static_cast<uint32_t>(argv[2]);
@@ -889,14 +889,14 @@ uint64_t Kernel32::VirtualProtect(void* emu, std::vector<uint64_t>& argv, void* 
     return 1;
 }
 
-uint64_t Kernel32::VirtualProtectEx(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::VirtualProtectEx(void* emu, ArgList& argv, void* ctx) {
     uint64_t hProcess = argv[0];
     (void)hProcess;
-    std::vector<uint64_t> remaining = {argv[1], argv[2], argv[3], argv[4]};
+    ArgList remaining = {argv[1], argv[2], argv[3], argv[4]};
     return VirtualProtect(emu, remaining, ctx);
 }
 
-uint64_t Kernel32::VirtualQuery(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::VirtualQuery(void* emu, ArgList& argv, void* ctx) {
     uint64_t addr = argv[0];
     uint64_t buf_ptr = argv[1];
     uint32_t buf_sz = static_cast<uint32_t>(argv[2]);
@@ -912,7 +912,7 @@ uint64_t Kernel32::VirtualQuery(void* emu, std::vector<uint64_t>& argv, void* ct
     return (ptr_sz(emu) == 8) ? 48 : 36;
 }
 
-uint64_t Kernel32::WriteProcessMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::WriteProcessMemory(void* emu, ArgList& argv, void* ctx) {
     uint64_t hProcess = argv[0];
     uint64_t base = argv[1];
     uint64_t src = argv[2];
@@ -934,7 +934,7 @@ uint64_t Kernel32::WriteProcessMemory(void* emu, std::vector<uint64_t>& argv, vo
     return 1;
 }
 
-uint64_t Kernel32::ReadProcessMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::ReadProcessMemory(void* emu, ArgList& argv, void* ctx) {
     uint64_t hProcess = argv[0];
     uint64_t base = argv[1];
     uint64_t dst = argv[2];
@@ -961,7 +961,7 @@ uint64_t Kernel32::ReadProcessMemory(void* emu, std::vector<uint64_t>& argv, voi
     return 1;
 }
 
-uint64_t Kernel32::HeapAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::HeapAlloc(void* emu, ArgList& argv, void* ctx) {
     uint64_t hHeap = argv[0];
     uint32_t flags = static_cast<uint32_t>(argv[1]);
     size_t sz = static_cast<size_t>(argv[2]);
@@ -972,7 +972,7 @@ uint64_t Kernel32::HeapAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) 
     return buf;
 }
 
-uint64_t Kernel32::HeapFree(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::HeapFree(void* emu, ArgList& argv, void* ctx) {
     uint64_t hHeap = argv[0];
     uint32_t flags = static_cast<uint32_t>(argv[1]);
     uint64_t mem = argv[2];
@@ -984,7 +984,7 @@ uint64_t Kernel32::HeapFree(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::HeapCreate(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::HeapCreate(void* emu, ArgList& argv, void* ctx) {
     uint32_t options = static_cast<uint32_t>(argv[0]);
     size_t initial_sz = static_cast<size_t>(argv[1]);
     size_t max_sz = static_cast<size_t>(argv[2]);
@@ -994,7 +994,7 @@ uint64_t Kernel32::HeapCreate(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return heap;
 }
 
-uint64_t Kernel32::HeapDestroy(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::HeapDestroy(void* emu, ArgList& argv, void* ctx) {
     uint64_t hHeap = argv[0];
     if (hHeap) {
         try { mm(emu)->mem_free(hHeap); } catch (...) {}
@@ -1003,7 +1003,7 @@ uint64_t Kernel32::HeapDestroy(void* emu, std::vector<uint64_t>& argv, void* ctx
     return 1;
 }
 
-uint64_t Kernel32::GetProcessHeap(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetProcessHeap(void* emu, ArgList& argv, void* ctx) {
     static thread_local uint64_t process_heap = 0;
     if (process_heap == 0) {
         process_heap = mm(emu)->mem_map(0x10000, 0, 4, "process_heap");
@@ -1012,7 +1012,7 @@ uint64_t Kernel32::GetProcessHeap(void* emu, std::vector<uint64_t>& argv, void* 
     return process_heap;
 }
 
-uint64_t Kernel32::GlobalAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GlobalAlloc(void* emu, ArgList& argv, void* ctx) {
     uint32_t flags = static_cast<uint32_t>(argv[0]);
     size_t sz = static_cast<size_t>(argv[1]);
     (void)flags;
@@ -1021,13 +1021,13 @@ uint64_t Kernel32::GlobalAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx
     return buf;
 }
 
-uint64_t Kernel32::GlobalFree(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GlobalFree(void* emu, ArgList& argv, void* ctx) {
     uint64_t hMem = argv[0];
     (void)hMem;
     return 0;
 }
 
-uint64_t Kernel32::LocalAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::LocalAlloc(void* emu, ArgList& argv, void* ctx) {
     uint32_t flags = static_cast<uint32_t>(argv[0]);
     size_t sz = static_cast<size_t>(argv[1]);
     (void)flags;
@@ -1036,7 +1036,7 @@ uint64_t Kernel32::LocalAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return buf;
 }
 
-uint64_t Kernel32::LocalFree(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::LocalFree(void* emu, ArgList& argv, void* ctx) {
     uint64_t hMem = argv[0];
     if (hMem) {
         try { mm(emu)->mem_free(hMem); } catch (...) {}
@@ -1045,7 +1045,7 @@ uint64_t Kernel32::LocalFree(void* emu, std::vector<uint64_t>& argv, void* ctx) 
     return 0;
 }
 
-uint64_t Kernel32::RtlMoveMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::RtlMoveMemory(void* emu, ArgList& argv, void* ctx) {
     uint64_t dst = argv[0];
     uint64_t src = argv[1];
     size_t sz = static_cast<size_t>(argv[2]);
@@ -1056,7 +1056,7 @@ uint64_t Kernel32::RtlMoveMemory(void* emu, std::vector<uint64_t>& argv, void* c
     return dst;
 }
 
-uint64_t Kernel32::RtlZeroMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::RtlZeroMemory(void* emu, ArgList& argv, void* ctx) {
     uint64_t dst = argv[0];
     size_t sz = static_cast<size_t>(argv[1]);
     if (dst && sz > 0) {
@@ -1086,27 +1086,27 @@ static uint64_t do_load_library(void* emu, uint64_t name_ptr, int cw) {
     return reinterpret_cast<uint64_t>(mod);
 }
 
-uint64_t Kernel32::LoadLibraryA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::LoadLibraryA(void* emu, ArgList& argv, void* ctx) {
     return do_load_library(emu, argv[0], 1);
 }
 
-uint64_t Kernel32::LoadLibraryW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::LoadLibraryW(void* emu, ArgList& argv, void* ctx) {
     return do_load_library(emu, argv[0], 2);
 }
 
-uint64_t Kernel32::LoadLibraryExA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::LoadLibraryExA(void* emu, ArgList& argv, void* ctx) {
     uint64_t lib_name = argv[0];
     return do_load_library(emu, lib_name, 1);
 }
 
-uint64_t Kernel32::FreeLibrary(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FreeLibrary(void* emu, ArgList& argv, void* ctx) {
     uint64_t hMod = argv[0];
     (void)hMod;
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
-uint64_t Kernel32::GetProcAddress(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetProcAddress(void* emu, ArgList& argv, void* ctx) {
     // Python kernel32.py:1959-1992  matches Python logic step by step.
     uint64_t hMod = argv[0];
     uint64_t proc_name_ptr = argv[1];
@@ -1158,7 +1158,7 @@ uint64_t Kernel32::GetProcAddress(void* emu, std::vector<uint64_t>& argv, void* 
     return rv;
 }
 
-uint64_t Kernel32::GetModuleHandleA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetModuleHandleA(void* emu, ArgList& argv, void* ctx) {
     uint64_t mod_name_ptr = argv[0];
     if (!mod_name_ptr) {
         auto p = we(emu)->get_current_process();
@@ -1184,7 +1184,7 @@ uint64_t Kernel32::GetModuleHandleA(void* emu, std::vector<uint64_t>& argv, void
     return 0;
 }
 
-uint64_t Kernel32::GetModuleHandleW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetModuleHandleW(void* emu, ArgList& argv, void* ctx) {
     uint64_t mod_name_ptr = argv[0];
     if (!mod_name_ptr) {
         auto p = we(emu)->get_current_process();
@@ -1211,7 +1211,7 @@ uint64_t Kernel32::GetModuleHandleW(void* emu, std::vector<uint64_t>& argv, void
     return 0;
 }
 
-uint64_t Kernel32::GetModuleFileNameA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetModuleFileNameA(void* emu, ArgList& argv, void* ctx) {
     uint64_t hMod = argv[0];
     uint64_t buf_ptr = argv[1];
     uint32_t buf_sz = static_cast<uint32_t>(argv[2]);
@@ -1243,7 +1243,7 @@ uint64_t Kernel32::GetModuleFileNameA(void* emu, std::vector<uint64_t>& argv, vo
     return static_cast<uint64_t>(filename.size() - 1);
 }
 
-uint64_t Kernel32::GetModuleFileNameW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetModuleFileNameW(void* emu, ArgList& argv, void* ctx) {
     uint64_t hMod = argv[0];
     uint64_t buf_ptr = argv[1];
     uint32_t buf_sz = static_cast<uint32_t>(argv[2]);
@@ -1275,7 +1275,7 @@ uint64_t Kernel32::GetModuleFileNameW(void* emu, std::vector<uint64_t>& argv, vo
     return static_cast<uint64_t>(filename.size());
 }
 
-uint64_t Kernel32::DisableThreadLibraryCalls(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::DisableThreadLibraryCalls(void* emu, ArgList& argv, void* ctx) {
     (void)argv[0];
     return 1;
 }
@@ -1284,7 +1284,7 @@ uint64_t Kernel32::DisableThreadLibraryCalls(void* emu, std::vector<uint64_t>& a
 //  PROCESS / THREAD APIs
 // 
 
-uint64_t Kernel32::CreateProcessA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateProcessA(void* emu, ArgList& argv, void* ctx) {
     uint64_t app_ptr = argv[0];
     uint64_t cmd_ptr = argv[1];
     uint64_t proc_attrs = argv[2];
@@ -1325,7 +1325,7 @@ uint64_t Kernel32::CreateProcessA(void* emu, std::vector<uint64_t>& argv, void* 
     return 1;
 }
 
-uint64_t Kernel32::OpenProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::OpenProcess(void* emu, ArgList& argv, void* ctx) {
     uint32_t access = static_cast<uint32_t>(argv[0]);
     uint32_t inherit = static_cast<uint32_t>(argv[1]);
     uint32_t pid = static_cast<uint32_t>(argv[2]);
@@ -1349,7 +1349,7 @@ uint64_t Kernel32::OpenProcess(void* emu, std::vector<uint64_t>& argv, void* ctx
     return 0;
 }
 
-uint64_t Kernel32::TerminateProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::TerminateProcess(void* emu, ArgList& argv, void* ctx) {
     uint64_t hProcess = argv[0];
     uint32_t exit_code = static_cast<uint32_t>(argv[1]);
     (void)hProcess; (void)exit_code;
@@ -1357,11 +1357,11 @@ uint64_t Kernel32::TerminateProcess(void* emu, std::vector<uint64_t>& argv, void
     return 1;
 }
 
-uint64_t Kernel32::GetCurrentProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetCurrentProcess(void* emu, ArgList& argv, void* ctx) {
     return static_cast<uint64_t>(-1);
 }
 
-uint64_t Kernel32::GetCurrentProcessId(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetCurrentProcessId(void* emu, ArgList& argv, void* ctx) {
     auto proc = we(emu)->get_current_process();
     if (proc) {
         return static_cast<uint64_t>(proc->get_pid());
@@ -1369,14 +1369,14 @@ uint64_t Kernel32::GetCurrentProcessId(void* emu, std::vector<uint64_t>& argv, v
     return 0;
 }
 
-uint64_t Kernel32::ExitProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::ExitProcess(void* emu, ArgList& argv, void* ctx) {
     uint32_t exit_code = static_cast<uint32_t>(argv[0]);
     (void)exit_code;
     we(emu)->stop();
     return 0;
 }
 
-uint64_t Kernel32::CreateThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateThread(void* emu, ArgList& argv, void* ctx) {
     uint64_t attrs = argv[0];
     size_t stack_sz = static_cast<size_t>(argv[1]);
     uint64_t start_addr = argv[2];
@@ -1399,7 +1399,7 @@ uint64_t Kernel32::CreateThread(void* emu, std::vector<uint64_t>& argv, void* ct
     return static_cast<uint64_t>(h);
 }
 
-uint64_t Kernel32::CreateRemoteThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateRemoteThread(void* emu, ArgList& argv, void* ctx) {
     uint64_t hProcess = argv[0];
     uint64_t attrs = argv[1];
     size_t stack_sz = static_cast<size_t>(argv[2]);
@@ -1423,7 +1423,7 @@ uint64_t Kernel32::CreateRemoteThread(void* emu, std::vector<uint64_t>& argv, vo
     return static_cast<uint64_t>(h);
 }
 
-uint64_t Kernel32::OpenThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::OpenThread(void* emu, ArgList& argv, void* ctx) {
     uint32_t access = static_cast<uint32_t>(argv[0]);
     uint32_t inherit = static_cast<uint32_t>(argv[1]);
     uint32_t tid = static_cast<uint32_t>(argv[2]);
@@ -1432,14 +1432,14 @@ uint64_t Kernel32::OpenThread(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return 0;
 }
 
-uint64_t Kernel32::TerminateThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::TerminateThread(void* emu, ArgList& argv, void* ctx) {
     uint64_t hThread = argv[0];
     uint32_t exit_code = static_cast<uint32_t>(argv[1]);
     (void)hThread; (void)exit_code;
     return 1;
 }
 
-uint64_t Kernel32::GetCurrentThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetCurrentThread(void* emu, ArgList& argv, void* ctx) {
     auto thread = we(emu)->get_current_thread();
     if (thread) {
         int h = we(emu)->get_object_handle(thread);
@@ -1448,7 +1448,7 @@ uint64_t Kernel32::GetCurrentThread(void* emu, std::vector<uint64_t>& argv, void
     return static_cast<uint64_t>(-2);
 }
 
-uint64_t Kernel32::GetCurrentThreadId(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetCurrentThreadId(void* emu, ArgList& argv, void* ctx) {
     auto thread = we(emu)->get_current_thread();
     if (thread) {
         return static_cast<uint64_t>(thread->get_id());
@@ -1456,26 +1456,26 @@ uint64_t Kernel32::GetCurrentThreadId(void* emu, std::vector<uint64_t>& argv, vo
     return 0;
 }
 
-uint64_t Kernel32::ResumeThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::ResumeThread(void* emu, ArgList& argv, void* ctx) {
     uint64_t hThread = argv[0];
     (void)hThread;
     return 0;
 }
 
-uint64_t Kernel32::SuspendThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SuspendThread(void* emu, ArgList& argv, void* ctx) {
     uint64_t hThread = argv[0];
     (void)hThread;
     return 0;
 }
 
-uint64_t Kernel32::ExitThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::ExitThread(void* emu, ArgList& argv, void* ctx) {
     uint32_t exit_code = static_cast<uint32_t>(argv[0]);
     (void)exit_code;
     we(emu)->stop();
     return 0;
 }
 
-uint64_t Kernel32::Sleep(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::Sleep(void* emu, ArgList& argv, void* ctx) {
     if (!argv.empty()) {
         auto ms = std::chrono::milliseconds(argv[0]);
         std::this_thread::sleep_for(ms);
@@ -1483,7 +1483,7 @@ uint64_t Kernel32::Sleep(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return 0;
 }
 
-uint64_t Kernel32::SleepEx(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SleepEx(void* emu, ArgList& argv, void* ctx) {
     uint32_t ms = static_cast<uint32_t>(argv[0]);
     uint32_t alertable = static_cast<uint32_t>(argv[1]);
     (void)alertable;
@@ -1493,12 +1493,12 @@ uint64_t Kernel32::SleepEx(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return 0;
 }
 
-uint64_t Kernel32::SwitchToThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SwitchToThread(void* emu, ArgList& argv, void* ctx) {
     std::this_thread::yield();
     return 0;
 }
 
-uint64_t Kernel32::GetExitCodeProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetExitCodeProcess(void* emu, ArgList& argv, void* ctx) {
     uint64_t hProcess = argv[0];
     uint64_t code_ptr = argv[1];
     (void)hProcess;
@@ -1510,7 +1510,7 @@ uint64_t Kernel32::GetExitCodeProcess(void* emu, std::vector<uint64_t>& argv, vo
     return 1;
 }
 
-uint64_t Kernel32::GetExitCodeThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetExitCodeThread(void* emu, ArgList& argv, void* ctx) {
     uint64_t hThread = argv[0];
     uint64_t code_ptr = argv[1];
     (void)hThread;
@@ -1522,7 +1522,7 @@ uint64_t Kernel32::GetExitCodeThread(void* emu, std::vector<uint64_t>& argv, voi
     return 1;
 }
 
-uint64_t Kernel32::QueueUserAPC(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::QueueUserAPC(void* emu, ArgList& argv, void* ctx) {
     uint64_t func = argv[0];
     uint64_t hThread = argv[1];
     uint64_t data = argv[2];
@@ -1530,7 +1530,7 @@ uint64_t Kernel32::QueueUserAPC(void* emu, std::vector<uint64_t>& argv, void* ct
     return 1;
 }
 
-uint64_t Kernel32::WinExec(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::WinExec(void* emu, ArgList& argv, void* ctx) {
     uint64_t cmd_ptr = argv[0];
     uint32_t show = static_cast<uint32_t>(argv[1]);
     (void)show;
@@ -1544,14 +1544,14 @@ uint64_t Kernel32::WinExec(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return 32;
 }
 
-uint64_t Kernel32::SetThreadPriority(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetThreadPriority(void* emu, ArgList& argv, void* ctx) {
     uint64_t hThread = argv[0];
     int32_t priority = static_cast<int32_t>(argv[1]);
     (void)hThread; (void)priority;
     return 1;
 }
 
-uint64_t Kernel32::GetThreadPriority(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetThreadPriority(void* emu, ArgList& argv, void* ctx) {
     uint64_t hThread = argv[0];
     (void)hThread;
     return 0;
@@ -1561,7 +1561,7 @@ uint64_t Kernel32::GetThreadPriority(void* emu, std::vector<uint64_t>& argv, voi
 //  SYNC APIs
 // 
 
-uint64_t Kernel32::CreateEventA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateEventA(void* emu, ArgList& argv, void* ctx) {
     uint64_t attrs = argv[0];
     uint32_t manual_reset = static_cast<uint32_t>(argv[1]);
     uint32_t initial_state = static_cast<uint32_t>(argv[2]);
@@ -1579,7 +1579,7 @@ uint64_t Kernel32::CreateEventA(void* emu, std::vector<uint64_t>& argv, void* ct
     return static_cast<uint64_t>(h);
 }
 
-uint64_t Kernel32::CreateMutexA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateMutexA(void* emu, ArgList& argv, void* ctx) {
     uint64_t attrs = argv[0];
     uint32_t initial_owner = static_cast<uint32_t>(argv[1]);
     uint64_t name_ptr = argv[2];
@@ -1596,7 +1596,7 @@ uint64_t Kernel32::CreateMutexA(void* emu, std::vector<uint64_t>& argv, void* ct
     return static_cast<uint64_t>(h);
 }
 
-uint64_t Kernel32::CreateMutexW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateMutexW(void* emu, ArgList& argv, void* ctx) {
     uint64_t attrs = argv[0];
     uint32_t initial_owner = static_cast<uint32_t>(argv[1]);
     uint64_t name_ptr = argv[2];
@@ -1613,7 +1613,7 @@ uint64_t Kernel32::CreateMutexW(void* emu, std::vector<uint64_t>& argv, void* ct
     return static_cast<uint64_t>(h);
 }
 
-uint64_t Kernel32::OpenMutexA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::OpenMutexA(void* emu, ArgList& argv, void* ctx) {
     uint32_t access = static_cast<uint32_t>(argv[0]);
     uint32_t inherit = static_cast<uint32_t>(argv[1]);
     uint64_t name_ptr = argv[2];
@@ -1629,32 +1629,32 @@ uint64_t Kernel32::OpenMutexA(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return static_cast<uint64_t>(h);
 }
 
-uint64_t Kernel32::ReleaseMutex(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::ReleaseMutex(void* emu, ArgList& argv, void* ctx) {
     uint64_t hMutex = argv[0];
     (void)hMutex;
     return 1;
 }
 
-uint64_t Kernel32::SetEvent(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetEvent(void* emu, ArgList& argv, void* ctx) {
     uint64_t hEvent = argv[0];
     (void)hEvent;
     return 1;
 }
 
-uint64_t Kernel32::ResetEvent(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::ResetEvent(void* emu, ArgList& argv, void* ctx) {
     uint64_t hEvent = argv[0];
     (void)hEvent;
     return 1;
 }
 
-uint64_t Kernel32::WaitForSingleObject(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::WaitForSingleObject(void* emu, ArgList& argv, void* ctx) {
     uint64_t hHandle = argv[0];
     uint32_t ms = static_cast<uint32_t>(argv[1]);
     (void)hHandle; (void)ms;
     return 0;
 }
 
-uint64_t Kernel32::WaitForMultipleObjects(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::WaitForMultipleObjects(void* emu, ArgList& argv, void* ctx) {
     uint32_t count = static_cast<uint32_t>(argv[0]);
     uint64_t handles_ptr = argv[1];
     uint32_t wait_all = static_cast<uint32_t>(argv[2]);
@@ -1663,7 +1663,7 @@ uint64_t Kernel32::WaitForMultipleObjects(void* emu, std::vector<uint64_t>& argv
     return 0;
 }
 
-uint64_t Kernel32::InitializeCriticalSection(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::InitializeCriticalSection(void* emu, ArgList& argv, void* ctx) {
     uint64_t cs_ptr = argv[0];
     if (cs_ptr) {
         std::vector<uint8_t> cs_data(24, 0);
@@ -1672,22 +1672,22 @@ uint64_t Kernel32::InitializeCriticalSection(void* emu, std::vector<uint64_t>& a
     return 0;
 }
 
-uint64_t Kernel32::DeleteCriticalSection(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::DeleteCriticalSection(void* emu, ArgList& argv, void* ctx) {
     (void)argv[0];
     return 0;
 }
 
-uint64_t Kernel32::EnterCriticalSection(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::EnterCriticalSection(void* emu, ArgList& argv, void* ctx) {
     (void)argv[0];
     return 0;
 }
 
-uint64_t Kernel32::LeaveCriticalSection(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::LeaveCriticalSection(void* emu, ArgList& argv, void* ctx) {
     (void)argv[0];
     return 0;
 }
 
-uint64_t Kernel32::CreateWaitableTimerA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateWaitableTimerA(void* emu, ArgList& argv, void* ctx) {
     uint64_t attrs = argv[0];
     uint32_t manual_reset = static_cast<uint32_t>(argv[1]);
     uint64_t name_ptr = argv[2];
@@ -1695,7 +1695,7 @@ uint64_t Kernel32::CreateWaitableTimerA(void* emu, std::vector<uint64_t>& argv, 
     return 1;
 }
 
-uint64_t Kernel32::SetWaitableTimer(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetWaitableTimer(void* emu, ArgList& argv, void* ctx) {
     uint64_t hTimer = argv[0];
     uint64_t due_time_ptr = argv[1];
     uint32_t period = static_cast<uint32_t>(argv[2]);
@@ -1706,7 +1706,7 @@ uint64_t Kernel32::SetWaitableTimer(void* emu, std::vector<uint64_t>& argv, void
     return 1;
 }
 
-uint64_t Kernel32::CancelWaitableTimer(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CancelWaitableTimer(void* emu, ArgList& argv, void* ctx) {
     uint64_t hTimer = argv[0];
     (void)hTimer;
     return 1;
@@ -1716,12 +1716,12 @@ uint64_t Kernel32::CancelWaitableTimer(void* emu, std::vector<uint64_t>& argv, v
 //  SYSTEM APIs
 // 
 
-uint64_t Kernel32::GetTickCount(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetTickCount(void* emu, ArgList& argv, void* ctx) {
     auto now = std::chrono::steady_clock::now().time_since_epoch();
     return std::chrono::duration_cast<std::chrono::milliseconds>(now).count() & 0xFFFFFFFF;
 }
 
-uint64_t Kernel32::GetSystemInfo(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetSystemInfo(void* emu, ArgList& argv, void* ctx) {
     uint64_t lpSystemInfo = argv[0];
     if (!lpSystemInfo) return 0;
     int ps = ptr_sz(emu);
@@ -1753,11 +1753,11 @@ uint64_t Kernel32::GetSystemInfo(void* emu, std::vector<uint64_t>& argv, void* c
     return 0;
 }
 
-uint64_t Kernel32::GetVersion(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetVersion(void* emu, ArgList& argv, void* ctx) {
     return (19041 << 16) | (0 << 8) | 10;
 }
 
-uint64_t Kernel32::GetVersionExA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetVersionExA(void* emu, ArgList& argv, void* ctx) {
     uint64_t info_ptr = argv[0];
     if (!info_ptr) return 0;
     std::vector<uint8_t> info(156, 0);
@@ -1770,17 +1770,17 @@ uint64_t Kernel32::GetVersionExA(void* emu, std::vector<uint64_t>& argv, void* c
     return 1;
 }
 
-uint64_t Kernel32::IsDebuggerPresent(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::IsDebuggerPresent(void* emu, ArgList& argv, void* ctx) {
     return 0;
 }
 
-uint64_t Kernel32::SetErrorMode(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetErrorMode(void* emu, ArgList& argv, void* ctx) {
     uint32_t mode = static_cast<uint32_t>(argv[0]);
     (void)mode;
     return 0;
 }
 
-uint64_t Kernel32::GetSystemTime(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetSystemTime(void* emu, ArgList& argv, void* ctx) {
     uint64_t st_ptr = argv[0];
     if (!st_ptr) return 0;
     auto now = std::time(nullptr);
@@ -1798,11 +1798,11 @@ uint64_t Kernel32::GetSystemTime(void* emu, std::vector<uint64_t>& argv, void* c
     return 0;
 }
 
-uint64_t Kernel32::GetLocalTime(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetLocalTime(void* emu, ArgList& argv, void* ctx) {
     return GetSystemTime(emu, argv, ctx);
 }
 
-uint64_t Kernel32::SystemTimeToFileTime(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SystemTimeToFileTime(void* emu, ArgList& argv, void* ctx) {
     uint64_t st_ptr = argv[0];
     uint64_t ft_ptr = argv[1];
     (void)st_ptr;
@@ -1818,7 +1818,7 @@ uint64_t Kernel32::SystemTimeToFileTime(void* emu, std::vector<uint64_t>& argv, 
     return 1;
 }
 
-uint64_t Kernel32::FileTimeToSystemTime(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FileTimeToSystemTime(void* emu, ArgList& argv, void* ctx) {
     uint64_t ft_ptr = argv[0];
     uint64_t st_ptr = argv[1];
     (void)ft_ptr;
@@ -1839,7 +1839,7 @@ uint64_t Kernel32::FileTimeToSystemTime(void* emu, std::vector<uint64_t>& argv, 
     return 1;
 }
 
-uint64_t Kernel32::QueryPerformanceCounter(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::QueryPerformanceCounter(void* emu, ArgList& argv, void* ctx) {
     uint64_t ptr = argv[0];
     if (ptr) {
         auto now = std::chrono::steady_clock::now().time_since_epoch();
@@ -1851,7 +1851,7 @@ uint64_t Kernel32::QueryPerformanceCounter(void* emu, std::vector<uint64_t>& arg
     return 1;
 }
 
-uint64_t Kernel32::QueryPerformanceFrequency(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::QueryPerformanceFrequency(void* emu, ArgList& argv, void* ctx) {
     uint64_t ptr = argv[0];
     if (ptr) {
         std::vector<uint8_t> buf(8);
@@ -1861,7 +1861,7 @@ uint64_t Kernel32::QueryPerformanceFrequency(void* emu, std::vector<uint64_t>& a
     return 1;
 }
 
-uint64_t Kernel32::GetComputerNameA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetComputerNameA(void* emu, ArgList& argv, void* ctx) {
     uint64_t buf_ptr = argv[0];
     uint64_t size_ptr = argv[1];
     if (!buf_ptr || !size_ptr) {
@@ -1882,7 +1882,7 @@ uint64_t Kernel32::GetComputerNameA(void* emu, std::vector<uint64_t>& argv, void
     return 1;
 }
 
-uint64_t Kernel32::GetUserNameA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetUserNameA(void* emu, ArgList& argv, void* ctx) {
     uint64_t buf_ptr = argv[0];
     uint64_t size_ptr = argv[1];
     if (!buf_ptr || !size_ptr) {
@@ -1903,7 +1903,7 @@ uint64_t Kernel32::GetUserNameA(void* emu, std::vector<uint64_t>& argv, void* ct
     return 1;
 }
 
-uint64_t Kernel32::SetUnhandledExceptionFilter(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetUnhandledExceptionFilter(void* emu, ArgList& argv, void* ctx) {
     uint64_t filter = argv[0];
     (void)filter;
     return 0;
@@ -1913,19 +1913,19 @@ uint64_t Kernel32::SetUnhandledExceptionFilter(void* emu, std::vector<uint64_t>&
 //  ERROR APIs
 // 
 
-uint64_t Kernel32::GetLastError(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetLastError(void* emu, ArgList& argv, void* ctx) {
     uint32_t err = static_cast<uint32_t>(w32(emu)->get_last_error());
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return static_cast<uint64_t>(err);
 }
 
-uint64_t Kernel32::SetLastError(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetLastError(void* emu, ArgList& argv, void* ctx) {
     uint32_t err = static_cast<uint32_t>(argv[0]);
     w32(emu)->set_last_error(static_cast<int>(err));
     return 0;
 }
 
-uint64_t Kernel32::RaiseException(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::RaiseException(void* emu, ArgList& argv, void* ctx) {
     uint32_t code = static_cast<uint32_t>(argv[0]);
     uint32_t flags = static_cast<uint32_t>(argv[1]);
     uint32_t num_args = static_cast<uint32_t>(argv[2]);
@@ -1934,7 +1934,7 @@ uint64_t Kernel32::RaiseException(void* emu, std::vector<uint64_t>& argv, void* 
     return 0;
 }
 
-uint64_t Kernel32::UnhandledExceptionFilter(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::UnhandledExceptionFilter(void* emu, ArgList& argv, void* ctx) {
     uint64_t exc_ptr = argv[0];
     (void)exc_ptr;
     return 0;
@@ -1944,14 +1944,14 @@ uint64_t Kernel32::UnhandledExceptionFilter(void* emu, std::vector<uint64_t>& ar
 //  STRING APIs
 // 
 
-uint64_t Kernel32::lstrlenA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrlenA(void* emu, ArgList& argv, void* ctx) {
     uint64_t str_ptr = argv[0];
     if (!str_ptr) return 0;
     std::string s = be(emu)->read_mem_string(str_ptr, 1);
     return static_cast<uint64_t>(s.size());
 }
 
-uint64_t Kernel32::lstrcpyA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcpyA(void* emu, ArgList& argv, void* ctx) {
     uint64_t dst = argv[0];
     uint64_t src = argv[1];
     if (!dst || !src) return dst;
@@ -1962,7 +1962,7 @@ uint64_t Kernel32::lstrcpyA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return dst;
 }
 
-uint64_t Kernel32::lstrcatA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcatA(void* emu, ArgList& argv, void* ctx) {
     uint64_t dst = argv[0];
     uint64_t src = argv[1];
     if (!dst || !src) return dst;
@@ -1974,7 +1974,7 @@ uint64_t Kernel32::lstrcatA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return dst;
 }
 
-uint64_t Kernel32::lstrcmpA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcmpA(void* emu, ArgList& argv, void* ctx) {
     uint64_t s1_ptr = argv[0];
     uint64_t s2_ptr = argv[1];
     if (!s1_ptr || !s2_ptr) return 1;
@@ -1984,7 +1984,7 @@ uint64_t Kernel32::lstrcmpA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return (s1 < s2) ? -1 : 1;
 }
 
-uint64_t Kernel32::MultiByteToWideChar(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::MultiByteToWideChar(void* emu, ArgList& argv, void* ctx) {
     uint32_t code_page = static_cast<uint32_t>(argv[0]);
     uint32_t flags = static_cast<uint32_t>(argv[1]);
     uint64_t mb_str_ptr = argv[2];
@@ -2020,7 +2020,7 @@ uint64_t Kernel32::MultiByteToWideChar(void* emu, std::vector<uint64_t>& argv, v
     return static_cast<uint64_t>(wc_chars - 1);
 }
 
-uint64_t Kernel32::WideCharToMultiByte(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::WideCharToMultiByte(void* emu, ArgList& argv, void* ctx) {
     uint32_t code_page = static_cast<uint32_t>(argv[0]);
     uint32_t flags = static_cast<uint32_t>(argv[1]);
     uint64_t wc_str_ptr = argv[2];
@@ -2056,7 +2056,7 @@ uint64_t Kernel32::WideCharToMultiByte(void* emu, std::vector<uint64_t>& argv, v
     return static_cast<uint64_t>(mb_buf.size() - 1);
 }
 
-uint64_t Kernel32::GetCommandLineA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetCommandLineA(void* emu, ArgList& argv, void* ctx) {
     std::string cmdline = "emulated.exe";
     uint64_t addr = mm(emu)->mem_map(cmdline.size() + 1, 0, 4, "api.cmdline");
     cmdline.push_back('\0');
@@ -2064,7 +2064,7 @@ uint64_t Kernel32::GetCommandLineA(void* emu, std::vector<uint64_t>& argv, void*
     return addr;
 }
 
-uint64_t Kernel32::GetCommandLineW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetCommandLineW(void* emu, ArgList& argv, void* ctx) {
     std::wstring wcmd = L"emulated.exe";
     size_t bytes = wcmd.size() * 2 + 2;
     uint64_t addr = mm(emu)->mem_map(bytes, 0, 4, "api.cmdlineW");
@@ -2080,7 +2080,7 @@ uint64_t Kernel32::GetCommandLineW(void* emu, std::vector<uint64_t>& argv, void*
 //  ENVIRONMENT APIs
 // 
 
-uint64_t Kernel32::GetEnvironmentVariableA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetEnvironmentVariableA(void* emu, ArgList& argv, void* ctx) {
     uint64_t name_ptr = argv[0];
     uint64_t buf_ptr = argv[1];
     uint32_t buf_sz = static_cast<uint32_t>(argv[2]);
@@ -2104,7 +2104,7 @@ uint64_t Kernel32::GetEnvironmentVariableA(void* emu, std::vector<uint64_t>& arg
     return static_cast<uint64_t>(val.size());
 }
 
-uint64_t Kernel32::SetEnvironmentVariableA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetEnvironmentVariableA(void* emu, ArgList& argv, void* ctx) {
     uint64_t name_ptr = argv[0];
     uint64_t val_ptr = argv[1];
     if (!name_ptr) return 0;
@@ -2115,7 +2115,7 @@ uint64_t Kernel32::SetEnvironmentVariableA(void* emu, std::vector<uint64_t>& arg
     return 1;
 }
 
-uint64_t Kernel32::GetCurrentDirectoryA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetCurrentDirectoryA(void* emu, ArgList& argv, void* ctx) {
     uint64_t buf_ptr = argv[0];
     uint32_t buf_sz = static_cast<uint32_t>(argv[1]);
     std::string cd = we(emu)->get_cd();
@@ -2131,7 +2131,7 @@ uint64_t Kernel32::GetCurrentDirectoryA(void* emu, std::vector<uint64_t>& argv, 
     return static_cast<uint64_t>(cd.size());
 }
 
-uint64_t Kernel32::SetCurrentDirectoryA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetCurrentDirectoryA(void* emu, ArgList& argv, void* ctx) {
     uint64_t path_ptr = argv[0];
     if (!path_ptr) return 0;
     std::string path = be(emu)->read_mem_string(path_ptr, 1);
@@ -2139,7 +2139,7 @@ uint64_t Kernel32::SetCurrentDirectoryA(void* emu, std::vector<uint64_t>& argv, 
     return 1;
 }
 
-uint64_t Kernel32::ExpandEnvironmentStringsA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::ExpandEnvironmentStringsA(void* emu, ArgList& argv, void* ctx) {
     uint64_t src_ptr = argv[0];
     uint64_t dst_ptr = argv[1];
     uint32_t dst_sz = static_cast<uint32_t>(argv[2]);
@@ -2179,7 +2179,7 @@ uint64_t Kernel32::ExpandEnvironmentStringsA(void* emu, std::vector<uint64_t>& a
 //  TOOLHELP APIs
 // 
 
-uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, ArgList& argv, void* ctx) {
     uint32_t flags = static_cast<uint32_t>(argv[0]);
     uint32_t pid = static_cast<uint32_t>(argv[1]);
     uint64_t hnd = g_next_snap_handle++;
@@ -2228,7 +2228,7 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, std::vector<uint64_t>& ar
     return hnd;
 }
 
-static uint64_t process32_impl(void* emu, const std::vector<uint64_t>& argv, bool first) {
+static uint64_t process32_impl(void* emu, const ArgList& argv, bool first) {
     uint64_t hSnap = argv[0];
     uint64_t pe32 = argv[1];
     if (!pe32) return 0;
@@ -2262,15 +2262,15 @@ static uint64_t process32_impl(void* emu, const std::vector<uint64_t>& argv, boo
     return 1;
 }
 
-uint64_t Kernel32::Process32FirstA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::Process32FirstA(void* emu, ArgList& argv, void* ctx) {
     return process32_impl(emu, argv, true);
 }
 
-uint64_t Kernel32::Process32NextA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::Process32NextA(void* emu, ArgList& argv, void* ctx) {
     return process32_impl(emu, argv, false);
 }
 
-static uint64_t thread32_impl(void* emu, const std::vector<uint64_t>& argv, bool first) {
+static uint64_t thread32_impl(void* emu, const ArgList& argv, bool first) {
     uint64_t hSnap = argv[0];
     uint64_t te32 = argv[1];
     if (!te32) return 0;
@@ -2297,15 +2297,15 @@ static uint64_t thread32_impl(void* emu, const std::vector<uint64_t>& argv, bool
     return 1;
 }
 
-uint64_t Kernel32::Thread32First(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::Thread32First(void* emu, ArgList& argv, void* ctx) {
     return thread32_impl(emu, argv, true);
 }
 
-uint64_t Kernel32::Thread32Next(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::Thread32Next(void* emu, ArgList& argv, void* ctx) {
     return thread32_impl(emu, argv, false);
 }
 
-static uint64_t module32_impl(void* emu, const std::vector<uint64_t>& argv, bool first) {
+static uint64_t module32_impl(void* emu, const ArgList& argv, bool first) {
     uint64_t hSnap = argv[0];
     uint64_t me32 = argv[1];
     if (!me32) return 0;
@@ -2348,11 +2348,11 @@ static uint64_t module32_impl(void* emu, const std::vector<uint64_t>& argv, bool
     return 1;
 }
 
-uint64_t Kernel32::Module32FirstA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::Module32FirstA(void* emu, ArgList& argv, void* ctx) {
     return module32_impl(emu, argv, true);
 }
 
-uint64_t Kernel32::Module32NextA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::Module32NextA(void* emu, ArgList& argv, void* ctx) {
     return module32_impl(emu, argv, false);
 }
 
@@ -2360,15 +2360,15 @@ uint64_t Kernel32::Module32NextA(void* emu, std::vector<uint64_t>& argv, void* c
 //  CONSOLE / MISC APIs
 // 
 
-uint64_t Kernel32::AllocConsole(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::AllocConsole(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::FreeConsole(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FreeConsole(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::GetConsoleMode(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetConsoleMode(void* emu, ArgList& argv, void* ctx) {
     uint64_t hConsole = argv[0];
     uint64_t mode_ptr = argv[1];
     (void)hConsole;
@@ -2380,14 +2380,14 @@ uint64_t Kernel32::GetConsoleMode(void* emu, std::vector<uint64_t>& argv, void* 
     return 1;
 }
 
-uint64_t Kernel32::SetConsoleMode(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::SetConsoleMode(void* emu, ArgList& argv, void* ctx) {
     uint64_t hConsole = argv[0];
     uint32_t mode = static_cast<uint32_t>(argv[1]);
     (void)hConsole; (void)mode;
     return 1;
 }
 
-uint64_t Kernel32::OutputDebugStringA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::OutputDebugStringA(void* emu, ArgList& argv, void* ctx) {
     uint64_t str_ptr = argv[0];
     if (str_ptr) {
         std::string msg = be(emu)->read_mem_string(str_ptr, 1);
@@ -2396,19 +2396,19 @@ uint64_t Kernel32::OutputDebugStringA(void* emu, std::vector<uint64_t>& argv, vo
     return 0;
 }
 
-uint64_t Kernel32::GetACP(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetACP(void* emu, ArgList& argv, void* ctx) {
     return 936;
 }
 
-uint64_t Kernel32::DecodePointer(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::DecodePointer(void* emu, ArgList& argv, void* ctx) {
     return argv[0];
 }
 
-uint64_t Kernel32::EncodePointer(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::EncodePointer(void* emu, ArgList& argv, void* ctx) {
     return argv[0];
 }
 
-uint64_t Kernel32::IsProcessorFeaturePresent(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::IsProcessorFeaturePresent(void* emu, ArgList& argv, void* ctx) {
     uint32_t feature = static_cast<uint32_t>(argv[0]);
     switch (feature) {
         case 0: case 1: return 0;
@@ -2420,71 +2420,71 @@ uint64_t Kernel32::IsProcessorFeaturePresent(void* emu, std::vector<uint64_t>& a
 //  W function implementations (read UTF-16LE strings, delegate to A logic)
 // ==========================================
 
-uint64_t Kernel32::DeleteFileW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::DeleteFileW(void* e, ArgList& a, void* c) {
     uint64_t fname_ptr = a[0];
     if (!fname_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
     std::string target = be(e)->read_mem_string(fname_ptr, 2);
     if (we(e)->does_file_exist(target)) { we(e)->file_delete(target); return 1; }
     w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0;
 }
-uint64_t Kernel32::CreateDirectoryW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateDirectoryW(void* e, ArgList& a, void* c) {
     uint64_t path_ptr = a[0]; (void)a[1];
     if (!path_ptr) return 0;
     std::string path = be(e)->read_mem_string(path_ptr, 2); (void)path;
     w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::GetFileAttributesW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetFileAttributesW(void* e, ArgList& a, void* c) {
     uint64_t fname_ptr = a[0];
     if (!fname_ptr) return K32_INVALID_FILE_ATTR;
     std::string target = be(e)->read_mem_string(fname_ptr, 2);
     if (we(e)->does_file_exist(target)) return K32_FILE_ATTR_NORMAL;
     w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_FILE_ATTR;
 }
-uint64_t Kernel32::FindFirstFileW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindFirstFileW(void* e, ArgList& a, void* c) {
     (void)a[0]; (void)a[1];
     w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_HANDLE;
 }
-uint64_t Kernel32::FindNextFileW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindNextFileW(void* e, ArgList& a, void* c) {
     (void)a[0]; (void)a[1];
     w32(e)->set_last_error(K32_ERR_NO_MORE_FILES); return 0;
 }
-uint64_t Kernel32::CreateFileMappingW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateFileMappingW(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[2];
     std::string name;
     if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
     uint64_t h = we(e)->mem_map(static_cast<size_t>(a[1]), 0, 4, "kernel32.filemapping." + name);
     return h ? h : K32_INVALID_HANDLE;
 }
-uint64_t Kernel32::GetDriveTypeW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetDriveTypeW(void* e, ArgList& a, void* c) {
     uint64_t root_ptr = a[0];
     std::string root;
     if (root_ptr) root = be(e)->read_mem_string(root_ptr, 2);
     if (!root.empty() && root.find("C:") != std::string::npos) return 3; // DRIVE_FIXED
     return 1; // DRIVE_NO_ROOT_DIR
 }
-uint64_t Kernel32::GetDiskFreeSpaceExW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetDiskFreeSpaceExW(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::CreateEventW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateEventW(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[2];
     std::string name;
     if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
     auto result = we(e)->create_event(name);
     return static_cast<uint64_t>(std::get<0>(result));
 }
-uint64_t Kernel32::OpenMutexW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::OpenMutexW(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[2];
     std::string name;
     if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
     auto result = we(e)->create_mutant(name);
     return static_cast<uint64_t>(std::get<0>(result));
 }
-uint64_t Kernel32::CreateWaitableTimerW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateWaitableTimerW(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS);
     static uint64_t next_timer = 0x5000;
     return next_timer++;
 }
-uint64_t Kernel32::GetVersionExW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetVersionExW(void* e, ArgList& a, void* c) {
     uint64_t info_ptr = a[0];
     if (!info_ptr) return 0;
     auto& os = be(e)->get_config().os_ver;
@@ -2500,7 +2500,7 @@ uint64_t Kernel32::GetVersionExW(void* e, std::vector<uint64_t>& a, void* c) {
     be(e)->write_mem_string(csd, info_ptr + 20 + static_cast<uint64_t>(ps), 2);
     return 1;
 }
-uint64_t Kernel32::GetComputerNameW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetComputerNameW(void* e, ArgList& a, void* c) {
     uint64_t buf_ptr = a[0]; uint64_t size_ptr = a[1];
     if (!buf_ptr || !size_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
     std::string name = be(e)->get_hostname();
@@ -2512,7 +2512,7 @@ uint64_t Kernel32::GetComputerNameW(void* e, std::vector<uint64_t>& a, void* c) 
     mm(e)->mem_write(size_ptr, std::vector<uint8_t>{(uint8_t)(size&0xFF), (uint8_t)((size>>8)&0xFF), 0, 0});
     return 1;
 }
-uint64_t Kernel32::GetUserNameW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetUserNameW(void* e, ArgList& a, void* c) {
     uint64_t buf_ptr = a[0]; uint64_t size_ptr = a[1];
     if (!buf_ptr || !size_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
     auto usermap = be(e)->get_user();
@@ -2525,20 +2525,20 @@ uint64_t Kernel32::GetUserNameW(void* e, std::vector<uint64_t>& a, void* c) {
     mm(e)->mem_write(size_ptr, std::vector<uint8_t>{(uint8_t)(size&0xFF), (uint8_t)((size>>8)&0xFF), 0, 0});
     return 1;
 }
-uint64_t Kernel32::lstrlenW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::lstrlenW(void* e, ArgList& a, void* c) {
     uint64_t str_ptr = a[0];
     if (!str_ptr) return 0;
     std::string s = be(e)->read_mem_string(str_ptr, 2);
     return static_cast<uint64_t>(s.size());
 }
-uint64_t Kernel32::lstrcpyW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::lstrcpyW(void* e, ArgList& a, void* c) {
     uint64_t dst = a[0]; uint64_t src = a[1];
     if (!dst || !src) return 0;
     std::string s = be(e)->read_mem_string(src, 2);
     be(e)->write_mem_string(s, dst, 2);
     return dst;
 }
-uint64_t Kernel32::lstrcatW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::lstrcatW(void* e, ArgList& a, void* c) {
     uint64_t dst = a[0]; uint64_t src = a[1];
     if (!dst || !src) return 0;
     std::string d = be(e)->read_mem_string(dst, 2);
@@ -2546,7 +2546,7 @@ uint64_t Kernel32::lstrcatW(void* e, std::vector<uint64_t>& a, void* c) {
     be(e)->write_mem_string(d + s, dst, 2);
     return dst;
 }
-uint64_t Kernel32::lstrcmpW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::lstrcmpW(void* e, ArgList& a, void* c) {
     uint64_t s1 = a[0]; uint64_t s2 = a[1];
     if (!s1 && !s2) return 0;
     if (!s1) return static_cast<uint64_t>(-1);
@@ -2558,7 +2558,7 @@ uint64_t Kernel32::lstrcmpW(void* e, std::vector<uint64_t>& a, void* c) {
     if (cmp > 0) return 1;
     return 0;
 }
-uint64_t Kernel32::GetEnvironmentVariableW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetEnvironmentVariableW(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[0]; uint64_t buf_ptr = a[1]; uint32_t buf_sz = static_cast<uint32_t>(a[2]);
     if (!name_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
     std::string name = be(e)->read_mem_string(name_ptr, 2);
@@ -2570,7 +2570,7 @@ uint64_t Kernel32::GetEnvironmentVariableW(void* e, std::vector<uint64_t>& a, vo
     if (buf_ptr) be(e)->write_mem_string(val, buf_ptr, 2);
     return static_cast<uint64_t>(val.size());
 }
-uint64_t Kernel32::SetEnvironmentVariableW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetEnvironmentVariableW(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[0]; uint64_t val_ptr = a[1];
     if (!name_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
     std::string name = be(e)->read_mem_string(name_ptr, 2);
@@ -2578,7 +2578,7 @@ uint64_t Kernel32::SetEnvironmentVariableW(void* e, std::vector<uint64_t>& a, vo
     const_cast<std::map<std::string,std::string>&>(be(e)->get_config().env)[name] = val;
     return 1;
 }
-uint64_t Kernel32::GetCurrentDirectoryW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetCurrentDirectoryW(void* e, ArgList& a, void* c) {
     uint32_t buf_sz = static_cast<uint32_t>(a[0]); uint64_t buf_ptr = a[1];
     std::string dir = be(e)->get_config().current_dir;
     if (buf_ptr && buf_sz > dir.size()) {
@@ -2587,7 +2587,7 @@ uint64_t Kernel32::GetCurrentDirectoryW(void* e, std::vector<uint64_t>& a, void*
     }
     return static_cast<uint64_t>(dir.size() + 1);
 }
-uint64_t Kernel32::ExpandEnvironmentStringsW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::ExpandEnvironmentStringsW(void* e, ArgList& a, void* c) {
     uint64_t src_ptr = a[0]; uint64_t dst_ptr = a[1]; uint32_t dst_sz = static_cast<uint32_t>(a[2]);
     if (!src_ptr) return 0;
     std::string src = be(e)->read_mem_string(src_ptr, 2);
@@ -2598,24 +2598,24 @@ uint64_t Kernel32::ExpandEnvironmentStringsW(void* e, std::vector<uint64_t>& a, 
     }
     return static_cast<uint64_t>(result.size() + 1);
 }
-uint64_t Kernel32::Process32FirstW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::Process32FirstW(void* e, ArgList& a, void* c) {
     return process32_impl(e, a, true);
 }
-uint64_t Kernel32::Process32NextW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::Process32NextW(void* e, ArgList& a, void* c) {
     return process32_impl(e, a, false);
 }
-uint64_t Kernel32::Module32FirstW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::Module32FirstW(void* e, ArgList& a, void* c) {
     return module32_impl(e, a, true);
 }
-uint64_t Kernel32::Module32NextW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::Module32NextW(void* e, ArgList& a, void* c) {
     return module32_impl(e, a, false);
 }
-uint64_t Kernel32::OutputDebugStringW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::OutputDebugStringW(void* e, ArgList& a, void* c) {
     uint64_t str_ptr = a[0];
     if (str_ptr) { std::string s = be(e)->read_mem_string(str_ptr, 2); (void)s; }
     return 0;
 }
-uint64_t Kernel32::CreateProcessW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateProcessW(void* e, ArgList& a, void* c) {
     uint64_t app_name_ptr = a[0]; uint64_t cmd_line_ptr = a[1];
     std::string app = app_name_ptr ? be(e)->read_mem_string(app_name_ptr, 2) : "";
     std::string cmd = cmd_line_ptr ? be(e)->read_mem_string(cmd_line_ptr, 2) : "";
@@ -2627,40 +2627,40 @@ uint64_t Kernel32::CreateProcessW(void* e, std::vector<uint64_t>& a, void* c) {
 //  Synchronization primitives (no-ops in emulator)
 // ==========================================
 
-uint64_t Kernel32::AcquireSRWLockExclusive(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::AcquireSRWLockExclusive(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // void
 }
-uint64_t Kernel32::AcquireSRWLockShared(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::AcquireSRWLockShared(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0;
 }
-uint64_t Kernel32::ReleaseSRWLockExclusive(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::ReleaseSRWLockExclusive(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0;
 }
-uint64_t Kernel32::ReleaseSRWLockShared(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::ReleaseSRWLockShared(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0;
 }
-uint64_t Kernel32::InitializeSRWLock(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::InitializeSRWLock(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0;
 }
-uint64_t Kernel32::InitializeConditionVariable(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::InitializeConditionVariable(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0;
 }
-uint64_t Kernel32::InitializeCriticalSectionAndSpinCount(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::InitializeCriticalSectionAndSpinCount(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::InitializeCriticalSectionEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::InitializeCriticalSectionEx(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::InitializeSListHead(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::InitializeSListHead(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0;
 }
-uint64_t Kernel32::InitOnceBeginInitialize(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::InitOnceBeginInitialize(void* e, ArgList& a, void* c) {
     (void)a; return 1; // INIT_ONCE_ASYNC  caller should call InitOnceComplete
 }
-uint64_t Kernel32::WakeAllConditionVariable(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::WakeAllConditionVariable(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0;
 }
-uint64_t Kernel32::WaitForSingleObjectEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::WaitForSingleObjectEx(void* e, ArgList& a, void* c) {
     (void)a; (void)c; return 0; // WAIT_OBJECT_0
 }
 
@@ -2668,72 +2668,72 @@ uint64_t Kernel32::WaitForSingleObjectEx(void* e, std::vector<uint64_t>& a, void
 //  Simple getters / info functions
 // ==========================================
 
-uint64_t Kernel32::AddAtom(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::AddAtom(void* e, ArgList& a, void* c) {
     uint64_t str_ptr = a[0]; if (!str_ptr) return 0;
     std::string s = be(e)->read_mem_string(str_ptr, 1);
     static std::map<std::string, uint16_t> atoms; static uint16_t next = 0xC000;
     auto it = atoms.find(s); if (it != atoms.end()) return it->second;
     uint16_t id = next++; atoms[s] = id; return id;
 }
-uint64_t Kernel32::AddVectoredContinueHandler(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::AddVectoredContinueHandler(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::AddVectoredExceptionHandler(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::AddVectoredExceptionHandler(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::AreFileApisANSI(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::AreFileApisANSI(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 1; // TRUE
 }
-uint64_t Kernel32::CheckRemoteDebuggerPresent(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CheckRemoteDebuggerPresent(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[1];
     if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0, 0}); // FALSE
     return 1;
 }
-uint64_t Kernel32::CompareFileTime(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CompareFileTime(void* e, ArgList& a, void* c) {
     (void)a; return 0; // equal
 }
-uint64_t Kernel32::ConnectNamedPipe(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::ConnectNamedPipe(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::CreateIoCompletionPort(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateIoCompletionPort(void* e, ArgList& a, void* c) {
     (void)a; static uint64_t next_iocp = 0x6000; return next_iocp++;
 }
-uint64_t Kernel32::CreateMutexEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateMutexEx(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[1];
     std::string name = name_ptr ? be(e)->read_mem_string(name_ptr, 2) : "";
     auto result = we(e)->create_mutant(name);
     return static_cast<uint64_t>(std::get<0>(result));
 }
-uint64_t Kernel32::CreateNamedPipe(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateNamedPipe(void* e, ArgList& a, void* c) {
     (void)a; static uint64_t next_pipe = 0x7000; return next_pipe++;
 }
-uint64_t Kernel32::CreatePipe(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreatePipe(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::CreateProcessInternal(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateProcessInternal(void* e, ArgList& a, void* c) {
     (void)a; return 0; // Not implemented, return failure
 }
-uint64_t Kernel32::CreateSemaphoreW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateSemaphoreW(void* e, ArgList& a, void* c) {
     (void)a; static uint64_t next_sem = 0x8000; return next_sem++;
 }
-uint64_t Kernel32::CreateWaitableTimerEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateWaitableTimerEx(void* e, ArgList& a, void* c) {
     (void)a; static uint64_t next_tmr = 0x5500; return next_tmr++;
 }
-uint64_t Kernel32::CreateWaitableTimerExW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::CreateWaitableTimerExW(void* e, ArgList& a, void* c) {
     (void)a; static uint64_t next_tmr = 0x5600; return next_tmr++;
 }
-uint64_t Kernel32::DeleteAtom(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::DeleteAtom(void* e, ArgList& a, void* c) {
     (void)a; return 0; // success
 }
-uint64_t Kernel32::DisconnectNamedPipe(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::DisconnectNamedPipe(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::DuplicateHandle(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::DuplicateHandle(void* e, ArgList& a, void* c) {
     uint64_t dst_ptr = a[4]; // lpTargetHandle
     if (dst_ptr) mm(e)->mem_write(dst_ptr, std::vector<uint8_t>{0x80, 0, 0, 0, 0, 0, 0, 0}); // dummy handle
     return 1;
 }
-uint64_t Kernel32::EnumProcesses(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::EnumProcesses(void* e, ArgList& a, void* c) {
     uint64_t buf_ptr = a[0]; uint32_t buf_sz = static_cast<uint32_t>(a[1]); uint64_t ret_ptr = a[2];
     auto procs = we(e)->get_processes();
     uint32_t count = 0;
@@ -2745,56 +2745,56 @@ uint64_t Kernel32::EnumProcesses(void* e, std::vector<uint64_t>& a, void* c) {
     if (ret_ptr) mm(e)->mem_write(ret_ptr, std::vector<uint8_t>{(uint8_t)(count * 4), 0, 0, 0});
     return 1;
 }
-uint64_t Kernel32::FindAtom(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindAtom(void* e, ArgList& a, void* c) {
     (void)a; return 0; // not found
 }
-uint64_t Kernel32::FindFirstFileEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindFirstFileEx(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_HANDLE;
 }
-uint64_t Kernel32::FindFirstVolume(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindFirstVolume(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_HANDLE;
 }
-uint64_t Kernel32::FindNextVolume(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindNextVolume(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_NO_MORE_FILES); return 0;
 }
-uint64_t Kernel32::FindResource(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindResource(void* e, ArgList& a, void* c) {
     (void)a; return 0; // NULL  resource not found
 }
-uint64_t Kernel32::FindResourceEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindResourceEx(void* e, ArgList& a, void* c) {
     (void)a; return 0;
 }
-uint64_t Kernel32::FindVolumeClose(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FindVolumeClose(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::FlsGetValue2(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FlsGetValue2(void* e, ArgList& a, void* c) {
     (void)a; return 0;
 }
-uint64_t Kernel32::FreeEnvironmentStrings(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FreeEnvironmentStrings(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::FreeLibraryAndExitThread(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FreeLibraryAndExitThread(void* e, ArgList& a, void* c) {
     (void)a; we(e)->on_run_complete(); return 0;
 }
-uint64_t Kernel32::FreeResource(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::FreeResource(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::GetAtomName(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetAtomName(void* e, ArgList& a, void* c) {
     uint16_t atom = static_cast<uint16_t>(a[0]); uint64_t buf = a[1]; int sz = static_cast<int>(a[2]);
     (void)atom; (void)buf; (void)sz; return 0;
 }
-uint64_t Kernel32::GetBinaryType(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetBinaryType(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0;
 }
-uint64_t Kernel32::GetCPInfo(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetCPInfo(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::GetCommProperties(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetCommProperties(void* e, ArgList& a, void* c) {
     (void)a; return 0; // fail  no comm port in emulator
 }
-uint64_t Kernel32::GetCommTimeouts(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetCommTimeouts(void* e, ArgList& a, void* c) {
     (void)a; return 0;
 }
-uint64_t Kernel32::GetComputerNameEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetComputerNameEx(void* e, ArgList& a, void* c) {
     uint64_t buf_ptr = a[1]; uint64_t size_ptr = a[2];
     if (!buf_ptr || !size_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
     std::string name = we(e)->get_hostname();
@@ -2803,46 +2803,46 @@ uint64_t Kernel32::GetComputerNameEx(void* e, std::vector<uint64_t>& a, void* c)
     mm(e)->mem_write(size_ptr, std::vector<uint8_t>{(uint8_t)sz, 0, 0, 0});
     return 1;
 }
-uint64_t Kernel32::GetConsoleTitle(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetConsoleTitle(void* e, ArgList& a, void* c) {
     (void)a; return 0; // no console
 }
-uint64_t Kernel32::GetConsoleWindow(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetConsoleWindow(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // NULL  no console window
 }
-uint64_t Kernel32::GetCurrentPackageId(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetCurrentPackageId(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(15700); return 0; // APPMODEL_ERROR_NO_PACKAGE
 }
-uint64_t Kernel32::GetDateFormat(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetDateFormat(void* e, ArgList& a, void* c) {
     uint64_t buf_ptr = a[2];
     if (buf_ptr) be(e)->write_mem_string("2026-06-09", buf_ptr, 2);
     return 11; // strlen("2026-06-09") + 1 (including null)
 }
-uint64_t Kernel32::GetEnvironmentStrings(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetEnvironmentStrings(void* e, ArgList& a, void* c) {
     (void)a; return 0; // Not implemented  return NULL
 }
-uint64_t Kernel32::GetErrorMode(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetErrorMode(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // SEM_FAILCRITICALERRORS = 0
 }
-uint64_t Kernel32::GetFileAttributesEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetFileAttributesEx(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0;
 }
-uint64_t Kernel32::GetFileSizeEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetFileSizeEx(void* e, ArgList& a, void* c) {
     int hFile = static_cast<int>(a[0]); uint64_t size_ptr = a[1];
     (void)hFile;
     if (size_ptr) mm(e)->mem_write(size_ptr, std::vector<uint8_t>{0, 0x10, 0, 0, 0, 0, 0, 0}); // 4096 bytes
     return 1;
 }
-uint64_t Kernel32::GetFullPathName(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetFullPathName(void* e, ArgList& a, void* c) {
     uint64_t fname_ptr = a[0]; uint32_t buf_sz = static_cast<uint32_t>(a[1]); uint64_t buf_ptr = a[2];
     if (!fname_ptr) return 0;
     std::string fname = be(e)->read_mem_string(fname_ptr, 1);
     if (buf_ptr && buf_sz > fname.size()) be(e)->write_mem_string(fname, buf_ptr, 1);
     return static_cast<uint64_t>(fname.size() + 1);
 }
-uint64_t Kernel32::GetHandleInformation(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetHandleInformation(void* e, ArgList& a, void* c) {
     (void)a; return 0; // no flags
 }
-uint64_t Kernel32::GetLocaleInfo(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetLocaleInfo(void* e, ArgList& a, void* c) {
     uint32_t lcType = static_cast<uint32_t>(a[1]); uint64_t buf = a[2]; int sz = static_cast<int>(a[3]);
     if (buf && sz > 0) {
         if (lcType == 0x0001) be(e)->write_mem_string("0409", buf, 2); // LOCALE_ILANGUAGE
@@ -2851,29 +2851,29 @@ uint64_t Kernel32::GetLocaleInfo(void* e, std::vector<uint64_t>& a, void* c) {
     }
     return 0;
 }
-uint64_t Kernel32::GetLogicalDrives(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetLogicalDrives(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c;
     return 0x1F; // C:, D:, E:, F:, G:
 }
-uint64_t Kernel32::GetLongPathName(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetLongPathName(void* e, ArgList& a, void* c) {
     uint64_t src = a[0]; uint64_t dst = a[1]; uint32_t sz = static_cast<uint32_t>(a[2]);
     if (!src) return 0;
     std::string s = be(e)->read_mem_string(src, 1);
     if (dst && sz > s.size()) be(e)->write_mem_string(s, dst, 1);
     return static_cast<uint64_t>(s.size() + 1);
 }
-uint64_t Kernel32::GetMailslotInfo(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetMailslotInfo(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(6); return 0; // ERROR_INVALID_HANDLE
 }
-uint64_t Kernel32::GetModuleFileNameExA(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetModuleFileNameExA(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(6); return 0;
 }
-uint64_t Kernel32::GetModuleHandleEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetModuleHandleEx(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[2];
     if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0x40, 0, 0, 0, 0, 0}); // 0x400000
     return 1;
 }
-uint64_t Kernel32::GetNativeSystemInfo(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetNativeSystemInfo(void* e, ArgList& a, void* c) {
     uint64_t info_ptr = a[0]; if (!info_ptr) return 0;
     int ps = ptr_sz(e);
     auto info = std::vector<uint8_t>(static_cast<size_t>(ps == 4 ? 36 : 48), 0);
@@ -2883,40 +2883,40 @@ uint64_t Kernel32::GetNativeSystemInfo(void* e, std::vector<uint64_t>& a, void* 
     mm(e)->mem_write(info_ptr, info);
     return 0;
 }
-uint64_t Kernel32::GetOEMCP(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetOEMCP(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 437; // OEM United States
 }
-uint64_t Kernel32::GetPhysicallyInstalledSystemMemory(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetPhysicallyInstalledSystemMemory(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[0];
     if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0x10, 0, 0, 0, 0, 0}); // 1GB
     return 1;
 }
-uint64_t Kernel32::GetProcessAffinityMask(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetProcessAffinityMask(void* e, ArgList& a, void* c) {
     uint64_t proc_ptr = a[1]; uint64_t sys_ptr = a[2];
     if (proc_ptr) mm(e)->mem_write(proc_ptr, std::vector<uint8_t>{1, 0, 0, 0, 0, 0, 0, 0});
     if (sys_ptr) mm(e)->mem_write(sys_ptr, std::vector<uint8_t>{0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0});
     return 1;
 }
-uint64_t Kernel32::GetProcessHandleCount(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetProcessHandleCount(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[1];
     if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{42, 0, 0, 0});
     return 1;
 }
-uint64_t Kernel32::GetProcessVersion(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetProcessVersion(void* e, ArgList& a, void* c) {
     uint32_t pid = static_cast<uint32_t>(a[0]); (void)pid;
     return (6 << 16) | 1; // Windows 6.1
 }
-uint64_t Kernel32::GetProfileInt(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetProfileInt(void* e, ArgList& a, void* c) {
     (void)a; return 0;
 }
-uint64_t Kernel32::GetShortPathName(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetShortPathName(void* e, ArgList& a, void* c) {
     uint64_t src = a[0]; uint64_t dst = a[1]; uint32_t sz = static_cast<uint32_t>(a[2]);
     if (!src) return 0;
     std::string s = be(e)->read_mem_string(src, 1);
     if (dst && sz > s.size()) be(e)->write_mem_string(s, dst, 1);
     return static_cast<uint64_t>(s.size() + 1);
 }
-uint64_t Kernel32::GetStartupInfo(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetStartupInfo(void* e, ArgList& a, void* c) {
     uint64_t info_ptr = a[0]; if (!info_ptr) return 0;
     int ps = ptr_sz(e);
     size_t sz = ps == 4 ? 68 : 104;
@@ -2925,31 +2925,31 @@ uint64_t Kernel32::GetStartupInfo(void* e, std::vector<uint64_t>& a, void* c) {
     mm(e)->mem_write(info_ptr, buf);
     return 0;
 }
-uint64_t Kernel32::GetStringTypeA(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetStringTypeA(void* e, ArgList& a, void* c) {
     (void)a; return 1; // all character types
 }
-uint64_t Kernel32::GetStringTypeW(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetStringTypeW(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::GetSystemDefaultLCID(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetSystemDefaultLCID(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409; // en-US
 }
-uint64_t Kernel32::GetSystemDefaultLangID(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetSystemDefaultLangID(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409;
 }
-uint64_t Kernel32::GetSystemDefaultUILanguage(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetSystemDefaultUILanguage(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409;
 }
-uint64_t Kernel32::GetSystemDirectory(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetSystemDirectory(void* e, ArgList& a, void* c) {
     uint64_t buf = a[0]; uint32_t sz = static_cast<uint32_t>(a[1]);
     std::string dir = "C:\\Windows\\System32";
     if (buf && sz > dir.size()) be(e)->write_mem_string(dir, buf, 1);
     return static_cast<uint64_t>(dir.size());
 }
-uint64_t Kernel32::GetSystemFirmwareTable(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetSystemFirmwareTable(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(1); return 0; // ERROR_INVALID_FUNCTION
 }
-uint64_t Kernel32::GetSystemTimePreciseAsFileTime(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetSystemTimePreciseAsFileTime(void* e, ArgList& a, void* c) {
     uint64_t ft_ptr = a[0];
     if (!ft_ptr) return 0;
     auto now = std::chrono::system_clock::now();
@@ -2960,10 +2960,10 @@ uint64_t Kernel32::GetSystemTimePreciseAsFileTime(void* e, std::vector<uint64_t>
     mm(e)->mem_write(ft_ptr, ft_bytes);
     return 0;
 }
-uint64_t Kernel32::GetSystemTimes(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetSystemTimes(void* e, ArgList& a, void* c) {
     (void)a; return 1; // success
 }
-uint64_t Kernel32::GetTempFileName(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetTempFileName(void* e, ArgList& a, void* c) {
     uint64_t dir_ptr = a[0]; uint64_t prefix_ptr = a[1]; uint32_t unique = static_cast<uint32_t>(a[2]); uint64_t buf = a[3];
     std::string dir = dir_ptr ? be(e)->read_mem_string(dir_ptr, 1) : "C:\\Windows\\Temp";
     std::string prefix = prefix_ptr ? be(e)->read_mem_string(prefix_ptr, 1) : "TMP";
@@ -2972,13 +2972,13 @@ uint64_t Kernel32::GetTempFileName(void* e, std::vector<uint64_t>& a, void* c) {
     if (buf) be(e)->write_mem_string(std::string(tmp), buf, 1);
     return static_cast<uint64_t>(unique);
 }
-uint64_t Kernel32::GetTempPath(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetTempPath(void* e, ArgList& a, void* c) {
     uint32_t sz = static_cast<uint32_t>(a[0]); uint64_t buf = a[1];
     std::string path = "C:\\Windows\\Temp\\";
     if (buf && sz > path.size()) be(e)->write_mem_string(path, buf, 1);
     return static_cast<uint64_t>(path.size() + 1);
 }
-uint64_t Kernel32::GetThreadContext(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetThreadContext(void* emu, ArgList& argv, void* ctx) {
     // BOOL GetThreadContext(HANDLE hThread, LPCONTEXT lpContext);
     uint64_t hThread = argv[0];
     uint64_t lpContext = argv[1];
@@ -3010,31 +3010,31 @@ uint64_t Kernel32::GetThreadContext(void* emu, std::vector<uint64_t>& argv, void
 // ==========================================
 //  Thread / time / misc getters
 // ==========================================
-uint64_t Kernel32::GetThreadId(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetThreadId(void* e, ArgList& a, void* c) {
     uint64_t hThread = a[0]; auto t = we(e)->find_thread(static_cast<int>(hThread));
     return t ? static_cast<uint64_t>(t->get_tid()) : 0;
 }
-uint64_t Kernel32::GetThreadLocale(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetThreadLocale(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409; // en-US
 }
-uint64_t Kernel32::GetThreadTimes(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetThreadTimes(void* e, ArgList& a, void* c) {
     (void)a; return 1; // success, times left at 0
 }
-uint64_t Kernel32::GetThreadUILanguage(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetThreadUILanguage(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409;
 }
-uint64_t Kernel32::GetTickCount64(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetTickCount64(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c;
     auto now = std::chrono::steady_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     return static_cast<uint64_t>(ms);
 }
-uint64_t Kernel32::GetTimeFormat(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetTimeFormat(void* e, ArgList& a, void* c) {
     uint64_t buf = a[2]; (void)a[0]; (void)a[1]; (void)a[3];
     if (buf) be(e)->write_mem_string("12:00:00", buf, 2);
     return 9;
 }
-uint64_t Kernel32::GetTimeZoneInformation(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetTimeZoneInformation(void* e, ArgList& a, void* c) {
     uint64_t info_ptr = a[0]; if (!info_ptr) return 0xFFFFFFFF;
     auto buf = std::vector<uint8_t>(172, 0); // TIME_ZONE_INFORMATION size
     buf[0] = static_cast<uint8_t>(0xFF); buf[1] = static_cast<uint8_t>(0xFF); // Bias = -60 (UTC-1) stored as LONG
@@ -3042,48 +3042,48 @@ uint64_t Kernel32::GetTimeZoneInformation(void* e, std::vector<uint64_t>& a, voi
     be(e)->write_mem_string("GMT Daylight Time", info_ptr + 68, 2);  // DaylightName at offset 68
     return 1; // TIME_ZONE_ID_STANDARD
 }
-uint64_t Kernel32::GetUserDefaultLCID(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetUserDefaultLCID(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409;
 }
-uint64_t Kernel32::GetUserDefaultLangID(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetUserDefaultLangID(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409;
 }
-uint64_t Kernel32::GetUserDefaultUILanguage(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetUserDefaultUILanguage(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409;
 }
-uint64_t Kernel32::GetVolumeInformation(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetVolumeInformation(void* e, ArgList& a, void* c) {
     uint64_t name_buf = a[1]; uint64_t vol_buf = a[3]; uint64_t fs_buf = a[7];
     if (name_buf) be(e)->write_mem_string("SPEAKEASY", name_buf, 2);
     if (vol_buf) mm(e)->mem_write(vol_buf, std::vector<uint8_t>{0xFF, 0xFF, 0xFF, 0xFF});
     if (fs_buf) be(e)->write_mem_string("NTFS", fs_buf, 2);
     return 1;
 }
-uint64_t Kernel32::GetVolumePathNamesForVolumeName(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetVolumePathNamesForVolumeName(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(1); return 0; // ERROR_INVALID_FUNCTION
 }
-uint64_t Kernel32::GetWindowsDirectory(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GetWindowsDirectory(void* e, ArgList& a, void* c) {
     uint64_t buf = a[0]; uint32_t sz = static_cast<uint32_t>(a[1]);
     std::string dir = "C:\\Windows";
     if (buf && sz > dir.size()) be(e)->write_mem_string(dir, buf, 1);
     return static_cast<uint64_t>(dir.size());
 }
-uint64_t Kernel32::GlobalAddAtomA(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GlobalAddAtomA(void* e, ArgList& a, void* c) {
     uint64_t str_ptr = a[0]; if (!str_ptr) return 0;
     std::string s = be(e)->read_mem_string(str_ptr, 1);
     static std::map<std::string, uint16_t> atoms; static uint16_t next = 0xC100;
     auto it = atoms.find(s); if (it != atoms.end()) return it->second;
     uint16_t id = next++; atoms[s] = id; return id;
 }
-uint64_t Kernel32::GlobalFlags(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GlobalFlags(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // GMEM_FIXED = 0
 }
-uint64_t Kernel32::GlobalHandle(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GlobalHandle(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // NULL
 }
-uint64_t Kernel32::GlobalLock(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GlobalLock(void* e, ArgList& a, void* c) {
     return a[0]; // hMem is the same as the locked address in emulation
 }
-uint64_t Kernel32::GlobalMemoryStatus(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GlobalMemoryStatus(void* e, ArgList& a, void* c) {
     uint64_t buf = a[0]; if (!buf) return 0;
     auto s = std::vector<uint8_t>(32, 0); // MEMORYSTATUS size
     s[0] = 32; // dwLength
@@ -3092,60 +3092,60 @@ uint64_t Kernel32::GlobalMemoryStatus(void* e, std::vector<uint64_t>& a, void* c
     s[16] = 0; s[17] = 0; s[18] = 0x08; s[19] = 0; // dwAvailPhys ~512MB
     mm(e)->mem_write(buf, s); return 0;
 }
-uint64_t Kernel32::GlobalMemoryStatusEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GlobalMemoryStatusEx(void* e, ArgList& a, void* c) {
     uint64_t buf = a[0]; if (!buf) return 0;
     auto s = std::vector<uint8_t>(64, 0); s[0] = 64;
     s[8] = 0; s[9] = 0; s[10] = 0x10; s[11] = 0; // ullTotalPhys
     s[24] = 0; s[25] = 0; s[26] = 0x08; s[27] = 0; // ullAvailPhys
     mm(e)->mem_write(buf, s); return 1;
 }
-uint64_t Kernel32::GlobalSize(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GlobalSize(void* e, ArgList& a, void* c) {
     (void)a; return 0x10000; // dummy size
 }
-uint64_t Kernel32::GlobalUnlock(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::GlobalUnlock(void* e, ArgList& a, void* c) {
     (void)a; return 1; // success, not locked count = 0
 }
-uint64_t Kernel32::HeapReAlloc(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::HeapReAlloc(void* e, ArgList& a, void* c) {
     uint32_t sz = static_cast<uint32_t>(a[1]); (void)a[2];
     if (sz == 0) return 0;
     uint64_t ptr = we(e)->mem_map(sz, 0, 4, "kernel32.heap_realloc");
     return ptr;
 }
-uint64_t Kernel32::HeapSetInformation(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::HeapSetInformation(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::HeapSize(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::HeapSize(void* e, ArgList& a, void* c) {
     (void)a; return 0x10000; // dummy size
 }
-uint64_t Kernel32::IsBadReadPtr(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::IsBadReadPtr(void* e, ArgList& a, void* c) {
     uint64_t ptr = a[0]; size_t sz = static_cast<size_t>(a[1]);
     try { we(e)->mem_read(ptr, sz > 0 ? sz : 1); return 0; } catch (...) { return 1; }
 }
-uint64_t Kernel32::IsBadStringPtr(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::IsBadStringPtr(void* e, ArgList& a, void* c) {
     uint64_t ptr = a[0]; if (!ptr) return 1;
     try { be(e)->read_mem_string(ptr, 1); return 0; } catch (...) { return 1; }
 }
-uint64_t Kernel32::IsBadWritePtr(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::IsBadWritePtr(void* e, ArgList& a, void* c) {
     uint64_t ptr = a[0]; if (!ptr) return 1;
     try { we(e)->mem_write(ptr, std::vector<uint8_t>{0}); return 0; } catch (...) { return 1; }
 }
-uint64_t Kernel32::IsDBCSLeadByte(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::IsDBCSLeadByte(void* e, ArgList& a, void* c) {
     (void)a; return 0; // No DBCS in emulated environment
 }
-uint64_t Kernel32::IsValidCodePage(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::IsValidCodePage(void* e, ArgList& a, void* c) {
     uint32_t cp = static_cast<uint32_t>(a[0]);
     if (cp == 437 || cp == 850 || cp == 1252 || cp == 65001) return 1;
     return 0;
 }
-uint64_t Kernel32::IsValidLocale(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::IsValidLocale(void* e, ArgList& a, void* c) {
     (void)a; return 1; // All locales valid
 }
-uint64_t Kernel32::IsWow64Process(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::IsWow64Process(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[1];
     if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0, 0}); // FALSE  we're 32-bit native
     return 1;
 }
-uint64_t Kernel32::LCMapString(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::LCMapString(void* e, ArgList& a, void* c) {
     uint64_t src = a[2]; int src_len = static_cast<int>(a[3]); uint64_t dst = a[4]; int dst_len = static_cast<int>(a[5]);
     if (!src || !dst) return 0;
     if (src_len < 0) src_len = static_cast<int>(be(e)->read_mem_string(src, 1).size());
@@ -3153,49 +3153,49 @@ uint64_t Kernel32::LCMapString(void* e, std::vector<uint64_t>& a, void* c) {
     be(e)->write_mem_string(s, dst, 1);
     return static_cast<uint64_t>(std::min(src_len, dst_len));
 }
-uint64_t Kernel32::LCMapStringEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::LCMapStringEx(void* e, ArgList& a, void* c) {
     return LCMapString(e, a, c); // same behavior
 }
-uint64_t Kernel32::LoadResource(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::LoadResource(void* e, ArgList& a, void* c) {
     (void)a; return 0; // NULL  not found
 }
-uint64_t Kernel32::LocalLock(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::LocalLock(void* e, ArgList& a, void* c) {
     return a[0]; // hMem == locked address
 }
-uint64_t Kernel32::LocalReAlloc(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::LocalReAlloc(void* e, ArgList& a, void* c) {
     uint32_t sz = static_cast<uint32_t>(a[1]); (void)a[2];
     if (sz == 0) return 0;
     return we(e)->mem_map(sz, 0, 4, "kernel32.local_realloc");
 }
-uint64_t Kernel32::LockResource(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::LockResource(void* e, ArgList& a, void* c) {
     return a[0]; // hResData == locked address
 }
-uint64_t Kernel32::MoveFile(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::MoveFile(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::MulDiv(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::MulDiv(void* e, ArgList& a, void* c) {
     int32_t n = static_cast<int32_t>(a[0]); int32_t num = static_cast<int32_t>(a[1]); int32_t den = static_cast<int32_t>(a[2]);
     if (den == 0) return static_cast<uint64_t>(-1);
     return static_cast<uint64_t>(static_cast<int64_t>(n) * num / den);
 }
-uint64_t Kernel32::OpenEvent(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::OpenEvent(void* e, ArgList& a, void* c) {
     (void)a; static uint64_t next_evt = 0x9000; return next_evt++;
 }
-uint64_t Kernel32::OpenWaitableTimer(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::OpenWaitableTimer(void* e, ArgList& a, void* c) {
     (void)a; static uint64_t next_tmr = 0x5A00; return next_tmr++;
 }
-uint64_t Kernel32::PeekNamedPipe(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::PeekNamedPipe(void* e, ArgList& a, void* c) {
     (void)a; return 0; // no data available
 }
-uint64_t Kernel32::ProcessIdToSessionId(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::ProcessIdToSessionId(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[1];
     if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0, 0}); // session 0
     return 1;
 }
-uint64_t Kernel32::RemoveVectoredExceptionHandler(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::RemoveVectoredExceptionHandler(void* e, ArgList& a, void* c) {
     (void)a; return 1; // success
 }
-uint64_t Kernel32::RtlCaptureContext(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::RtlCaptureContext(void* e, ArgList& a, void* c) {
     uint64_t ctx_ptr = a[0]; if (!ctx_ptr) return 0;
     int ps = ptr_sz(e);
     size_t sz = static_cast<size_t>(ps == 4 ? 716 : 1232);
@@ -3206,45 +3206,45 @@ uint64_t Kernel32::RtlCaptureContext(void* e, std::vector<uint64_t>& a, void* c)
         buf[pc_off + i] = static_cast<uint8_t>((eip >> (i * 8)) & 0xFF);
     mm(e)->mem_write(ctx_ptr, buf); return 0;
 }
-uint64_t Kernel32::RtlUnwind(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::RtlUnwind(void* e, ArgList& a, void* c) {
     (void)a; we(e)->on_run_complete(); return 0;
 }
-uint64_t Kernel32::RtlLookupFunctionEntry(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::RtlLookupFunctionEntry(void* e, ArgList& a, void* c) {
     (void)a; return 0; // NULL  no function table
 }
-uint64_t Kernel32::SetConsoleCtrlHandler(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetConsoleCtrlHandler(void* e, ArgList& a, void* c) {
     (void)a; return 1; // success
 }
-uint64_t Kernel32::SetConsoleHistoryInfo(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetConsoleHistoryInfo(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SetConsoleTitle(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetConsoleTitle(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SetDefaultDllDirectories(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetDefaultDllDirectories(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SetDllDirectory(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetDllDirectory(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SetFilePointerEx(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetFilePointerEx(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[3]; (void)a[0]; (void)a[1]; (void)a[2];
     if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0, 0, 0, 0, 0, 0});
     return 1;
 }
-uint64_t Kernel32::SetHandleCount(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetHandleCount(void* e, ArgList& a, void* c) {
     (void)a; return static_cast<uint64_t>(a[0]); // return requested count
 }
-uint64_t Kernel32::SetHandleInformation(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetHandleInformation(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SetPriorityClass(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetPriorityClass(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SetProcessPriorityBoost(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetProcessPriorityBoost(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SetThreadContext(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetThreadContext(void* e, ArgList& a, void* c) {
     uint64_t hThread = a[0]; uint64_t ctx_ptr = a[1];
     if (!ctx_ptr) { w32(e)->set_last_error(998); return 0; } // ERROR_NOACCESS
     auto thread = we(e)->find_thread(static_cast<int>(hThread));
@@ -3253,37 +3253,37 @@ uint64_t Kernel32::SetThreadContext(void* e, std::vector<uint64_t>& a, void* c) 
     thread->set_modified_pc(true);
     return 1;
 }
-uint64_t Kernel32::SetThreadDescription(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetThreadDescription(void* e, ArgList& a, void* c) {
     (void)a; return 0; // success HRESULT
 }
-uint64_t Kernel32::SetThreadErrorMode(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetThreadErrorMode(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[1]; (void)a[0];
     if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0, 0});
     return 1;
 }
-uint64_t Kernel32::SetThreadLocale(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetThreadLocale(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SetThreadStackGuarantee(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SetThreadStackGuarantee(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::SizeofResource(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SizeofResource(void* e, ArgList& a, void* c) {
     (void)a; return 0; // resource not found
 }
-uint64_t Kernel32::SystemTimeToTzSpecificLocalTime(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::SystemTimeToTzSpecificLocalTime(void* e, ArgList& a, void* c) {
     // TODO: tz_ptr not yet used — timezone conversion needs proper TIME_ZONE struct
     uint64_t tz_ptr = a[0]; (void)tz_ptr; uint64_t ut_ptr = a[1]; uint64_t loc_ptr = a[2];
     if (!loc_ptr) return 0;
     if (ut_ptr) { auto data = mm(e)->mem_read(ut_ptr, 16); mm(e)->mem_write(loc_ptr, data); }
     return 1;
 }
-uint64_t Kernel32::VerSetConditionMask(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::VerSetConditionMask(void* e, ArgList& a, void* c) {
     return a[0] | a[1]; // OR the condition mask
 }
-uint64_t Kernel32::VerifyVersionInfo(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::VerifyVersionInfo(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
-uint64_t Kernel32::VirtualAllocExNuma(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::VirtualAllocExNuma(void* e, ArgList& a, void* c) {
     uint64_t sz = a[1]; uint32_t flAlloc = static_cast<uint32_t>(a[2]); uint32_t flProt = static_cast<uint32_t>(a[3]);
     (void)flProt;
     if (flAlloc & 0x2000) { // MEM_RESERVE
@@ -3292,28 +3292,28 @@ uint64_t Kernel32::VirtualAllocExNuma(void* e, std::vector<uint64_t>& a, void* c
     }
     return we(e)->mem_map(static_cast<size_t>(sz), 0, 7, "kernel32.virtual_alloc_ex_numa");
 }
-uint64_t Kernel32::WTSGetActiveConsoleSessionId(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::WTSGetActiveConsoleSessionId(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // session 0
 }
-uint64_t Kernel32::WerGetFlags(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::WerGetFlags(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // WER_FAULT_REPORTING_FLAG_NOHEAP
 }
-uint64_t Kernel32::WerSetFlags(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::WerSetFlags(void* e, ArgList& a, void* c) {
     (void)a; return 0; // success HRESULT
 }
-uint64_t Kernel32::Wow64DisableWow64FsRedirection(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::Wow64DisableWow64FsRedirection(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::Wow64RevertWow64FsRedirection(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::Wow64RevertWow64FsRedirection(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
-uint64_t Kernel32::_lclose(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::_lclose(void* e, ArgList& a, void* c) {
     (void)a; return 0; // success
 }
-uint64_t Kernel32::_llseek(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::_llseek(void* e, ArgList& a, void* c) {
     (void)a; return 0; // position 0
 }
-uint64_t Kernel32::_lopen(void* e, std::vector<uint64_t>& a, void* c) {
+uint64_t Kernel32::_lopen(void* e, ArgList& a, void* c) {
     (void)a; static int next_fd = 3; return next_fd++;
 }
 
@@ -3321,7 +3321,7 @@ uint64_t Kernel32::_lopen(void* e, std::vector<uint64_t>& a, void* c) {
 //  TLS APIs
 // 
 
-uint64_t Kernel32::TlsAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::TlsAlloc(void* emu, ArgList& argv, void* ctx) {
     auto thread = we(emu)->get_current_thread();
     if (!thread) {
         w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
@@ -3335,12 +3335,12 @@ uint64_t Kernel32::TlsAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return idx;
 }
 
-uint64_t Kernel32::TlsFree(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::TlsFree(void* emu, ArgList& argv, void* ctx) {
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
-uint64_t Kernel32::TlsGetValue(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::TlsGetValue(void* emu, ArgList& argv, void* ctx) {
     uint32_t dwTlsIndex = static_cast<uint32_t>(argv[0]);
     auto thread = we(emu)->get_current_thread();
     if (!thread) {
@@ -3357,7 +3357,7 @@ uint64_t Kernel32::TlsGetValue(void* emu, std::vector<uint64_t>& argv, void* ctx
     }
 }
 
-uint64_t Kernel32::TlsSetValue(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::TlsSetValue(void* emu, ArgList& argv, void* ctx) {
     uint32_t dwTlsIndex = static_cast<uint32_t>(argv[0]);
     uint64_t lpTlsValue = argv[1];
     auto thread = we(emu)->get_current_thread();
@@ -3381,7 +3381,7 @@ uint64_t Kernel32::TlsSetValue(void* emu, std::vector<uint64_t>& argv, void* ctx
 //  FLS APIs
 // 
 
-uint64_t Kernel32::FlsAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FlsAlloc(void* emu, ArgList& argv, void* ctx) {
     auto thread = we(emu)->get_current_thread();
     if (!thread) {
         w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
@@ -3395,12 +3395,12 @@ uint64_t Kernel32::FlsAlloc(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return idx;
 }
 
-uint64_t Kernel32::FlsFree(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FlsFree(void* emu, ArgList& argv, void* ctx) {
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
-uint64_t Kernel32::FlsGetValue(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FlsGetValue(void* emu, ArgList& argv, void* ctx) {
     uint32_t dwFlsIndex = static_cast<uint32_t>(argv[0]);
     auto thread = we(emu)->get_current_thread();
     if (!thread) {
@@ -3417,7 +3417,7 @@ uint64_t Kernel32::FlsGetValue(void* emu, std::vector<uint64_t>& argv, void* ctx
     }
 }
 
-uint64_t Kernel32::FlsSetValue(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::FlsSetValue(void* emu, ArgList& argv, void* ctx) {
     uint32_t dwFlsIndex = static_cast<uint32_t>(argv[0]);
     uint64_t lpFlsData = argv[1];
     auto thread = we(emu)->get_current_thread();
@@ -3444,7 +3444,7 @@ uint64_t Kernel32::FlsSetValue(void* emu, std::vector<uint64_t>& argv, void* ctx
 //  STANDARD HANDLE & FILE TYPES
 // 
 
-uint64_t Kernel32::GetStdHandle(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetStdHandle(void* emu, ArgList& argv, void* ctx) {
     uint32_t nStdHandle = static_cast<uint32_t>(argv[0]);
     auto proc = we(emu)->get_current_process();
     if (proc) {
@@ -3453,7 +3453,7 @@ uint64_t Kernel32::GetStdHandle(void* emu, std::vector<uint64_t>& argv, void* ct
     return 0;
 }
 
-uint64_t Kernel32::GetFileType(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetFileType(void* emu, ArgList& argv, void* ctx) {
     (void)emu; (void)argv;
     return 1; // FILE_TYPE_DISK
 }
@@ -3462,7 +3462,7 @@ uint64_t Kernel32::GetFileType(void* emu, std::vector<uint64_t>& argv, void* ctx
 //  SYSTEM TIME
 // 
 
-uint64_t Kernel32::GetSystemTimeAsFileTime(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::GetSystemTimeAsFileTime(void* emu, ArgList& argv, void* ctx) {
     uint64_t lpSystemTimeAsFileTime = argv[0];
     if (lpSystemTimeAsFileTime) {
         auto now = std::chrono::system_clock::now();
@@ -3480,7 +3480,7 @@ uint64_t Kernel32::GetSystemTimeAsFileTime(void* emu, std::vector<uint64_t>& arg
 //  INTERLOCKED ATOMIC OPERATIONS
 // 
 
-uint64_t Kernel32::InterlockedIncrement(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::InterlockedIncrement(void* emu, ArgList& argv, void* ctx) {
     uint64_t addend_ptr = argv[0];
     if (!addend_ptr) {
         w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
@@ -3499,7 +3499,7 @@ uint64_t Kernel32::InterlockedIncrement(void* emu, std::vector<uint64_t>& argv, 
     return static_cast<uint64_t>(static_cast<uint32_t>(val));
 }
 
-uint64_t Kernel32::InterlockedDecrement(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::InterlockedDecrement(void* emu, ArgList& argv, void* ctx) {
     uint64_t addend_ptr = argv[0];
     if (!addend_ptr) {
         w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
@@ -3518,7 +3518,7 @@ uint64_t Kernel32::InterlockedDecrement(void* emu, std::vector<uint64_t>& argv, 
     return static_cast<uint64_t>(static_cast<uint32_t>(val));
 }
 
-uint64_t Kernel32::InterlockedExchange(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::InterlockedExchange(void* emu, ArgList& argv, void* ctx) {
     uint64_t target_ptr = argv[0];
     uint32_t value = static_cast<uint32_t>(argv[1]);
     if (!target_ptr) {
@@ -3537,7 +3537,7 @@ uint64_t Kernel32::InterlockedExchange(void* emu, std::vector<uint64_t>& argv, v
     return static_cast<uint64_t>(static_cast<uint32_t>(old_val));
 }
 
-uint64_t Kernel32::InterlockedCompareExchange(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::InterlockedCompareExchange(void* emu, ArgList& argv, void* ctx) {
     uint64_t dest_ptr = argv[0];
     uint32_t exchange = static_cast<uint32_t>(argv[1]);
     uint32_t comperand = static_cast<uint32_t>(argv[2]);
@@ -3563,7 +3563,7 @@ uint64_t Kernel32::InterlockedCompareExchange(void* emu, std::vector<uint64_t>& 
 //  STRING UTILITIES
 // 
 
-static uint64_t lstrcmpi_impl(void* emu, const std::vector<uint64_t>& argv, bool is_wide) {
+static uint64_t lstrcmpi_impl(void* emu, const ArgList& argv, bool is_wide) {
     uint64_t str1_ptr = argv[0];
     uint64_t str2_ptr = argv[1];
     if (!str1_ptr || !str2_ptr) return 1;
@@ -3580,19 +3580,19 @@ static uint64_t lstrcmpi_impl(void* emu, const std::vector<uint64_t>& argv, bool
     return (s1_lower < s2_lower) ? -1 : 1;
 }
 
-uint64_t Kernel32::lstrcmpi(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcmpi(void* emu, ArgList& argv, void* ctx) {
     return lstrcmpi_impl(emu, argv, false);
 }
 
-uint64_t Kernel32::lstrcmpiA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcmpiA(void* emu, ArgList& argv, void* ctx) {
     return lstrcmpi_impl(emu, argv, false);
 }
 
-uint64_t Kernel32::lstrcmpiW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcmpiW(void* emu, ArgList& argv, void* ctx) {
     return lstrcmpi_impl(emu, argv, true);
 }
 
-static uint64_t lstrcpyn_impl(void* emu, const std::vector<uint64_t>& argv, bool is_wide) {
+static uint64_t lstrcpyn_impl(void* emu, const ArgList& argv, bool is_wide) {
     uint64_t dst = argv[0];
     uint64_t src = argv[1];
     int max_len = static_cast<int>(argv[2]);
@@ -3607,15 +3607,15 @@ static uint64_t lstrcpyn_impl(void* emu, const std::vector<uint64_t>& argv, bool
     return dst;
 }
 
-uint64_t Kernel32::lstrcpyn(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcpyn(void* emu, ArgList& argv, void* ctx) {
     return lstrcpyn_impl(emu, argv, false);
 }
 
-uint64_t Kernel32::lstrcpynA(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcpynA(void* emu, ArgList& argv, void* ctx) {
     return lstrcpyn_impl(emu, argv, false);
 }
 
-uint64_t Kernel32::lstrcpynW(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Kernel32::lstrcpynW(void* emu, ArgList& argv, void* ctx) {
     return lstrcpyn_impl(emu, argv, true);
 }
 

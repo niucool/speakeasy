@@ -644,7 +644,7 @@ public:
     // Python winemu.py:1614
     // def log_api(self, pc, imp_api, rv, argv):
     //     """Log an API call with its arguments and return value."""
-    void log_api(uint64_t pc, const std::string& api, uint64_t rv, const std::vector<uint64_t>& argv);
+    void log_api(uint64_t pc, const std::string& api, uint64_t rv, const ArgList& argv);
     std::optional<std::string> read_string_heuristic(uint64_t addr);
     // Python winemu.py:1372
     // def handle_import_data(self, mod_name, sym, data_ptr=0):

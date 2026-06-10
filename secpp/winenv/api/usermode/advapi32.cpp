@@ -109,7 +109,7 @@ static uint32_t open_rk(const std::string& path, bool create) {
 // 
 
 //  RegOpenKeyExA 
-uint64_t Advapi32::RegOpenKeyExA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::RegOpenKeyExA(void* e, ArgList& a, void* ctx) {
     if (a.size() < 5) return 0xFFFFFFFF;
     uint64_t hKey = a[0], lpSubKey = a[1], phkResult = a[4];
     std::string pp = resolve_hk(hKey);
@@ -125,7 +125,7 @@ uint64_t Advapi32::RegOpenKeyExA(void* e, std::vector<uint64_t>& a, void* ctx) {
 }
 
 //  RegQueryValueExA 
-uint64_t Advapi32::RegQueryValueExA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::RegQueryValueExA(void* e, ArgList& a, void* ctx) {
     if (a.size() < 6) return 0xFFFFFFFF;
     uint64_t hKey=a[0], lpValueName=a[1], lpType=a[3], lpData=a[4], lpcbData=a[5];
     std::string kp = resolve_hk(hKey);
@@ -154,13 +154,13 @@ uint64_t Advapi32::RegQueryValueExA(void* e, std::vector<uint64_t>& a, void* ctx
 }
 
 //  RegCloseKey 
-uint64_t Advapi32::RegCloseKey(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::RegCloseKey(void* e, ArgList& a, void* ctx) {
     (void)e; if (a.size()<1) return 0xFFFFFFFF;
     return resolve_hk(a[0]).empty() ? 6 : 0;
 }
 
 //  RegCreateKeyExA 
-uint64_t Advapi32::RegCreateKeyExA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::RegCreateKeyExA(void* e, ArgList& a, void* ctx) {
     if (a.size()<9) return 0xFFFFFFFF;
     uint64_t hKey=a[0], lpSubKey=a[1], phkResult=a[7], lpdwDisposition=a[8];
     std::string pp = resolve_hk(hKey);
@@ -176,7 +176,7 @@ uint64_t Advapi32::RegCreateKeyExA(void* e, std::vector<uint64_t>& a, void* ctx)
 }
 
 //  RegSetValueExA 
-uint64_t Advapi32::RegSetValueExA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::RegSetValueExA(void* e, ArgList& a, void* ctx) {
     if (a.size()<6) return 0xFFFFFFFF;
     uint64_t hKey=a[0], lpValueName=a[1], dwType=a[3], lpData=a[4], cbData=a[5];
     std::string kp = resolve_hk(hKey);
@@ -191,12 +191,12 @@ uint64_t Advapi32::RegSetValueExA(void* e, std::vector<uint64_t>& a, void* ctx) 
 }
 
 //  RegDeleteKeyA 
-uint64_t Advapi32::RegDeleteKeyA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::RegDeleteKeyA(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
 //  OpenProcessToken 
-uint64_t Advapi32::OpenProcessToken(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::OpenProcessToken(void* e, ArgList& a, void* ctx) {
     if (a.size()<3||!a[2]) return 0;
     static uint64_t nt=0x2800; nt+=4;
     int ps=we(e)->get_ptr_size(); std::vector<uint8_t> buf((size_t)ps,0);
@@ -204,19 +204,19 @@ uint64_t Advapi32::OpenProcessToken(void* e, std::vector<uint64_t>& a, void* ctx
 }
 
 //  LookupPrivilegeValueA 
-uint64_t Advapi32::LookupPrivilegeValueA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::LookupPrivilegeValueA(void* e, ArgList& a, void* ctx) {
     if (a.size()<3||!a[2]) return 0;
     std::vector<uint8_t> buf(8,0); write_le(buf,0,0x20,4); write_le(buf,4,0,4);
     we(e)->mem_write(a[2],buf); return 1;
 }
 
 //  AdjustTokenPrivileges 
-uint64_t Advapi32::AdjustTokenPrivileges(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::AdjustTokenPrivileges(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
 //  CryptAcquireContextA 
-uint64_t Advapi32::CryptAcquireContextA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::CryptAcquireContextA(void* e, ArgList& a, void* ctx) {
     if (a.size()<5||!a[0]) return 0;
     static uint64_t nc=0x2900; nc+=4;
     int ps=we(e)->get_ptr_size(); std::vector<uint8_t> buf((size_t)ps,0);
@@ -224,7 +224,7 @@ uint64_t Advapi32::CryptAcquireContextA(void* e, std::vector<uint64_t>& a, void*
 }
 
 //  CryptGenRandom 
-uint64_t Advapi32::CryptGenRandom(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::CryptGenRandom(void* e, ArgList& a, void* ctx) {
     if (a.size()<3||!a[2]||!a[1]) return 0;
     uint64_t len=a[1]; std::vector<uint8_t> buf((size_t)len);
     for(size_t i=0;i<(size_t)len;i++) buf[i]=(uint8_t)(rand()&0xFF);
@@ -232,16 +232,16 @@ uint64_t Advapi32::CryptGenRandom(void* e, std::vector<uint64_t>& a, void* ctx) 
 }
 
 //  CreateServiceA 
-uint64_t Advapi32::CreateServiceA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::CreateServiceA(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; static uint64_t ns=0x3000; ns+=4; return ns;
 }
 
 //  StartServiceA 
-uint64_t Advapi32::StartServiceA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::StartServiceA(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
-uint64_t Advapi32::stub(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advapi32::stub(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 

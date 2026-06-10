@@ -54,7 +54,7 @@ static inline uint32_t fwp_new_id() {
 
 //  Implementations 
 
-uint64_t Fwpkclnt::FwpmEngineOpen0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpmEngineOpen0(void* e, ArgList& a, void* ctx) {
     // DWORD FwpmEngineOpen0(serverName, authnService, authIdentity, session, engineHandle)
     uint64_t eng = a[4];
     if (eng) {
@@ -66,13 +66,13 @@ uint64_t Fwpkclnt::FwpmEngineOpen0(void* e, std::vector<uint64_t>& a, void* ctx)
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Fwpkclnt::FwpmEngineClose0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpmEngineClose0(void* e, ArgList& a, void* ctx) {
     // DWORD FwpmEngineClose0(HANDLE engineHandle)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Fwpkclnt::FwpmSubLayerAdd0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpmSubLayerAdd0(void* e, ArgList& a, void* ctx) {
     // DWORD FwpmSubLayerAdd0(engineHandle, subLayer, sd)
     uint64_t sl = a[1];
     if (sl) {
@@ -87,25 +87,25 @@ uint64_t Fwpkclnt::FwpmSubLayerAdd0(void* e, std::vector<uint64_t>& a, void* ctx
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Fwpkclnt::FwpmSubLayerDeleteByKey0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpmSubLayerDeleteByKey0(void* e, ArgList& a, void* ctx) {
     // DWORD FwpmSubLayerDeleteByKey0(HANDLE engineHandle, const GUID* key)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Fwpkclnt::FwpmCalloutAdd0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpmCalloutAdd0(void* e, ArgList& a, void* ctx) {
     // DWORD FwpmCalloutAdd0(engineHandle, callout, sd, flags)
     (void)e; (void)a;
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Fwpkclnt::FwpmCalloutDeleteById0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpmCalloutDeleteById0(void* e, ArgList& a, void* ctx) {
     // DWORD FwpmCalloutDeleteById0(engineHandle, UINT32 id)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Fwpkclnt::FwpmFilterAdd0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpmFilterAdd0(void* e, ArgList& a, void* ctx) {
     // DWORD FwpmFilterAdd0(engineHandle, filter, sd, id)
     uint64_t p_id = a[3];
     if (p_id) {
@@ -117,13 +117,13 @@ uint64_t Fwpkclnt::FwpmFilterAdd0(void* e, std::vector<uint64_t>& a, void* ctx) 
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Fwpkclnt::FwpmFilterDeleteById0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpmFilterDeleteById0(void* e, ArgList& a, void* ctx) {
     // DWORD FwpmFilterDeleteById0(engineHandle, UINT32 id)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Fwpkclnt::FwpsCalloutRegister1(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpsCalloutRegister1(void* e, ArgList& a, void* ctx) {
     // NTSTATUS FwpsCalloutRegister1(deviceObject, callout, calloutId)
     uint64_t callout_id_ptr = a[2];
     if (callout_id_ptr) {
@@ -135,13 +135,13 @@ uint64_t Fwpkclnt::FwpsCalloutRegister1(void* e, std::vector<uint64_t>& a, void*
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Fwpkclnt::FwpsCalloutUnregisterById0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpsCalloutUnregisterById0(void* e, ArgList& a, void* ctx) {
     // NTSTATUS FwpsCalloutUnregisterById0(UINT32 calloutId)
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Fwpkclnt::FwpsInjectionHandleCreate0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpsInjectionHandleCreate0(void* e, ArgList& a, void* ctx) {
     // NTSTATUS FwpsInjectionHandleCreate0(addressFamily, flags, injectionHandle)
     uint64_t inj_handle = a[2];
     if (inj_handle) {
@@ -153,7 +153,7 @@ uint64_t Fwpkclnt::FwpsInjectionHandleCreate0(void* e, std::vector<uint64_t>& a,
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Fwpkclnt::FwpsInjectionHandleDestroy0(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Fwpkclnt::FwpsInjectionHandleDestroy0(void* e, ArgList& a, void* ctx) {
     // NTSTATUS FwpsInjectionHandleDestroy0(HANDLE injectionHandle)
     (void)e; (void)a;
     return 0;

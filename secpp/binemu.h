@@ -39,6 +39,7 @@
 #include "version.h"
 #include "errors.h"
 #include <capstone/capstone.h>
+#include "winenv/api/api.h"
 
 // Hook type aliases (match Python binemu.py:24-26)
 // WILDCARD_FLAG = bool
@@ -195,7 +196,7 @@ public:
     void set_func_args(uint64_t stack_addr, uint64_t ret_addr, 
                        const std::vector<uint64_t>& args, bool home_space = true);
     // Python binemu.py:327-381 doc: "Get the arguments for a function given the supplied calling convention"
-    std::vector<uint64_t> get_func_argv(int callconv, int argc);
+    ArgList get_func_argv(int callconv, int argc);
     // Python binemu.py:383-418 doc: "Set the emulation state after a call has completed"
     // Python: `if ret_value is not None: self.reg_write(rr, ret_value)`
     // Zero is a valid return value (e.g. FindWindowW returns 0).

@@ -159,7 +159,7 @@ static uint64_t CryptStringToBinary_impl(void* e, const std::string& s,
 // ---------------------------------------------------------------------------
 //  CryptStringToBinaryA  (Python: reads char_width=1)
 // ---------------------------------------------------------------------------
-uint64_t Crypt32::CryptStringToBinaryA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Crypt32::CryptStringToBinaryA(void* e, ArgList& a, void* ctx) {
     (void)ctx;
     uint64_t pszString = a[0], cchString = a[1], dwFlags = a[2];
     uint64_t pbBinary = a[3], pcbBinary = a[4], pdwSkip = a[5];
@@ -177,7 +177,7 @@ uint64_t Crypt32::CryptStringToBinaryA(void* e, std::vector<uint64_t>& a, void* 
 // ---------------------------------------------------------------------------
 //  CryptStringToBinaryW  (Python: reads char_width=2)
 // ---------------------------------------------------------------------------
-uint64_t Crypt32::CryptStringToBinaryW(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Crypt32::CryptStringToBinaryW(void* e, ArgList& a, void* ctx) {
     (void)ctx;
     uint64_t pszString = a[0], cchString = a[1], dwFlags = a[2];
     uint64_t pbBinary = a[3], pcbBinary = a[4], pdwSkip = a[5];
@@ -195,22 +195,22 @@ uint64_t Crypt32::CryptStringToBinaryW(void* e, std::vector<uint64_t>& a, void* 
 // ---------------------------------------------------------------------------
 //  Stubs
 // ---------------------------------------------------------------------------
-uint64_t Crypt32::CryptBinaryToStringA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Crypt32::CryptBinaryToStringA(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; (void)ctx;
     return 1;
 }
 
-uint64_t Crypt32::CryptBinaryToStringW(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Crypt32::CryptBinaryToStringW(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; (void)ctx;
     return 1;
 }
 
-uint64_t Crypt32::CertOpenStore(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Crypt32::CertOpenStore(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; (void)ctx;
     return 1;
 }
 
-uint64_t Crypt32::CryptDecodeObject(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Crypt32::CryptDecodeObject(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; (void)ctx;
     return 1;
 }

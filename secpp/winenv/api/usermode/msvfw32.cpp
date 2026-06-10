@@ -25,7 +25,7 @@ static uint64_t msvfw_get_handle() {
 // 
 //  ICOpen
 // 
-uint64_t Msvfw32::ICOpen(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Msvfw32::ICOpen(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return msvfw_get_handle();
 }
@@ -33,7 +33,7 @@ uint64_t Msvfw32::ICOpen(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  ICSendMessage
 // 
-uint64_t Msvfw32::ICSendMessage(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Msvfw32::ICSendMessage(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }
@@ -41,7 +41,7 @@ uint64_t Msvfw32::ICSendMessage(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  ICClose
 // 
-uint64_t Msvfw32::ICClose(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Msvfw32::ICClose(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 1;
 }

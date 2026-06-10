@@ -5,7 +5,31 @@
 
 ## [Unreleased]
 
-### 2026-06-09
+### 2026-06-09 (ArgList migration)
+
+#### Changed
+
+- **API Handler 签名全面迁移**：所有 47 个 usermode/kernelmode handler 的函数签名从 `(void* e, std::vector<uint64_t>& a, void* ctx)` 迁移至 `(void* e, ArgList& a, void* ctx)`。
+
+  **ApiArg 类型**：`std::variant<uint64_t, void*, std::string, std::vector<uint8_t>>`
+  - 提供隐式 `uint64_t` 转换运算符，已有 handler 函数体（`a[0]`、`static_cast<uint32_t>(a[2])`、`if (!a[0])` 等）**零改动**编译通过
+  - handler 可选择将已解析的字符串写回 `a[0] = resolved_string`，供 `log_api` 直接使用
+
+  **涉及范围**：
+  - `api.h`: `ApiArg`/`ArgList` 定义、`ApiFunc` 签名、`API_LIST_BEGIN`/`API_ENTRY`/`STUB`/`KERNEL_STUB` 宏
+  - `binemu.h/cpp`: `get_func_argv` 返回 `ArgList`
+  - `winemu.h/cpp`: `handle_import_func`、`log_api` 适配
+  - 39 个 usermode .cpp + 6 个 .h + 8 个 kernelmode .cpp — 共 ~900 处函数签名
+  - 内部辅助函数（`msvc_do_str_format`、`shlwapi_do_str_format`、`setup_callback`、`do_str_format`）保持 `const std::vector<uint64_t>&` 不变
+  - `ApiCallback`（用户钩子）保持 `std::vector<uint64_t>` 不变，dispatch 层提供 ArgList ↔ vector<uint64_t> 转换
+
+  **测试**：207 通过 / 4 预存失败，零回归
+
+#### Added
+
+- **secpp/winenv/api/api.h**: `arg_val()` 辅助函数 — 当隐式转换歧义时，`arg_val(argv, i)` 直接返回 `uint64_t`
+
+### 2026-06-09 (test suite fixes)
 
 #### Fixed
 

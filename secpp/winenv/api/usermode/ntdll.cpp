@@ -235,7 +235,7 @@ Ntdll::Ntdll(void* emu) : ApiHandler(emu) {
 // Heap functions
 // 
 
-uint64_t Ntdll::RtlAllocateHeap(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlAllocateHeap(void* emu, ArgList& argv, void* ctx) {
     // HANDLE HeapHandle, ULONG Flags, SIZE_T Size
     // Flags & 0x1 = HEAP_ZERO_MEMORY
     uint64_t heap_handle = argv[0];
@@ -257,7 +257,7 @@ uint64_t Ntdll::RtlAllocateHeap(void* emu, std::vector<uint64_t>& argv, void* ct
     return addr;
 }
 
-uint64_t Ntdll::RtlFreeHeap(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlFreeHeap(void* emu, ArgList& argv, void* ctx) {
     // HANDLE HeapHandle, ULONG Flags, PVOID HeapBase
     uint64_t heap_handle = argv[0];
     uint32_t flags = static_cast<uint32_t>(argv[1]);
@@ -275,7 +275,7 @@ uint64_t Ntdll::RtlFreeHeap(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     }
 }
 
-uint64_t Ntdll::RtlReAllocateHeap(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlReAllocateHeap(void* emu, ArgList& argv, void* ctx) {
     // HANDLE HeapHandle, ULONG Flags, PVOID Memory, SIZE_T NewSize
     uint64_t heap_handle = argv[0];
     uint32_t flags = static_cast<uint32_t>(argv[1]);
@@ -287,7 +287,7 @@ uint64_t Ntdll::RtlReAllocateHeap(void* emu, std::vector<uint64_t>& argv, void* 
     auto* wemu = static_cast<Win32Emulator*>(mm);
 
     if (old_ptr == 0) {
-        std::vector<uint64_t> alloc_args = { heap_handle, static_cast<uint64_t>(flags), static_cast<uint64_t>(new_size) };
+        ArgList alloc_args = { heap_handle, static_cast<uint64_t>(flags), static_cast<uint64_t>(new_size) };
         return RtlAllocateHeap(emu, alloc_args, ctx);
     }
 
@@ -317,7 +317,7 @@ uint64_t Ntdll::RtlReAllocateHeap(void* emu, std::vector<uint64_t>& argv, void* 
     return new_ptr;
 }
 
-uint64_t Ntdll::RtlCreateHeap(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlCreateHeap(void* emu, ArgList& argv, void* ctx) {
     // ULONG Flags, PVOID HeapBase, SIZE_T ReserveSize, SIZE_T CommitSize,
     // PVOID Lock, PRTL_HEAP_PARAMETERS Parameters
     uint32_t flags = static_cast<uint32_t>(argv[0]);
@@ -341,7 +341,7 @@ uint64_t Ntdll::RtlCreateHeap(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return addr;
 }
 
-uint64_t Ntdll::RtlDestroyHeap(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlDestroyHeap(void* emu, ArgList& argv, void* ctx) {
     // HANDLE HeapHandle
     uint64_t heap_handle = argv[0];
     if (heap_handle == 0) return 0; // NT_SUCCESS? Actually returns 1 on success
@@ -354,7 +354,7 @@ uint64_t Ntdll::RtlDestroyHeap(void* emu, std::vector<uint64_t>& argv, void* ctx
     }
 }
 
-uint64_t Ntdll::RtlGetProcessHeap(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlGetProcessHeap(void* emu, ArgList& argv, void* ctx) {
     // Return the process heap. The Python emulator stores it.
     // We'll allocate one lazily or return a known address.
     auto* wemu = static_cast<Win32Emulator*>(static_cast<MemoryManager*>(emu));
@@ -366,7 +366,7 @@ uint64_t Ntdll::RtlGetProcessHeap(void* emu, std::vector<uint64_t>& argv, void* 
 // Virtual Memory
 // 
 
-uint64_t Ntdll::NtAllocateVirtualMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtAllocateVirtualMemory(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ProcessHandle, PVOID *BaseAddress, ULONG_PTR ZeroBits,
     // PSIZE_T RegionSize, ULONG AllocationType, ULONG Protect
     uint64_t proc_handle = argv[0];
@@ -427,7 +427,7 @@ uint64_t Ntdll::NtAllocateVirtualMemory(void* emu, std::vector<uint64_t>& argv, 
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtFreeVirtualMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtFreeVirtualMemory(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ProcessHandle, PVOID *BaseAddress, PSIZE_T RegionSize, ULONG FreeType
     uint64_t proc_handle = argv[0];
     uint64_t base_addr_ptr = argv[1];
@@ -455,7 +455,7 @@ uint64_t Ntdll::NtFreeVirtualMemory(void* emu, std::vector<uint64_t>& argv, void
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtProtectVirtualMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtProtectVirtualMemory(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ProcessHandle, PVOID *BaseAddress, PSIZE_T RegionSize,
     // ULONG NewProtect, PULONG OldProtect
     uint64_t proc_handle = argv[0];
@@ -513,7 +513,7 @@ uint64_t Ntdll::NtProtectVirtualMemory(void* emu, std::vector<uint64_t>& argv, v
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtQueryVirtualMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtQueryVirtualMemory(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ProcessHandle, PVOID BaseAddress, MEMORY_INFORMATION_CLASS InfoClass,
     // PVOID MemoryInformation, SIZE_T MemoryInformationLength, PSIZE_T ReturnLength
     (void)emu; (void)argv;
@@ -525,7 +525,7 @@ uint64_t Ntdll::NtQueryVirtualMemory(void* emu, std::vector<uint64_t>& argv, voi
 // File I/O
 // 
 
-uint64_t Ntdll::NtCreateFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtCreateFile(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock,
     // PLARGE_INTEGER AllocationSize, ULONG FileAttributes, ULONG ShareAccess,
@@ -611,7 +611,7 @@ uint64_t Ntdll::NtCreateFile(void* emu, std::vector<uint64_t>& argv, void* ctx) 
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtOpenFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtOpenFile(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock,
     // ULONG ShareAccess, ULONG OpenOptions
@@ -663,7 +663,7 @@ uint64_t Ntdll::NtOpenFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtReadFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtReadFile(void* emu, ArgList& argv, void* ctx) {
     // HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine,
     // PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer,
     // ULONG Length, PLARGE_INTEGER ByteOffset, PULONG Key
@@ -719,7 +719,7 @@ uint64_t Ntdll::NtReadFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtWriteFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtWriteFile(void* emu, ArgList& argv, void* ctx) {
     // HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine,
     // PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer,
     // ULONG Length, PLARGE_INTEGER ByteOffset, PULONG Key
@@ -768,7 +768,7 @@ uint64_t Ntdll::NtWriteFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtClose(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtClose(void* emu, ArgList& argv, void* ctx) {
     // HANDLE Handle
     uint64_t handle = argv[0];
     (void)emu; (void)handle;
@@ -776,7 +776,7 @@ uint64_t Ntdll::NtClose(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtDeviceIoControlFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtDeviceIoControlFile(void* emu, ArgList& argv, void* ctx) {
     // HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine,
     // PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG IoControlCode,
     // PVOID InputBuffer, ULONG InputBufferLength,
@@ -831,7 +831,7 @@ uint64_t Ntdll::NtDeviceIoControlFile(void* emu, std::vector<uint64_t>& argv, vo
 // Process / Thread
 // 
 
-uint64_t Ntdll::NtCreateProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtCreateProcess(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, HANDLE ParentProcess,
     // BOOLEAN InheritObjectTable, HANDLE SectionHandle,
@@ -840,7 +840,7 @@ uint64_t Ntdll::NtCreateProcess(void* emu, std::vector<uint64_t>& argv, void* ct
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtCreateThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtCreateThread(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, HANDLE ProcessHandle,
     // PCLIENT_ID ClientId, PCONTEXT ThreadContext,
@@ -903,7 +903,7 @@ uint64_t Ntdll::NtCreateThread(void* emu, std::vector<uint64_t>& argv, void* ctx
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtOpenThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtOpenThread(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId
     uint64_t thread_handle_ptr = argv[0];
@@ -936,7 +936,7 @@ uint64_t Ntdll::NtOpenThread(void* emu, std::vector<uint64_t>& argv, void* ctx) 
     return STATUS_INVALID_PARAMETER;
 }
 
-uint64_t Ntdll::NtTerminateProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtTerminateProcess(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ProcessHandle, NTSTATUS ExitStatus
     uint64_t proc_handle = argv[0];
     (void)argv[1]; // ExitStatus
@@ -959,13 +959,13 @@ uint64_t Ntdll::NtTerminateProcess(void* emu, std::vector<uint64_t>& argv, void*
     return NT_INVALID_HANDLE;
 }
 
-uint64_t Ntdll::NtTerminateThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtTerminateThread(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ThreadHandle, NTSTATUS ExitStatus
     (void)emu; (void)argv;
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtGetContextThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtGetContextThread(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ThreadHandle, PCONTEXT ThreadContext
     uint64_t thread_handle = argv[0];
     uint64_t ctx_ptr = argv[1];
@@ -988,7 +988,7 @@ uint64_t Ntdll::NtGetContextThread(void* emu, std::vector<uint64_t>& argv, void*
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtSetContextThread(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtSetContextThread(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ThreadHandle, PCONTEXT ThreadContext
     (void)emu; (void)argv;
     return NT_SUCCESS;
@@ -998,7 +998,7 @@ uint64_t Ntdll::NtSetContextThread(void* emu, std::vector<uint64_t>& argv, void*
 // System Info
 // 
 
-uint64_t Ntdll::NtQuerySystemInformation(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtQuerySystemInformation(void* emu, ArgList& argv, void* ctx) {
     // SYSTEM_INFORMATION_CLASS SystemInformationClass,
     // PVOID SystemInformation, ULONG SystemInformationLength,
     // PULONG ReturnLength
@@ -1030,7 +1030,7 @@ uint64_t Ntdll::NtQuerySystemInformation(void* emu, std::vector<uint64_t>& argv,
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtQueryInformationProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtQueryInformationProcess(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ProcessHandle, PROCESSINFOCLASS ProcessInformationClass,
     // PVOID ProcessInformation, ULONG ProcessInformationLength,
     // PULONG ReturnLength
@@ -1088,7 +1088,7 @@ uint64_t Ntdll::NtQueryInformationProcess(void* emu, std::vector<uint64_t>& argv
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtSetInformationProcess(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtSetInformationProcess(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ProcessHandle, PROCESSINFOCLASS ProcessInformationClass,
     // PVOID ProcessInformation, ULONG ProcessInformationLength
     (void)emu; (void)argv;
@@ -1110,7 +1110,7 @@ static std::string reg_hkey_to_path(uint32_t hkey) {
     }
 }
 
-uint64_t Ntdll::NtCreateKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtCreateKey(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE KeyHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, ULONG TitleIndex,
     // PUNICODE_STRING Class, ULONG CreateOptions,
@@ -1165,7 +1165,7 @@ uint64_t Ntdll::NtCreateKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtOpenKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtOpenKey(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE KeyHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes
     uint64_t key_handle_ptr = argv[0];
@@ -1205,7 +1205,7 @@ uint64_t Ntdll::NtOpenKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtQueryValueKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtQueryValueKey(void* emu, ArgList& argv, void* ctx) {
     // HANDLE KeyHandle, PUNICODE_STRING ValueName,
     // KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass,
     // PVOID KeyValueInformation, ULONG KeyValueInformationLength,
@@ -1311,7 +1311,7 @@ uint64_t Ntdll::NtQueryValueKey(void* emu, std::vector<uint64_t>& argv, void* ct
     return STATUS_SUCCESS;
 }
 
-uint64_t Ntdll::NtSetValueKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtSetValueKey(void* emu, ArgList& argv, void* ctx) {
     // HANDLE KeyHandle, PUNICODE_STRING ValueName,
     // ULONG TitleIndex, ULONG Type,
     // PVOID Data, ULONG DataSize
@@ -1347,7 +1347,7 @@ uint64_t Ntdll::NtSetValueKey(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return STATUS_SUCCESS;
 }
 
-uint64_t Ntdll::NtDeleteKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtDeleteKey(void* emu, ArgList& argv, void* ctx) {
     // HANDLE KeyHandle
     uint64_t key_handle = argv[0];
 
@@ -1363,7 +1363,7 @@ uint64_t Ntdll::NtDeleteKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return STATUS_SUCCESS;
 }
 
-uint64_t Ntdll::NtDeleteValueKey(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtDeleteValueKey(void* emu, ArgList& argv, void* ctx) {
     // HANDLE KeyHandle, PUNICODE_STRING ValueName
     uint64_t key_handle = argv[0];
     uint64_t value_name_ptr = argv[1];
@@ -1388,7 +1388,7 @@ uint64_t Ntdll::NtDeleteValueKey(void* emu, std::vector<uint64_t>& argv, void* c
 // Sections (memory-mapped files)
 // 
 
-uint64_t Ntdll::NtCreateSection(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtCreateSection(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE SectionHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, PLARGE_INTEGER MaximumSize,
     // ULONG SectionPageProtection, ULONG AllocationAttributes,
@@ -1434,14 +1434,14 @@ uint64_t Ntdll::NtCreateSection(void* emu, std::vector<uint64_t>& argv, void* ct
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtOpenSection(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtOpenSection(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE SectionHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes
     (void)emu; (void)argv;
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtMapViewOfSection(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtMapViewOfSection(void* emu, ArgList& argv, void* ctx) {
     // HANDLE SectionHandle, HANDLE ProcessHandle,
     // PVOID *BaseAddress, ULONG_PTR ZeroBits, SIZE_T CommitSize,
     // PLARGE_INTEGER SectionOffset, PSIZE_T ViewSize,
@@ -1484,7 +1484,7 @@ uint64_t Ntdll::NtMapViewOfSection(void* emu, std::vector<uint64_t>& argv, void*
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtUnmapViewOfSection(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtUnmapViewOfSection(void* emu, ArgList& argv, void* ctx) {
     // HANDLE ProcessHandle, PVOID BaseAddress
     uint64_t proc_handle = argv[0];
     uint64_t base_addr = argv[1];
@@ -1505,7 +1505,7 @@ uint64_t Ntdll::NtUnmapViewOfSection(void* emu, std::vector<uint64_t>& argv, voi
 // Synchronization
 // 
 
-uint64_t Ntdll::NtCreateEvent(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtCreateEvent(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE EventHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, EVENT_TYPE EventType,
     // BOOLEAN InitialState
@@ -1536,7 +1536,7 @@ uint64_t Ntdll::NtCreateEvent(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtOpenEvent(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtOpenEvent(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE EventHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes
     uint64_t event_handle_ptr = argv[0];
@@ -1566,7 +1566,7 @@ uint64_t Ntdll::NtOpenEvent(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtCreateMutant(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtCreateMutant(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE MutantHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes, BOOLEAN InitialOwner
     uint64_t mutant_handle_ptr = argv[0];
@@ -1589,7 +1589,7 @@ uint64_t Ntdll::NtCreateMutant(void* emu, std::vector<uint64_t>& argv, void* ctx
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtOpenMutant(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtOpenMutant(void* emu, ArgList& argv, void* ctx) {
     // PHANDLE MutantHandle, ACCESS_MASK DesiredAccess,
     // POBJECT_ATTRIBUTES ObjectAttributes
     uint64_t mutant_handle_ptr = argv[0];
@@ -1619,14 +1619,14 @@ uint64_t Ntdll::NtOpenMutant(void* emu, std::vector<uint64_t>& argv, void* ctx) 
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtWaitForSingleObject(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtWaitForSingleObject(void* emu, ArgList& argv, void* ctx) {
     // HANDLE Handle, BOOLEAN Alertable, PLARGE_INTEGER Timeout
     (void)emu; (void)argv;
     // Always return success (signaled)
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtDelayExecution(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtDelayExecution(void* emu, ArgList& argv, void* ctx) {
     // BOOLEAN Alertable, PLARGE_INTEGER DelayInterval
     uint8_t alertable = static_cast<uint8_t>(argv[0]);
     uint64_t delay_ptr = argv[1];
@@ -1656,7 +1656,7 @@ uint64_t Ntdll::NtDelayExecution(void* emu, std::vector<uint64_t>& argv, void* c
 // String / Utility
 // 
 
-uint64_t Ntdll::RtlInitUnicodeString(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlInitUnicodeString(void* emu, ArgList& argv, void* ctx) {
     // PUNICODE_STRING DestinationString, PWSTR SourceString
     uint64_t dest = argv[0];
     uint64_t src = argv[1];
@@ -1684,7 +1684,7 @@ uint64_t Ntdll::RtlInitUnicodeString(void* emu, std::vector<uint64_t>& argv, voi
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::RtlInitString(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlInitString(void* emu, ArgList& argv, void* ctx) {
     // PANSI_STRING DestinationString, PCHAR SourceString
     uint64_t dest = argv[0];
     uint64_t src = argv[1];
@@ -1710,7 +1710,7 @@ uint64_t Ntdll::RtlInitString(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::RtlAnsiStringToUnicodeString(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlAnsiStringToUnicodeString(void* emu, ArgList& argv, void* ctx) {
     // PUNICODE_STRING DestinationString, PANSI_STRING SourceString,
     // BOOLEAN AllocateDestinationString
     uint64_t dest = argv[0];
@@ -1759,7 +1759,7 @@ uint64_t Ntdll::RtlAnsiStringToUnicodeString(void* emu, std::vector<uint64_t>& a
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::RtlFreeUnicodeString(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlFreeUnicodeString(void* emu, ArgList& argv, void* ctx) {
     // PUNICODE_STRING UnicodeString
     uint64_t us = argv[0];
     if (us == 0) return NT_SUCCESS;
@@ -1781,7 +1781,7 @@ uint64_t Ntdll::RtlFreeUnicodeString(void* emu, std::vector<uint64_t>& argv, voi
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::RtlNtStatusToDosError(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlNtStatusToDosError(void* emu, ArgList& argv, void* ctx) {
     // NTSTATUS Status
     (void)emu;
     uint32_t status = static_cast<uint32_t>(argv[0]);
@@ -1799,7 +1799,7 @@ uint64_t Ntdll::RtlNtStatusToDosError(void* emu, std::vector<uint64_t>& argv, vo
     }
 }
 
-uint64_t Ntdll::CsrGetProcessId(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::CsrGetProcessId(void* emu, ArgList& argv, void* ctx) {
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
     auto p = wemu->get_current_process();
     if (p) {
@@ -1812,19 +1812,19 @@ uint64_t Ntdll::CsrGetProcessId(void* emu, std::vector<uint64_t>& argv, void* ct
 // Additional ntdll APIs (ported from Python reference)
 // 
 
-uint64_t Ntdll::RtlGetLastWin32Error(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlGetLastWin32Error(void* emu, ArgList& argv, void* ctx) {
     // DWORD RtlGetLastWin32Error();
     auto* wemu = static_cast<Win32Emulator*>(static_cast<MemoryManager*>(emu));
     return static_cast<uint64_t>(wemu->get_last_error());
 }
 
-uint64_t Ntdll::RtlFlushSecureMemoryCache(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlFlushSecureMemoryCache(void* emu, ArgList& argv, void* ctx) {
     // DWORD RtlFlushSecureMemoryCache(PVOID arg0, PVOID arg1);
     (void)emu;
     return 1; // TRUE
 }
 
-uint64_t Ntdll::RtlAddVectoredExceptionHandler(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlAddVectoredExceptionHandler(void* emu, ArgList& argv, void* ctx) {
     // PVOID AddVectoredExceptionHandler(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler)
     uint32_t first = static_cast<uint32_t>(argv[0]);
     uint64_t handler = argv[1];
@@ -1834,7 +1834,7 @@ uint64_t Ntdll::RtlAddVectoredExceptionHandler(void* emu, std::vector<uint64_t>&
     return handler;
 }
 
-uint64_t Ntdll::RtlRemoveVectoredExceptionHandler(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlRemoveVectoredExceptionHandler(void* emu, ArgList& argv, void* ctx) {
     // ULONG RemoveVectoredExceptionHandler(PVOID Handle)
     uint64_t handler = argv[0];
 
@@ -1843,13 +1843,13 @@ uint64_t Ntdll::RtlRemoveVectoredExceptionHandler(void* emu, std::vector<uint64_
     return handler;
 }
 
-uint64_t Ntdll::NtYieldExecution(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtYieldExecution(void* emu, ArgList& argv, void* ctx) {
     // NtYieldExecution();
     (void)emu;
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Ntdll::LdrLoadDll(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::LdrLoadDll(void* emu, ArgList& argv, void* ctx) {
     // NTSTATUS LdrLoadDll(PWSTR SearchPath, PULONG LoadFlags,
     //                      PUNICODE_STRING Name, PVOID *BaseAddress)
     uint64_t search_path_ptr = argv[0];
@@ -1905,7 +1905,7 @@ uint64_t Ntdll::LdrLoadDll(void* emu, std::vector<uint64_t>& argv, void* ctx) {
     return 0; // STATUS_SUCCESS
 }
 
-uint64_t Ntdll::LdrGetProcedureAddress(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::LdrGetProcedureAddress(void* emu, ArgList& argv, void* ctx) {
     // NTSTATUS LdrGetProcedureAddress(HMODULE ModuleHandle,
     //     PANSI_STRING FunctionName, WORD Ordinal, PVOID *FunctionAddress)
     uint64_t hmod = argv[0];
@@ -1953,7 +1953,7 @@ uint64_t Ntdll::LdrGetProcedureAddress(void* emu, std::vector<uint64_t>& argv, v
     return 0xC000007A; // STATUS_PROCEDURE_NOT_FOUND
 }
 
-uint64_t Ntdll::LdrFindResource_U(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::LdrFindResource_U(void* emu, ArgList& argv, void* ctx) {
     // NTSTATUS LdrFindResource_U(PVOID DllHandle,
     //     PLDR_RESOURCE_INFO ResourceInfo, ULONG Level,
     //     PIMAGE_RESOURCE_DATA_ENTRY *ResourceDataEntry)
@@ -1962,7 +1962,7 @@ uint64_t Ntdll::LdrFindResource_U(void* emu, std::vector<uint64_t>& argv, void* 
     return STATUS_SUCCESS;
 }
 
-uint64_t Ntdll::LdrAccessResource(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::LdrAccessResource(void* emu, ArgList& argv, void* ctx) {
     // NTSTATUS LdrAccessResource(PVOID BaseAddress,
     //     PIMAGE_RESOURCE_DATA_ENTRY ResourceDataEntry,
     //     PVOID *Resource, PULONG Size)
@@ -1994,7 +1994,7 @@ uint64_t Ntdll::LdrAccessResource(void* emu, std::vector<uint64_t>& argv, void* 
     return STATUS_SUCCESS;
 }
 
-uint64_t Ntdll::RtlZeroMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlZeroMemory(void* emu, ArgList& argv, void* ctx) {
     // void RtlZeroMemory(void* Destination, size_t Length)
     uint64_t dest = argv[0];
     size_t length = static_cast<size_t>(argv[1]);
@@ -2007,7 +2007,7 @@ uint64_t Ntdll::RtlZeroMemory(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return 0;
 }
 
-uint64_t Ntdll::RtlMoveMemory(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlMoveMemory(void* emu, ArgList& argv, void* ctx) {
     // void RtlMoveMemory(void* pvDest, const void* pSrc, size_t Length)
     uint64_t dest = argv[0];
     uint64_t src = argv[1];
@@ -2023,19 +2023,19 @@ uint64_t Ntdll::RtlMoveMemory(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return 0;
 }
 
-uint64_t Ntdll::RtlEncodePointer(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlEncodePointer(void* emu, ArgList& argv, void* ctx) {
     // PVOID RtlEncodePointer(PVOID Pointer)
     (void)emu;
     return argv[0] + 1;
 }
 
-uint64_t Ntdll::RtlDecodePointer(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlDecodePointer(void* emu, ArgList& argv, void* ctx) {
     // PVOID RtlDecodePointer(PVOID Pointer)
     (void)emu;
     return argv[0] - 1;
 }
 
-uint64_t Ntdll::RtlComputeCrc32(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlComputeCrc32(void* emu, ArgList& argv, void* ctx) {
     // DWORD RtlComputeCrc32(DWORD dwInitial, const BYTE* pData, INT iLen)
     uint32_t initial = static_cast<uint32_t>(argv[0]);
     uint64_t data_ptr = argv[1];
@@ -2104,7 +2104,7 @@ uint64_t Ntdll::RtlComputeCrc32(void* emu, std::vector<uint64_t>& argv, void* ct
     return static_cast<uint64_t>(crc);
 }
 
-uint64_t Ntdll::RtlGetNtVersionNumbers(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlGetNtVersionNumbers(void* emu, ArgList& argv, void* ctx) {
     // void RtlGetNtVersionNumbers(DWORD *pNtMajorVersion,
     //     DWORD *pNtMinorVersion, DWORD *pNtBuildNumber)
     uint64_t p_major = argv[0];
@@ -2118,7 +2118,7 @@ uint64_t Ntdll::RtlGetNtVersionNumbers(void* emu, std::vector<uint64_t>& argv, v
     return 0;
 }
 
-uint64_t Ntdll::RtlGetCurrentPeb(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlGetCurrentPeb(void* emu, ArgList& argv, void* ctx) {
     // PPEB RtlGetCurrentPeb();
     auto* wemu = static_cast<WindowsEmulator*>(static_cast<MemoryManager*>(emu));
     auto proc = wemu->get_current_process();
@@ -2132,7 +2132,7 @@ uint64_t Ntdll::RtlGetCurrentPeb(void* emu, std::vector<uint64_t>& argv, void* c
     return 0;
 }
 
-uint64_t Ntdll::RtlGetVersion(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::RtlGetVersion(void* emu, ArgList& argv, void* ctx) {
     // NTSTATUS RtlGetVersion(PRTL_OSVERSIONINFOW lpVersionInformation);
     uint64_t info_ptr = argv[0];
 
@@ -2159,7 +2159,7 @@ uint64_t Ntdll::RtlGetVersion(void* emu, std::vector<uint64_t>& argv, void* ctx)
 // Volume / Object
 // 
 
-uint64_t Ntdll::NtQueryVolumeInformationFile(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtQueryVolumeInformationFile(void* emu, ArgList& argv, void* ctx) {
     // HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock,
     // PVOID FsInformation, ULONG Length,
     // FS_INFORMATION_CLASS FsInformationClass
@@ -2177,7 +2177,7 @@ uint64_t Ntdll::NtQueryVolumeInformationFile(void* emu, std::vector<uint64_t>& a
     return NT_SUCCESS;
 }
 
-uint64_t Ntdll::NtQueryObject(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtQueryObject(void* emu, ArgList& argv, void* ctx) {
     // HANDLE Handle, OBJECT_INFORMATION_CLASS ObjectInformationClass,
     // PVOID ObjectInformation, ULONG ObjectInformationLength,
     // PULONG ReturnLength
@@ -2221,7 +2221,7 @@ uint64_t Ntdll::NtQueryObject(void* emu, std::vector<uint64_t>& argv, void* ctx)
     return STATUS_SUCCESS;
 }
 
-uint64_t Ntdll::NtDuplicateObject(void* emu, std::vector<uint64_t>& argv, void* ctx) {
+uint64_t Ntdll::NtDuplicateObject(void* emu, ArgList& argv, void* ctx) {
     // HANDLE SourceProcessHandle, HANDLE SourceHandle,
     // HANDLE TargetProcessHandle, PHANDLE TargetHandle,
     // ACCESS_MASK DesiredAccess, ULONG HandleAttributes,
@@ -2245,7 +2245,7 @@ uint64_t Ntdll::NtDuplicateObject(void* emu, std::vector<uint64_t>& argv, void* 
 // Fallback stub
 // 
 
-uint64_t Ntdll::stub_api(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Ntdll::stub_api(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return NT_SUCCESS;
 }
 

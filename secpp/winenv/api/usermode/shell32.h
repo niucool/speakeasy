@@ -12,18 +12,18 @@ public:
     const std::vector<ApiEntry>& get_apis() const override {return apis_;}
 private:
     std::vector<ApiEntry> apis_;
-    static uint64_t ShellExecuteA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t ShellExecuteW(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t ShellExecuteExA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t SHGetFolderPathA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t SHGetFolderPathW(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t SHGetSpecialFolderPathA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t SHFileOperationA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t ExtractIconExW(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t SHGetFileInfoA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t SHGetFileInfoW(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t SHCreateDirectoryExA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t stub(void*, std::vector<uint64_t>&, void* ctx);
+    static uint64_t ShellExecuteA(void*, ArgList&, void* ctx);
+    static uint64_t ShellExecuteW(void*, ArgList&, void* ctx);
+    static uint64_t ShellExecuteExA(void*, ArgList&, void* ctx);
+    static uint64_t SHGetFolderPathA(void*, ArgList&, void* ctx);
+    static uint64_t SHGetFolderPathW(void*, ArgList&, void* ctx);
+    static uint64_t SHGetSpecialFolderPathA(void*, ArgList&, void* ctx);
+    static uint64_t SHFileOperationA(void*, ArgList&, void* ctx);
+    static uint64_t ExtractIconExW(void*, ArgList&, void* ctx);
+    static uint64_t SHGetFileInfoA(void*, ArgList&, void* ctx);
+    static uint64_t SHGetFileInfoW(void*, ArgList&, void* ctx);
+    static uint64_t SHCreateDirectoryExA(void*, ArgList&, void* ctx);
+    static uint64_t stub(void*, ArgList&, void* ctx);
 };
 }}
 #endif

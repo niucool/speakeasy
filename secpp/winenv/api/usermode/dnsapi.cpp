@@ -22,7 +22,7 @@ static constexpr uint32_t DNS_OK = 0;
 // 
 //  DnsQuery_
 // 
-uint64_t DnsApi::DnsQuery_(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t DnsApi::DnsQuery_(void* e, ArgList& a, void* ctx) {
     if (a.size() < 6) return 87; // ERROR_INVALID_PARAMETER
     uint64_t pszName = a[0];
     uint16_t wType = static_cast<uint16_t>(a[1] & 0xFFFF);

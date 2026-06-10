@@ -810,9 +810,9 @@ std::shared_ptr<InvalidInstructionHook> BinaryEmulator::add_invalid_instruction_
     return h;
 }
 
-std::vector<uint64_t> BinaryEmulator::get_func_argv(int callconv, int argc) {
+ArgList BinaryEmulator::get_func_argv(int callconv, int argc) {
     // Python binemu.py:327-381 doc: "Get the arguments for a function given the supplied calling convention"
-    std::vector<uint64_t> argv;
+    ArgList argv;
     int arch = get_arch();
     int nargs = argc;
 

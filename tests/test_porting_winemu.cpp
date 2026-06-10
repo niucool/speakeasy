@@ -469,7 +469,7 @@ TEST(WindowsEmulatorTest, LogApiValidation) {
     emu.write_mem_string(unicode_str, wstr_addr, 2);
 
     // Trigger log_api with both string pointers and hex numbers
-    std::vector<uint64_t> argv = { 0, 0x15, str_addr, wstr_addr };
+    ArgList argv = { uint64_t(0), uint64_t(0x15), str_addr, wstr_addr };
     EXPECT_NO_THROW({
         emu.log_api(0x401000, "kernel32.CreateMutexA", 0x1804, argv);
     });

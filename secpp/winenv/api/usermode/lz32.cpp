@@ -16,7 +16,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  LZSeek
 // 
-uint64_t Lz32::LZSeek(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Lz32::LZSeek(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return static_cast<uint64_t>(-1);  // LZ_ERROR
 }

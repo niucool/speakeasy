@@ -2535,19 +2535,30 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         auto func_ptr_func = func_info.func;
         // Gap B: Invoke User API Hooks
         if (!hooks.empty()) {
+            // User hooks use raw uint64_t args (public ApiCallback API).
+            // Convert ArgList -> vector<uint64_t> for the callback boundary.
+            std::vector<uint64_t> raw_argv;
+            raw_argv.reserve(argv.size());
+            for (auto& arg : argv)
+                raw_argv.push_back(static_cast<uint64_t>(arg));
+
             // Original handler wrapped as callback
             ApiCallback orig = [this, handler_mod, func_ptr_func](void* emu, const std::string& api_name, void* orig_ptr, std::vector<uint64_t> args) -> bool {
                 (void)emu; (void)api_name; (void)orig_ptr;
-                void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, args, nullptr);
+                // Convert back to ArgList for internal dispatch
+                ArgList inner_argv;
+                inner_argv.reserve(args.size());
+                for (auto v : args) inner_argv.push_back(v);
+                void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, inner_argv, nullptr);
                 uint64_t sub_rv = reinterpret_cast<uintptr_t>(rv_ptr);
-                return sub_rv != 0; // Cast return value through bool/int
+                return sub_rv != 0;
             };
 
             for (auto& hook : hooks) {
                 if (hook && hook->is_enabled()) {
                     auto cb = hook->get_cb();
                     if (cb) {
-                        rv = cb(this, imp_api, reinterpret_cast<void*>(&orig), argv);
+                        rv = cb(this, imp_api, reinterpret_cast<void*>(&orig), raw_argv);
                         hook_called = true;
                     }
                 }
@@ -2631,7 +2642,12 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         }
 
         auto cb = hook->get_cb();
-        uint64_t rv = cb ? cb(this, imp_api, nullptr, argv) : 0;
+        // ApiCallback takes raw uint64_t args; convert ArgList -> vector<uint64_t>
+        std::vector<uint64_t> raw_hook_argv;
+        raw_hook_argv.reserve(argv.size());
+        for (auto& arg : argv)
+            raw_hook_argv.push_back(static_cast<uint64_t>(arg));
+        uint64_t rv = cb ? cb(this, imp_api, nullptr, raw_hook_argv) : 0;
 
         uint64_t ret = get_ret_address();
         log_api(call_pc, imp_api, rv, argv);
@@ -2789,16 +2805,16 @@ std::optional<std::string> WindowsEmulator::read_string_heuristic(uint64_t addr)
 // def log_api(self, pc, imp_api, rv, argv):
 //     """Log an API call with its arguments and return value."""
 void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
-                               uint64_t rv, const std::vector<uint64_t>& argv) {
+                               uint64_t rv, const ArgList& argv) {
     std::string call_str = api + "(";
     std::vector<std::string> str_argv;
 
     for (size_t i = 0; i < argv.size(); ++i) {
-        uint64_t arg = argv[i];
-        std::optional<std::string> s = read_string_heuristic(arg);
-        if (s.has_value()) {
+        auto& arg = argv[i];
+        if (arg.is_string()) {
+            // Handler already resolved this arg to a string
             std::string escaped_str;
-            for (char c : s.value()) {
+            for (char c : arg.as_string()) {
                 if (c == '\n') escaped_str += "\\n";
                 else if (c == '\r') escaped_str += "\\r";
                 else if (c == '\t') escaped_str += "\\t";
@@ -2809,11 +2825,34 @@ void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
             std::string quoted = "\"" + escaped_str + "\"";
             call_str += quoted;
             str_argv.push_back(quoted);
+        } else if (arg.is_blob()) {
+            // Binary blob: show size
+            std::string blob_str = "{blob:" + std::to_string(arg.as_blob().size()) + "}";
+            call_str += blob_str;
+            str_argv.push_back(blob_str);
         } else {
-            std::stringstream hex_s;
-            hex_s << "0x" << std::hex << arg;
-            call_str += hex_s.str();
-            str_argv.push_back(hex_s.str());
+            // uint64_t or void*: try heuristic string detection, fallback to hex
+            uint64_t raw = static_cast<uint64_t>(arg);
+            std::optional<std::string> s = read_string_heuristic(raw);
+            if (s.has_value()) {
+                std::string escaped_str;
+                for (char c : s.value()) {
+                    if (c == '\n') escaped_str += "\\n";
+                    else if (c == '\r') escaped_str += "\\r";
+                    else if (c == '\t') escaped_str += "\\t";
+                    else if (c == '"') escaped_str += "\\\"";
+                    else if (c == '\\') escaped_str += "\\\\";
+                    else escaped_str += c;
+                }
+                std::string quoted = "\"" + escaped_str + "\"";
+                call_str += quoted;
+                str_argv.push_back(quoted);
+            } else {
+                std::stringstream hex_s;
+                hex_s << "0x" << std::hex << raw;
+                call_str += hex_s.str();
+                str_argv.push_back(hex_s.str());
+            }
         }
         if (i + 1 < argv.size()) {
             call_str += ", ";

@@ -12,21 +12,21 @@ public:
     const std::vector<ApiEntry>& get_apis() const override { return apis_; }
 private:
     std::vector<ApiEntry> apis_;
-    static uint64_t WSAStartup(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t WSASocketA(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t connect(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t send(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t recv(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t closesocket(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t bind(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t listen(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t accept(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t gethostbyname(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t WSAGetLastError(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t inet_addr(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t htons(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t select(void*, std::vector<uint64_t>&, void* ctx);
-    static uint64_t stub(void*, std::vector<uint64_t>&, void* ctx);
+    static uint64_t WSAStartup(void*, ArgList&, void* ctx);
+    static uint64_t WSASocketA(void*, ArgList&, void* ctx);
+    static uint64_t connect(void*, ArgList&, void* ctx);
+    static uint64_t send(void*, ArgList&, void* ctx);
+    static uint64_t recv(void*, ArgList&, void* ctx);
+    static uint64_t closesocket(void*, ArgList&, void* ctx);
+    static uint64_t bind(void*, ArgList&, void* ctx);
+    static uint64_t listen(void*, ArgList&, void* ctx);
+    static uint64_t accept(void*, ArgList&, void* ctx);
+    static uint64_t gethostbyname(void*, ArgList&, void* ctx);
+    static uint64_t WSAGetLastError(void*, ArgList&, void* ctx);
+    static uint64_t inet_addr(void*, ArgList&, void* ctx);
+    static uint64_t htons(void*, ArgList&, void* ctx);
+    static uint64_t select(void*, ArgList&, void* ctx);
+    static uint64_t stub(void*, ArgList&, void* ctx);
 };
 }} // namespaces
 #endif

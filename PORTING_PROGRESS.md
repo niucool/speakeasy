@@ -1,10 +1,46 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-09
+> Last Updated: 2026-06-09 (ArgList migration)
 > Build Status: ✅ **0 compiler errors, 0 warnings** (/W4 clean)
 > Emulation Status: ✅ **Antidbg.exe runs to completion and exits cleanly**
 > Remaining TODOs: **0**
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
+
+---
+
+## 2026-06-09 (ArgList migration): API Handler 签名迁移
+
+将所有 handler 签名从 `(void* e, std::vector<uint64_t>& a, void* ctx)` 迁移至 `(void* e, ArgList& a, void* ctx)`。
+
+### 设计
+
+`ApiArg = std::variant<uint64_t, void*, std::string, std::vector<uint8_t>>`
+
+- 提供隐式 `uint64_t` 转换，已有 handler 函数体无需修改
+- handler 可将已解析的字符串写回 `a[0] = resolved_string` 供 `log_api` 直接使用
+- 降低了 `log_api` 中侵入式字符串启发检测的依赖
+- `ApiCallback`（用户钩子）保持 `vector<uint64_t>`，dispatch 层自动转换
+
+### 涉及范围
+
+| 类别 | 文件数 | 变更说明 |
+|------|--------|----------|
+| 基础设施 | 5 | `api.h` (`ApiArg`/`ArgList`/宏)、`binemu.h/cpp`、`winemu.h/cpp` |
+| usermode .h | 6 | 声明签名替换（advapi32, crypt32, ntdll, shell32, user32, ws2_32） |
+| usermode .cpp | 39 | 实现签名替换（~664 处） |
+| kernelmode .cpp | 8 | 实现签名替换（~237 处） |
+| test | 1 | `test_porting_winemu.cpp` — `log_api` 参数适配 |
+| **总计** | **~58** | **~900 处签名 + 核心逻辑** |
+
+### 不涉及的文件
+
+- `setup_callback` / `do_str_format` — 保留 `const std::vector<uint64_t>&`
+- 内部辅助函数 `msvc_do_str_format` / `shlwapi_do_str_format` — 保留原类型
+- STUB/KERNEL_STUB 宏 — 实际未使用，签名同步更新
+
+### 测试
+
+✅ 207 通过 / 4 预存失败，零回归
 
 ---
 
@@ -415,3 +451,4 @@ NtStructTest       ×  3  ✅ (双架构 <4> + <8>)
 38. ✅ **TODO 计数归零** — 所有 22 个原始 TODO 已全部关闭（2026-06-09）
 39. ✅ **编译警告消除** — 全部 291 个警告通过修改源码消除，未禁用任何警告，实现 /W4 零警告（2026-06-09）
 40. ✅ **TODO 注释标注** — 21 个未使用变量位置均添加 TODO 注释，说明移植缺口（2026-06-09）
+✅ **API Handler 签名迁移** — 全部 ~900 处签名从 `std::vector<uint64_t>&` 迁移至 `ArgList&`，零回归（2026-06-09）

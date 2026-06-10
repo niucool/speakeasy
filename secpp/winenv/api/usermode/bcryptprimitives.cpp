@@ -17,7 +17,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  ProcessPrng
 // 
-uint64_t Bcryptprimitives::ProcessPrng(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Bcryptprimitives::ProcessPrng(void* e, ArgList& a, void* ctx) {
     if (a.size() < 2) return 0;
     uint64_t pbData = a[0];
     uint64_t cbData = a[1];

@@ -8,6 +8,7 @@
 #include <memory>
 #include <functional>
 #include <tuple>
+#include <variant>
 #include <cstdint>
 #include "../../struct.h"
 #include "../../profiler.h"
@@ -18,7 +19,54 @@ class WindowsEmulator;
 class BinaryEmulator;
 class RegKey;
 
-using ApiFunc = std::function<uint64_t(void* emu, std::vector<uint64_t>& argv, void* ctx)>;
+// ---------------------------------------------------------------------------
+// ApiArg — variant type for API handler arguments.
+//
+// Input:  all args are uint64_t (raw stack values).
+// Output: handlers may replace raw values with resolved strings/blobs/pointers
+//         for log_api display.  Implicit conversion to uint64_t keeps existing
+//         handler body code compiling without changes.
+// ---------------------------------------------------------------------------
+struct ApiArg {
+    std::variant<uint64_t, void*, std::string, std::vector<uint8_t>> data;
+
+    ApiArg() : data(uint64_t(0)) {}
+    // NOLINTBEGIN — implicit conversions are intentional
+    ApiArg(uint64_t v)                : data(v) {}
+    ApiArg(void* v)                   : data(v) {}
+    ApiArg(const std::string& s)      : data(s) {}
+    ApiArg(std::string&& s)           : data(std::move(s)) {}
+    ApiArg(const std::vector<uint8_t>& b) : data(b) {}
+    ApiArg(std::vector<uint8_t>&& b)  : data(std::move(b)) {}
+
+    // Implicit read: keep existing a[0] / static_cast<uint32_t>(a[2]) working.
+    operator uint64_t() const { return std::get<uint64_t>(data); }
+
+    ApiArg& operator=(uint64_t v)              { data = v; return *this; }
+    ApiArg& operator=(void* v)                 { data = v; return *this; }
+    ApiArg& operator=(const std::string& s)    { data = s; return *this; }
+    ApiArg& operator=(std::string&& s)         { data = std::move(s); return *this; }
+    ApiArg& operator=(const std::vector<uint8_t>& b) { data = b; return *this; }
+    ApiArg& operator=(std::vector<uint8_t>&& b)      { data = std::move(b); return *this; }
+
+    bool is_uint64() const { return std::holds_alternative<uint64_t>(data); }
+    bool is_ptr()    const { return std::holds_alternative<void*>(data); }
+    bool is_string() const { return std::holds_alternative<std::string>(data); }
+    bool is_blob()   const { return std::holds_alternative<std::vector<uint8_t>>(data); }
+
+    const std::string&             as_string() const { return std::get<std::string>(data); }
+    const std::vector<uint8_t>&    as_blob()   const { return std::get<std::vector<uint8_t>>(data); }
+    void*                          as_ptr()    const { return std::get<void*>(data); }
+    // NOLINTEND
+};
+
+using ArgList = std::vector<ApiArg>;
+
+// Helper: read raw uint64_t from an ArgList (same as std::get<uint64_t>(a[i])).
+// Kept for cases where the implicit conversion is ambiguous.
+inline uint64_t arg_val(const ArgList& a, size_t i) { return std::get<uint64_t>(a[i].data); }
+
+using ApiFunc = std::function<uint64_t(void* emu, ArgList& argv, void* ctx)>;
 
 using DataFunc = std::function<uint64_t(uint64_t ptr)>;
 
@@ -218,12 +266,12 @@ public:
 #define API_LIST_BEGIN \
 private: \
     std::vector<ApiEntry> apis_; \
-    static uint64_t _stub(void* e, std::vector<uint64_t>& a, void* c) { (void)e; (void)a; (void)c; return 1; }
+    static uint64_t _stub(void* e, ArgList& a, void* c) { (void)e; (void)a; (void)c; return 1; }
 
 /// Declare an API handler method + register it in the table.
 /// Each API_ENTRY declares `static uint64_t name(...)` and adds it to the list.
 #define API_ENTRY(name, argc) \
-    static uint64_t name(void* emu, std::vector<uint64_t>& argv, void* ctx);
+    static uint64_t name(void* emu, ArgList& argv, void* ctx);
 
 #define API_LIST_END
 
@@ -247,13 +295,13 @@ private: \
 
 /// Generate a stub implementation for an API (returns 1, for usermode).
 #define STUB(klass, name) \
-    uint64_t klass::name(void* e, const std::vector<uint64_t>& a, void* c) { \
+    uint64_t klass::name(void* e, ArgList& a, void* c) { \
         (void)e; (void)a; (void)c; return 1; \
     }
 
 /// Generate a stub implementation for a kernel-mode API (returns 0 = STATUS_SUCCESS).
 #define KERNEL_STUB(klass, name) \
-    uint64_t klass::name(void* e, const std::vector<uint64_t>& a, void* c) { \
+    uint64_t klass::name(void* e, ArgList& a, void* c) { \
         (void)e; (void)a; (void)c; return 0; \
     }
 

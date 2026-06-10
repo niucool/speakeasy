@@ -168,7 +168,7 @@ Shlwapi::Shlwapi(void* emu) : ApiHandler(emu) {
 // 
 //  PathIsRelative
 // 
-uint64_t Shlwapi::PathIsRelative(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathIsRelative(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     bool rv = false;
 
@@ -185,7 +185,7 @@ uint64_t Shlwapi::PathIsRelative(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  StrStr
 // 
-uint64_t Shlwapi::StrStr(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::StrStr(void* e, ArgList& a, void* ctx) {
     uint64_t hay = a[0];
     uint64_t needle = a[1];
 
@@ -209,7 +209,7 @@ uint64_t Shlwapi::StrStr(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  StrStrI
 // 
-uint64_t Shlwapi::StrStrI(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::StrStrI(void* e, ArgList& a, void* ctx) {
     uint64_t hay = a[0];
     uint64_t needle = a[1];
 
@@ -237,7 +237,7 @@ uint64_t Shlwapi::StrStrI(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  PathFindExtension
 // 
-uint64_t Shlwapi::PathFindExtension(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathFindExtension(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
 
@@ -258,7 +258,7 @@ uint64_t Shlwapi::PathFindExtension(void* e, std::vector<uint64_t>& a, void* ctx
 // 
 //  StrCmpI
 // 
-uint64_t Shlwapi::StrCmpI(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::StrCmpI(void* e, ArgList& a, void* ctx) {
     uint64_t psz1 = a[0];
     uint64_t psz2 = a[1];
 
@@ -275,7 +275,7 @@ uint64_t Shlwapi::StrCmpI(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  PathFindFileName
 // 
-uint64_t Shlwapi::PathFindFileName(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathFindFileName(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
 
@@ -290,7 +290,7 @@ uint64_t Shlwapi::PathFindFileName(void* e, std::vector<uint64_t>& a, void* ctx)
 // 
 //  PathRemoveExtension
 // 
-uint64_t Shlwapi::PathRemoveExtension(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathRemoveExtension(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
 
@@ -310,7 +310,7 @@ uint64_t Shlwapi::PathRemoveExtension(void* e, std::vector<uint64_t>& a, void* c
 // 
 //  PathStripPath
 // 
-uint64_t Shlwapi::PathStripPath(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathStripPath(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
 
@@ -329,7 +329,7 @@ uint64_t Shlwapi::PathStripPath(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  wvnsprintfA
 // 
-uint64_t Shlwapi::wvnsprintfA(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::wvnsprintfA(void* e, ArgList& a, void* ctx) {
     uint64_t buffer = a[0];
     uint64_t count = a[1];
     uint64_t fmt_ptr = a[2];
@@ -352,7 +352,7 @@ uint64_t Shlwapi::wvnsprintfA(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  wnsprintf
 // 
-uint64_t Shlwapi::wnsprintf(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::wnsprintf(void* e, ArgList& a, void* ctx) {
     // int wnsprintf(PSTR pszDest, int cchDest, PCSTR pszFmt, ...);
     uint64_t buf = a[0];
     uint64_t max_buf_size = a[1];
@@ -391,7 +391,7 @@ uint64_t Shlwapi::wnsprintf(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  PathAppend
 // 
-uint64_t Shlwapi::PathAppend(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathAppend(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     uint64_t pszMore = a[1];
 
@@ -415,7 +415,7 @@ uint64_t Shlwapi::PathAppend(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  PathCanonicalize
 // 
-uint64_t Shlwapi::PathCanonicalize(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathCanonicalize(void* e, ArgList& a, void* ctx) {
     uint64_t pszBuf = a[0];
     uint64_t pszPath = a[1];
 
@@ -427,7 +427,7 @@ uint64_t Shlwapi::PathCanonicalize(void* e, std::vector<uint64_t>& a, void* ctx)
 // 
 //  PathRemoveFileSpec
 // 
-uint64_t Shlwapi::PathRemoveFileSpec(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathRemoveFileSpec(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
 
@@ -444,7 +444,7 @@ uint64_t Shlwapi::PathRemoveFileSpec(void* e, std::vector<uint64_t>& a, void* ct
 // 
 //  PathAddBackslash
 // 
-uint64_t Shlwapi::PathAddBackslash(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathAddBackslash(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     std::string s = be(e)->read_mem_string(pszPath, 1);
 
@@ -462,7 +462,7 @@ uint64_t Shlwapi::PathAddBackslash(void* e, std::vector<uint64_t>& a, void* ctx)
 // 
 //  PathRenameExtension
 // 
-uint64_t Shlwapi::PathRenameExtension(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Shlwapi::PathRenameExtension(void* e, ArgList& a, void* ctx) {
     uint64_t pszPath = a[0];
     uint64_t pszExt = a[1];
 

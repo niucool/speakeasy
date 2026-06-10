@@ -29,7 +29,7 @@ Winmm::Winmm(void* emu) : ApiHandler(emu) {
 // 
 //  timeBeginPeriod  set minimum timer resolution
 // 
-uint64_t Winmm::timeBeginPeriod(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Winmm::timeBeginPeriod(void* e, ArgList& a, void* ctx) {
     (void)e;
     uint32_t uPeriod = static_cast<uint32_t>(a[0] & 0xFFFFFFFF);
     (void)uPeriod;
@@ -39,7 +39,7 @@ uint64_t Winmm::timeBeginPeriod(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  timeEndPeriod  clear minimum timer resolution
 // 
-uint64_t Winmm::timeEndPeriod(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Winmm::timeEndPeriod(void* e, ArgList& a, void* ctx) {
     (void)e;
     uint32_t uPeriod = static_cast<uint32_t>(a[0] & 0xFFFFFFFF);
     (void)uPeriod;
@@ -49,7 +49,7 @@ uint64_t Winmm::timeEndPeriod(void* e, std::vector<uint64_t>& a, void* ctx) {
 // 
 //  timeGetTime  get system time in milliseconds
 // 
-uint64_t Winmm::timeGetTime(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Winmm::timeGetTime(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     auto now = std::chrono::steady_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - winmm_start).count();

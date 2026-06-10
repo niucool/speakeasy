@@ -16,7 +16,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  CorExitProcess
 // 
-uint64_t Mscoree::CorExitProcess(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Mscoree::CorExitProcess(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a;
     return 0;
 }

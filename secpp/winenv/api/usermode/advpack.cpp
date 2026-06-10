@@ -17,7 +17,7 @@ static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(
 // 
 //  IsNTAdmin
 // 
-uint64_t Advpack::IsNTAdmin(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Advpack::IsNTAdmin(void* e, ArgList& a, void* ctx) {
     (void)a;
     std::map<std::string, std::string> user = be(e)->get_user();
     auto it = user.find("is_admin");

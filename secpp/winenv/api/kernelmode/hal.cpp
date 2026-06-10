@@ -29,21 +29,21 @@ Hal::Hal(void* emu) : ApiHandler(emu) {
 
 //  Implementations 
 
-uint64_t Hal::KeGetCurrentIrql(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Hal::KeGetCurrentIrql(void* e, ArgList& a, void* ctx) {
     // NTHALAPI KIRQL KeGetCurrentIrql();
     // Simply return PASSIVE_LEVEL (0) since we don't track IRQL in emulation
     (void)e; (void)a;
     return 0; // PASSIVE_LEVEL
 }
 
-uint64_t Hal::ExAcquireFastMutex(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Hal::ExAcquireFastMutex(void* e, ArgList& a, void* ctx) {
     // VOID ExAcquireFastMutex(PFAST_MUTEX FastMutex);
     // No-op in emulation
     (void)e; (void)a;
     return 0;
 }
 
-uint64_t Hal::ExReleaseFastMutex(void* e, std::vector<uint64_t>& a, void* ctx) {
+uint64_t Hal::ExReleaseFastMutex(void* e, ArgList& a, void* ctx) {
     // VOID ExReleaseFastMutex(PFAST_MUTEX FastMutex);
     // No-op in emulation
     (void)e; (void)a;
