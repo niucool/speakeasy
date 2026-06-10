@@ -1358,15 +1358,13 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     //}
 
     //  Patch IAT with sentinel values for import hooking (Python 1042-1050) 
-    int psz = get_ptr_size();
-    if (psz == 0) psz = 4;
 
     for (auto& imp : img->imports) {
         uint64_t sentinel = _alloc_sentinel();
         import_table[sentinel] = {normalize_mod_name(imp.dll_name), imp.func_name};
         uint64_t iat_addr = imp.iat_address;
-        std::vector<uint8_t> sent_bytes(psz);
-        for (int i = 0; i < psz; ++i)
+        std::vector<uint8_t> sent_bytes(ptr_size_);
+        for (int i = 0; i < ptr_size_; ++i)
             sent_bytes[i] = static_cast<uint8_t>((sentinel >> (i * 8)) & 0xFF);
         try { mem_write(iat_addr, sent_bytes); } catch (...) {}
     }
@@ -1474,8 +1472,8 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
                 std::string sym = imp.dll_name + "." + imp.func_name;
                 global_data[imp.iat_address] = {sym, data_ptr};
                 if (data_ptr != 0) {
-                    std::vector<uint8_t> ptr_bytes(psz);
-                    for (int i = 0; i < psz; ++i) {
+                    std::vector<uint8_t> ptr_bytes(ptr_size_);
+                    for (int i = 0; i < ptr_size_; ++i) {
                         ptr_bytes[i] = static_cast<uint8_t>((data_ptr >> (i * 8)) & 0xFF);
                     }
                     try { mem_write(imp.iat_address, ptr_bytes); } catch (...) {}
@@ -1517,6 +1515,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
 
     return mod;
 }
+
 void WindowsEmulator::ensure_pe_import_hooks(uint64_t base_addr) {
     // Python reference: winemu.py lines 865-977
     int psz = get_ptr_size();

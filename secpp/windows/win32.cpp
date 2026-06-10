@@ -184,31 +184,26 @@ std::shared_ptr<speakeasy::RuntimeModule> Win32Emulator::load_module(const std::
     // Set input metadata
     _set_input_metadata(path, file_data);
     
-    // Load PE
-    //uint64_t import_id = 0x41410000;
-    auto pe = load_pe(path, file_data);
-    if (!pe) return nullptr;
-    
-    pe->name = mod_name_;
-    pe->emu_path = emu_path;
-    
-    if (!arch_) { 
-        arch_ = pe->arch;
-        set_ptr_size(arch_);
-    }
-    
+    speakeasy::PeLoader loader(path, data);
+    auto img = loader.make_image();
+    img->name = mod_name_;
+    img->emu_path = emu_path;
+
+    auto rtmod = load_image(img);
+
     // Set function args
     set_func_args(stack_base_, get_ret_address(), {});
     
     // Track input metadata
-    if (!input_.empty()) {
-        input_["image_base"] = std::to_string(pe->base);
-    }
+    //if (!input_.empty()) {
+        input_["image_base"] = std::to_string(img->base);
+    //}
 
+    // TODO: remove this line, it will be pushed later
     // Register the loaded module so get_user_modules() can find it
-    modules.push_back(pe);
+    modules.push_back(rtmod);
 
-    return pe;
+    return rtmod;
 }
 
 
@@ -279,7 +274,7 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
     add_run(run);
 
     if (all_entrypoints) {
-        static const size_t MAX_EXPORTS_TO_EMULATE = 10;
+        //static const size_t MAX_EXPORTS_TO_EMULATE = 10;
         auto exports = img->get_exports();
         if (exports.size() > MAX_EXPORTS_TO_EMULATE) {
             exports.resize(MAX_EXPORTS_TO_EMULATE);
