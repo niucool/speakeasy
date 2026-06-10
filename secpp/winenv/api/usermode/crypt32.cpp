@@ -1,4 +1,6 @@
-// crypt32.cpp  crypt32.dll handler (~4 APIs, real implementations)
+// crypt32.cpp -- crypt32.dll handler.
+// Implements CryptStringToBinaryA/W (shared _impl), plus stubs.
+
 #include "crypt32.h"
 
 #include <cstring>
@@ -15,7 +17,7 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-//  Typed cast helpers 
+//  Typed cast helpers
 static inline WindowsEmulator* we(void* e) {
     return static_cast<WindowsEmulator*>(e);
 }
@@ -29,11 +31,13 @@ static inline MemoryManager* mm(void* e) {
     return static_cast<MemoryManager*>(e);
 }
 
-//  Constants 
+//  Constants
 static const uint32_t CRYPT_FLAG_BASE64 = 0x01;
 static const uint32_t ERR_MORE_DATA = 234;
 
-//  Base64 decode helper 
+// ---------------------------------------------------------------------------
+//  Base64 decode helper (shared, unchanged)
+// ---------------------------------------------------------------------------
 static std::vector<uint8_t> base64_decode(const std::string& input) {
     std::vector<uint8_t> empty;
     std::string s;
@@ -75,52 +79,51 @@ static std::vector<uint8_t> base64_decode(const std::string& input) {
     return out;
 }
 
-//  Constructor 
-
+// ---------------------------------------------------------------------------
+//  Constructor
+// ---------------------------------------------------------------------------
 Crypt32::Crypt32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Crypt32)
     REG(Crypt32, CryptStringToBinaryA, 7)
-    REG(Crypt32, CryptBinaryToStringA, 6)
+    REG(Crypt32, CryptStringToBinaryW, 7)
+    REG(Crypt32, CryptBinaryToStringA, 5)
+    REG(Crypt32, CryptBinaryToStringW, 5)
     REG(Crypt32, CertOpenStore, 3)
     REG(Crypt32, CryptDecodeObject, 5)
     END_API_TABLE
 }
 
-//  API implementations 
-
-uint64_t Crypt32::CryptStringToBinaryA(void* e, std::vector<uint64_t>& a, void* ctx) {
-    uint64_t pszString = a[0], cchString = a[1], dwFlags = a[2];
-    uint64_t pbBinary = a[3], pcbBinary = a[4], pdwSkip = a[5], pdwFlags = a[6];
-    (void)pdwFlags;
-
-    std::vector<uint8_t> raw;
-    std::string s;
-    if (cchString) {
-        raw = mm(e)->mem_read(pszString, static_cast<size_t>(cchString));
-        s.assign(raw.begin(), raw.end());
-    } else {
-        s = be(e)->read_mem_string(pszString, 1);
-    }
-
+// ---------------------------------------------------------------------------
+//  Shared implementation for CryptStringToBinaryA / CryptStringToBinaryW
+//  Python reference: crypt32.py:30-85
+// ---------------------------------------------------------------------------
+static uint64_t CryptStringToBinary_impl(void* e, const std::string& s,
+                                          uint64_t dwFlags,
+                                          uint64_t pbBinary, uint64_t pcbBinary,
+                                          uint64_t pdwSkip) {
+    // Only Base64 is supported (Python:54-56)
     if (dwFlags != CRYPT_FLAG_BASE64)
         return 1;
 
+    // Python:63-66
     std::vector<uint8_t> decoded = base64_decode(s);
     if (decoded.empty())
         return 0;
 
     uint32_t out_len = static_cast<uint32_t>(decoded.size());
+
+    // Read pcbBinary if present (Python:68)
     uint32_t cbBinary = 0;
-    // TODO: read_len tracking not yet wired — Python port incomplete
-    uint32_t read_len = 0; (void)read_len;
-    // TODO: test_val placeholder — needs proper crypto context validation
-    uint32_t test_val; (void)test_val;
     if (pcbBinary) {
-        raw = mm(e)->mem_read(pcbBinary, 4);
-        cbBinary = static_cast<uint32_t>(raw[0]) | (static_cast<uint32_t>(raw[1]) << 8) |
-                   (static_cast<uint32_t>(raw[2]) << 16) | (static_cast<uint32_t>(raw[3]) << 24);
+        auto raw = mm(e)->mem_read(pcbBinary, 4);
+        if (raw.size() == 4)
+            cbBinary = static_cast<uint32_t>(raw[0]) |
+                      (static_cast<uint32_t>(raw[1]) << 8) |
+                      (static_cast<uint32_t>(raw[2]) << 16) |
+                      (static_cast<uint32_t>(raw[3]) << 24);
     }
 
+    // pbBinary == 0 → query size only (Python:71-73)
     if (pbBinary == 0) {
         if (pcbBinary) {
             std::vector<uint8_t> len_bytes(4);
@@ -130,36 +133,85 @@ uint64_t Crypt32::CryptStringToBinaryA(void* e, std::vector<uint64_t>& a, void* 
         return out_len;
     }
 
+    // Buffer too small (Python:75-77)
     if (out_len > cbBinary) {
         w32(e)->set_last_error(ERR_MORE_DATA);
         return 0;
     }
 
+    // Write decoded data (Python:79-80)
     mm(e)->mem_write(pbBinary, decoded);
     if (pcbBinary) {
         std::vector<uint8_t> len_bytes(4);
         write_le(len_bytes, 0, out_len, 4);
         mm(e)->mem_write(pcbBinary, len_bytes);
     }
+
+    // pdwSkip (Python:82-83)
     if (pdwSkip) {
         std::vector<uint8_t> zero(4, 0);
         mm(e)->mem_write(pdwSkip, zero);
     }
+
+    return 1;  // TRUE
+}
+
+// ---------------------------------------------------------------------------
+//  CryptStringToBinaryA  (Python: reads char_width=1)
+// ---------------------------------------------------------------------------
+uint64_t Crypt32::CryptStringToBinaryA(void* e, std::vector<uint64_t>& a, void* ctx) {
+    (void)ctx;
+    uint64_t pszString = a[0], cchString = a[1], dwFlags = a[2];
+    uint64_t pbBinary = a[3], pcbBinary = a[4], pdwSkip = a[5];
+
+    // Read the ANSI string, handling explicit length vs null-terminated
+    std::string s;
+    if (cchString)
+        s = be(e)->read_mem_string(pszString, 1, static_cast<int>(cchString));
+    else
+        s = be(e)->read_mem_string(pszString, 1);
+
+    return CryptStringToBinary_impl(e, s, dwFlags, pbBinary, pcbBinary, pdwSkip);
+}
+
+// ---------------------------------------------------------------------------
+//  CryptStringToBinaryW  (Python: reads char_width=2)
+// ---------------------------------------------------------------------------
+uint64_t Crypt32::CryptStringToBinaryW(void* e, std::vector<uint64_t>& a, void* ctx) {
+    (void)ctx;
+    uint64_t pszString = a[0], cchString = a[1], dwFlags = a[2];
+    uint64_t pbBinary = a[3], pcbBinary = a[4], pdwSkip = a[5];
+
+    // Read the UTF-16LE string, convert to UTF-8
+    std::string s;
+    if (cchString)
+        s = be(e)->read_mem_string(pszString, 2, static_cast<int>(cchString));
+    else
+        s = be(e)->read_mem_string(pszString, 2);
+
+    return CryptStringToBinary_impl(e, s, dwFlags, pbBinary, pcbBinary, pdwSkip);
+}
+
+// ---------------------------------------------------------------------------
+//  Stubs
+// ---------------------------------------------------------------------------
+uint64_t Crypt32::CryptBinaryToStringA(void* e, std::vector<uint64_t>& a, void* ctx) {
+    (void)e; (void)a; (void)ctx;
     return 1;
 }
 
-uint64_t Crypt32::CryptBinaryToStringA(void* e, std::vector<uint64_t>& a, void* ctx) {
-    (void)e; (void)a;
+uint64_t Crypt32::CryptBinaryToStringW(void* e, std::vector<uint64_t>& a, void* ctx) {
+    (void)e; (void)a; (void)ctx;
     return 1;
 }
 
 uint64_t Crypt32::CertOpenStore(void* e, std::vector<uint64_t>& a, void* ctx) {
-    (void)e; (void)a;
+    (void)e; (void)a; (void)ctx;
     return 1;
 }
 
 uint64_t Crypt32::CryptDecodeObject(void* e, std::vector<uint64_t>& a, void* ctx) {
-    (void)e; (void)a;
+    (void)e; (void)a; (void)ctx;
     return 1;
 }
 
