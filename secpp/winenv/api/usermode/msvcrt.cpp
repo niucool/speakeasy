@@ -668,15 +668,12 @@ uint64_t Msvcrt::_snprintf(void* e, ArgList& a, void* ctx) {
 
 uint64_t Msvcrt::_snwprintf(void* e, ArgList& a, void* ctx) {
     (void)ctx;
-    // Python msvcrt.py:1898-1925  _snwprintf
-    auto argv3 = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3);
-    if (argv3.size() < 3) return 0;
-    uint64_t buf     = static_cast<uint64_t>(argv3[0]);
-    size_t   cnt     = static_cast<size_t>(argv3[1]);
-    uint64_t fmt_addr = static_cast<uint64_t>(argv3[2]);
-
+    if (a.size() < 3) return 0;
+    uint64_t buf   = a[0];
+    size_t   cnt   = static_cast<size_t>(a[1]);
+    uint64_t fmt_addr = a[2];
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 2);
-    // Replace %s with %S for wide string format (Python:1911)
+    // Replace %s with %S for wide string format
     {
         size_t pos = 0;
         while ((pos = fmt_str.find("%s", pos)) != std::string::npos) {
@@ -684,27 +681,13 @@ uint64_t Msvcrt::_snwprintf(void* e, ArgList& a, void* ctx) {
             pos += 2;
         }
     }
-    int fmt_cnt = msvc_va_arg_count(fmt_str);
-
     std::vector<uint64_t> vargs;
-    if (fmt_cnt > 0) {
-        auto variadic = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3 + fmt_cnt);
-        for (int n = 3; n < 3 + fmt_cnt && n < static_cast<int>(variadic.size()); ++n)
-            vargs.push_back(static_cast<uint64_t>(variadic[n]));
-    }
-
+    for (size_t n = 3; n < a.size(); ++n) vargs.push_back(static_cast<uint64_t>(a[n]));
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
     if (cnt > 0 && result.size() >= cnt) {
         result = result.substr(0, cnt - 1);
     }
     be(e)->write_mem_string(result, buf, 2);
-
-    // Output params (Python:1923-1924: argv = [buf, cnt, fmt] + argv; argv[2] = fmt_str)
-    a.resize(std::max<size_t>(a.size(), 3));
-    a[0] = buf;
-    a[1] = cnt;
-    a[2] = fmt_str;
-
     return static_cast<uint64_t>(result.size());
 }
 
