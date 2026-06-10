@@ -353,39 +353,43 @@ uint64_t Shlwapi::wvnsprintfA(void* e, ArgList& a, void* ctx) {
 //  wnsprintf
 // 
 uint64_t Shlwapi::wnsprintf(void* e, ArgList& a, void* ctx) {
+    // Python shlwapi.py:256-286  wnsprintf
     // int wnsprintf(PSTR pszDest, int cchDest, PCSTR pszFmt, ...);
-    uint64_t buf = a[0];
-    uint64_t max_buf_size = a[1];
-    uint64_t fmt = a[2];
+    auto argv3 = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3);
+    if (argv3.size() < 3) return 0;
+    uint64_t buf         = static_cast<uint64_t>(argv3[0]);
+    uint64_t max_buf_size = static_cast<uint64_t>(argv3[1]);
+    uint64_t fmt         = static_cast<uint64_t>(argv3[2]);
 
     std::string fmt_str = be(e)->read_mem_string(fmt, 1);
     int fmt_cnt = shlwapi_va_arg_count(fmt_str);
 
     if (fmt_cnt == 0) {
-        // No format args, just write the format string
         be(e)->write_mem_string(fmt_str, buf, 1);
-        return fmt_str.size();
+        a.resize(std::max<size_t>(a.size(), 3));
+        a[0] = fmt_str;
+        a[2] = fmt_str;
+        return static_cast<uint64_t>(fmt_str.size());
     }
 
     std::vector<uint64_t> vargs;
-    int ps = be(e)->get_ptr_size();
-    uint64_t cursor = a[3];
-    for (int i = 0; i < fmt_cnt; ++i) {
-        auto raw = we(e)->mem_read(cursor, ps);
-        if (raw.size() < static_cast<size_t>(ps)) break;
-        vargs.push_back(read_le(raw, 0, ps));
-        cursor += ps;
-    }
+    auto variadic = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3 + fmt_cnt);
+    for (int n = 3; n < 3 + fmt_cnt && n < static_cast<int>(variadic.size()); ++n)
+        vargs.push_back(static_cast<uint64_t>(variadic[n]));
 
     std::string fin = shlwapi_do_str_format(e, fmt_str, vargs);
-    uint64_t rv = fin.size();
+    uint64_t rv = static_cast<uint64_t>(fin.size());
 
     if (rv <= max_buf_size) {
         be(e)->write_mem_string(fin, buf, 1);
+        // Output params (Python:284-285)
+        a.resize(std::max<size_t>(a.size(), 3));
+        a[0] = fin;
+        a[2] = fmt_str;
         return rv;
     }
 
-    return static_cast<uint64_t>(-1);  // -1 on failure
+    return static_cast<uint64_t>(-1);
 }
 
 // 

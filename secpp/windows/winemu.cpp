@@ -27,8 +27,8 @@ namespace fs = std::filesystem;
 
 WindowsEmulator::WindowsEmulator(const speakeasy::SpeakeasyConfig& cfg,
                                   void* evt, bool dbg)
-    : BinaryEmulator(cfg), debug(dbg), arch(0),
-      page_size(4096), ptr_size(0),
+    : BinaryEmulator(cfg), debug(dbg),
+      page_size(4096), 
       max_runs(100), kernel_mode(false), virtual_mem_base(0x50000),
       mem_tracing_enabled(false), tmp_code_hook(nullptr),
       run_complete(false), emu_complete(false),
@@ -412,7 +412,7 @@ void WindowsEmulator::setup_user_shared_data() {
     constexpr uint64_t KUSER_SHARED_AMD64 = 0xFFFFF78000000000ULL;
     constexpr uint64_t KUSER_READONLY     = 0x7FFE0000;
 
-    if (arch == speakeasy::arch::ARCH_X86) {
+    if (arch_ == speakeasy::arch::ARCH_X86) {
         mem_map(page_size, KUSER_SHARED_X86, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
     } else {
         mem_map(page_size, KUSER_SHARED_AMD64, PERM_MEM_RW, "emu.struct.KUSER_SHARED_DATA");
@@ -1155,7 +1155,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_from_addr(uin
 uint64_t WindowsEmulator::_alloc_sentinel() {
     static uint64_t _next_sentinel = IMPORT_HOOK_ADDR;
     uint64_t addr = _next_sentinel;
-    _next_sentinel += static_cast<uint64_t>(ptr_size > 0 ? ptr_size : 4);
+    _next_sentinel += static_cast<uint64_t>(ptr_size_ > 0 ? ptr_size_ : 4);
     return addr;
 }
 
@@ -1229,7 +1229,7 @@ void WindowsEmulator::init_peb(std::vector<std::shared_ptr<speakeasy::RuntimeMod
 void WindowsEmulator::init_teb(std::shared_ptr<Thread> thread, std::shared_ptr<PEB> peb) {
     if (!thread) return;
     uint64_t peb_addr_val = peb ? peb->get_address() : 0;
-    if (ptr_size == 4) {
+    if (ptr_size_ == 4) {
         thread->init_teb(fs_addr, static_cast<int>(peb_addr_val));
     } else {
         thread->init_teb(gs_addr, static_cast<int>(peb_addr_val));
@@ -1282,9 +1282,9 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
 
     bool valid_arch = (img->arch == 32 || img->arch == 64);
     //  Determine architecture (Python 998-1004) 
-    if (!arch) {
-        arch = valid_arch ? img->arch : speakeasy::arch::ARCH_X86;
-        set_ptr_size(arch);
+    if (!arch_) {
+        arch_ = valid_arch ? img->arch : speakeasy::arch::ARCH_X86;
+        set_ptr_size(arch_);
     }
 
     //  Initialize emulation engine if needed (Python 1006-1008) 
@@ -1294,8 +1294,19 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
         emu_eng_ = std::make_shared<EmuEngine>();
         emu_eng_->init_engine(eng_arch, mode);
     }
-    if (!ptr_size) ptr_size = 4;
+    if (!ptr_size_) 
+        ptr_size_ = 4;
 
+    if (!disasm_eng_) {
+        cs_mode mode = (get_arch() == 64) ? CS_MODE_64 : CS_MODE_32;
+
+        if (cs_open(CS_ARCH_X86, mode, &disasm_eng_) != CS_ERR_OK) {
+            // TODO: log error
+        }
+
+        cs_option(disasm_eng_, CS_OPT_DETAIL, CS_OPT_OFF);
+    }
+    
     //  Initialize API handler (Python 1019-1022) 
     if (!api) {
         api = std::make_shared<WindowsApi>(reinterpret_cast<BinaryEmulator*>(this));
@@ -1779,8 +1790,8 @@ std::string WindowsEmulator::get_native_module_path(const std::string& mod_name)
         return "";
     };
 
-    const char* dirs_1 = (arch == speakeasy::arch::ARCH_AMD64) ? "amd64" : "x86";
-    std::string mod_dir = (arch == speakeasy::arch::ARCH_AMD64) ? config_.modules.module_directory_x64 : config_.modules.module_directory_x86;
+    const char* dirs_1 = (arch_ == speakeasy::arch::ARCH_AMD64) ? "amd64" : "x86";
+    std::string mod_dir = (arch_ == speakeasy::arch::ARCH_AMD64) ? config_.modules.module_directory_x64 : config_.modules.module_directory_x86;
 
     std::string fp = get_fp(mod_dir, name);
     if (fp.empty()) {
@@ -2215,7 +2226,7 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
     }
 
     bool rv = false;
-    if (ptr_size == 4) {
+    if (ptr_size_ == 4) {
         rv = _dispatch_seh_x86(except_code);
     } else {
         // x64: VEH (Vectored Exception Handling)  walk VEH handler list
@@ -2293,7 +2304,7 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
 
     // Read EXCEPTION_REGISTRATION record: [next_ptr] [handler]
     uint64_t next_ptr = read_ptr(seh_chain); (void)next_ptr;
-    uint64_t handler = read_ptr(seh_chain + ptr_size);
+    uint64_t handler = read_ptr(seh_chain + ptr_size_);
     if (handler == 0 || handler == 0xFFFFFFFF) return false;
 
     // Call the SEH handler
@@ -2682,14 +2693,14 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 //     """Data that is imported (e.g. KeTickCount) is handled with an initializer function."""
 uint64_t WindowsEmulator::handle_import_data(const std::string& mod, const std::string& sym,
                                           uint64_t data_ptr) {
-    // Python reference: winemu.py lines 1372-1387
+    // TODO: Python reference: winemu.py lines 1372-1387
     if (!api) return 0;
 
     // Try data export handler first
     auto [data_mod, data_func] = api->get_data_export_handler(mod, sym);
     if (data_func.func) {
         if (!data_ptr) {
-            data_ptr = mem_map(ptr_size, 0, 4, "api.import_data");
+            data_ptr = mem_map(ptr_size_, 0, 4, "api.import_data");
         }
         api->call_data_func(data_mod, data_func.func, data_ptr);
         return data_ptr;
@@ -3808,7 +3819,7 @@ uint64_t WindowsEmulator::_get_exception_list() {
             return read_ptr(teb->get_address());
         }
     }
-    uint64_t teb = (ptr_size == 4) ? fs_addr : gs_addr;
+    uint64_t teb = (ptr_size_ == 4) ? fs_addr : gs_addr;
     return (teb != 0) ? read_ptr(teb) : 0;
 }
 

@@ -192,9 +192,9 @@ std::shared_ptr<speakeasy::RuntimeModule> Win32Emulator::load_module(const std::
     pe->name = mod_name_;
     pe->emu_path = emu_path;
     
-    if (!arch) { 
-        arch = pe->arch; 
-        set_ptr_size(arch); 
+    if (!arch_) { 
+        arch_ = pe->arch;
+        set_ptr_size(arch_);
     }
     
     // Set function args
@@ -405,7 +405,7 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
     if (arch == "x64" || arch == "amd64") {
         arch_enum = speakeasy::arch::ARCH_AMD64;
     }
-    this->arch = arch_enum;
+    this->arch_ = arch_enum;
 
     std::vector<uint8_t> sc = data;
     if (sc.empty() && !path.empty()) {
@@ -579,7 +579,6 @@ void Win32Emulator::set_unhandled_exception_handler(uint64_t handler_addr) {
 void Win32Emulator::setup(size_t stack_commit, bool first_time_setup) {
     om = std::make_shared<ObjectManager>(this);
     int my_arch = get_arch();
-    this->arch = my_arch;
     _setup_gdt(my_arch);
     setup_user_shared_data();
     set_ptr_size(my_arch);

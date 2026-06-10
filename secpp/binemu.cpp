@@ -12,7 +12,7 @@
 // Python binemu.py:59-78 doc: "Base class for emulating binaries\n\nSubclasses must define the following attributes:\n    arch: Architecture constant (e.g., ARCH_X86, ARCH_AMD64)\n    modules: List of loaded modules\n    input: Input metadata dictionary (or None)"
 // Constructor
 BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg)
-    : inst_count_(0), curr_instr_size_(0), disasm_eng_(0),
+    : inst_count_(0), curr_instr_size_(0), disasm_eng_(0), arch_(0), ptr_size_(0),
       builtin_hooks_set_(false), stack_base_(0), profiler_(nullptr),
       runtime_(0), config_(cfg) {
     
@@ -20,20 +20,11 @@ BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg)
     max_instructions_ = -1;
     timeout_ = 0;
     max_api_count_ = 5000;
-    arch_ = speakeasy::arch::ARCH_X86;
-    ptr_size_ = 4;
+
     keep_memory_on_free_ = false;
     
     profiler_ = std::make_shared<Profiler>();
     emu_version_ = get_emu_version();
-
-    cs_mode mode = (get_arch() == 64) ? CS_MODE_64 : CS_MODE_32;
-
-    if (cs_open(CS_ARCH_X86, mode, &disasm_eng_) != CS_ERR_OK) {
-        // log error
-    }
-
-    cs_option(disasm_eng_, CS_OPT_DETAIL, CS_OPT_OFF);
 
     _parse_config(cfg);
 }

@@ -96,7 +96,7 @@ class WindowsEmulator : public BinaryEmulator {
 protected:
     //  Core state 
     bool debug;
-    int arch;
+    //int arch;
     BootstrapPhase bootstrap_phase = BootstrapPhase::INITIALIZED;
     bool _setup_done = false;
     bool kernel_mode = false;
@@ -126,7 +126,7 @@ protected:
 
     //  Memory / hooks 
     uint64_t page_size = 4096;
-    int ptr_size = 0;
+    //int ptr_size = 0;
     uint64_t virtual_mem_base = 0x50000;
     std::vector<void*> veh_handlers;
     std::vector<void*> mem_trace_hooks;

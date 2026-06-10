@@ -667,12 +667,16 @@ uint64_t Msvcrt::_snprintf(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::_snwprintf(void* e, ArgList& a, void* ctx) {
-    if (a.size() < 3) return 0;
-    uint64_t buf   = a[0];
-    size_t   cnt   = static_cast<size_t>(a[1]);
-    uint64_t fmt_addr = a[2];
+    (void)ctx;
+    // Python msvcrt.py:1898-1925  _snwprintf
+    auto argv3 = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3);
+    if (argv3.size() < 3) return 0;
+    uint64_t buf     = static_cast<uint64_t>(argv3[0]);
+    size_t   cnt     = static_cast<size_t>(argv3[1]);
+    uint64_t fmt_addr = static_cast<uint64_t>(argv3[2]);
+
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 2);
-    // Replace %s with %S for wide string format
+    // Replace %s with %S for wide string format (Python:1911)
     {
         size_t pos = 0;
         while ((pos = fmt_str.find("%s", pos)) != std::string::npos) {
@@ -680,13 +684,27 @@ uint64_t Msvcrt::_snwprintf(void* e, ArgList& a, void* ctx) {
             pos += 2;
         }
     }
+    int fmt_cnt = msvc_va_arg_count(fmt_str);
+
     std::vector<uint64_t> vargs;
-    for (size_t n = 3; n < a.size(); ++n) vargs.push_back(a[n]);
+    if (fmt_cnt > 0) {
+        auto variadic = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3 + fmt_cnt);
+        for (int n = 3; n < 3 + fmt_cnt && n < static_cast<int>(variadic.size()); ++n)
+            vargs.push_back(static_cast<uint64_t>(variadic[n]));
+    }
+
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
     if (cnt > 0 && result.size() >= cnt) {
         result = result.substr(0, cnt - 1);
     }
     be(e)->write_mem_string(result, buf, 2);
+
+    // Output params (Python:1923-1924: argv = [buf, cnt, fmt] + argv; argv[2] = fmt_str)
+    a.resize(std::max<size_t>(a.size(), 3));
+    a[0] = buf;
+    a[1] = cnt;
+    a[2] = fmt_str;
+
     return static_cast<uint64_t>(result.size());
 }
 
@@ -1273,16 +1291,71 @@ uint64_t Msvcrt::__wgetmainargs(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::__p___wargv(void* e, ArgList& a, void* ctx) {
-    (void)a;
+    (void)ctx;
+    // Python: __p___wargv allocates wide-char argv array, returns pointer to it.
     int ptr_sz = msvc_ptr_size(e);
-    uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 4), 0, 4, "api.argv");
-    return mem;
+    auto _argv = we32(e)->get_argv();
+
+    // Encode each arg as zero-padded UTF-16LE (Python: (a+"\x00\x00\x00\x00").encode("utf-16le"))
+    std::vector<std::vector<uint8_t>> argv_encoded;
+    for (auto& arg : _argv) {
+        std::string padded_arg = arg + std::string("\x00\x00\x00\x00", 4);
+        // Convert to UTF-16LE
+        std::vector<uint8_t> utf16;
+        utf16.reserve(padded_arg.size() * 2);
+        for (size_t i = 0; i < padded_arg.size(); ) {
+            unsigned char c = static_cast<unsigned char>(padded_arg[i]);
+            if (c < 0x80) {
+                utf16.push_back(c); utf16.push_back(0);
+                i++;
+            } else if (c < 0xC0) { i++; }
+            else if (c < 0xE0 && i + 1 < padded_arg.size()) {
+                uint32_t cp = ((padded_arg[i] & 0x1F) << 6) | (padded_arg[i+1] & 0x3F);
+                utf16.push_back(cp & 0xFF); utf16.push_back((cp >> 8) & 0xFF);
+                i += 2;
+            } else if (i + 2 < padded_arg.size()) {
+                uint32_t cp = ((padded_arg[i] & 0x0F) << 12) | ((padded_arg[i+1] & 0x3F) << 6) | (padded_arg[i+2] & 0x3F);
+                utf16.push_back(cp & 0xFF); utf16.push_back((cp >> 8) & 0xFF);
+                i += 3;
+            } else { i++; }
+        }
+        argv_encoded.push_back(utf16);
+    }
+
+    size_t array_size = static_cast<size_t>(ptr_sz) * (argv_encoded.size() + 2);
+    size_t total = array_size;
+    for (auto& enc : argv_encoded) total += enc.size();
+
+    uint64_t arg_mem = we(e)->mem_map(total, 0, 4, "api.argv");
+    uint64_t pptr = arg_mem + static_cast<uint64_t>(ptr_sz);
+    std::vector<uint8_t> pptr_buf(static_cast<size_t>(ptr_sz), 0);
+    write_le(pptr_buf, 0, pptr, static_cast<size_t>(ptr_sz));
+    we(e)->mem_write(arg_mem, pptr_buf);  // [arg_mem] = &array[0]
+
+    uint64_t sptr = pptr + static_cast<uint64_t>(array_size);
+    for (auto& enc : argv_encoded) {
+        std::vector<uint8_t> ptr_buf(static_cast<size_t>(ptr_sz), 0);
+        write_le(ptr_buf, 0, sptr, static_cast<size_t>(ptr_sz));
+        we(e)->mem_write(pptr, ptr_buf);
+        pptr += static_cast<uint64_t>(ptr_sz);
+        we(e)->mem_write(sptr, enc);
+        sptr += static_cast<uint64_t>(enc.size());
+    }
+    // NULL terminator for pointer array
+    std::vector<uint8_t> null_term(static_cast<size_t>(ptr_sz), 0);
+    we(e)->mem_write(pptr, null_term);
+
+    a.clear();
+    for (auto& arg : _argv) {
+        a.push_back(arg);
+    }
+    return arg_mem;
 }
 
 uint64_t Msvcrt::__p___argv(void* e, ArgList& a, void* ctx) {
     // Python msvcrt.py:320-348  matches layout exactly.
     // Layout: [arg_mem] -> ptr to str-ptr-array -> [str_ptr, NULL, str_data...]
-    (void)a;
+    (void)ctx;
     int ptr_sz = msvc_ptr_size(e);
     // get_argv() is on Win32Emulator (not WindowsEmulator)
     std::vector<std::string> _argv = we32(e)->get_argv();
@@ -1316,6 +1389,11 @@ uint64_t Msvcrt::__p___argv(void* e, ArgList& a, void* ctx) {
     // NULL terminator for pointer array
     std::vector<uint8_t> null_term(static_cast<size_t>(ptr_sz), 0);
     we(e)->mem_write(pptr, null_term);
+
+    a.clear();
+    for (auto& arg : _argv) {
+        a.push_back(arg);
+    }
 
     return arg_mem;
 }

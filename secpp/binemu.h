@@ -51,7 +51,7 @@ using ModuleLevel = std::pair<std::map<std::string, ApiLevel>, bool>;
 
 // Generic emulator class for binary code
 class BinaryEmulator : public MemoryManager {
-private:
+protected:
     uint64_t inst_count_;
     uint64_t curr_instr_size_;
     csh disasm_eng_;
@@ -82,7 +82,7 @@ protected:
     const speakeasy::SpeakeasyConfig& config_;
     std::map<std::string, std::string> env_;
     std::map<std::string, std::string> user_config_;
-private:
+
     std::string domain_;
     std::string hostname_;
     std::vector<std::string> symlinks_;
