@@ -400,13 +400,18 @@ RuntimeModule::RuntimeModule(std::shared_ptr<speakeasy::LoadedImage> image) : _i
     exports_ = image->exports;
     tls_callbacks_ = image->tls_callbacks;
     metadata_ = image->metadata;
+    module_type = image->module_type;
     stack_commit = 0x1000;  // default
 
-    // Derive module_type from PE characteristics
-    if (image->is_decoy) module_type = "decoy";
-    else if (image->is_driver) module_type = "driver";
-    else if (image->is_dll) module_type = "dll";
-    else module_type = "exe";
+    //// Derive module_type from PE characteristics
+    //if (image->is_decoy) 
+    //    module_type = "decoy";
+    //else if (image->is_driver) 
+    //    module_type = "driver";
+    //else if (image->is_dll) 
+    //    module_type = "dll";
+    //else 
+    //    module_type = "exe";
 }
 
 bool RuntimeModule::is_exe() const { return module_type == "exe"; }

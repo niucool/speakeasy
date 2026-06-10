@@ -75,8 +75,8 @@ static void init_logging(plog::Severity severity) {
 
 Speakeasy::Speakeasy(const speakeasy::SpeakeasyConfig& cfg, 
                      const std::vector<std::string>& argv, bool debug, void* exit_event)
-    : config(cfg), emu(nullptr), argv(argv), exit_event(exit_event), 
-      debug(debug) {
+    : config(cfg), emu(nullptr), argv_(argv), exit_event_(exit_event), 
+      debug_(debug) {
     init_logging(debug ? plog::debug : plog::info);
     plog::get()->setMaxSeverity(debug ? plog::debug : plog::info);
     try {
@@ -216,14 +216,14 @@ void Speakeasy::_init_emulator(const std::string& path, const std::vector<uint8_
 
         if (is_driver) {
             //  Kernel-mode emulator (Python: WinKernelEmulator) 
-            emu = new speakeasy::WinKernelEmulator(config, argv, debug, exit_event);
+            emu = new speakeasy::WinKernelEmulator(config, argv_, debug_, exit_event_);
         } else {
             //  User-mode emulator (Python: Win32Emulator) 
-            emu = new Win32Emulator(config, argv, debug, exit_event);
+            emu = new Win32Emulator(config, argv_, debug_, exit_event_);
         }
     } else {
         //  Raw/Shellcode mode (Python: Win32Emulator) 
-        emu = new Win32Emulator(config, argv, debug, exit_event);
+        emu = new Win32Emulator(config, argv_, debug_, exit_event_);
     }
 }
 
@@ -293,7 +293,7 @@ std::shared_ptr<speakeasy::RuntimeModule> Speakeasy::load_module(const std::stri
         throw SpeakeasyError("No emulation target supplied");
     if (!path.empty() && !std::ifstream(path).good())
         throw SpeakeasyError("Target file not found: " + path);
-    loaded_bins.push_back(path);
+    loaded_bins_.push_back(path);
     std::vector<uint8_t> test;
     if (!data.empty()) {
         test = data;
@@ -326,7 +326,7 @@ void Speakeasy::run_module(std::shared_ptr<speakeasy::RuntimeModule> module, boo
 uint64_t Speakeasy::load_shellcode(const std::string& fpath, const std::string& arch, 
                                   const std::vector<uint8_t>& data) {
     _init_emulator("", {}, true);
-    loaded_bins.push_back(fpath);
+    loaded_bins_.push_back(fpath);
     return emu->load_shellcode(fpath, arch, data);
 }
 

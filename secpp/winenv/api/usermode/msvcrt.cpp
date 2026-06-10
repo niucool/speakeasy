@@ -735,7 +735,7 @@ uint64_t Msvcrt::__stdio_common_vfprintf(void* e, ArgList& a, void* ctx) {
     // Options vary by arch; try to extract format and va_list
     //if (a.size() < 5) return 0;
 
-    uint64_t fmt_addr, va_list;
+    uint64_t opts, stream, fmt_addr, va_list;
     ArgList argv;
 
     /*
@@ -747,20 +747,29 @@ uint64_t Msvcrt::__stdio_common_vfprintf(void* e, ArgList& a, void* ctx) {
     */
     int arch = be(e)->get_arch();
     if (arch == speakeasy::arch::ARCH_AMD64) {
-        argv = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 6);
-        fmt_addr = argv[4];
-        va_list = argv[5];
+        argv = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 5);
+        opts = argv[0];
+        stream = argv[1];
+        fmt_addr = argv[2];
+        va_list = argv[4];
     }
     else {
-        argv = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 5);
+        argv = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 6);
+        opts = argv[0];
+        stream = argv[1];
         fmt_addr = argv[3];
-        va_list = argv[4];
+        va_list = argv[5];
     }
 
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 1);
     int fmt_cnt = msvc_va_arg_count(fmt_str);
     std::vector<uint64_t> vargs = msvc_read_va_args(e, va_list, fmt_cnt);
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
+
+    a.clear();
+    a.push_back(opts);
+    a.push_back(stream);
+    a.push_back(result);
 
     return static_cast<uint64_t>(result.size());
 }
@@ -1312,10 +1321,15 @@ uint64_t Msvcrt::__p___argv(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::__p___argc(void* e, ArgList& a, void* ctx) {
-    (void)a;
+    (void)a; (void)ctx;
+    // Python: __p___argc calls emu.get_argv() -> len(_argv).to_bytes(4, "little")
+    auto* w32 = static_cast<Win32Emulator*>(we(e));
+    auto argv = w32->get_argv();
+    uint32_t argc = static_cast<uint32_t>(argv.size());
+
     uint64_t mem = we(e)->mem_map(4, 0, 4, "api.argc");
     std::vector<uint8_t> buf(4, 0);
-    write_le(buf, 0, 1, 4); // argc = 1
+    write_le(buf, 0, argc, 4);
     we(e)->mem_write(mem, buf);
     return mem;
 }

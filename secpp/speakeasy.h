@@ -43,10 +43,10 @@ private:
     std::vector<std::tuple<MapMemCallback, uint64_t, uint64_t>> mem_map_hooks;
     std::vector<std::tuple<InsnCallback, uint64_t, uint64_t, void*>> instruction_hooks;
 
-    std::vector<std::string> loaded_bins;
-    std::vector<std::string> argv;
-    void* exit_event;
-    bool debug;
+    std::vector<std::string> loaded_bins_;
+    std::vector<std::string> argv_;
+    void* exit_event_;
+    bool debug_;
 
     /**
      * Init the emulator config

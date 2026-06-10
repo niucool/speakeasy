@@ -35,9 +35,9 @@ std::vector<std::string> Win32Emulator::get_argv() {
     
     if (!this->argv_.empty()) {
         for (auto m : modules) {
-            auto img = m->image();
-            if (!img->emu_path.empty()) argv0 = img->emu_path;
-            else argv0 = img->name;
+            if (m->is_exe()) {
+                argv0 = m->emu_path.empty() ? m->name : m->emu_path;
+            }
         }
         out.push_back(argv0);
         out.insert(out.end(), this->argv_.begin(), this->argv_.end());

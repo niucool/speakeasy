@@ -1890,6 +1890,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_module_by_name(c
     if (img) {
         img->name = name;
         img->emu_path = ep;
+        img->module_type = "dll";
         return load_image(img);
     }
 
