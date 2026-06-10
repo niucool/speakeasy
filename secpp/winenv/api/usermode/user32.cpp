@@ -263,7 +263,9 @@ uint64_t User32::GetAsyncKeyState(void* e, ArgList& a, void* ctx) {
 uint64_t User32::GetKeyboardType(void* e, ArgList& a, void* ctx) {
     if (a.size()<1) return 0;
     uint64_t typ = a[0];
-    if (typ==0) return 4; if (typ==1) return 0; if (typ==2) return 12;
+    if (typ==0) return 4;
+    if (typ==1) return 0;
+    if (typ==2) return 12;
     (void)e; return 0;
 }
 

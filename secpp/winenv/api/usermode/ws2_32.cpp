@@ -161,7 +161,7 @@ uint64_t Ws2_32::listen(void* e, ArgList& a, void* ctx) {
 // SOCKET accept(SOCKET s, sockaddr* addr, int* addrlen);
 uint64_t Ws2_32::accept(void* e, ArgList& a, void* ctx) {
     if (a.size() < 1) return -1;
-    uint64_t addr = a.size() > 1 ? a[1] : 0;
+    uint64_t addr = a.size() > 1 ? static_cast<uint64_t>(a[1]) : uint64_t(0);
 
     // Write a fake sockaddr_in if addr is provided
     if (addr) {

@@ -134,7 +134,7 @@ Msvcrt::Msvcrt(void* emu) : ApiHandler(emu) {
 // 
 
 uint64_t Msvcrt::malloc(void* e, ArgList& a, void* ctx) {
-    size_t sz = static_cast<size_t>(a.empty() ? 0 : a[0]);
+    size_t sz = static_cast<size_t>(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     if (sz == 0) sz = 1;
     return we(e)->mem_map(sz, 0, 4, "msvcrt.malloc");
 }
@@ -152,7 +152,7 @@ uint64_t Msvcrt::calloc(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::free(void* e, ArgList& a, void* ctx) {
-    uint64_t ptr = a.empty() ? 0 : a[0];
+    uint64_t ptr = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (ptr) {
         try { we(e)->mem_free(ptr); } catch (...) {}
     }
@@ -205,7 +205,7 @@ uint64_t Msvcrt::memcmp(void* e, ArgList& a, void* ctx) {
 // 
 
 uint64_t Msvcrt::strlen(void* e, ArgList& a, void* ctx) {
-    uint64_t s = a.empty() ? 0 : a[0];
+    uint64_t s = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!s) return 0;
     std::string str = be(e)->read_mem_string(s, 1);
     return static_cast<uint64_t>(str.size());
@@ -327,7 +327,7 @@ uint64_t Msvcrt::strrchr(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::_strlwr(void* e, ArgList& a, void* ctx) {
-    uint64_t str = a.empty() ? 0 : a[0];
+    uint64_t str = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!str) return 0;
     std::string s = speakeasy::to_lower(be(e)->read_mem_string(str, 1));
     be(e)->write_mem_string(s, str, 1);
@@ -335,7 +335,7 @@ uint64_t Msvcrt::_strlwr(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::atoi(void* e, ArgList& a, void* ctx) {
-    uint64_t str = a.empty() ? 0 : a[0];
+    uint64_t str = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!str) return 0;
     std::string s = be(e)->read_mem_string(str, 1);
     // Trim whitespace
@@ -404,7 +404,7 @@ uint64_t Msvcrt::wcstombs(void* e, ArgList& a, void* ctx) {
 // 
 
 uint64_t Msvcrt::wcslen(void* e, ArgList& a, void* ctx) {
-    uint64_t s = a.empty() ? 0 : a[0];
+    uint64_t s = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!s) return 0;
     std::string ws = be(e)->read_mem_string(s, 2);
     return static_cast<uint64_t>(ws.size());
@@ -472,7 +472,7 @@ uint64_t Msvcrt::wcsstr(void* e, ArgList& a, void* ctx) {
 uint64_t Msvcrt::strncat_s(void* e, ArgList& a, void* ctx) {
     uint64_t dest = a.size() > 0 ? static_cast<uint64_t>(a[0]) : uint64_t(0);
     size_t   num  = static_cast<size_t>(a.size() > 1 ? static_cast<uint64_t>(a[1]) : uint64_t(0));
-    uint64_t src  = a.size() > 2 ? static_cast<uint64_t>(a[2]) : 0;
+    uint64_t src  = a.size() > 2 ? static_cast<uint64_t>(a[2]) : uint64_t(0);
     size_t   cnt  = static_cast<size_t>(a.size() > 3 ? static_cast<uint64_t>(a[3]) : uint64_t(0));
     if (!dest || !src) return 22; // EINVAL
     std::string s1 = be(e)->read_mem_string(dest, 1);
@@ -799,7 +799,7 @@ uint64_t Msvcrt::sscanf(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::puts(void* e, ArgList& a, void* ctx) {
-    uint64_t s = a.empty() ? 0 : a[0];
+    uint64_t s = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!s) return 0;
     std::string str = be(e)->read_mem_string(s, 1);
     return static_cast<uint64_t>(str.size());
@@ -860,7 +860,7 @@ uint64_t Msvcrt::_wfopen(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::fclose(void* e, ArgList& a, void* ctx) {
-    uint64_t stream = a.empty() ? 0 : a[0];
+    uint64_t stream = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!stream) return -1;
     msvc_file_streams.erase(stream);
     try { we(e)->mem_free(stream); } catch (...) {}
@@ -879,7 +879,7 @@ uint64_t Msvcrt::fseek(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::ftell(void* e, ArgList& a, void* ctx) {
-    uint64_t stream = a.empty() ? 0 : a[0];
+    uint64_t stream = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     auto it = msvc_file_streams.find(stream);
     if (it == msvc_file_streams.end()) return -1;
     return 0; // Return 0 as default position
@@ -889,7 +889,7 @@ uint64_t Msvcrt::fread(void* e, ArgList& a, void* ctx) {
     uint64_t ptr    = a.size() > 0 ? static_cast<uint64_t>(a[0]) : uint64_t(0);
     size_t   size   = static_cast<size_t>(a.size() > 1 ? static_cast<uint64_t>(a[1]) : uint64_t(0));
     size_t   count  = static_cast<size_t>(a.size() > 2 ? static_cast<uint64_t>(a[2]) : uint64_t(0));
-    uint64_t stream = a.size() > 3 ? static_cast<uint64_t>(a[3]) : 0;
+    uint64_t stream = a.size() > 3 ? static_cast<uint64_t>(a[3]) : uint64_t(0);
     if (!ptr || size == 0 || count == 0) return 0;
     auto it = msvc_file_streams.find(stream);
     if (it == msvc_file_streams.end()) return 0;
@@ -906,7 +906,7 @@ uint64_t Msvcrt::fputc(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::__acrt_iob_func(void* e, ArgList& a, void* ctx) {
-    uint64_t fd = a.empty() ? 0 : a[0];
+    uint64_t fd = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     (void)e;
     return fd;
 }
@@ -945,25 +945,25 @@ uint64_t Msvcrt::pow(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::floor(void* e, ArgList& a, void* ctx) {
-    double x = u64_to_double(a.empty() ? 0 : a[0]);
+    double x = u64_to_double(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     double z = std::floor(x);
     return double_to_u64(z);
 }
 
 uint64_t Msvcrt::sin(void* e, ArgList& a, void* ctx) {
-    double x = u64_to_double(a.empty() ? 0 : a[0]);
+    double x = u64_to_double(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     double z = std::sin(x);
     return double_to_u64(z);
 }
 
 uint64_t Msvcrt::abs(void* e, ArgList& a, void* ctx) {
-    int64_t x = static_cast<int64_t>(a.empty() ? 0 : a[0]);
+    int64_t x = static_cast<int64_t>(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     int64_t y = (x < 0) ? -x : x;
     return static_cast<uint64_t>(y);
 }
 
 uint64_t Msvcrt::_ftol(void* e, ArgList& a, void* ctx) {
-    uint64_t f = a.empty() ? 0 : a[0];
+    uint64_t f = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     (void)e;
     return f; // truncation done by caller
 }
@@ -975,7 +975,7 @@ uint64_t Msvcrt::_ftol(void* e, ArgList& a, void* ctx) {
 static uint64_t msvc_tick_counter = 86400000; // 1 day in ms
 
 uint64_t Msvcrt::time(void* e, ArgList& a, void* ctx) {
-    uint64_t destTime = a.empty() ? 0 : a[0];
+    uint64_t destTime = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     uint64_t out_time = 1576292568; // TIME_BASE
     if (destTime) {
         std::vector<uint8_t> buf(4, 0);
@@ -992,7 +992,7 @@ uint64_t Msvcrt::clock(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::_strtime(void* e, ArgList& a, void* ctx) {
-    uint64_t buffer = a.empty() ? 0 : a[0];
+    uint64_t buffer = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!buffer) return 0;
     std::string t = "12:34:56";
     be(e)->write_mem_string(t, buffer, 1);
@@ -1000,7 +1000,7 @@ uint64_t Msvcrt::_strtime(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::_strdate(void* e, ArgList& a, void* ctx) {
-    uint64_t buffer = a.empty() ? 0 : a[0];
+    uint64_t buffer = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!buffer) return 0;
     std::string d = "12/29/19";
     be(e)->write_mem_string(d, buffer, 1);
@@ -1012,7 +1012,7 @@ uint64_t Msvcrt::_strdate(void* e, ArgList& a, void* ctx) {
 // 
 
 uint64_t Msvcrt::srand(void* e, ArgList& a, void* ctx) {
-    msvc_rand_state = static_cast<int>(a.empty() ? 0 : a[0]);
+    msvc_rand_state = static_cast<int>(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     (void)e;
     return 0;
 }
@@ -1178,7 +1178,7 @@ uint64_t Msvcrt::__p__acmdln(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::_onexit(void* e, ArgList& a, void* ctx) {
-    uint64_t func = a.empty() ? 0 : a[0];
+    uint64_t func = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     (void)e;
     return func;
 }
@@ -1233,7 +1233,7 @@ uint64_t Msvcrt::__getmainargs(void* e, ArgList& a, void* ctx) {
     // _Argc, _Argv, _Env, _DoWildCard, _StartInfo
     uint64_t _Argc = a.size() > 0 ? static_cast<uint64_t>(a[0]) : uint64_t(0);
     uint64_t _Argv = a.size() > 1 ? static_cast<uint64_t>(a[1]) : uint64_t(0);
-    uint64_t _Env  = a.size() > 2 ? static_cast<uint64_t>(a[2]) : 0;
+    uint64_t _Env  = a.size() > 2 ? static_cast<uint64_t>(a[2]) : uint64_t(0);
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
 
@@ -1508,7 +1508,7 @@ uint64_t Msvcrt::_register_onexit_function(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Msvcrt::__dllonexit(void* e, ArgList& a, void* ctx) {
-    uint64_t func = a.empty() ? 0 : a[0];
+    uint64_t func = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     (void)e;
     return func;
 }
@@ -1539,9 +1539,9 @@ uint64_t Msvcrt::_configure_narrow_argv(void* e, ArgList& a, void* ctx) {
 
 uint64_t Msvcrt::_beginthreadex(void* e, ArgList& a, void* ctx) {
     // security, stack_size, start_address, arglist, initflag, thrdaddr
-    uint64_t start_address = a.size() > 2 ? static_cast<uint64_t>(a[2]) : 0;
-    uint64_t arglist       = a.size() > 3 ? static_cast<uint64_t>(a[3]) : 0;
-    uint64_t thrdaddr      = a.size() > 5 ? static_cast<uint64_t>(a[5]) : 0;
+    uint64_t start_address = a.size() > 2 ? static_cast<uint64_t>(a[2]) : uint64_t(0);
+    uint64_t arglist       = a.size() > 3 ? static_cast<uint64_t>(a[3]) : uint64_t(0);
+    uint64_t thrdaddr      = a.size() > 5 ? static_cast<uint64_t>(a[5]) : uint64_t(0);
     auto proc = we(e)->get_current_process();
     auto thread = we(e)->create_thread(start_address, reinterpret_cast<void*>(arglist), proc);
     if (thrdaddr && thread) {
@@ -1556,7 +1556,7 @@ uint64_t Msvcrt::_beginthreadex(void* e, ArgList& a, void* ctx) {
 uint64_t Msvcrt::_beginthread(void* e, ArgList& a, void* ctx) {
     // start_address, stack_size, arglist
     uint64_t start_address = a.size() > 0 ? static_cast<uint64_t>(a[0]) : uint64_t(0);
-    uint64_t arglist       = a.size() > 2 ? static_cast<uint64_t>(a[2]) : 0;
+    uint64_t arglist       = a.size() > 2 ? static_cast<uint64_t>(a[2]) : uint64_t(0);
     auto proc = we(e)->get_current_process();
     auto thread = we(e)->create_thread(start_address, reinterpret_cast<void*>(arglist), proc);
     return reinterpret_cast<uint64_t>(thread.get());
@@ -1567,29 +1567,29 @@ uint64_t Msvcrt::_beginthread(void* e, ArgList& a, void* ctx) {
 // 
 
 uint64_t Msvcrt::system(void* e, ArgList& a, void* ctx) {
-    uint64_t s = a.empty() ? 0 : a[0];
+    uint64_t s = a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]);
     if (!s) return 0;
     std::string cmd = be(e)->read_mem_string(s, 1);
     return static_cast<uint64_t>(cmd.size());
 }
 
 uint64_t Msvcrt::toupper(void* e, ArgList& a, void* ctx) {
-    int c = static_cast<int>(a.empty() ? 0 : a[0]);
+    int c = static_cast<int>(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     (void)e;
     if (c >= 'a' && c <= 'z') return static_cast<uint64_t>(c - 32);
     return static_cast<uint64_t>(c);
 }
 
 uint64_t Msvcrt::tolower(void* e, ArgList& a, void* ctx) {
-    int c = static_cast<int>(a.empty() ? 0 : a[0]);
+    int c = static_cast<int>(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     (void)e;
     return static_cast<uint64_t>(c | 0x20);
 }
 
 uint64_t Msvcrt::isdigit(void* e, ArgList& a, void* ctx) {
-    int c = static_cast<int>(a.empty() ? 0 : a[0]);
+    int c = static_cast<int>(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     (void)e;
-    return (c >= '0' && c <= '9') ? 1 : 0;
+    return (c >= '0' && c <= '9') ? 1 : uint64_t(0);
 }
 
 uint64_t Msvcrt::_adjust_fdiv(void* e, ArgList& a, void* ctx) {
