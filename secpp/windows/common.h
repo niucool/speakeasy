@@ -157,6 +157,21 @@ struct ExportEntry {
     std::string execution_mode;  // "user" or "kernel"
 };
 
+struct SectionEntry {
+    std::string name;
+    std::uint64_t virtual_address = 0;
+    uint32_t virtual_size = 0;
+    uint32_t raw_size;
+    uint32_t pointer_to_raw_data = 0;
+    uint32_t perms = 0;
+};
+
+struct ImportEntry {
+    uint64_t iat_address = 0;
+    std::string dll_name;
+    std::string func_name;
+};
+
 // Structure to represent a PE section
 struct PeSection {
     std::string name;
@@ -175,22 +190,26 @@ public:
     uint64_t imp_id;
     uint64_t imp_step;
     size_t file_size;
-    uint64_t base;
     std::string hash;
-    std::map<uint64_t, std::tuple<std::string, std::string>> imports;
-    std::vector<ExportEntry> exports;
     std::vector<uint8_t> mapped_image;
     std::vector<uint8_t> raw_pe_data;
-    size_t image_size;
-    std::map<uint64_t, std::tuple<std::string, std::string>> import_table;
     bool is_mapped;
-    std::vector<PeSection> pe_sections;
+
+    //std::map<uint64_t, std::tuple<std::string, std::string>> imports;
+    //std::map<uint64_t, std::tuple<std::string, std::string>> import_table;
+    std::vector<ImportEntry> imports;
+    std::vector<ExportEntry> exports;
+    std::vector<SectionEntry> pe_sections;
+
+    int arch;
     uint64_t ep;
+    uint64_t base;
+    size_t image_size;
     uint64_t stack_commit;
+
     std::string path;
     std::string name;
     std::string emu_path;
-    int arch;
     int ptr_size;
     peparse::parsed_pe* parsed_pe;
 
@@ -206,20 +225,18 @@ public:
     // Methods
     virtual std::vector<uint8_t> get_memory_mapped_image(uint64_t max_virtual_address = 0x10000000, 
                                                          uint64_t base_addr = 0);
+
     peparse::parsed_pe* get_parsed_pe() { return parsed_pe; }
     std::vector<uint64_t> get_tls_callbacks();
     uint32_t get_resource_dir_rva();
     virtual std::string get_emu_path();
     void set_emu_path(const std::string& path);
     std::string _hash_pe(const std::string& pe_path = "", const std::vector<uint8_t>& data = {});
-    std::map<uint64_t, std::tuple<std::string, std::string>> _get_pe_imports();
-    std::vector<ExportEntry> get_exports();
-    std::vector<ExportEntry> _get_pe_exports();
-    std::vector<PeSection> _get_pe_sections();
-    std::vector<PeSection> get_sections();
+    void get_imports();
+    void get_exports();
+    void get_sections();
     PeSection* get_section_by_name(const std::string& sec_name);
-    int _get_architecture();
-    void _patch_imports();
+
     uint64_t get_export_by_name(const std::string& exp_name);
     std::vector<uint8_t> get_raw_data();
     int find_bytes(const std::vector<uint8_t>& pattern, int offset = 0);
@@ -232,9 +249,16 @@ public:
     bool is_dll();
     bool is_driver();
     bool is_dotnet();
+
     bool has_reloc_table();
     void relocate_image(uint64_t new_base);
     void rebase(uint64_t to);
+
+private:
+    std::vector<ExportEntry> _get_pe_exports();
+    std::vector<PeSection> _get_pe_sections();
+    int _get_architecture();
+    void _patch_imports();
 };
 
 // Class that represents "decoy" modules that are loaded into emulated memory

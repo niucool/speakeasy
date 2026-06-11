@@ -179,18 +179,34 @@ void PeLoader::parse_pe() {
     ctx.machine = metadata_.machine;
     metadata_.magic = pe->peHeader.nt.OptionalMagic;
     ctx.magic = metadata_.magic;
-    metadata_.subsystem = pe->peHeader.nt.OptionalHeader.Subsystem;
-    ctx.subsystem = metadata_.subsystem;
     metadata_.timestamp = pe->peHeader.nt.FileHeader.TimeDateStamp;
     ctx.timestamp = metadata_.timestamp;
-
     // Architecture
     ctx.arch = (metadata_.machine == 0x8664) ? 64 : 32;  // IMAGE_FILE_MACHINE_AMD64
 
-    // Image base and size
-    ctx.image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
-    ctx.image_size = pe->peHeader.nt.OptionalHeader.SizeOfImage;
-    ctx.section_align = pe->peHeader.nt.OptionalHeader.SectionAlignment;
+    peparse::data_directory tls_dir;
+    if(ctx.arch == 64) {
+        metadata_.subsystem = pe->peHeader.nt.OptionalHeader64.Subsystem;
+        ctx.subsystem = metadata_.subsystem;
+
+        // Image base and size
+        ctx.image_base = pe->peHeader.nt.OptionalHeader64.ImageBase;
+        ctx.image_size = pe->peHeader.nt.OptionalHeader64.SizeOfImage;
+        ctx.section_align = pe->peHeader.nt.OptionalHeader64.SectionAlignment;
+
+        tls_dir = pe->peHeader.nt.OptionalHeader64.DataDirectory[9];
+    }
+    else {
+        metadata_.subsystem = pe->peHeader.nt.OptionalHeader.Subsystem;
+        ctx.subsystem = metadata_.subsystem;
+
+        // Image base and size
+        ctx.image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
+        ctx.image_size = pe->peHeader.nt.OptionalHeader.SizeOfImage;
+        ctx.section_align = pe->peHeader.nt.OptionalHeader.SectionAlignment;
+
+        tls_dir = pe->peHeader.nt.OptionalHeader.DataDirectory[9];
+    }
 
     // Entry point
     peparse::VA ep_va;
@@ -215,7 +231,6 @@ void PeLoader::parse_pe() {
     metadata_.resources = ctx.resources;
 
     // TLS callbacks  parse TLS directory
-    auto tls_dir = pe->peHeader.nt.OptionalHeader.DataDirectory[9];
     if (tls_dir.VirtualAddress != 0) {
         uint64_t callbacks_rva = 0;
         int ptr_size = (ctx.arch == 64) ? 8 : 4;

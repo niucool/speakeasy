@@ -94,14 +94,18 @@ struct PeImportCtx {
 static int pefile_imp_cb(void* cbd, const peparse::VA& iat_addr,
                          const std::string& mod_name,
                          const std::string& sym_name) {
-    auto* ctx = static_cast<PeImportCtx*>(cbd);
-    std::string dll = mod_name;
-    auto dot = dll.rfind('.');
+    auto* ctx = static_cast<std::vector<ImportEntry> *>(cbd);
+    ImportEntry entry;
+    entry.iat_address = iat_addr;
+    entry.dll_name = mod_name;
+    // Strip file extension at the last dot
+    auto dot = entry.dll_name.rfind('.');
     if (dot != std::string::npos) {
-        dll = dll.substr(0, dot);
+        entry.dll_name = entry.dll_name.substr(0, dot);
     }
-    std::string func = sym_name.empty() ? ("ordinal_unknown") : sym_name;
-    ctx->imports[iat_addr] = {dll, func};
+    entry.func_name = sym_name.empty() ? "unknown" : sym_name;
+    ctx->push_back(entry);
+
     return 0;
 }
 
@@ -150,16 +154,16 @@ static int pefile_sec_cb(void* cbd, const peparse::VA& sec_base,
                          const peparse::image_section_header& sec,
                          const peparse::bounded_buffer* sec_data) {
     (void)sec_name;
-    auto* ctx = static_cast<PeSectionCtx*>(cbd);
-    PeSection s;
+    auto* ctx = static_cast<std::vector<SectionEntry> *>(cbd);
+    SectionEntry s;
     s.name = std::string((const char*)sec.Name, 8);
     auto nul = s.name.find('\0');
     if (nul != std::string::npos) s.name.erase(nul);
-    s.virtual_address = static_cast<uint32_t>(sec_base - ctx->image_base);
+    s.virtual_address = sec_base;
     s.virtual_size = sec.Misc.VirtualSize;
     s.raw_size = sec.SizeOfRawData;
     s.pointer_to_raw_data = sec.PointerToRawData;
-    ctx->sections.push_back(s);
+    ctx->push_back(s);
     (void)sec_data;
     return 0;
 }
@@ -205,32 +209,38 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
         // Header fields
         if (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) {
             base = parsed_pe->peHeader.nt.OptionalHeader64.ImageBase;
+            ep = parsed_pe->peHeader.nt.OptionalHeader64.AddressOfEntryPoint;
+            image_size = parsed_pe->peHeader.nt.OptionalHeader64.SizeOfImage;
+            stack_commit = parsed_pe->peHeader.nt.OptionalHeader64.SizeOfStackCommit;
         } else {
             base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+            ep = parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
+            image_size = parsed_pe->peHeader.nt.OptionalHeader.SizeOfImage;
+            stack_commit = parsed_pe->peHeader.nt.OptionalHeader.SizeOfStackCommit;
         }
         if (base == 0) { base = DEFAULT_LOAD_ADDR; }
-        ep = parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
-        image_size = parsed_pe->peHeader.nt.OptionalHeader.SizeOfImage;
-        stack_commit = parsed_pe->peHeader.nt.OptionalHeader.SizeOfStackCommit;
         
         // Architecture
         arch = _get_architecture();
         ptr_size = (arch == 32) ? 4 : 8;
         
         // Sections
-        pe_sections = _get_pe_sections();
+        get_sections();
         
         // Imports
-        imports = _get_pe_imports();
+        get_imports();
         
         // Exports
-        exports = _get_pe_exports();
+        get_exports();
         
         // Mapped image
         mapped_image = get_memory_mapped_image(0xF0000000);
         is_mapped = true;
 
-        uint64_t orig_image_base = (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) ? parsed_pe->peHeader.nt.OptionalHeader64.ImageBase : parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
+        uint64_t orig_image_base = 
+            (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) ? 
+            parsed_pe->peHeader.nt.OptionalHeader64.ImageBase : 
+            parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
         if (orig_image_base == 0) {
             relocate_image(DEFAULT_LOAD_ADDR);
         }
@@ -325,37 +335,27 @@ std::string PeFile::_hash_pe(const std::string& pe_path, const std::vector<uint8
     return picosha2::hash256_hex_string(data.begin(), data.end());
 }
 
-std::map<uint64_t, std::tuple<std::string, std::string>> PeFile::_get_pe_imports() {
-    if (!parsed_pe) return {};
-    PeImportCtx ctx;
-    peparse::IterImpVAString(parsed_pe, pefile_imp_cb, &ctx);
-    return ctx.imports;
+void PeFile::get_imports() {
+    imports.clear();
+    peparse::IterImpVAString(parsed_pe, pefile_imp_cb, &imports);
 }
 
-std::vector<ExportEntry> PeFile::get_exports() {
-    if (exports.empty()) exports = _get_pe_exports();
-    return exports;
+void PeFile::get_exports() {
+    exports.clear();
+    peparse::IterExpFull(parsed_pe, pefile_exp_full_cb, &exports);
 }
 
-std::vector<ExportEntry> PeFile::_get_pe_exports() {
-    if (!parsed_pe) return {};
-    PeExportCtx ctx;
-    //peparse::IterExpVA(parsed_pe, pefile_exp_cb, &ctx);
-    peparse::IterExpFull(parsed_pe, pefile_exp_full_cb, &ctx);
-    return ctx.exports;
-}
 
 std::vector<PeSection> PeFile::_get_pe_sections() {
     if (!parsed_pe) return {};
     PeSectionCtx ctx;
     ctx.image_base = (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) ? parsed_pe->peHeader.nt.OptionalHeader64.ImageBase : parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
-    peparse::IterSec(parsed_pe, pefile_sec_cb, &ctx);
     return ctx.sections;
 }
 
-std::vector<PeSection> PeFile::get_sections() {
-    if (pe_sections.empty()) pe_sections = _get_pe_sections();
-    return pe_sections;
+void PeFile::get_sections() {
+    pe_sections.clear();
+    peparse::IterSec(parsed_pe, pefile_sec_cb, &pe_sections);
 }
 
 PeSection* PeFile::get_section_by_name(const std::string& sec_name) {

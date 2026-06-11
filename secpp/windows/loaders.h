@@ -48,18 +48,18 @@ struct MemoryRegion {
     uint32_t perms = 0;
 };
 
-struct SectionEntry {
-    std::string name;
-    uint32_t virtual_address = 0;
-    uint32_t virtual_size = 0;
-    uint32_t perms = 0;
-};
-
-struct ImportEntry {
-    uint64_t iat_address = 0;
-    std::string dll_name;
-    std::string func_name;
-};
+//struct SectionEntry {
+//    std::string name;
+//    uint32_t virtual_address = 0;
+//    uint32_t virtual_size = 0;
+//    uint32_t perms = 0;
+//};
+//
+//struct ImportEntry {
+//    uint64_t iat_address = 0;
+//    std::string dll_name;
+//    std::string func_name;
+//};
 
 // struct ExportEntry {
 //     std::string name;
