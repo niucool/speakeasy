@@ -16,11 +16,11 @@ TEST(PeFileMemoryMappedImageTest, GetMemoryMappedImage) {
     std::vector<uint8_t> empty_data;
     PeFile pe(test_pe_path, empty_data, 0, 0, test_pe_path, false);
 
-    auto mapped = pe.get_memory_mapped_image(0xF0000000);
+    auto& mapped = pe.mapped_image;
     EXPECT_GT(mapped.size(), 0);
     EXPECT_LE(mapped.size(), pe.image_size);
 
-    auto sections = pe.get_sections();
+    auto& sections = pe.sections;
     EXPECT_FALSE(sections.empty());
     for (auto& s : sections) {
         if (s.raw_size > 0 && s.virtual_address > 0) {
@@ -35,7 +35,7 @@ TEST(PeFileMemoryMappedImageTest, GetTlsCallbacksAndReloc) {
     std::vector<uint8_t> empty_data;
     PeFile pe(test_pe_path, empty_data, 0, 0, test_pe_path, false);
 
-    auto callbacks = pe.get_tls_callbacks();
+    auto& callbacks = pe.tls_callbacks;
     bool has_relocs = pe.has_reloc_table();
     // antidbg.exe usually has a relocation table (standard build)
     EXPECT_TRUE(has_relocs);

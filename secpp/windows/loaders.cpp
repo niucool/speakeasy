@@ -18,106 +18,6 @@ constexpr uint32_t IMAGE_SCN_MEM_EXECUTE = 0x20000000;
 
 //  Callback context for pe-parse iterations 
 
-struct ParseCtx {
-    std::vector<SectionEntry> sections;
-    std::vector<ImportEntry> imports;
-    std::vector<ExportEntry> exports;
-    std::vector<uint64_t> tls_callbacks;
-    std::vector<ResourceEntry> resources;
-    uint64_t ep = 0;
-    uint32_t machine = 0;
-    uint32_t magic = 0;
-    uint32_t subsystem = 0;
-    uint32_t timestamp = 0;
-    uint64_t image_base = 0;
-    uint32_t image_size = 0;
-    uint32_t section_align = 0;
-    int arch = 32;
-};
-
-//  Section callback 
-
-static int sec_cb(void* cbd,
-                  const peparse::VA& sec_base,
-                  const std::string& sec_name,
-                  const peparse::image_section_header& sec,
-                  const peparse::bounded_buffer* sec_data) {
-    auto* ctx = static_cast<ParseCtx*>(cbd);
-    (void)sec_base;
-
-    SectionEntry entry;
-    entry.name = sec_name;
-    // Trim trailing nulls/spaces
-    auto end = entry.name.find_last_not_of(" \t\0");
-    if (end != std::string::npos) entry.name.erase(end + 1);
-    entry.virtual_address = sec.VirtualAddress;
-    entry.virtual_size = sec.Misc.VirtualSize;
-    entry.perms = perms_from_section_chars(sec.Characteristics);
-
-    if (sec_data) {
-        // Section data available via bounded_buffer
-        // We don't store it here  it'll be assembled in make_image
-    }
-    ctx->sections.push_back(entry);
-    return 0;  // continue iteration
-}
-
-//  Import callback 
-
-static int imp_cb(void* cbd,
-                  const peparse::VA& iat_addr,
-                  const std::string& mod_name,
-                  const std::string& sym_name) {
-    auto* ctx = static_cast<ParseCtx*>(cbd);
-
-    ImportEntry entry;
-    entry.iat_address = iat_addr;
-    entry.dll_name = mod_name;
-    // Strip file extension at the last dot
-    auto dot = entry.dll_name.rfind('.');
-    if (dot != std::string::npos) {
-        entry.dll_name = entry.dll_name.substr(0, dot);
-    }
-    entry.func_name = sym_name.empty() ? "unknown" : sym_name;
-    ctx->imports.push_back(entry);
-    return 0;
-}
-
-//  Export callback 
-
-static int exp_cb(void* cbd,
-                  const peparse::VA& addr,
-                  std::uint16_t ordinal,
-                  const std::string& name,
-                  const std::string& /*forward*/,
-                  const std::string& mod_name) {
-    auto* ctx = static_cast<ParseCtx*>(cbd);
-
-    ExportEntry entry;
-    entry.name = name;
-    entry.address = addr;
-    entry.ordinal = ordinal;
-    entry.execution_mode = ctx->subsystem == 1 ? "kernel" : "user";
-    (void)mod_name;
-    ctx->exports.push_back(entry);
-    return 0;
-}
-
-//  Resource callback 
-
-static int rsrc_cb(void* cbd, const peparse::resource& r) {
-    auto* ctx = static_cast<ParseCtx*>(cbd);
-    ResourceEntry entry;
-    entry.id = static_cast<int>(r.name);
-    entry.type_id = static_cast<int>(r.type);
-    entry.data_rva = r.RVA;
-    entry.size = r.size;
-    entry.lang_id = static_cast<int>(r.lang);
-    entry.entry_rva = r.RVA;
-    ctx->resources.push_back(entry);
-    return 0;
-}
-
 //  Helper: read BYTE at RVA from PE raw data 
 
 /**
@@ -167,111 +67,9 @@ PeLoader::PeLoader(const std::string& path,
 PeLoader::~PeLoader() {
 }
 
-void PeLoader::parse_pe() {
-    ParseCtx ctx;
-
-    peparse::parsed_pe* pe = pefile.get_parsed_pe();
-    if (!pe)
-        return;
-
-    // Read PE header fields
-    metadata_.machine = pe->peHeader.nt.FileHeader.Machine;
-    ctx.machine = metadata_.machine;
-    metadata_.magic = pe->peHeader.nt.OptionalMagic;
-    ctx.magic = metadata_.magic;
-    metadata_.timestamp = pe->peHeader.nt.FileHeader.TimeDateStamp;
-    ctx.timestamp = metadata_.timestamp;
-    // Architecture
-    ctx.arch = (metadata_.machine == 0x8664) ? 64 : 32;  // IMAGE_FILE_MACHINE_AMD64
-
-    peparse::data_directory tls_dir;
-    if(ctx.arch == 64) {
-        metadata_.subsystem = pe->peHeader.nt.OptionalHeader64.Subsystem;
-        ctx.subsystem = metadata_.subsystem;
-
-        // Image base and size
-        ctx.image_base = pe->peHeader.nt.OptionalHeader64.ImageBase;
-        ctx.image_size = pe->peHeader.nt.OptionalHeader64.SizeOfImage;
-        ctx.section_align = pe->peHeader.nt.OptionalHeader64.SectionAlignment;
-
-        tls_dir = pe->peHeader.nt.OptionalHeader64.DataDirectory[9];
-    }
-    else {
-        metadata_.subsystem = pe->peHeader.nt.OptionalHeader.Subsystem;
-        ctx.subsystem = metadata_.subsystem;
-
-        // Image base and size
-        ctx.image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
-        ctx.image_size = pe->peHeader.nt.OptionalHeader.SizeOfImage;
-        ctx.section_align = pe->peHeader.nt.OptionalHeader.SectionAlignment;
-
-        tls_dir = pe->peHeader.nt.OptionalHeader.DataDirectory[9];
-    }
-
-    // Entry point
-    peparse::VA ep_va;
-    if (peparse::GetEntryPoint(pe, ep_va)) {
-        ctx.ep = static_cast<uint64_t>(ep_va);
-    }
-
-    // Iterate sections
-    peparse::IterSec(pe, sec_cb, &ctx);
-    sections_ = ctx.sections;
-
-    // Iterate imports
-    peparse::IterImpVAString(pe, imp_cb, &ctx);
-    imports_ = ctx.imports;
-
-    // Iterate exports (use IterExpFull for full info including ordinal)
-    peparse::IterExpFull(pe, exp_cb, &ctx);
-    exports_ = ctx.exports;
-
-    // Iterate resources
-    peparse::IterRsrc(pe, rsrc_cb, &ctx);
-    metadata_.resources = ctx.resources;
-
-    // TLS callbacks  parse TLS directory
-    if (tls_dir.VirtualAddress != 0) {
-        uint64_t callbacks_rva = 0;
-        int ptr_size = (ctx.arch == 64) ? 8 : 4;
-        tls_directory_rva_ = tls_dir.VirtualAddress;
-
-        // Read TLS directory: StartAddressOfRawData (ptr), EndAddressOfRawData (ptr),
-        // AddressOfIndex (ptr), AddressOfCallBacks (ptr), ...
-        // AddressOfCallBacks is at offset 3*ptr_size within TLS dir
-        auto tls_data = read_bytes_at_va(pe, tls_dir.VirtualAddress,
-                                         4 * ptr_size + ptr_size);
-        if (tls_data.size() >= static_cast<size_t>(4 * ptr_size)) {
-            // AddressOfCallBacks at offset 3*ptr_size
-            for (int j = 3 * ptr_size; j < 4 * ptr_size && j + ptr_size <= (int)tls_data.size(); ++j) {
-                callbacks_rva |= static_cast<uint64_t>(tls_data[j]) << ((j - 3 * ptr_size) * 8);
-            }
-        }
-
-        // Read callback pointers until null
-        if (callbacks_rva != 0) {
-            for (int i = 0; i < 100; ++i) {
-                auto ptr_data = read_bytes_at_va(pe, callbacks_rva + i * ptr_size, ptr_size);
-                if (ptr_data.size() < (size_t)ptr_size) break;
-                uint64_t ptr = 0;
-                for (int j = 0; j < ptr_size; ++j)
-                    ptr |= static_cast<uint64_t>(ptr_data[j]) << (j * 8);
-                if (ptr == 0) break;
-                tls_callbacks_.push_back(ptr);
-            }
-        }
-    }
-
-}
 
 std::shared_ptr<LoadedImage> PeLoader::make_image() {
     auto img = std::make_shared<LoadedImage>();
-
-    auto* pe = pefile.get_parsed_pe();
-    if (!pe)
-        return img;
-
-    parse_pe();
 
     if (base_override_ && (base_override_ != pefile.base)) {
         pefile.rebase(base_override_);
@@ -285,8 +83,8 @@ std::shared_ptr<LoadedImage> PeLoader::make_image() {
 
     //auto mapped_image = pefile.get_memory_mapped_image(0xF0000000);
 
-    uint64_t image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
-    uint64_t image_size = pe->peHeader.nt.OptionalHeader.SizeOfImage;
+    //uint64_t image_base = pe->peHeader.nt.OptionalHeader.ImageBase;
+    //uint64_t image_size = pe->peHeader.nt.OptionalHeader.SizeOfImage;
     //uint32_t section_align = pe->peHeader.nt.OptionalHeader.SectionAlignment;
     //uint32_t file_align = pe->peHeader.nt.OptionalHeader.FileAlignment;
 
@@ -301,29 +99,29 @@ std::shared_ptr<LoadedImage> PeLoader::make_image() {
     //}
 
     // Collect section info from iteration
-    struct SectionRaw {
-        std::string name;
-        uint32_t va;
-        uint32_t vsize;
-        uint32_t raw_ptr;
-        uint32_t raw_size;
-        uint32_t chars;
-    };
-    std::vector<SectionRaw> sec_raws;
+    //struct SectionRaw {
+    //    std::string name;
+    //    uint32_t va;
+    //    uint32_t vsize;
+    //    uint32_t raw_ptr;
+    //    uint32_t raw_size;
+    //    uint32_t chars;
+    //};
+    //std::vector<SectionRaw> sec_raws;
 
     // Lambda for section iteration
-    auto sec_iter = [](void* cbd, const peparse::VA& /*base*/,
-                        const std::string& name,
-                        const peparse::image_section_header& hdr,
-                        const peparse::bounded_buffer* /*data*/) -> int {
-        auto* vec = static_cast<std::vector<SectionRaw>*>(cbd);
-        vec->push_back({name, hdr.VirtualAddress, hdr.Misc.VirtualSize,
-                        hdr.PointerToRawData, hdr.SizeOfRawData,
-                        hdr.Characteristics});
-        return 0;
-    };
+    //auto sec_iter = [](void* cbd, const peparse::VA& /*base*/,
+    //                    const std::string& name,
+    //                    const peparse::image_section_header& hdr,
+    //                    const peparse::bounded_buffer* /*data*/) -> int {
+    //    auto* vec = static_cast<std::vector<SectionRaw>*>(cbd);
+    //    vec->push_back({name, hdr.VirtualAddress, hdr.Misc.VirtualSize,
+    //                    hdr.PointerToRawData, hdr.SizeOfRawData,
+    //                    hdr.Characteristics});
+    //    return 0;
+    //};
 
-    peparse::IterSec(pe, sec_iter, &sec_raws);
+    //peparse::IterSec(pe, sec_iter, &sec_raws);
 
     // Add section data at their virtual addresses
     //for (auto& sec : sec_raws) {
@@ -348,7 +146,7 @@ std::shared_ptr<LoadedImage> PeLoader::make_image() {
     //}
 
     MemoryRegion region;
-    region.base = image_base;
+    region.base = pefile.base;
     region.data = pefile.mapped_image;
     region.name = "pe_image";
     region.perms = 0x16;  // PERM_MEM_RWX
@@ -367,29 +165,29 @@ std::shared_ptr<LoadedImage> PeLoader::make_image() {
     if (dot != std::string::npos) img->name.erase(dot);
 
     img->emu_path = path_;
-    img->image_size = image_size;
-    img->base = image_base;
-    img->ep = pe ? pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint : 0;
-    img->stack_size = pe ? pe->peHeader.nt.OptionalHeader.SizeOfStackReserve : 0x12000;
-    img->arch = (metadata_.machine == 0x8664) ? 64 : 32;
+    img->image_size = pefile.image_size;
+    img->base = pefile.base;
+    img->ep = pefile.ep;
+    img->stack_size = pefile.stack_size;
+    img->arch = pefile.arch;
     img->metadata = metadata_;
-    img->imports = imports_;
-    img->exports = exports_;
-    img->sections = sections_;
-    img->tls_callbacks = tls_callbacks_;
-    img->tls_directory_va = tls_directory_rva_ + image_base;
+    img->imports = pefile.imports;
+    img->exports = pefile.exports;
+    img->sections = pefile.sections;
+    img->tls_callbacks = pefile.tls_callbacks;
+    img->tls_directory_va = pefile.tls_directory_rva + pefile.base;
     img->loader = this;
 
     return img;
 }
 
-uint32_t PeLoader::perms_from_section_chars(uint32_t chars) {
-    uint32_t perms = 0;
-    if (chars & IMAGE_SCN_MEM_READ)    perms |= 0x02;
-    if (chars & IMAGE_SCN_MEM_WRITE)   perms |= 0x04;
-    if (chars & IMAGE_SCN_MEM_EXECUTE) perms |= 0x10;
-    return perms;
-}
+//uint32_t PeLoader::perms_from_section_chars(uint32_t chars) {
+//    uint32_t perms = 0;
+//    if (chars & IMAGE_SCN_MEM_READ)    perms |= 0x02;
+//    if (chars & IMAGE_SCN_MEM_WRITE)   perms |= 0x04;
+//    if (chars & IMAGE_SCN_MEM_EXECUTE) perms |= 0x10;
+//    return perms;
+//}
 
 std::string PeLoader::get_prot_string(uint32_t perms) {
     std::string s;
@@ -630,7 +428,7 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
     }
     
     // Add section entries
-    for (const auto& s : pe->get_sections()) {
+    for (const auto& s : pe->sections) {
         SectionEntry sect;
         sect.name = s.name;
         sect.virtual_address = s.virtual_address;

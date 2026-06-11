@@ -94,7 +94,7 @@ struct PeImportCtx {
 static int pefile_imp_cb(void* cbd, const peparse::VA& iat_addr,
                          const std::string& mod_name,
                          const std::string& sym_name) {
-    auto* ctx = static_cast<std::vector<ImportEntry> *>(cbd);
+    auto* ctx = static_cast<PeFile *>(cbd);
     ImportEntry entry;
     entry.iat_address = iat_addr;
     entry.dll_name = mod_name;
@@ -104,35 +104,19 @@ static int pefile_imp_cb(void* cbd, const peparse::VA& iat_addr,
         entry.dll_name = entry.dll_name.substr(0, dot);
     }
     entry.func_name = sym_name.empty() ? "unknown" : sym_name;
-    ctx->push_back(entry);
+    ctx->imports.push_back(entry);
 
     return 0;
 }
 
 //  Export callback 
-struct PeExportCtx {
-    std::vector<ExportEntry> exports;
-};
-static int pefile_exp_cb(void* cbd, const peparse::VA& addr,
-                         const std::string& name,
-                         const std::string& mod_name) {
-    auto* ctx = static_cast<PeExportCtx*>(cbd);
-    ExportEntry e;
-    e.name = name;
-    e.address = addr;
-    e.forwarder = "";
-    e.ordinal = 0;
-    ctx->exports.push_back(e);
-    (void)mod_name;
-    return 0;
-}
 
 static int pefile_exp_full_cb(void* cbd, const peparse::VA& addr,
     std::uint16_t ordinal,
     const std::string& mod_name,
     const std::string& name,
     const std::string& forward_name) {
-    auto* ctx = static_cast<PeExportCtx*>(cbd);
+    auto* ctx = static_cast<PeFile *>(cbd);
     ExportEntry e;
     e.name = name;
     e.address = addr;
@@ -145,26 +129,39 @@ static int pefile_exp_full_cb(void* cbd, const peparse::VA& addr,
 
 
 //  Section callback 
-struct PeSectionCtx {
-    std::vector<PeSection> sections;
-    uint64_t image_base;
-};
 static int pefile_sec_cb(void* cbd, const peparse::VA& sec_base,
                          const std::string& sec_name,
                          const peparse::image_section_header& sec,
                          const peparse::bounded_buffer* sec_data) {
     (void)sec_name;
-    auto* ctx = static_cast<std::vector<SectionEntry> *>(cbd);
+    (void)sec_data;
+
+    auto* ctx = static_cast<PeFile *>(cbd);
     SectionEntry s;
     s.name = std::string((const char*)sec.Name, 8);
     auto nul = s.name.find('\0');
     if (nul != std::string::npos) s.name.erase(nul);
-    s.virtual_address = sec_base;
+    s.virtual_address = sec_base - ctx->base;
     s.virtual_size = sec.Misc.VirtualSize;
     s.raw_size = sec.SizeOfRawData;
     s.pointer_to_raw_data = sec.PointerToRawData;
-    ctx->push_back(s);
-    (void)sec_data;
+    s.perms = perms_from_section_chars(sec.Characteristics);
+    ctx->sections.push_back(s);
+    return 0;
+}
+
+//  Resource callback 
+
+static int rsrc_cb(void* cbd, const peparse::resource& r) {
+    auto* ctx = static_cast<PeFile *>(cbd);
+    ResourceEntry entry;
+    entry.id = static_cast<int>(r.name);
+    entry.type_id = static_cast<int>(r.type);
+    entry.data_rva = r.RVA;
+    entry.size = r.size;
+    entry.lang_id = static_cast<int>(r.lang);
+    entry.entry_rva = r.RVA;
+    ctx->resources.push_back(entry);
     return 0;
 }
 
@@ -173,7 +170,7 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
                uint64_t imp_id, uint64_t imp_step,
                const std::string& emu_path, bool fast_load)
     : imp_id(imp_id), imp_step(imp_step), file_size(0), base(0),
-      image_size(0), is_mapped(true), ep(0), stack_commit(0),
+    image_size(0), is_mapped(true), ep(0), stack_commit(0), stack_size(0),
       path(path), emu_path(emu_path), parsed_pe(nullptr) {
 
     (void)fast_load;
@@ -212,11 +209,13 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
             ep = parsed_pe->peHeader.nt.OptionalHeader64.AddressOfEntryPoint;
             image_size = parsed_pe->peHeader.nt.OptionalHeader64.SizeOfImage;
             stack_commit = parsed_pe->peHeader.nt.OptionalHeader64.SizeOfStackCommit;
+            stack_size = parsed_pe->peHeader.nt.OptionalHeader64.SizeOfStackReserve;
         } else {
             base = parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
             ep = parsed_pe->peHeader.nt.OptionalHeader.AddressOfEntryPoint;
             image_size = parsed_pe->peHeader.nt.OptionalHeader.SizeOfImage;
             stack_commit = parsed_pe->peHeader.nt.OptionalHeader.SizeOfStackCommit;
+            stack_size = parsed_pe->peHeader.nt.OptionalHeader.SizeOfStackReserve;
         }
         if (base == 0) { base = DEFAULT_LOAD_ADDR; }
         
@@ -232,16 +231,16 @@ PeFile::PeFile(const std::string& path, const std::vector<uint8_t>& data,
         
         // Exports
         get_exports();
+
+        get_resources();
+
+        get_tls_callbacks();
         
         // Mapped image
         mapped_image = get_memory_mapped_image(0xF0000000);
         is_mapped = true;
 
-        uint64_t orig_image_base = 
-            (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) ? 
-            parsed_pe->peHeader.nt.OptionalHeader64.ImageBase : 
-            parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
-        if (orig_image_base == 0) {
+        if (base == 0) {
             relocate_image(DEFAULT_LOAD_ADDR);
         }
 
@@ -262,11 +261,11 @@ PeFile::~PeFile() {
     }
 }
 
-std::vector<uint64_t> PeFile::get_tls_callbacks() {
-    if (!parsed_pe) return {};
+void PeFile::get_tls_callbacks() {
+    tls_callbacks.clear();
 
-    std::vector<uint64_t> callbacks;
     auto tls_dir = parsed_pe->peHeader.nt.OptionalHeader.DataDirectory[9]; // IMAGE_DIRECTORY_ENTRY_TLS
+    tls_directory_rva = tls_dir.VirtualAddress;
     if (tls_dir.VirtualAddress != 0) {
         uint64_t callbacks_rva = 0;
 
@@ -297,11 +296,10 @@ std::vector<uint64_t> PeFile::get_tls_callbacks() {
                 for (int j = 0; j < ptr_size; ++j)
                     ptr |= static_cast<uint64_t>(ptr_data[j]) << (j * 8);
                 if (ptr == 0) break;
-                callbacks.push_back(ptr);
+                tls_callbacks.push_back(ptr);
             }
         }
     }
-    return callbacks;
 }
 
 uint32_t PeFile::get_resource_dir_rva() {
@@ -337,29 +335,28 @@ std::string PeFile::_hash_pe(const std::string& pe_path, const std::vector<uint8
 
 void PeFile::get_imports() {
     imports.clear();
-    peparse::IterImpVAString(parsed_pe, pefile_imp_cb, &imports);
+    peparse::IterImpVAString(parsed_pe, pefile_imp_cb, this);
 }
 
 void PeFile::get_exports() {
     exports.clear();
-    peparse::IterExpFull(parsed_pe, pefile_exp_full_cb, &exports);
-}
-
-
-std::vector<PeSection> PeFile::_get_pe_sections() {
-    if (!parsed_pe) return {};
-    PeSectionCtx ctx;
-    ctx.image_base = (parsed_pe->peHeader.nt.OptionalMagic == 0x020b) ? parsed_pe->peHeader.nt.OptionalHeader64.ImageBase : parsed_pe->peHeader.nt.OptionalHeader.ImageBase;
-    return ctx.sections;
+    peparse::IterExpFull(parsed_pe, pefile_exp_full_cb, this);
 }
 
 void PeFile::get_sections() {
-    pe_sections.clear();
-    peparse::IterSec(parsed_pe, pefile_sec_cb, &pe_sections);
+    sections.clear();
+    peparse::IterSec(parsed_pe, pefile_sec_cb, this);
 }
 
-PeSection* PeFile::get_section_by_name(const std::string& sec_name) {
-    for (auto& s : pe_sections) {
+void PeFile::get_resources() {
+    resources.clear();
+    peparse::IterRsrc(parsed_pe, rsrc_cb, this);
+}
+
+
+
+SectionEntry* PeFile::get_section_by_name(const std::string& sec_name) {
+    for (auto& s : sections) {
         if (s.name == sec_name) return &s;
     }
     return nullptr;
@@ -373,23 +370,23 @@ int PeFile::_get_architecture() {
 
 void PeFile::_patch_imports() {
     if (imports.empty() || mapped_image.empty()) return;
-    for (auto& [addr, imp] : imports) {
-        uint64_t offset = addr - base;
+    for (auto& import : imports) {
+        uint64_t offset = import.iat_address - base;
         if (offset + ptr_size > mapped_image.size()) continue;
         for (size_t j = 0; j < (size_t)ptr_size; ++j) {
             if (offset + j < mapped_image.size())
                 mapped_image[offset + j] = (imp_id >> (j * 8)) & 0xFF;
         }
-        import_table[imp_id] = imp;
+        //import_table[imp_id] = imp;
         imp_id += imp_step;
     }
 }
 
-uint64_t PeFile::get_export_by_name(const std::string& exp_name) {
-    for (auto& e : get_exports()) {
-        if (e.name == exp_name) return e.address;
+ExportEntry* PeFile::get_export_by_name(const std::string& exp_name) {
+    for (auto& e : exports) {
+        if (e.name == exp_name) return &e;
     }
-    return 0;
+    return nullptr;
 }
 
 std::vector<uint8_t> PeFile::get_raw_data() {
@@ -441,10 +438,9 @@ bool PeFile::is_driver() {
     if (!imports.empty()) {
         static const std::vector<std::string> sys_dlls = {
             "ntoskrnl", "hal", "ndis", "bootvid", "kdcom", "win32k"};
-        for (auto& [addr, imp] : imports) {
-            (void)addr;
+        for (auto& import : imports) {
             if (std::find(sys_dlls.begin(), sys_dlls.end(),
-                          speakeasy::to_lower(std::get<0>(imp))) != sys_dlls.end())
+                          speakeasy::to_lower(import.dll_name)) != sys_dlls.end())
                 return true;
         }
     }
@@ -452,11 +448,9 @@ bool PeFile::is_driver() {
 }
 
 bool PeFile::is_dotnet() {
-    for (auto& [addr, imp] : imports) {
-        (void)addr;
-        auto& [dll, func] = imp;
-        if (speakeasy::to_lower(dll) == "mscoree" &&
-            (func == "_CorExeMain" || func == "_CorDllMain"))
+    for (auto& import : imports) {
+        if (speakeasy::to_lower(import.dll_name) == "mscoree" &&
+            (import.func_name == "_CorExeMain" || import.func_name == "_CorDllMain"))
             return true;
     }
     return false;
@@ -548,10 +542,10 @@ void PeFile::rebase(uint64_t to) {
     }
     mapped_image = get_memory_mapped_image(0xF0000000);
     relocate_image(to);
-    pe_sections = _get_pe_sections();
-    imports = _get_pe_imports();
-    exports = _get_pe_exports();
-    import_table.clear();
+    get_sections();
+    get_imports();
+    get_exports();
+    //import_table.clear();
     _patch_imports();
 }
 
@@ -565,11 +559,11 @@ std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_addres
     uint32_t file_alignment = parsed_pe->peHeader.nt.OptionalHeader.FileAlignment;
 
     // Helper lambdas to match Python's pefile helper functions:
-    auto adjust_PointerToRawData = [](uint32_t val) -> uint32_t {
+    auto adjust_PointerToRawData = [](uint64_t val) -> uint64_t {
         return val & ~0x1FF;
     };
 
-    auto adjust_SectionAlignment = [](uint32_t val, uint32_t sect_align, uint32_t file_align) -> uint32_t {
+    auto adjust_SectionAlignment = [](uint64_t val, uint32_t sect_align, uint32_t file_align) -> uint64_t {
         if (sect_align < 0x1000) {
             sect_align = file_align;
         }
@@ -579,8 +573,8 @@ std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_addres
         return val;
     };
 
-    auto get_PointerToRawData_adj = [&](uint32_t ptr_raw, uint32_t virt_addr) -> uint32_t {
-        uint32_t ptrd = adjust_PointerToRawData(ptr_raw);
+    auto get_PointerToRawData_adj = [&](uint64_t ptr_raw, uint64_t virt_addr) -> uint64_t {
+        uint64_t ptrd = adjust_PointerToRawData(ptr_raw);
         if (section_alignment < 0x1000) {
             if (ptr_raw == virt_addr) {
                 ptrd = virt_addr;
@@ -589,7 +583,7 @@ std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_addres
         return ptrd;
     };
 
-    auto get_VirtualAddress_adj = [&](uint32_t virt_addr) -> uint32_t {
+    auto get_VirtualAddress_adj = [&](uint64_t virt_addr) -> uint64_t {
         return adjust_SectionAlignment(virt_addr, section_alignment, file_alignment);
     };
 
@@ -597,14 +591,14 @@ std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_addres
     uint32_t e_lfanew = parsed_pe->peHeader.dos.e_lfanew;
     uint32_t size_of_optional_header = parsed_pe->peHeader.nt.FileHeader.SizeOfOptionalHeader;
     uint32_t sections_offset = e_lfanew + 4 + 20 + size_of_optional_header;
-    uint32_t offset = sections_offset + static_cast<uint32_t>(pe_sections.size()) * 40;
+    uint32_t offset = sections_offset + static_cast<uint32_t>(sections.size()) * 40;
 
     // Find lowest_section_offset
-    uint32_t lowest_section_offset = 0;
+    uint64_t lowest_section_offset = 0;
     bool has_lowest = false;
-    for (auto& s : pe_sections) {
+    for (auto& s : sections) {
         if (s.pointer_to_raw_data > 0) {
-            uint32_t adj_ptr = adjust_PointerToRawData(s.pointer_to_raw_data);
+            uint64_t adj_ptr = adjust_PointerToRawData(s.pointer_to_raw_data);
             if (!has_lowest || adj_ptr < lowest_section_offset) {
                 lowest_section_offset = adj_ptr;
                 has_lowest = true;
@@ -612,7 +606,7 @@ std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_addres
         }
     }
 
-    uint32_t header_len = offset;
+    uint64_t header_len = offset;
     if (has_lowest && lowest_section_offset >= offset) {
         header_len = lowest_section_offset;
     }
@@ -624,14 +618,14 @@ std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_addres
     mapped_data.assign(raw_pe_data.begin(), raw_pe_data.begin() + header_len);
 
     // Map each section
-    for (auto& s : pe_sections) {
+    for (auto& s : sections) {
         if (s.virtual_size == 0 && s.raw_size == 0) {
             continue;
         }
 
         uint32_t srd = s.raw_size;
-        uint32_t prd = adjust_PointerToRawData(s.pointer_to_raw_data);
-        uint32_t VirtualAddress_adj = get_VirtualAddress_adj(s.virtual_address);
+        uint64_t prd = adjust_PointerToRawData(s.pointer_to_raw_data);
+        uint64_t VirtualAddress_adj = get_VirtualAddress_adj(s.virtual_address);
 
         if (srd > raw_pe_data.size() ||
             prd > raw_pe_data.size() ||
@@ -650,15 +644,15 @@ std::vector<uint8_t> PeFile::get_memory_mapped_image(uint64_t max_virtual_addres
         }
 
         // Get section data
-        uint32_t sec_offset = get_PointerToRawData_adj(s.pointer_to_raw_data, s.virtual_address);
-        uint32_t sec_end = sec_offset + s.raw_size;
+        uint64_t sec_offset = get_PointerToRawData_adj(s.pointer_to_raw_data, s.virtual_address);
+        uint64_t sec_end = sec_offset + s.raw_size;
         if (s.pointer_to_raw_data + s.raw_size < sec_end) {
             sec_end = s.pointer_to_raw_data + s.raw_size;
         }
 
         if (sec_offset < raw_pe_data.size()) {
             if (sec_end > raw_pe_data.size()) {
-                sec_end = static_cast<uint32_t>(raw_pe_data.size());
+                sec_end = static_cast<uint64_t>(raw_pe_data.size());
             }
             if (sec_end >= sec_offset) {
                 mapped_data.insert(mapped_data.end(), raw_pe_data.begin() + sec_offset, raw_pe_data.begin() + sec_end);
@@ -795,7 +789,7 @@ JitPeFile::~JitPeFile() {
 }
 
 int JitPeFile::get_section_count() {
-    return static_cast<int>(pe_sections.size());
+    return static_cast<int>(sections.size());
 }
 
 std::vector<uint8_t> JitPeFile::get_raw_pe() {
@@ -820,10 +814,10 @@ void JitPeFile::update() {
     stack_commit = parsed_pe->peHeader.nt.OptionalHeader.SizeOfStackCommit;
     ptr_size = (arch == 32) ? 4 : 8;
     
-    pe_sections = _get_pe_sections();
-    exports = _get_pe_exports();
+    get_sections();
+    get_exports();
     
-    if (!pe_sections.empty()) {
+    if (!sections.empty()) {
         mapped_image = get_memory_mapped_image(0xF0000000);
         is_mapped = true;
     }

@@ -37,7 +37,7 @@ TEST(JitPeFileTest, FullDecoyAssembly) {
     EXPECT_FALSE(pe.is_driver());
     
     // Verify parsed exports
-    auto parsed_exports = pe.get_exports();
+    auto& parsed_exports = pe.exports;
     ASSERT_EQ(parsed_exports.size(), 3);
     EXPECT_EQ(parsed_exports[0].name, "FunctionA");
     EXPECT_EQ(parsed_exports[1].name, "FunctionB");
@@ -68,7 +68,7 @@ TEST(JitPeFileTest, FullDecoyAssembly32) {
     EXPECT_FALSE(pe.is_driver());
     
     // Verify parsed exports
-    auto parsed_exports = pe.get_exports();
+    auto& parsed_exports = pe.exports;
     ASSERT_EQ(parsed_exports.size(), 2);
     EXPECT_EQ(parsed_exports[0].name, "FuncX");
     EXPECT_EQ(parsed_exports[1].name, "FuncY");
@@ -95,7 +95,7 @@ TEST(JitPeFileTest, ConstructorDecoyAssembly) {
     EXPECT_EQ(pe.arch, 64);
     //EXPECT_TRUE(pe.is_dll());
 
-    auto parsed_exports = pe.get_exports();
+    auto& parsed_exports = pe.exports;
     ASSERT_EQ(parsed_exports.size(), 2);
     EXPECT_EQ(parsed_exports[0].name, "FunctionA");
     EXPECT_EQ(parsed_exports[1].name, "FunctionB");

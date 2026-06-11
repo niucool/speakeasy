@@ -23,15 +23,6 @@ namespace speakeasy {
 
 //  Data structures 
 
-struct ResourceEntry {
-    int id = 0;
-    uint32_t data_rva = 0;
-    uint32_t size = 0;
-    int type_id = 0;
-    uint32_t entry_rva = 0;
-    int lang_id = 0;
-};
-
 struct PeMetadata {
     uint32_t subsystem = 0;
     uint32_t timestamp = 0;
@@ -200,17 +191,17 @@ public:
     /**
      * Get the list of discovered imports.
      */
-    const std::vector<ImportEntry>& get_imports() const { return imports_; }
+    const std::vector<ImportEntry>& get_imports() const { return pefile.imports; }
 
     /**
      * Get the list of discovered exports.
      */
-    const std::vector<ExportEntry>& get_exports() const { return exports_; }
+    const std::vector<ExportEntry>& get_exports() const { return pefile.exports; }
 
     /**
      * Get TLS callback RVAs.
      */
-    const std::vector<uint64_t>& get_tls_callbacks() const { return tls_callbacks_; }
+    const std::vector<uint64_t>& get_tls_callbacks() const { return pefile.tls_callbacks; }
 
 private:
     std::string path_;
@@ -219,15 +210,15 @@ private:
     uint64_t base_override_ = 0;
     std::string emu_path_;
 
-    std::vector<ImportEntry> imports_;
-    std::vector<ExportEntry> exports_;
-    std::vector<SectionEntry> sections_;
-    std::vector<uint64_t> tls_callbacks_;
-    uint64_t tls_directory_rva_ = 0;
+    //std::vector<ImportEntry> imports_;
+    //std::vector<ExportEntry> exports_;
+    //std::vector<SectionEntry> sections_;
+    //std::vector<uint64_t> tls_callbacks_;
+    //uint64_t tls_directory_rva_ = 0;
     PeFile pefile;
 
     void parse_pe();
-    uint32_t perms_from_section_chars(uint32_t chars);
+    //uint32_t perms_from_section_chars(uint32_t chars);
     std::string get_prot_string(uint32_t perms);
 };
 
@@ -285,24 +276,6 @@ private:
     uint64_t image_size_;
 };
 
-inline uint32_t perms_from_section_chars(uint32_t chars) {
-    // ImageSectionCharacteristics constants (common Windows values)
-    #ifndef IMAGE_SCN_MEM_READ
-    const uint32_t IMAGE_SCN_MEM_READ    = 0x40000000;
-    #endif
-    #ifndef IMAGE_SCN_MEM_WRITE
-    const uint32_t IMAGE_SCN_MEM_WRITE   = 0x80000000;
-    #endif
-    #ifndef IMAGE_SCN_MEM_EXECUTE
-    const uint32_t IMAGE_SCN_MEM_EXECUTE = 0x20000000;
-    #endif
-
-    uint32_t perms = 0;  // PERM_MEM_NONE
-    if (chars & IMAGE_SCN_MEM_READ)    perms |= 0x02;  // PERM_MEM_READ
-    if (chars & IMAGE_SCN_MEM_WRITE)   perms |= 0x04;  // PERM_MEM_WRITE
-    if (chars & IMAGE_SCN_MEM_EXECUTE) perms |= 0x10;  // PERM_MEM_EXEC
-    return perms;
-}
 
 } // namespace speakeasy
 

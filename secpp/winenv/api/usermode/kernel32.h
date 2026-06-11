@@ -185,7 +185,8 @@ class Kernel32 : public ApiHandler {
         API_ENTRY(RtlZeroMemory, 2)
     // DLL / Module
     API_ENTRY(LoadLibraryA, 1)      API_ENTRY(LoadLibraryW, 1)
-    API_ENTRY(LoadLibraryExA, 3)    API_ENTRY(FreeLibrary, 1)
+    API_ENTRY(LoadLibraryExA, 3)    API_ENTRY(LoadLibraryExW, 3)
+    API_ENTRY(FreeLibrary, 1)
     API_ENTRY(GetProcAddress, 2)    API_ENTRY(GetModuleHandleA, 1)
     API_ENTRY(GetModuleHandleW, 1)  API_ENTRY(GetModuleFileNameA, 3)  API_ENTRY(GetModuleFileNameW, 3)
     API_ENTRY(DisableThreadLibraryCalls, 1)

@@ -133,6 +133,25 @@ const std::vector<uint8_t> EMPTY_PE_64 = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+inline uint32_t perms_from_section_chars(uint32_t chars) {
+    // ImageSectionCharacteristics constants (common Windows values)
+#ifndef IMAGE_SCN_MEM_READ
+    const uint32_t IMAGE_SCN_MEM_READ = 0x40000000;
+#endif
+#ifndef IMAGE_SCN_MEM_WRITE
+    const uint32_t IMAGE_SCN_MEM_WRITE = 0x80000000;
+#endif
+#ifndef IMAGE_SCN_MEM_EXECUTE
+    const uint32_t IMAGE_SCN_MEM_EXECUTE = 0x20000000;
+#endif
+
+    uint32_t perms = 0;  // PERM_MEM_NONE
+    if (chars & IMAGE_SCN_MEM_READ)    perms |= 0x02;  // PERM_MEM_READ
+    if (chars & IMAGE_SCN_MEM_WRITE)   perms |= 0x04;  // PERM_MEM_WRITE
+    if (chars & IMAGE_SCN_MEM_EXECUTE) perms |= 0x10;  // PERM_MEM_EXEC
+    return perms;
+}
+
 // Exception class for PE parsing errors
 class PeParseException : public std::exception {
 private:
@@ -181,6 +200,15 @@ struct PeSection {
     uint32_t pointer_to_raw_data = 0;
 };
 
+struct ResourceEntry {
+    int id = 0;
+    uint32_t data_rva = 0;
+    uint32_t size = 0;
+    int type_id = 0;
+    uint32_t entry_rva = 0;
+    int lang_id = 0;
+};
+
 // Function to normalize DLL names
 std::string normalize_dll_name(const std::string& name);
 
@@ -199,18 +227,22 @@ public:
     //std::map<uint64_t, std::tuple<std::string, std::string>> import_table;
     std::vector<ImportEntry> imports;
     std::vector<ExportEntry> exports;
-    std::vector<SectionEntry> pe_sections;
+    std::vector<SectionEntry> sections;
+    std::vector<uint64_t> tls_callbacks;
+    std::vector<ResourceEntry> resources;
 
-    int arch;
+    int arch = 0;
+    int ptr_size = 4;
     uint64_t ep;
     uint64_t base;
     size_t image_size;
     uint64_t stack_commit;
+    uint64_t stack_size;
+    uint64_t tls_directory_rva = 0;
 
     std::string path;
     std::string name;
     std::string emu_path;
-    int ptr_size;
     peparse::parsed_pe* parsed_pe;
 
 public:
@@ -223,11 +255,9 @@ public:
     virtual ~PeFile();
     
     // Methods
-    virtual std::vector<uint8_t> get_memory_mapped_image(uint64_t max_virtual_address = 0x10000000, 
-                                                         uint64_t base_addr = 0);
 
     peparse::parsed_pe* get_parsed_pe() { return parsed_pe; }
-    std::vector<uint64_t> get_tls_callbacks();
+
     uint32_t get_resource_dir_rva();
     virtual std::string get_emu_path();
     void set_emu_path(const std::string& path);
@@ -235,9 +265,12 @@ public:
     void get_imports();
     void get_exports();
     void get_sections();
-    PeSection* get_section_by_name(const std::string& sec_name);
+    void get_resources();
+    void get_tls_callbacks();
 
-    uint64_t get_export_by_name(const std::string& exp_name);
+    SectionEntry* get_section_by_name(const std::string& sec_name);
+
+    ExportEntry* get_export_by_name(const std::string& exp_name);
     std::vector<uint8_t> get_raw_data();
     int find_bytes(const std::vector<uint8_t>& pattern, int offset = 0);
     void set_bytes(int offset, const std::vector<uint8_t>& pattern);
@@ -254,9 +287,11 @@ public:
     void relocate_image(uint64_t new_base);
     void rebase(uint64_t to);
 
+protected:
+    virtual std::vector<uint8_t> get_memory_mapped_image(uint64_t max_virtual_address = 0x10000000,
+        uint64_t base_addr = 0);
+
 private:
-    std::vector<ExportEntry> _get_pe_exports();
-    std::vector<PeSection> _get_pe_sections();
     int _get_architecture();
     void _patch_imports();
 };

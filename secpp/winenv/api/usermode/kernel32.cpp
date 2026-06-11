@@ -296,7 +296,8 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, LocalFree, 1)      REG(Kernel32, RtlMoveMemory, 3)
     REG(Kernel32, RtlZeroMemory, 2)
     REG(Kernel32, LoadLibraryA, 1)   REG(Kernel32, LoadLibraryW, 1)
-    REG(Kernel32, LoadLibraryExA, 3) REG(Kernel32, FreeLibrary, 1)
+    REG(Kernel32, LoadLibraryExA, 3) REG(Kernel32, LoadLibraryExW, 3)
+    REG(Kernel32, FreeLibrary, 1)
     REG(Kernel32, GetProcAddress, 2) REG(Kernel32, GetModuleHandleA, 1)
     REG(Kernel32, GetModuleHandleW, 1) REG(Kernel32, GetModuleFileNameA, 3) REG(Kernel32, GetModuleFileNameW, 3)
     REG(Kernel32, DisableThreadLibraryCalls, 1)
@@ -1076,7 +1077,9 @@ static uint64_t do_load_library(void* emu, uint64_t name_ptr, int cw) {
     if (lib.empty()) return 0;
     lib = speakeasy::to_lower(lib);
     auto dot = lib.rfind(".dll");
-    if (dot != std::string::npos) lib = lib.substr(0, dot);
+    if (dot != std::string::npos) 
+        lib = lib.substr(0, dot);
+    lib = normalize_dll_name(lib);
     void* mod = we(emu)->load_library(lib);
     if (!mod) {
         w32(emu)->set_last_error(K32_ERR_MOD_NOT_FOUND);
@@ -1097,6 +1100,11 @@ uint64_t Kernel32::LoadLibraryW(void* emu, ArgList& argv, void* ctx) {
 uint64_t Kernel32::LoadLibraryExA(void* emu, ArgList& argv, void* ctx) {
     uint64_t lib_name = argv[0];
     return do_load_library(emu, lib_name, 1);
+}
+
+uint64_t Kernel32::LoadLibraryExW(void* emu, ArgList& argv, void* ctx) {
+    uint64_t lib_name = argv[0];
+    return do_load_library(emu, lib_name, 2);
 }
 
 uint64_t Kernel32::FreeLibrary(void* emu, ArgList& argv, void* ctx) {
