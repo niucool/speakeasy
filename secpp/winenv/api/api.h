@@ -20,7 +20,7 @@ class BinaryEmulator;
 class RegKey;
 
 // ---------------------------------------------------------------------------
-// ApiArg — variant type for API handler arguments.
+// ApiArg  variant type for API handler arguments.
 //
 // Input:  all args are uint64_t (raw stack values).
 // Output: handlers may replace raw values with resolved strings/blobs/pointers
@@ -31,7 +31,7 @@ struct ApiArg {
     std::variant<uint64_t, void*, std::string, std::vector<uint8_t>> data;
 
     ApiArg() : data(uint64_t(0)) {}
-    // NOLINTBEGIN — implicit conversions are intentional
+    // NOLINTBEGIN  implicit conversions are intentional
     ApiArg(uint64_t v)                : data(v) {}
     ApiArg(void* v)                   : data(v) {}
     ApiArg(const std::string& s)      : data(s) {}

@@ -123,7 +123,7 @@ static uint64_t CryptStringToBinary_impl(void* e, const std::string& s,
                       (static_cast<uint32_t>(raw[3]) << 24);
     }
 
-    // pbBinary == 0 → query size only (Python:71-73)
+    // pbBinary == 0  query size only (Python:71-73)
     if (pbBinary == 0) {
         if (pcbBinary) {
             std::vector<uint8_t> len_bytes(4);

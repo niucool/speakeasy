@@ -379,7 +379,7 @@ uint64_t Msvcrt::_itoa(void* e, ArgList& a, void* ctx) {
 uint64_t Msvcrt::_itow(void* e, ArgList& a, void* ctx) {
     int value    = static_cast<int>(a.size() > 0 ? static_cast<uint64_t>(a[0]) : uint64_t(0));
     uint64_t buf = a.size() > 1 ? static_cast<uint64_t>(a[1]) : uint64_t(0);
-    // TODO: radix parameter not yet used — Python port incomplete for _ltoa radix handling
+    // TODO: radix parameter not yet used  Python port incomplete for _ltoa radix handling
     int radix    = static_cast<int>(a.size() > 2 ? static_cast<uint64_t>(a[2]) : uint64_t(10)); (void)radix;
     if (!buf) return 0;
     char tmp[64];
@@ -530,7 +530,7 @@ static std::string msvc_do_str_format(void* e, const std::string& fmt, const std
             if (i >= fmt.size()) break;
 
             char conv = fmt[i];
-            // TODO: has_ll not yet used — printf long-long format specifier handling incomplete
+            // TODO: has_ll not yet used  printf long-long format specifier handling incomplete
     bool has_ll = (fmt_mods.find("ll") != std::string::npos); (void)has_ll;
 
             if (args.empty()) break;
@@ -1259,7 +1259,7 @@ uint64_t Msvcrt::__getmainargs(void* e, ArgList& a, void* ctx) {
         we(e)->mem_write(_Argv, argvptr);
     }
     if (_Env) {
-        // TODO: envmem allocation not yet wired — environment block write incomplete
+        // TODO: envmem allocation not yet wired  environment block write incomplete
         uint64_t envmem = we(e)->mem_map(static_cast<size_t>(ptr_sz), 0, 4, "api.envp");
         (void)envmem;
         std::vector<uint8_t> envptr(static_cast<size_t>(ptr_sz), 0);

@@ -79,7 +79,7 @@ uint64_t WinHttp::WinHttpOpen(void* e, ArgList& a, void* ctx) {
 uint64_t WinHttp::WinHttpConnect(void* e, ArgList& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint64_t hSession = a[0]; (void)hSession;
-    // TODO: session handle not yet wired — HTTP session tracking incomplete
+    // TODO: session handle not yet wired  HTTP session tracking incomplete
     uint64_t server_ptr = a[1];
     uint64_t nServerPort = a[2];
 
@@ -240,7 +240,7 @@ uint64_t WinHttp::WinHttpReadData(void* e, ArgList& a, void* ctx) {
     uint64_t hRequest = a[0];
     uint64_t buf = a[1];
     uint64_t size = a[2]; (void)size;
-    // TODO: size not yet used — response buffer size validation incomplete
+    // TODO: size not yet used  response buffer size validation incomplete
     uint64_t bytes_read = a[3];
     (void)hRequest;
 

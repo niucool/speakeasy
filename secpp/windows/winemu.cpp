@@ -1299,7 +1299,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
 
     //  Initialize emulation engine if needed (Python 1006-1008)
     // Python: `if self.emu_eng and not self.emu_eng.emu:`
-    // — only calls init_engine when the engine wrapper exists but no UC instance yet.
+    //  only calls init_engine when the engine wrapper exists but no UC instance yet.
     if (!emu_eng_) {
         emu_eng_ = std::make_shared<EmuEngine>();
     }
@@ -1523,7 +1523,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     modules_.push_back(mod);
 
     //  Allocate stack for primary image (Python 1128-1130)
-    // Python: self.config.stack_size or image.stack_size — config takes precedence
+    // Python: self.config.stack_size or image.stack_size  config takes precedence
     if (is_primary && stack_base_ == 0 && img->stack_size > 0) {
         size_t stack_size = (config_.stack_size > 0) ? static_cast<size_t>(config_.stack_size)
                                                       : static_cast<size_t>(img->stack_size);
@@ -1532,7 +1532,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     }
 
     //  Run one-time setup (Python 1132-1135) 
-    // Python winemu.py:1132-1135 — setup() internally calls advance_bootstrap_phase(FULL_SETUP_READY).
+    // Python winemu.py:1132-1135  setup() internally calls advance_bootstrap_phase(FULL_SETUP_READY).
     // C++ setup() does not, so we advance here at the same logical point in the call chain.
     if (!_setup_done) {
         _setup_done = true;

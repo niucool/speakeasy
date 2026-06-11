@@ -122,7 +122,7 @@ static inline void write_ptr(void* emu, uint64_t addr, uint64_t val) {
 /// Read a UNICODE_STRING structure from emulated memory and return the string content
 static inline std::string read_unicode_string_content(void* emu, uint64_t us_addr) {
     if (us_addr == 0) return "";
-    // TODO: ptr_size not yet used — UNICODE_STRING parsing incomplete
+    // TODO: ptr_size not yet used  UNICODE_STRING parsing incomplete
     int psz = get_ptr_size(emu); (void)psz;
     // On x64: offset 0=Length(2), 2=MaxLength(2), 4=padding? or pointer
     // The apihandler code reads buffer from offset 4 (after Length+MaxLength)
@@ -1003,7 +1003,7 @@ uint64_t Ntdll::NtQuerySystemInformation(void* emu, ArgList& argv, void* ctx) {
     // PVOID SystemInformation, ULONG SystemInformationLength,
     // PULONG ReturnLength
     uint32_t info_class = static_cast<uint32_t>(argv[0]);
-    // TODO: info_ptr not yet used — system info struct write incomplete
+    // TODO: info_ptr not yet used  system info struct write incomplete
     uint64_t info_ptr = argv[1]; (void)info_ptr;
     uint32_t info_len = static_cast<uint32_t>(argv[2]); (void)info_len;
     uint64_t ret_len_ptr = argv[3];
@@ -1660,7 +1660,7 @@ uint64_t Ntdll::RtlInitUnicodeString(void* emu, ArgList& argv, void* ctx) {
     // PUNICODE_STRING DestinationString, PWSTR SourceString
     uint64_t dest = argv[0];
     uint64_t src = argv[1];
-    // TODO: ptr_size not yet used — memory copy length calculation incomplete
+    // TODO: ptr_size not yet used  memory copy length calculation incomplete
     int psz = get_ptr_size(emu); (void)psz;
     if (dest == 0) return STATUS_INVALID_PARAMETER;
 
@@ -1688,7 +1688,7 @@ uint64_t Ntdll::RtlInitString(void* emu, ArgList& argv, void* ctx) {
     // PANSI_STRING DestinationString, PCHAR SourceString
     uint64_t dest = argv[0];
     uint64_t src = argv[1];
-    // TODO: ptr_size not yet used — memory copy length calculation incomplete
+    // TODO: ptr_size not yet used  memory copy length calculation incomplete
     int psz = get_ptr_size(emu); (void)psz;
     if (dest == 0) return STATUS_INVALID_PARAMETER;
 

@@ -264,7 +264,7 @@ struct SnapEntry {
     int pid;
 };
 static std::unordered_map<uint64_t, std::unordered_map<uint32_t, SnapEntry>> g_snapshots;
-// TODO: g_next_handle not yet used — handle counter tracking incomplete
+// TODO: g_next_handle not yet used  handle counter tracking incomplete
 // static uint64_t g_next_handle = 0x1800; // unused
 static uint64_t g_next_snap_handle = 0x2000;
 
@@ -1298,7 +1298,7 @@ uint64_t Kernel32::CreateProcessA(void* emu, ArgList& argv, void* ctx) {
     uint64_t proc_attrs = argv[2];
     uint64_t thread_attrs = argv[3];
     uint32_t inherit = static_cast<uint32_t>(argv[4]);
-    // TODO: flags parsing not yet used — Python port incomplete for MapViewOfFile
+    // TODO: flags parsing not yet used  Python port incomplete for MapViewOfFile
     uint32_t flags = static_cast<uint32_t>(argv[5]); (void)flags;
     uint64_t env_ptr = argv[6];
     uint64_t cd_ptr = argv[7];
@@ -3279,7 +3279,7 @@ uint64_t Kernel32::SizeofResource(void* e, ArgList& a, void* c) {
     (void)a; return 0; // resource not found
 }
 uint64_t Kernel32::SystemTimeToTzSpecificLocalTime(void* e, ArgList& a, void* c) {
-    // TODO: tz_ptr not yet used — timezone conversion needs proper TIME_ZONE struct
+    // TODO: tz_ptr not yet used  timezone conversion needs proper TIME_ZONE struct
     uint64_t tz_ptr = a[0]; (void)tz_ptr; uint64_t ut_ptr = a[1]; uint64_t loc_ptr = a[2];
     if (!loc_ptr) return 0;
     if (ut_ptr) { auto data = mm(e)->mem_read(ut_ptr, 16); mm(e)->mem_write(loc_ptr, data); }

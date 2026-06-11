@@ -412,7 +412,7 @@ uint64_t Ntoskrnl::RtlInitUnicodeString(void* e, ArgList& a, void* ctx) {
     
     if (!dest) return 0;
     
-    // TODO: ptr_size not yet used in this handler — Python port incomplete
+    // TODO: ptr_size not yet used in this handler  Python port incomplete
     int psz = ptr_sz(e); (void)psz;
     
     if (src) {
@@ -451,7 +451,7 @@ uint64_t Ntoskrnl::RtlAnsiStringToUnicodeString(void* e, ArgList& a, void* ctx) 
     std::string ansi = read_ansi_string_from_mem(e, src);
     if (ansi.empty()) return KERN_STATUS_SUCCESS;
     
-    // TODO: ptr_size not yet used in this handler — Python port incomplete
+    // TODO: ptr_size not yet used in this handler  Python port incomplete
     int psz = ptr_sz(e); (void)psz;
     uint16_t size = static_cast<uint16_t>(ansi.length() * 2); // UTF-16 size
     
