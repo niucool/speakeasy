@@ -678,6 +678,8 @@ std::shared_ptr<RegKey> WindowsEmulator::reg_get_key(int handle, const std::stri
         return regman->get_key_from_handle(static_cast<uint32_t>(handle));
     else if (!path.empty())
         return regman->get_key_from_path(path);
+    else
+        return nullptr;
 }
 
 // Python winemu.py:371
@@ -1138,7 +1140,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_from_addr(uin
         if (addr >= base && addr < base + pe->image_size)
             return curr_mod;
     }
-    for (auto m : modules) {
+    for (auto m : modules_) {
         auto pe = m;
         uint64_t base = pe->base;
         if (addr >= base && addr < base + pe->image_size)
@@ -1165,7 +1167,7 @@ uint64_t WindowsEmulator::_alloc_sentinel() {
 std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_by_name(const std::string& name) {
     std::string nl = speakeasy::to_lower(name);
 
-    for (auto pe : modules) {
+    for (auto pe : modules_) {
         fs::path full_path = pe->emu_path;
 
         // 1. Get the filename (equivalent to ntpath.basename)
@@ -1186,7 +1188,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_by_name(const
 
 std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::get_peb_modules() {
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> result;
-    for (auto m : modules) {
+    for (auto m : modules_) {
         result.push_back(m);  // All modules visible in PEB by default
     }
     return result;
@@ -1509,7 +1511,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     }
 
     //  Register module (Python 1126) 
-    modules.push_back(mod);
+    modules_.push_back(mod);
 
     //  Allocate stack for primary image (Python 1128-1130)
     // Python: self.config.stack_size or image.stack_size — config takes precedence

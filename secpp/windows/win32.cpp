@@ -34,7 +34,7 @@ std::vector<std::string> Win32Emulator::get_argv() {
     std::string argv0 = "";
     
     if (!this->argv_.empty()) {
-        for (auto m : modules) {
+        for (auto m : modules_) {
             if (m->is_exe()) {
                 argv0 = m->emu_path.empty() ? m->name : m->emu_path;
             }
@@ -201,7 +201,7 @@ std::shared_ptr<speakeasy::RuntimeModule> Win32Emulator::load_module(const std::
 
     // TODO: remove this line, it will be pushed later
     // Register the loaded module so get_user_modules() can find it
-    modules.push_back(rtmod);
+    modules_.push_back(rtmod);
 
     return rtmod;
 }
@@ -256,7 +256,7 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
             }
         }
         if (!img->is_driver()) {
-            user_modules.insert(user_modules.begin(), module);
+            user_modules_.insert(user_modules_.begin(), module);
         }
     } else {
         run->type = "module_entry";
@@ -456,7 +456,7 @@ uint64_t Win32Emulator::load_shellcode(const std::string& path, const std::strin
 //     """
 void Win32Emulator::run_shellcode(uint64_t sc_addr, size_t stack_commit, size_t offset) {
     bool found_target = false;
-    for (const auto& mod : modules) {
+    for (const auto& mod : modules_) {
         if (mod && mod->base == sc_addr) {
             found_target = true;
             break;
@@ -655,7 +655,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::get_user_m
     // Python win32.py:578-587  return loaded user module RuntimeModules
     // modules is already vector<shared_ptr<RuntimeModule>>; filter non-driver entries
     std::vector<std::shared_ptr<speakeasy::RuntimeModule>> result;
-    for (auto& mod : modules) {
+    for (auto& mod : modules_) {
         if (mod && !mod->is_driver()) {
             result.push_back(mod);
         }
@@ -984,7 +984,7 @@ void Win32Emulator::_capture_memory_layout() {
     
     // Build modules_by_base map
     std::map<uint64_t, std::shared_ptr<speakeasy::RuntimeModule>> modules_by_base;
-    for (auto img : modules) {
+    for (auto img : modules_) {
         if (img->image_size > 0) {
             modules_by_base[img->base] = img;
         }
@@ -1048,7 +1048,7 @@ void Win32Emulator::_capture_memory_layout() {
     }
     
     // Add loaded modules
-    for (auto m : modules) {
+    for (auto m : modules_) {
         auto img = m;
         if (img->image_size == 0) continue;
         std::string mod_name = img->name;

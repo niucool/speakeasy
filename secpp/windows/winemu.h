@@ -102,9 +102,8 @@ protected:
     bool kernel_mode = false;
 
     //  Modules 
-    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> modules;
-    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules;
-    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> sys_modules;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules_;
+    std::vector<std::shared_ptr<speakeasy::RuntimeModule>> sys_modules_;
     std::vector<std::tuple<void*, std::tuple<uint64_t, size_t>, std::string>> mod_refs;
 
     //  Runs 
