@@ -886,6 +886,15 @@ void WindowsEmulator::start() {
                         continue;
                     }
 
+                    // Log details for UC_ERR_EXCEPTION and other unexpected errors
+                    if (err == UC_ERR_EXCEPTION) {
+                        log_error("* CPU exception at 0x" + hex_str(get_pc())
+                                  + " (insn count " + std::to_string(curr_run->instr_cnt) + ")");
+                    } else {
+                        log_error("* Unicorn engine error " + std::to_string(static_cast<int>(err))
+                                  + " at 0x" + hex_str(get_pc()));
+                    }
+
                     // Check for timeout after execution
                     if (profiler_ && timeout_usec > 0 &&
                         profiler_->get_run_time() > static_cast<double>(config_.timeout)) {
