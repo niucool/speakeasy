@@ -11,6 +11,8 @@
 
 #include <gtest/gtest.h>
 
+#ifdef _WIN32
+
 // ── Our struct defs (must be FIRST) ───────────────────────────
 // Use pragma push_macro to protect against Windows.h macro pollution
 #pragma push_macro("DELETE")
@@ -319,3 +321,9 @@ TEST(WinSizeValidation, MONITORINFO) {
     ns::MONITORINFO mi;
     EXPECT_EQ(mi.sizeof_obj(), sizeof(::MONITORINFO));
 }
+
+#else  // !_WIN32
+TEST(WinSizeValidation, SkipOnNonWindows) {
+    GTEST_SKIP() << "WinSizeValidation requires Windows SDK (windows.h)";
+}
+#endif  // _WIN32

@@ -20,6 +20,8 @@
 
 #include <gtest/gtest.h>
 
+#ifdef _WIN32
+
 // ── Our struct defs (must be FIRST) ───────────────────────────
 #pragma push_macro("DELETE")
 #pragma push_macro("READ_CONTROL")
@@ -231,3 +233,9 @@ TEST(WinSizeAll, CONTEXT) {
 TEST(WinSizeAll, CONTEXT64) {
     EXPECT_EQ(ns::CONTEXT64().sizeof_obj(), 1144UL); // x64 minimal CONTEXT
 }
+
+#else  // !_WIN32
+TEST(WinSizeAll, SkipOnNonWindows) {
+    GTEST_SKIP() << "WinSizeAll requires Windows SDK (windows.h)";
+}
+#endif  // _WIN32
