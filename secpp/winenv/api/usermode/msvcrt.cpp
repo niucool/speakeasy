@@ -127,7 +127,7 @@ Msvcrt::Msvcrt(void* emu) : ApiHandler(emu) {
 uint64_t Msvcrt::malloc(void* e, ArgList& a, void* ctx) {
     size_t sz = static_cast<size_t>(a.empty() ? uint64_t(0) : static_cast<uint64_t>(a[0]));
     if (sz == 0) sz = 1;
-    return we(e)->mem_map(sz, 0, 4, "msvcrt.malloc");
+    return we32(e)->heap_alloc(sz, "msvcrt.malloc");
 }
 
 uint64_t Msvcrt::calloc(void* e, ArgList& a, void* ctx) {
@@ -135,7 +135,7 @@ uint64_t Msvcrt::calloc(void* e, ArgList& a, void* ctx) {
     uint64_t sz  = a.size() > 1 ? static_cast<uint64_t>(a[1]) : uint64_t(0);
     size_t total = static_cast<size_t>(num * sz);
     if (total == 0) total = 1;
-    uint64_t ptr = we(e)->mem_map(total, 0, 4, "msvcrt.calloc");
+    uint64_t ptr = we32(e)->heap_alloc(total, "msvcrt.calloc");
     // Zero-fill
     std::vector<uint8_t> zero(total, 0);
     we(e)->mem_write(ptr, zero);

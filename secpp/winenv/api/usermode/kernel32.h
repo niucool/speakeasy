@@ -27,6 +27,12 @@
 #ifdef GetWindowsDirectory
 #undef GetWindowsDirectory
 #endif
+#ifdef IsBadStringPtrA
+#undef IsBadStringPtrA
+#endif
+#ifdef IsBadStringPtrW
+#undef IsBadStringPtrW
+#endif
 #ifdef IsBadStringPtr
 #undef IsBadStringPtr
 #endif
@@ -306,7 +312,7 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(InitOnceBeginInitialize, 4)     API_ENTRY(InitializeConditionVariable, 1)
     API_ENTRY(InitializeCriticalSectionAndSpinCount, 2)     API_ENTRY(InitializeCriticalSectionEx, 3)
     API_ENTRY(InitializeSListHead, 1)     API_ENTRY(InitializeSRWLock, 1)
-    API_ENTRY(IsBadReadPtr, 2)     API_ENTRY(IsBadStringPtr, 2)
+    API_ENTRY(IsBadReadPtr, 2)     API_ENTRY(IsBadStringPtrA, 2)    API_ENTRY(IsBadStringPtrW, 2)
     API_ENTRY(IsBadWritePtr, 2)     API_ENTRY(IsDBCSLeadByte, 1)
     API_ENTRY(IsValidCodePage, 1)     API_ENTRY(IsValidLocale, 2)
     API_ENTRY(IsWow64Process, 2)     API_ENTRY(LCMapString, 6)

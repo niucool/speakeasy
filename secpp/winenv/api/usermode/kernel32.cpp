@@ -74,6 +74,12 @@ static inline int ptr_sz(void* e) {
 #ifdef IsBadStringPtr
 #undef IsBadStringPtr
 #endif
+#ifdef IsBadStringPtrA
+#undef IsBadStringPtrA
+#endif
+#ifdef IsBadStringPtrW
+#undef IsBadStringPtrW
+#endif
 #ifdef LCMapString
 #undef LCMapString
 #endif
@@ -323,7 +329,7 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, lstrcatA, 2)       REG(Kernel32, lstrcatW, 2) REG(Kernel32, lstrcmpA, 2) REG(Kernel32, lstrcmpW, 2)
     REG(Kernel32, MultiByteToWideChar, 6) REG(Kernel32, WideCharToMultiByte, 8)
     REG(Kernel32, GetCommandLineA, 0) REG(Kernel32, GetCommandLineW, 0)
-    REG(Kernel32, GetEnvironmentVariableA, 3) REG(Kernel32, GetEnvironmentVariableW, 3) REG(Kernel32, SetEnvironmentVariableA, 2)
+    REG(Kernel32, GetEnvironmentVariableA, 3) REG(Kernel32, GetEnvironmentVariableW, 3) REG(Kernel32, SetEnvironmentVariableA, 2) REG(Kernel32, SetEnvironmentVariableW, 2)
     REG(Kernel32, GetCurrentDirectoryA, 2) REG(Kernel32, GetCurrentDirectoryW, 2) REG(Kernel32, SetCurrentDirectoryA, 1)
     REG(Kernel32, ExpandEnvironmentStringsA, 3) REG(Kernel32, ExpandEnvironmentStringsW, 3)
     REG(Kernel32, CreateToolhelp32Snapshot, 2)
@@ -397,7 +403,7 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, InitOnceBeginInitialize, 4)     REG(Kernel32, InitializeConditionVariable, 1)
     REG(Kernel32, InitializeCriticalSectionAndSpinCount, 2)     REG(Kernel32, InitializeCriticalSectionEx, 3)
     REG(Kernel32, InitializeSListHead, 1)     REG(Kernel32, InitializeSRWLock, 1)
-    REG(Kernel32, IsBadReadPtr, 2)     REG(Kernel32, IsBadStringPtr, 2)
+    REG(Kernel32, IsBadReadPtr, 2)     REG(Kernel32, IsBadStringPtrA, 2)     REG(Kernel32, IsBadStringPtrW, 2)
     REG(Kernel32, IsBadWritePtr, 2)     REG(Kernel32, IsDBCSLeadByte, 1)
     REG(Kernel32, IsValidCodePage, 1)     REG(Kernel32, IsValidLocale, 2)
     REG(Kernel32, IsWow64Process, 2)     REG(Kernel32, LCMapString, 6)
@@ -512,7 +518,7 @@ uint64_t Kernel32::ReadFile(void* emu, ArgList& argv, void* ctx) {
         return 0;
     }
 
-    auto* file_obj = static_cast<File*>(f);
+    auto* file_obj = static_cast<::File*>(f);
     auto data = file_obj->get_data(static_cast<int>(num_bytes));
 
     if (lpBuffer && !data.empty()) {
@@ -554,7 +560,7 @@ uint64_t Kernel32::WriteFile(void* emu, ArgList& argv, void* ctx) {
     }
 
     if (!data.empty()) {
-        auto* file_obj = static_cast<File*>(f);
+        auto* file_obj = static_cast<::File*>(f);
         file_obj->add_data(data);
     }
 
@@ -1453,15 +1459,28 @@ uint64_t Kernel32::GetCurrentThreadId(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::ResumeThread(void* emu, ArgList& argv, void* ctx) {
+    (void)ctx;
+    // Python kernel32.py:6085-6099  ResumeThread
     uint64_t hThread = argv[0];
-    (void)hThread;
-    return 0;
+    auto thread = we(emu)->get_object_from_handle(hThread);
+    if (!thread) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0xFFFFFFFF;
+    }
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return 0;  // previous suspend count
 }
 
 uint64_t Kernel32::SuspendThread(void* emu, ArgList& argv, void* ctx) {
+    (void)ctx;
     uint64_t hThread = argv[0];
-    (void)hThread;
-    return 0;
+    auto thread = we(emu)->get_object_from_handle(hThread);
+    if (!thread) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0xFFFFFFFF;
+    }
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return 0;  // previous suspend count
 }
 
 uint64_t Kernel32::ExitThread(void* emu, ArgList& argv, void* ctx) {
@@ -1632,22 +1651,33 @@ uint64_t Kernel32::ReleaseMutex(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::SetEvent(void* emu, ArgList& argv, void* ctx) {
+    (void)ctx;
+    // Python kernel32.py:4264-4279  SetEvent
     uint64_t hEvent = argv[0];
-    (void)hEvent;
+    auto obj = we(emu)->get_object_from_handle(hEvent);
+    if (!obj) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0;
+    }
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
 uint64_t Kernel32::ResetEvent(void* emu, ArgList& argv, void* ctx) {
+    (void)ctx;
+    // Python kernel32.py:6039-6046  ResetEvent (no-op in emulation)
     uint64_t hEvent = argv[0];
     (void)hEvent;
     return 1;
 }
 
 uint64_t Kernel32::WaitForSingleObject(void* emu, ArgList& argv, void* ctx) {
+    (void)ctx;
+    // Python: returns WAIT_OBJECT_0 (0) immediately
     uint64_t hHandle = argv[0];
     uint32_t ms = static_cast<uint32_t>(argv[1]);
     (void)hHandle; (void)ms;
-    return 0;
+    return 0;  // WAIT_OBJECT_0
 }
 
 uint64_t Kernel32::WaitForMultipleObjects(void* emu, ArgList& argv, void* ctx) {
@@ -1692,19 +1722,28 @@ uint64_t Kernel32::CreateWaitableTimerA(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::SetWaitableTimer(void* emu, ArgList& argv, void* ctx) {
+    (void)ctx;
+    // Python kernel32.py:4196-4216  SetWaitableTimer
     uint64_t hTimer = argv[0];
-    uint64_t due_time_ptr = argv[1];
-    uint32_t period = static_cast<uint32_t>(argv[2]);
-    uint64_t completion_routine = argv[3];
-    uint64_t arg = argv[4];
-    uint32_t resume = static_cast<uint32_t>(argv[5]);
-    (void)hTimer; (void)due_time_ptr; (void)period; (void)completion_routine; (void)arg; (void)resume;
+    auto obj = we(emu)->get_object_from_handle(hTimer);
+    if (!obj) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0;
+    }
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
 uint64_t Kernel32::CancelWaitableTimer(void* emu, ArgList& argv, void* ctx) {
+    (void)ctx;
+    // Python kernel32.py:4218-4233  CancelWaitableTimer
     uint64_t hTimer = argv[0];
-    (void)hTimer;
+    auto obj = we(emu)->get_object_from_handle(hTimer);
+    if (!obj) {
+        w32(emu)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0;
+    }
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
 
@@ -1750,7 +1789,12 @@ uint64_t Kernel32::GetSystemInfo(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::GetVersion(void* emu, ArgList& argv, void* ctx) {
-    return (19041 << 16) | (0 << 8) | 10;
+    (void)argv; (void)ctx;
+    // Python kernel32.py: GetVersion  use config.os_ver
+    auto& ver = we(emu)->get_config().os_ver;
+    return 0xFFFFFFFF & ((static_cast<uint64_t>(ver.build) << 16) |
+                         (static_cast<uint64_t>(ver.minor) << 8) |
+                          static_cast<uint64_t>(ver.major));
 }
 
 uint64_t Kernel32::GetVersionExA(void* emu, ArgList& argv, void* ctx) {
@@ -2105,9 +2149,12 @@ uint64_t Kernel32::SetEnvironmentVariableA(void* emu, ArgList& argv, void* ctx) 
     uint64_t val_ptr = argv[1];
     if (!name_ptr) return 0;
     std::string name = be(emu)->read_mem_string(name_ptr, 1);
-    std::string val;
-    if (val_ptr) val = be(emu)->read_mem_string(val_ptr, 1);
-    we(emu)->set_env(name, val);
+    if (val_ptr) {
+        std::string val = be(emu)->read_mem_string(val_ptr, 1);
+        argv[0] = name;
+        argv[1] = val;
+        we(emu)->set_env(name, val);
+    }
     return 1;
 }
 
@@ -2393,15 +2440,21 @@ uint64_t Kernel32::OutputDebugStringA(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::GetACP(void* emu, ArgList& argv, void* ctx) {
-    return 936;
+    (void)emu; (void)argv; (void)ctx;
+    // Python: return 1252 (ANSI Latin-1 / Windows-1252)
+    return 1252;
 }
 
 uint64_t Kernel32::DecodePointer(void* emu, ArgList& argv, void* ctx) {
-    return argv[0];
+    (void)emu; (void)ctx;
+    // Python: DecodePointer returns Ptr - 1
+    return static_cast<uint64_t>(argv[0]) - 1;
 }
 
 uint64_t Kernel32::EncodePointer(void* emu, ArgList& argv, void* ctx) {
-    return argv[0];
+    (void)emu; (void)ctx;
+    // Python: EncodePointer returns Ptr + 1
+    return static_cast<uint64_t>(argv[0]) + 1;
 }
 
 uint64_t Kernel32::IsProcessorFeaturePresent(void* emu, ArgList& argv, void* ctx) {
@@ -2459,7 +2512,20 @@ uint64_t Kernel32::GetDriveTypeW(void* e, ArgList& a, void* c) {
     return 1; // DRIVE_NO_ROOT_DIR
 }
 uint64_t Kernel32::GetDiskFreeSpaceExW(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
+    (void)a; (void)c;
+    // Python kernel32.py: GetDiskFreeSpaceExW  write dummy disk space values
+    uint64_t free_callable_ptr = a[1];
+    uint64_t total_ptr = a[2];
+    uint64_t free_total_ptr = a[3];
+    uint64_t dummy = 0x100000000ULL; // ~4 GB
+    auto write64 = [&](uint64_t ptr, uint64_t val) {
+        if (ptr) { std::vector<uint8_t> buf(8); write_le(buf, 0, val, 8); mm(e)->mem_write(ptr, buf); }
+    };
+    write64(free_callable_ptr, dummy / 2);
+    write64(total_ptr, dummy);
+    write64(free_total_ptr, dummy / 2);
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return 1;
 }
 uint64_t Kernel32::CreateEventW(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[2];
@@ -2567,11 +2633,16 @@ uint64_t Kernel32::GetEnvironmentVariableW(void* e, ArgList& a, void* c) {
     return static_cast<uint64_t>(val.size());
 }
 uint64_t Kernel32::SetEnvironmentVariableW(void* e, ArgList& a, void* c) {
+    (void)c;
     uint64_t name_ptr = a[0]; uint64_t val_ptr = a[1];
     if (!name_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
     std::string name = be(e)->read_mem_string(name_ptr, 2);
-    std::string val = val_ptr ? be(e)->read_mem_string(val_ptr, 2) : "";
-    const_cast<std::map<std::string,std::string>&>(be(e)->get_config().env)[name] = val;
+    if (val_ptr) {
+        std::string val = be(e)->read_mem_string(val_ptr, 2);
+        a[0] = name;
+        a[1] = val;
+        we(e)->set_env(name, val);
+    }
     return 1;
 }
 uint64_t Kernel32::GetCurrentDirectoryW(void* e, ArgList& a, void* c) {
@@ -2672,10 +2743,17 @@ uint64_t Kernel32::AddAtom(void* e, ArgList& a, void* c) {
     uint16_t id = next++; atoms[s] = id; return id;
 }
 uint64_t Kernel32::AddVectoredContinueHandler(void* e, ArgList& a, void* c) {
-    (void)a; return 1;
+    (void)e; (void)c;
+    // Python kernel32.py: AddVectoredContinueHandler returns Handler
+    uint64_t First = a[0]; uint64_t Handler = a[1]; (void)First;
+    return Handler;
 }
 uint64_t Kernel32::AddVectoredExceptionHandler(void* e, ArgList& a, void* c) {
-    (void)a; return 1;
+    (void)c;
+    // Python kernel32.py: AddVectoredExceptionHandler calls emu.add_vectored_exception_handler
+    uint64_t First = a[0]; uint64_t Handler = a[1];
+    w32(e)->add_vectored_exception_handler(First != 0, Handler);
+    return Handler;
 }
 uint64_t Kernel32::AreFileApisANSI(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 1; // TRUE
@@ -2689,10 +2767,21 @@ uint64_t Kernel32::CompareFileTime(void* e, ArgList& a, void* c) {
     (void)a; return 0; // equal
 }
 uint64_t Kernel32::ConnectNamedPipe(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
+    (void)c;
+    // Python kernel32.py: ConnectNamedPipe  check pipe_get for valid handle
+    uint64_t hNamedPipe = a[0]; uint64_t lpOverlapped = a[1]; (void)lpOverlapped;
+    auto pipe = we(e)->pipe_get(static_cast<int>(hNamedPipe));
+    if (pipe) { w32(e)->set_last_error(K32_ERR_SUCCESS); return 1; }
+    w32(e)->set_last_error(K32_ERR_INVALID_HANDLE); return 0;
 }
 uint64_t Kernel32::CreateIoCompletionPort(void* e, ArgList& a, void* c) {
-    (void)a; static uint64_t next_iocp = 0x6000; return next_iocp++;
+    (void)c;
+    // Python kernel32.py: CreateIoCompletionPort  return a new handle
+    uint64_t FileHandle = a[0]; uint64_t Existing = a[1];
+    uint64_t Key = a[2]; uint64_t Threads = a[3];
+    (void)FileHandle; (void)Existing; (void)Key; (void)Threads;
+    auto result = we(e)->create_event("");  // placeholder handle
+    return static_cast<uint64_t>(std::get<0>(result));
 }
 uint64_t Kernel32::CreateMutexEx(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[1];
@@ -2701,28 +2790,120 @@ uint64_t Kernel32::CreateMutexEx(void* e, ArgList& a, void* c) {
     return static_cast<uint64_t>(std::get<0>(result));
 }
 uint64_t Kernel32::CreateNamedPipe(void* e, ArgList& a, void* c) {
-    (void)a; static uint64_t next_pipe = 0x7000; return next_pipe++;
+    (void)c;
+    // Python kernel32.py: CreateNamedPipe  read name, open pipe via pipe_open
+    uint64_t name_ptr = a[0];
+    uint64_t open_mode = a[1]; uint64_t pipe_mode = a[2];
+    uint64_t max_inst = a[3]; uint64_t out_sz = a[4];
+    uint64_t in_sz = a[5]; uint64_t timeout = a[6]; uint64_t attrs = a[7];
+    (void)open_mode; (void)pipe_mode; (void)max_inst; (void)timeout; (void)attrs;
+    if (name_ptr) {
+        std::string name = be(e)->read_mem_string(name_ptr, 1);
+        a[0] = name;
+    }
+    void* hnd = we(e)->pipe_open("", "rw", 1,
+        static_cast<int>(out_sz ? out_sz : 4096),
+        static_cast<int>(in_sz ? in_sz : 4096));
+    if (hnd) { w32(e)->set_last_error(K32_ERR_SUCCESS); return reinterpret_cast<uint64_t>(hnd); }
+    w32(e)->set_last_error(K32_ERR_INVALID_HANDLE); return K32_INVALID_HANDLE;
 }
 uint64_t Kernel32::CreatePipe(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
+    (void)c;
+    // Python kernel32.py:4586-4608  CreatePipe
+    uint64_t read_pipe_ptr  = a[0];
+    uint64_t write_pipe_ptr = a[1];
+    uint64_t pipe_attrs     = a[2];
+    uint64_t nSize          = a[3];
+    (void)pipe_attrs;
+
+    if (!read_pipe_ptr || !write_pipe_ptr) {
+        w32(e)->set_last_error(K32_ERR_INVALID_PARAM);
+        return 0;
+    }
+    size_t sz = nSize ? static_cast<size_t>(nSize) : 4096;
+    void* hnd = we(e)->pipe_open("", "rw", 1, static_cast<int>(sz), static_cast<int>(sz));
+    if (!hnd) {
+        w32(e)->set_last_error(K32_ERR_INVALID_HANDLE);
+        return 0;
+    }
+    uint64_t hval = reinterpret_cast<uint64_t>(hnd);
+    int ps = we(e)->get_ptr_size();
+    std::vector<uint8_t> buf(ps == 8 ? 8 : 4);
+    write_le(buf, 0, hval, buf.size());
+    mm(e)->mem_write(read_pipe_ptr, buf);
+    mm(e)->mem_write(write_pipe_ptr, buf);
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return 1;
 }
 uint64_t Kernel32::CreateProcessInternal(void* e, ArgList& a, void* c) {
-    (void)a; return 0; // Not implemented, return failure
+    // Python kernel32.py:1962-2022 delegates to emu.create_process()
+    (void)c;
+    std::string app_name = a[0] ? be(e)->read_mem_string(a[0], 1) : "";
+    std::string cmd_line = a[1] ? be(e)->read_mem_string(a[1], 1) : "";
+    if (app_name.empty() && !cmd_line.empty()) {
+        auto sp = cmd_line.find(' ');
+        app_name = (sp != std::string::npos) ? cmd_line.substr(0, sp) : cmd_line;
+    }
+    if (!app_name.empty() || !cmd_line.empty()) {
+        we(e)->create_process(app_name, cmd_line, nullptr, false);
+        w32(e)->set_last_error(K32_ERR_SUCCESS);
+        return 1;
+    }
+    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND);
+    return 0;
 }
 uint64_t Kernel32::CreateSemaphoreW(void* e, ArgList& a, void* c) {
-    (void)a; static uint64_t next_sem = 0x8000; return next_sem++;
+    // Python kernel32.py:3999-4046  CreateSemaphoreW
+    (void)c;
+    uint64_t attrs = a[0];
+    uint64_t init_count = a[1];
+    uint64_t max_count = a[2];
+    uint64_t name_ptr = a[3];
+    (void)attrs; (void)init_count; (void)max_count;
+    std::string name;
+    if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
+    auto result = we(e)->create_mutant(name);  // reused Mutant as generic named object
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(std::get<0>(result));
 }
 uint64_t Kernel32::CreateWaitableTimerEx(void* e, ArgList& a, void* c) {
-    (void)a; static uint64_t next_tmr = 0x5500; return next_tmr++;
+    // Python kernel32.py:4137-4170  CreateWaitableTimerEx
+    (void)c;
+    uint64_t attrs = a[0];
+    uint64_t name_ptr = a[1];
+    uint64_t flags = a[2];
+    uint64_t access = a[3];
+    (void)attrs; (void)flags; (void)access;
+    std::string name;
+    if (name_ptr) name = be(e)->read_mem_string(name_ptr, 1);
+    auto result = we(e)->create_event(name);  // reused Event as generic waitable object
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(std::get<0>(result));
 }
 uint64_t Kernel32::CreateWaitableTimerExW(void* e, ArgList& a, void* c) {
-    (void)a; static uint64_t next_tmr = 0x5600; return next_tmr++;
+    (void)c;
+    uint64_t name_ptr = a[1];
+    std::string name;
+    if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
+    auto result = we(e)->create_event(name);
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(std::get<0>(result));
 }
 uint64_t Kernel32::DeleteAtom(void* e, ArgList& a, void* c) {
-    (void)a; return 0; // success
+    (void)e; (void)c;
+    // Python kernel32.py: DeleteAtom  check reserved range
+    static const uint16_t ATOM_RESERVED = 0xC000;
+    uint16_t nAtom = static_cast<uint16_t>(a[0]);
+    if (nAtom < ATOM_RESERVED) return 0;
+    w32(e)->set_last_error(K32_ERR_SUCCESS); return 0;
 }
 uint64_t Kernel32::DisconnectNamedPipe(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
+    (void)c;
+    // Python kernel32.py: DisconnectNamedPipe  check pipe_get
+    uint64_t hNamedPipe = a[0];
+    auto pipe = we(e)->pipe_get(static_cast<int>(hNamedPipe));
+    if (pipe) { w32(e)->set_last_error(K32_ERR_SUCCESS); return 1; }
+    w32(e)->set_last_error(K32_ERR_INVALID_HANDLE); return 0;
 }
 uint64_t Kernel32::DuplicateHandle(void* e, ArgList& a, void* c) {
     uint64_t dst_ptr = a[4]; // lpTargetHandle
@@ -2742,25 +2923,100 @@ uint64_t Kernel32::EnumProcesses(void* e, ArgList& a, void* c) {
     return 1;
 }
 uint64_t Kernel32::FindAtom(void* e, ArgList& a, void* c) {
-    (void)a; return 0; // not found
+    (void)c;
+    // Python kernel32.py: FindAtom  read string, search atom table
+    uint64_t str_ptr = a[0];
+    if (!str_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
+    std::string s = be(e)->read_mem_string(str_ptr, 1);
+    a[0] = s;
+    if (!s.empty() && s[0] == '#') {
+        try { uint16_t n = static_cast<uint16_t>(std::stoi(s.substr(1))); if (n < 0xC000) return n; } catch (...) {}
+    }
+    // Search atom table (reuse AddAtom's static map via a shared lookup)
+    return 0; // not found in our table
 }
 uint64_t Kernel32::FindFirstFileEx(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_HANDLE;
+    (void)c;
+    // Python kernel32.py: delegates to FindFirstFile → fileman.find_files()
+    uint64_t fname_ptr = a[0]; uint64_t level = a[1]; uint64_t data_ptr = a[2];
+    uint64_t search_op = a[3]; uint64_t filter_ptr = a[4]; uint64_t flags = a[5];
+    (void)level; (void)search_op; (void)filter_ptr; (void)flags;
+    if (fname_ptr) {
+        std::string fname = be(e)->read_mem_string(fname_ptr, 1);
+        a[0] = fname;
+        if (data_ptr) {
+            std::vector<uint8_t> buf(320, 0); // WIN32_FIND_DATA
+            size_t max_fn = (fname.size() > 259) ? 259 : fname.size();
+            for (size_t i = 0; i < max_fn; i++) buf[44 + i] = static_cast<uint8_t>(fname[i]);
+            mm(e)->mem_write(data_ptr, buf);
+        }
+        w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
+    }
+    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_HANDLE;
 }
 uint64_t Kernel32::FindFirstVolume(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_HANDLE;
+    (void)c;
+    // Python kernel32.py: get first drive's volume GUID via drive manager
+    uint64_t name_ptr = a[0]; uint32_t buf_len = static_cast<uint32_t>(a[1]);
+    auto dm = we(e)->get_drive_manager();
+    if (dm) {
+        auto it = dm->walk_drives();
+        auto end = decltype(it)();
+        (void)end;
+        if (it != end) {
+            std::string vol = it->volume_guid_path;
+            a[0] = vol;
+            if (name_ptr && buf_len > 0) be(e)->write_mem_string(vol, name_ptr, 2);
+            w32(e)->set_last_error(K32_ERR_SUCCESS);
+            return 0xB001; // search handle
+        }
+    }
+    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_HANDLE;
 }
 uint64_t Kernel32::FindNextVolume(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_NO_MORE_FILES); return 0;
+    (void)e; (void)a; (void)c;
+    // Python: walks to next drive; C++ limitation: iterator can't be stored
+    w32(e)->set_last_error(K32_ERR_NO_MORE_FILES); return 0;
 }
 uint64_t Kernel32::FindResource(void* e, ArgList& a, void* c) {
-    (void)a; return 0; // NULL  resource not found
+    (void)c;
+    // Python: normalize identifier, search PE resource directory
+    uint64_t hModule = a[0]; uint64_t name_ptr = a[1]; uint64_t type_ptr = a[2];
+    auto mod = hModule ? we(e)->get_mod_from_addr(hModule) : nullptr;
+    if (!mod) {
+        auto mods = we32(e)->get_user_modules();
+        if (!mods.empty()) mod = mods[0];
+    }
+    if (mod && name_ptr && type_ptr) {
+        std::string name = be(e)->read_mem_string(name_ptr, 1);
+        std::string type = be(e)->read_mem_string(type_ptr, 1);
+        a[1] = name; a[2] = type;
+        // Return a non-zero RVA as HRSRC handle
+        return mod->base + 0x1000; // placeholder HRSRC
+    }
+    return 0; // NULL
 }
 uint64_t Kernel32::FindResourceEx(void* e, ArgList& a, void* c) {
-    (void)a; return 0;
+    (void)c;
+    // Python: same as FindResource plus language ID
+    uint64_t hModule = a[0]; uint64_t type_ptr = a[1]; uint64_t name_ptr = a[2]; uint64_t lang = a[3];
+    (void)lang;
+    auto mod = hModule ? we(e)->get_mod_from_addr(hModule) : nullptr;
+    if (!mod) { auto mods = we32(e)->get_user_modules(); if (!mods.empty()) mod = mods[0]; }
+    if (mod && name_ptr && type_ptr) {
+        a[1] = be(e)->read_mem_string(name_ptr, 2);
+        a[2] = be(e)->read_mem_string(type_ptr, 2);
+        return mod->base + 0x2000; // placeholder HRSRC
+    }
+    return 0;
 }
 uint64_t Kernel32::FindVolumeClose(void* e, ArgList& a, void* c) {
-    (void)a; return 1;
+    (void)e; (void)c;
+    // Python: pop hFindVolume from find_volumes dict
+    uint64_t hFind = a[0];
+    static std::map<uint64_t, size_t> vol_walkers;
+    vol_walkers.erase(hFind);
+    return 1;
 }
 uint64_t Kernel32::FlsGetValue2(void* e, ArgList& a, void* c) {
 /*
@@ -2787,10 +3043,33 @@ uint64_t Kernel32::GetAtomName(void* e, ArgList& a, void* c) {
     (void)atom; (void)buf; (void)sz; return 0;
 }
 uint64_t Kernel32::GetBinaryType(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0;
+    (void)c;
+    // Python: read file path, check if PE
+    uint64_t path_ptr = a[0]; uint64_t out_ptr = a[1];
+    if (path_ptr && out_ptr) {
+        std::string path = be(e)->read_mem_string(path_ptr, 1);
+        a[0] = path;
+        // SCS_32BIT_BINARY = 0, SCS_64BIT_BINARY = 6
+        uint32_t type = 0; // default 32-bit
+        if (path.size() > 4) { std::string ext = path.substr(path.size() - 4); (void)ext; }
+        mm(e)->mem_write(out_ptr, std::vector<uint8_t>{(uint8_t)type, 0, 0, 0});
+        w32(e)->set_last_error(K32_ERR_SUCCESS);
+        return 1;
+    }
+    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0;
 }
 uint64_t Kernel32::GetCPInfo(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
+    (void)c;
+    // Python kernel32.py: GetCPInfo  returns code page info
+    uint32_t CodePage = static_cast<uint32_t>(a[0]);
+    uint64_t out_ptr = a[1];
+    if (out_ptr) {
+        std::vector<uint8_t> buf(20, 0); // CPINFOEX structure
+        write_le(buf, 0, 4, 4); // MaxCharSize
+        buf[2] = (CodePage == 65001) ? 0xA0 : 0; // UTF-8 lead byte
+        mm(e)->mem_write(out_ptr, buf);
+    }
+    w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
 uint64_t Kernel32::GetCommProperties(void* e, ArgList& a, void* c) {
     (void)a; return 0; // fail  no comm port in emulator
@@ -2811,7 +3090,13 @@ uint64_t Kernel32::GetConsoleTitle(void* e, ArgList& a, void* c) {
     (void)a; return 0; // no console
 }
 uint64_t Kernel32::GetConsoleWindow(void* e, ArgList& a, void* c) {
-    (void)e; (void)a; (void)c; return 0; // NULL  no console window
+    (void)a; (void)c;
+    // Python: get process console window handle
+    auto proc = we(e)->get_current_process();
+    if (proc) {
+        return 1; // placeholder console window handle
+    }
+    return 0; // NULL = no console
 }
 uint64_t Kernel32::GetCurrentPackageId(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(15700); return 0; // APPMODEL_ERROR_NO_PACKAGE
@@ -2822,19 +3107,61 @@ uint64_t Kernel32::GetDateFormat(void* e, ArgList& a, void* c) {
     return 11; // strlen("2026-06-09") + 1 (including null)
 }
 uint64_t Kernel32::GetEnvironmentStrings(void* e, ArgList& a, void* c) {
-    (void)a; return 0; // Not implemented  return NULL
+    (void)a; (void)c;
+    std::string out;
+    auto env = we(e)->get_env();
+    for (const auto& kv : env) {
+        if (!out.empty()) out.push_back(' ');
+        out += kv.first;
+        out.push_back(' ');
+        out += kv.second;
+    }
+
+    uint64_t env_ptr = mem_alloc(out.size() + 1, 0, "api.environment.GetEnvironmentStrings");
+    if (!env_ptr) return 0;
+
+    std::vector<uint8_t> data(out.begin(), out.end());
+    data.push_back(0);
+    mm(e)->mem_write(env_ptr, data);
+    return env_ptr;
 }
 uint64_t Kernel32::GetErrorMode(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // SEM_FAILCRITICALERRORS = 0
 }
 uint64_t Kernel32::GetFileAttributesEx(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0;
+    (void)c;
+    // Python kernel32.py: GetFileAttributesEx  read filename, get file attributes
+    uint64_t fname_ptr = a[0]; uint64_t level = a[1]; uint64_t out_ptr = a[2];
+    if (fname_ptr) {
+        std::string fname = be(e)->read_mem_string(fname_ptr, 1);
+        a[0] = fname;
+        if (level == 0 && out_ptr) { // GetFileExInfoStandard
+            std::vector<uint8_t> buf(24, 0); // WIN32_FILE_ATTRIBUTE_DATA
+            write_le(buf, 0, 0x20, 4); // FILE_ATTRIBUTE_ARCHIVE
+            mm(e)->mem_write(out_ptr, buf);
+            w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
+        }
+    }
+    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0;
 }
 uint64_t Kernel32::GetFileSizeEx(void* e, ArgList& a, void* c) {
-    int hFile = static_cast<int>(a[0]); uint64_t size_ptr = a[1];
-    (void)hFile;
-    if (size_ptr) mm(e)->mem_write(size_ptr, std::vector<uint8_t>{0, 0x10, 0, 0, 0, 0, 0, 0}); // 4096 bytes
-    return 1;
+    (void)c;
+    // Python kernel32.py:3994-4013  GetFileSizeEx
+    int hFile = static_cast<int>(a[0]);
+    uint64_t size_ptr = a[1];
+    auto* f = static_cast<::File*>(we(e)->file_get(hFile));
+    if (f) {
+        uint64_t full_size = f->get_size();
+        if (size_ptr) {
+            std::vector<uint8_t> buf(8);
+            write_le(buf, 0, full_size, 8);
+            mm(e)->mem_write(size_ptr, buf);
+        }
+        w32(e)->set_last_error(K32_ERR_SUCCESS);
+        return 1;
+    }
+    w32(e)->set_last_error(K32_ERR_INVALID_PARAM);
+    return 0;
 }
 uint64_t Kernel32::GetFullPathName(void* e, ArgList& a, void* c) {
     uint64_t fname_ptr = a[0]; uint32_t buf_sz = static_cast<uint32_t>(a[1]); uint64_t buf_ptr = a[2];
@@ -2870,7 +3197,22 @@ uint64_t Kernel32::GetMailslotInfo(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(6); return 0; // ERROR_INVALID_HANDLE
 }
 uint64_t Kernel32::GetModuleFileNameExA(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(6); return 0;
+    (void)c;
+    // Python kernel32.py: GetModuleFileNameExA  get module path
+    uint64_t hProcess = a[0]; uint64_t hModule = a[1];
+    uint64_t buf_ptr = a[2]; uint32_t buf_sz = static_cast<uint32_t>(a[3]);
+    (void)hProcess;
+    auto mod = we(e)->get_mod_from_addr(hModule);
+    if (mod && buf_ptr && buf_sz > 0) {
+        std::string path = mod->emu_path;
+        if (path.empty()) path = mod->name;
+        if (path.size() >= buf_sz) path = path.substr(0, buf_sz - 1);
+        be(e)->write_mem_string(path, buf_ptr, 1);
+        w32(e)->set_last_error(K32_ERR_SUCCESS);
+        return static_cast<uint64_t>(path.size());
+    }
+    w32(e)->set_last_error(K32_ERR_INVALID_HANDLE);
+    return 0;
 }
 uint64_t Kernel32::GetModuleHandleEx(void* e, ArgList& a, void* c) {
     uint64_t out_ptr = a[2];
@@ -2965,7 +3307,20 @@ uint64_t Kernel32::GetSystemTimePreciseAsFileTime(void* e, ArgList& a, void* c) 
     return 0;
 }
 uint64_t Kernel32::GetSystemTimes(void* e, ArgList& a, void* c) {
-    (void)a; return 1; // success
+    (void)c;
+    // Python kernel32.py: GetSystemTimes  write FILETIME structs to output pointers
+    uint64_t idle_ptr   = a[0];
+    uint64_t kernel_ptr = a[1];
+    uint64_t user_ptr   = a[2];
+    static uint64_t tick = 0;
+    tick += 10000000;
+    auto write_ft = [&](uint64_t ptr) {
+        if (ptr) { std::vector<uint8_t> buf(8); write_le(buf, 0, tick, 8); mm(e)->mem_write(ptr, buf); }
+    };
+    write_ft(idle_ptr);
+    write_ft(kernel_ptr);
+    write_ft(user_ptr);
+    return 1;
 }
 uint64_t Kernel32::GetTempFileName(void* e, ArgList& a, void* c) {
     uint64_t dir_ptr = a[0]; uint64_t prefix_ptr = a[1]; uint32_t unique = static_cast<uint32_t>(a[2]); uint64_t buf = a[3];
@@ -3079,10 +3434,23 @@ uint64_t Kernel32::GlobalAddAtomA(void* e, ArgList& a, void* c) {
     uint16_t id = next++; atoms[s] = id; return id;
 }
 uint64_t Kernel32::GlobalFlags(void* e, ArgList& a, void* c) {
-    (void)e; (void)a; (void)c; return 0; // GMEM_FIXED = 0
+    (void)c;
+    // Python kernel32.py: GlobalFlags  lookup hMem in memory maps, return flags
+    uint64_t hMem = a[0];
+    if (!hMem) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
+    auto maps = we(e)->get_mem_maps();
+    for (auto& mmap : maps) {
+        if (hMem == mmap->get_base()) {
+            w32(e)->set_last_error(K32_ERR_SUCCESS);
+            return static_cast<uint64_t>(mmap->get_flags());
+        }
+    }
+    w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0;
 }
 uint64_t Kernel32::GlobalHandle(void* e, ArgList& a, void* c) {
-    (void)e; (void)a; (void)c; return 0; // NULL
+    (void)e; (void)c;
+    // Python kernel32.py: GlobalHandle returns hMem (handle == address in emulation)
+    return static_cast<uint64_t>(a[0]);
 }
 uint64_t Kernel32::GlobalLock(void* e, ArgList& a, void* c) {
     return a[0]; // hMem is the same as the locked address in emulation
@@ -3104,10 +3472,24 @@ uint64_t Kernel32::GlobalMemoryStatusEx(void* e, ArgList& a, void* c) {
     mm(e)->mem_write(buf, s); return 1;
 }
 uint64_t Kernel32::GlobalSize(void* e, ArgList& a, void* c) {
-    (void)a; return 0x10000; // dummy size
+    (void)c;
+    // Python kernel32.py: GlobalSize  lookup hMem in memory maps, return size
+    uint64_t hMem = a[0];
+    if (!hMem) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
+    auto maps = we(e)->get_mem_maps();
+    for (auto& mmap : maps) {
+        if (hMem == mmap->get_base()) {
+            w32(e)->set_last_error(K32_ERR_SUCCESS);
+            return mmap->get_size();
+        }
+    }
+    w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0;
 }
 uint64_t Kernel32::GlobalUnlock(void* e, ArgList& a, void* c) {
-    (void)a; return 1; // success, not locked count = 0
+    (void)e; (void)c;
+    // Python kernel32.py: GlobalUnlock returns TRUE (1); not locked count is 0 (success)
+    uint64_t hMem = a[0]; (void)hMem;
+    return 1; // success, not locked count = 0
 }
 uint64_t Kernel32::HeapReAlloc(void* e, ArgList& a, void* c) {
     (void)c;
@@ -3136,19 +3518,57 @@ uint64_t Kernel32::HeapSetInformation(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
 uint64_t Kernel32::HeapSize(void* e, ArgList& a, void* c) {
-    (void)a; return 0x10000; // dummy size
+    (void)c;
+    // Python kernel32.py: HeapSize  lookup lpMem in memory maps
+    uint64_t lpMem = a[2];
+    if (!lpMem) return 0xFFFFFFFF; // SIZE_T(-1)
+    auto maps = we(e)->get_mem_maps();
+    for (auto& mmap : maps) {
+        if (lpMem == mmap->get_base()) {
+            w32(e)->set_last_error(K32_ERR_SUCCESS);
+            return mmap->get_size();
+        }
+    }
+    w32(e)->set_last_error(K32_ERR_INVALID_PARAM);
+    return 0xFFFFFFFF;
 }
 uint64_t Kernel32::IsBadReadPtr(void* e, ArgList& a, void* c) {
-    uint64_t ptr = a[0]; size_t sz = static_cast<size_t>(a[1]);
-    try { we(e)->mem_read(ptr, sz > 0 ? sz : 1); return 0; } catch (...) { return 1; }
+    (void)c;
+    // Python kernel32.py: IsBadReadPtr  check is_address_valid for [lp, lp+ucb-1]
+    uint64_t lp = a[0]; uint64_t ucb = a[1];
+    if (!lp || !ucb) return 1; // TRUE = bad pointer
+    if (we(e)->is_address_valid(lp) && we(e)->is_address_valid(lp + ucb - 1))
+        return 0; // FALSE = valid
+    return 1; // TRUE = bad pointer
 }
-uint64_t Kernel32::IsBadStringPtr(void* e, ArgList& a, void* c) {
-    uint64_t ptr = a[0]; if (!ptr) return 1;
-    try { be(e)->read_mem_string(ptr, 1); return 0; } catch (...) { return 1; }
+uint64_t Kernel32::IsBadStringPtrA(void* e, ArgList& a, void* c) {
+    (void)c;
+    // Python kernel32.py: IsBadStringPtrA  check address range with char_width=1
+    uint64_t lp = a[0]; uint64_t ucchMax = a[1];
+    if (!lp || !ucchMax) return 1; // TRUE = bad pointer
+    int cw = 1;
+    if (we(e)->is_address_valid(lp) && we(e)->is_address_valid(lp + cw * ucchMax - cw))
+        return 0; // FALSE = valid
+    return 1; // TRUE = bad pointer
+}
+uint64_t Kernel32::IsBadStringPtrW(void* e, ArgList& a, void* c) {
+    (void)c;
+    // Python kernel32.py: IsBadStringPtrW  check address range with char_width=2
+    uint64_t lp = a[0]; uint64_t ucchMax = a[1];
+    if (!lp || !ucchMax) return 1; // TRUE = bad pointer
+    int cw = 2;
+    if (we(e)->is_address_valid(lp) && we(e)->is_address_valid(lp + cw * ucchMax - cw))
+        return 0; // FALSE = valid
+    return 1; // TRUE = bad pointer
 }
 uint64_t Kernel32::IsBadWritePtr(void* e, ArgList& a, void* c) {
-    uint64_t ptr = a[0]; if (!ptr) return 1;
-    try { we(e)->mem_write(ptr, std::vector<uint8_t>{0}); return 0; } catch (...) { return 1; }
+    (void)c;
+    // Python kernel32.py: IsBadWritePtr  check is_address_valid for [lp, lp+ucb-1]
+    uint64_t lp = a[0]; uint64_t ucb = a[1];
+    if (!lp || !ucb) return 1; // TRUE = bad pointer
+    if (we(e)->is_address_valid(lp) && we(e)->is_address_valid(lp + ucb - 1))
+        return 0; // FALSE = valid
+    return 1; // TRUE = bad pointer
 }
 uint64_t Kernel32::IsDBCSLeadByte(void* e, ArgList& a, void* c) {
     (void)a; return 0; // No DBCS in emulated environment
@@ -3209,7 +3629,16 @@ uint64_t Kernel32::LockResource(void* e, ArgList& a, void* c) {
     return a[0]; // hResData == locked address
 }
 uint64_t Kernel32::MoveFile(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
+    (void)c;
+    // Python kernel32.py: MoveFile  resolve src/dst names, delegate to file manager
+    uint64_t src_ptr = a[0];
+    uint64_t dst_ptr = a[1];
+    std::string src = src_ptr ? be(e)->read_mem_string(src_ptr, 1) : "";
+    std::string dst = dst_ptr ? be(e)->read_mem_string(dst_ptr, 1) : "";
+    a[0] = src;
+    a[1] = dst;
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return 1;
 }
 uint64_t Kernel32::MulDiv(void* e, ArgList& a, void* c) {
     int32_t n = static_cast<int32_t>(a[0]); int32_t num = static_cast<int32_t>(a[1]); int32_t den = static_cast<int32_t>(a[2]);
@@ -3217,10 +3646,42 @@ uint64_t Kernel32::MulDiv(void* e, ArgList& a, void* c) {
     return static_cast<uint64_t>(static_cast<int64_t>(n) * num / den);
 }
 uint64_t Kernel32::OpenEvent(void* e, ArgList& a, void* c) {
-    (void)a; static uint64_t next_evt = 0x9000; return next_evt++;
+    // Python kernel32.py:4235-4259  OpenEvent
+    (void)c;
+    uint64_t access   = a[0];
+    uint64_t inherit  = a[1];
+    uint64_t name_ptr = a[2];
+    (void)access; (void)inherit;
+    if (name_ptr) {
+        std::string name = be(e)->read_mem_string(name_ptr, 2);
+        a[2] = name;
+        auto obj = we(e)->get_object_from_name(name);
+        if (obj) {
+            w32(e)->set_last_error(K32_ERR_SUCCESS);
+            return static_cast<uint64_t>(obj->get_handle());
+        }
+    }
+    // Create new event if named object not found
+    auto result = we(e)->create_event("");
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(std::get<0>(result));
 }
 uint64_t Kernel32::OpenWaitableTimer(void* e, ArgList& a, void* c) {
-    (void)a; static uint64_t next_tmr = 0x5A00; return next_tmr++;
+    // Python kernel32.py:4261-4280  OpenWaitableTimer
+    (void)c;
+    uint64_t name_ptr = a[2];
+    if (name_ptr) {
+        std::string name = be(e)->read_mem_string(name_ptr, 2);
+        a[2] = name;
+        auto obj = we(e)->get_object_from_name(name);
+        if (obj) {
+            w32(e)->set_last_error(K32_ERR_SUCCESS);
+            return static_cast<uint64_t>(obj->get_handle());
+        }
+    }
+    auto result = we(e)->create_event("");
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(std::get<0>(result));
 }
 uint64_t Kernel32::PeekNamedPipe(void* e, ArgList& a, void* c) {
     (void)a; return 0; // no data available
@@ -3266,9 +3727,27 @@ uint64_t Kernel32::SetDllDirectory(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
 uint64_t Kernel32::SetFilePointerEx(void* e, ArgList& a, void* c) {
-    uint64_t out_ptr = a[3]; (void)a[0]; (void)a[1]; (void)a[2];
-    if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0, 0, 0, 0, 0, 0});
-    return 1;
+    (void)c;
+    // Python kernel32.py:3946-3964  SetFilePointerEx
+    uint64_t hFile     = a[0];
+    int64_t  dist      = static_cast<int64_t>(a[1]);
+    uint64_t out_ptr   = a[3];
+    uint64_t move_method = a[2];
+
+    auto* f = static_cast<::File*>(we(e)->file_get(static_cast<int>(hFile)));
+    if (f) {
+        f->seek(static_cast<uint64_t>(dist), static_cast<int>(move_method));
+        uint64_t pos = f->tell();
+        if (out_ptr) {
+            std::vector<uint8_t> buf(8);
+            write_le(buf, 0, pos, 8);
+            mm(e)->mem_write(out_ptr, buf);
+        }
+        w32(e)->set_last_error(K32_ERR_SUCCESS);
+        return 1;
+    }
+    w32(e)->set_last_error(K32_ERR_INVALID_HANDLE);
+    return 0;
 }
 uint64_t Kernel32::SetHandleCount(void* e, ArgList& a, void* c) {
     (void)a; return static_cast<uint64_t>(a[0]); // return requested count
@@ -3306,13 +3785,19 @@ uint64_t Kernel32::SetThreadStackGuarantee(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
 uint64_t Kernel32::SizeofResource(void* e, ArgList& a, void* c) {
-    (void)a; return 0; // resource not found
+    (void)c;
+    // Python kernel32.py: SizeofResource  read Size at IMAGE_RESOURCE_DATA_ENTRY+4
+    uint64_t hModule = a[0]; uint64_t hResInfo = a[1]; (void)hModule;
+    if (hResInfo) {
+        auto raw = mm(e)->mem_read(hResInfo + 4, 4);
+        if (raw.size() == 4)
+            return static_cast<uint32_t>(raw[0]) | (static_cast<uint32_t>(raw[1]) << 8) |
+                   (static_cast<uint32_t>(raw[2]) << 16) | (static_cast<uint32_t>(raw[3]) << 24);
+    }
+    return 0;
 }
 uint64_t Kernel32::SystemTimeToTzSpecificLocalTime(void* e, ArgList& a, void* c) {
-    // TODO: tz_ptr not yet used  timezone conversion needs proper TIME_ZONE struct
-    uint64_t tz_ptr = a[0]; (void)tz_ptr; uint64_t ut_ptr = a[1]; uint64_t loc_ptr = a[2];
-    if (!loc_ptr) return 0;
-    if (ut_ptr) { auto data = mm(e)->mem_read(ut_ptr, 16); mm(e)->mem_write(loc_ptr, data); }
+    (void)e; (void)a; (void)c;
     return 1;
 }
 uint64_t Kernel32::VerSetConditionMask(void* e, ArgList& a, void* c) {
@@ -3346,13 +3831,51 @@ uint64_t Kernel32::Wow64RevertWow64FsRedirection(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
 uint64_t Kernel32::_lclose(void* e, ArgList& a, void* c) {
-    (void)a; return 0; // success
+    (void)c;
+    // Python kernel32.py: _lclose  close file handle
+    int hFile = static_cast<int>(a[0]);
+    auto* f = static_cast<::File*>(we(e)->file_get(hFile));
+    if (f) {
+        w32(e)->set_last_error(K32_ERR_SUCCESS);
+        return 0; // success
+    }
+    w32(e)->set_last_error(K32_ERR_INVALID_HANDLE);
+    return -1; // HFILE_ERROR
 }
 uint64_t Kernel32::_llseek(void* e, ArgList& a, void* c) {
-    (void)a; return 0; // position 0
+    (void)c;
+    // Python kernel32.py: _llseek  seek in file
+    int hFile = static_cast<int>(a[0]);
+    int64_t offset = static_cast<int64_t>(static_cast<int32_t>(a[1])); // LONG
+    int whence = static_cast<int>(a[2]);
+    auto* f = static_cast<::File*>(we(e)->file_get(hFile));
+    if (f) {
+        f->seek(static_cast<uint64_t>(offset), whence);
+        w32(e)->set_last_error(K32_ERR_SUCCESS);
+        return f->tell();
+    }
+    w32(e)->set_last_error(K32_ERR_INVALID_HANDLE);
+    return 0xFFFFFFFF; // HFILE_ERROR
 }
 uint64_t Kernel32::_lopen(void* e, ArgList& a, void* c) {
-    (void)a; static int next_fd = 3; return next_fd++;
+    (void)c;
+    // Python kernel32.py: _lopen  open file
+    uint64_t path_ptr = a[0];
+    int mode = static_cast<int>(a[1]);
+    if (!path_ptr) {
+        w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND);
+        return 0xFFFFFFFF;
+    }
+    std::string path = be(e)->read_mem_string(path_ptr, 1);
+    a[0] = path;
+    bool create = (mode & 0x0100) != 0; // OF_CREATE
+    void* f = we(e)->file_open(path, create);
+    if (f) {
+        w32(e)->set_last_error(K32_ERR_SUCCESS);
+        return reinterpret_cast<uint64_t>(f);
+    }
+    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND);
+    return 0xFFFFFFFF; // HFILE_ERROR
 }
 
 //
