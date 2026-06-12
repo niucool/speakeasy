@@ -152,6 +152,21 @@ static inline int ptr_sz(void* e) {
 #ifdef FreeEnvironmentStrings
 #undef FreeEnvironmentStrings
 #endif
+#ifdef FreeEnvironmentStringsA
+#undef FreeEnvironmentStringsA
+#endif
+#ifdef FreeEnvironmentStringsW
+#undef FreeEnvironmentStringsW
+#endif
+#ifdef GetEnvironmentStrings
+#undef GetEnvironmentStrings
+#endif
+#ifdef GetEnvironmentStringsA
+#undef GetEnvironmentStringsA
+#endif
+#ifdef GetEnvironmentStringsW
+#undef GetEnvironmentStringsW
+#endif
 #ifdef GetAtomName
 #undef GetAtomName
 #endif
@@ -329,7 +344,8 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, lstrcatA, 2)       REG(Kernel32, lstrcatW, 2) REG(Kernel32, lstrcmpA, 2) REG(Kernel32, lstrcmpW, 2)
     REG(Kernel32, MultiByteToWideChar, 6) REG(Kernel32, WideCharToMultiByte, 8)
     REG(Kernel32, GetCommandLineA, 0) REG(Kernel32, GetCommandLineW, 0)
-    REG(Kernel32, GetEnvironmentVariableA, 3) REG(Kernel32, GetEnvironmentVariableW, 3) REG(Kernel32, SetEnvironmentVariableA, 2) REG(Kernel32, SetEnvironmentVariableW, 2)
+    REG(Kernel32, GetEnvironmentVariableA, 3) REG(Kernel32, GetEnvironmentVariableW, 3) 
+    REG(Kernel32, SetEnvironmentVariableA, 2) REG(Kernel32, SetEnvironmentVariableW, 2)
     REG(Kernel32, GetCurrentDirectoryA, 2) REG(Kernel32, GetCurrentDirectoryW, 2) REG(Kernel32, SetCurrentDirectoryA, 1)
     REG(Kernel32, ExpandEnvironmentStringsA, 3) REG(Kernel32, ExpandEnvironmentStringsW, 3)
     REG(Kernel32, CreateToolhelp32Snapshot, 2)
@@ -365,13 +381,13 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, FindFirstVolume, 2)     REG(Kernel32, FindNextVolume, 3)
     REG(Kernel32, FindResource, 3)     REG(Kernel32, FindResourceEx, 4)
     REG(Kernel32, FindVolumeClose, 1)     REG(Kernel32, FlsGetValue2, 1)
-    REG(Kernel32, FreeEnvironmentStrings, 1)     REG(Kernel32, FreeLibraryAndExitThread, 2)
+    REG(Kernel32, FreeEnvironmentStringsA, 1) REG(Kernel32, FreeEnvironmentStringsW, 1)     REG(Kernel32, FreeLibraryAndExitThread, 2)
     REG(Kernel32, FreeResource, 1)     REG(Kernel32, GetAtomName, 3)
     REG(Kernel32, GetBinaryType, 2)     REG(Kernel32, GetCPInfo, 2)
     REG(Kernel32, GetCommProperties, 2)     REG(Kernel32, GetCommTimeouts, 2)
     REG(Kernel32, GetComputerNameEx, 3)     REG(Kernel32, GetConsoleTitle, 2)
     REG(Kernel32, GetConsoleWindow, 0)     REG(Kernel32, GetCurrentPackageId, 2)
-    REG(Kernel32, GetDateFormat, 6)     REG(Kernel32, GetEnvironmentStrings, 0)
+    REG(Kernel32, GetDateFormat, 6)     REG(Kernel32, GetEnvironmentStringsA, 0)  REG(Kernel32, GetEnvironmentStringsW, 0)
     REG(Kernel32, GetErrorMode, 0)     REG(Kernel32, GetFileAttributesEx, 3)
     REG(Kernel32, GetFileSizeEx, 2)     REG(Kernel32, GetFullPathName, 4)
     REG(Kernel32, GetHandleInformation, 2)     REG(Kernel32, GetLocaleInfo, 4)
@@ -1286,45 +1302,67 @@ uint64_t Kernel32::DisableThreadLibraryCalls(void* emu, ArgList& argv, void* ctx
 //  PROCESS / THREAD APIs
 // 
 
+// Shared implementation for CreateProcessA and CreateProcessW.
+// The caller has already read the app/cmd strings (with the correct char width)
+// and optionally resolved the creation flags string for logging.
+static uint64_t CreateProcess_impl(void* emu,
+                                    const std::string& app_str,
+                                    const std::string& cmd_str,
+                                    uint32_t flags,
+                                    uint64_t pi_ptr) {
+    std::shared_ptr<Process> proc = we(emu)->create_process(app_str, cmd_str, nullptr, true);
+    if (!proc) {
+        w32(emu)->set_last_error(K32_ERR_FILE_NOT_FOUND);
+        return 0;
+    }
+
+    // Handle CREATE_SUSPENDED (0x00000004)
+    auto& threads = proc->threads;
+    if ((flags & 0x00000004) && !threads.empty()) {
+        threads[0]->set_suspend_count(1);
+    }
+
+    int proc_handle = we(emu)->get_object_handle(proc);
+    int thread_handle = 0;
+    if (!threads.empty()) {
+        thread_handle = we(emu)->get_object_handle(threads[0]);
+    }
+
+    // Write PROCESS_INFORMATION back to guest memory
+    if (pi_ptr) {
+        size_t ps = static_cast<size_t>(ptr_sz(emu));
+        std::vector<uint8_t> pi_buf(static_cast<size_t>(ps == 8 ? 24 : 16), 0);
+        write_le(pi_buf, 0, static_cast<uint64_t>(proc_handle), ps);
+        write_le(pi_buf, ps, static_cast<uint64_t>(thread_handle), ps);
+        write_le(pi_buf, ps * 2, static_cast<uint64_t>(proc->get_pid()), 4);
+        int tid = (!threads.empty()) ? threads[0]->get_id() : 0;
+        write_le(pi_buf, ps * 2 + 4, static_cast<uint64_t>(tid), 4);
+        mm(emu)->mem_write(pi_ptr, pi_buf);
+    }
+
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return 1;
+}
+
 uint64_t Kernel32::CreateProcessA(void* emu, ArgList& argv, void* ctx) {
     uint64_t app_ptr = argv[0];
     uint64_t cmd_ptr = argv[1];
     uint64_t proc_attrs = argv[2];
     uint64_t thread_attrs = argv[3];
     uint32_t inherit = static_cast<uint32_t>(argv[4]);
-    // TODO: flags parsing not yet used  Python port incomplete for MapViewOfFile
-    uint32_t flags = static_cast<uint32_t>(argv[5]); (void)flags;
+    uint32_t flags = static_cast<uint32_t>(argv[5]);
     uint64_t env_ptr = argv[6];
     uint64_t cd_ptr = argv[7];
     uint64_t si_ptr = argv[8];
     uint64_t pi_ptr = argv[9];
     (void)proc_attrs; (void)thread_attrs; (void)inherit; (void)env_ptr; (void)cd_ptr; (void)si_ptr;
+
     std::string app_str;
     std::string cmd_str;
     if (app_ptr) app_str = be(emu)->read_mem_string(app_ptr, 1);
     if (cmd_ptr) cmd_str = be(emu)->read_mem_string(cmd_ptr, 1);
-    std::shared_ptr<Process> proc = we(emu)->create_process(app_str, cmd_str, nullptr, true);
-    if (!proc) {
-        w32(emu)->set_last_error(K32_ERR_FILE_NOT_FOUND);
-        return 0;
-    }
-    auto& threads = proc->threads;
-    int proc_handle = we(emu)->get_object_handle(proc);
-    int thread_handle = 0;
-    if (!threads.empty()) {
-        thread_handle = we(emu)->get_object_handle(threads[0]);
-    }
-    if (pi_ptr) {
-        std::vector<uint8_t> pi_buf(static_cast<size_t>(ptr_sz(emu) == 8 ? 24 : 16), 0);
-        write_le(pi_buf, 0, static_cast<uint64_t>(proc_handle), static_cast<size_t>(ptr_sz(emu)));
-        write_le(pi_buf, static_cast<size_t>(ptr_sz(emu)), static_cast<uint64_t>(thread_handle), static_cast<size_t>(ptr_sz(emu)));
-        write_le(pi_buf, static_cast<size_t>(ptr_sz(emu) * 2), static_cast<uint64_t>(proc->get_pid()), 4);
-        int tid = (!threads.empty()) ? threads[0]->get_id() : 0;
-        write_le(pi_buf, static_cast<size_t>(ptr_sz(emu) * 2 + 4), static_cast<uint64_t>(tid), 4);
-        mm(emu)->mem_write(pi_ptr, pi_buf);
-    }
-    w32(emu)->set_last_error(K32_ERR_SUCCESS);
-    return 1;
+
+    return CreateProcess_impl(emu, app_str, cmd_str, flags, pi_ptr);
 }
 
 uint64_t Kernel32::OpenProcess(void* emu, ArgList& argv, void* ctx) {
@@ -2622,14 +2660,25 @@ uint64_t Kernel32::lstrcmpW(void* e, ArgList& a, void* c) {
 }
 uint64_t Kernel32::GetEnvironmentVariableW(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[0]; uint64_t buf_ptr = a[1]; uint32_t buf_sz = static_cast<uint32_t>(a[2]);
-    if (!name_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
+    if (!name_ptr) { 
+        w32(e)->set_last_error(K32_ERR_INVALID_PARAM); 
+        return 0; 
+    }
     std::string name = be(e)->read_mem_string(name_ptr, 2);
     auto& env = be(e)->get_config().env;
     auto it = env.find(name);
-    if (it == env.end()) { w32(e)->set_last_error(203); return 0; }
+    if (it == env.end()) { 
+        w32(e)->set_last_error(203); 
+        return 0; 
+    }
     std::string val = it->second;
-    if (buf_sz < val.size() + 1) { w32(e)->set_last_error(K32_ERR_INSUFFICIENT_BUF); return static_cast<uint64_t>(val.size() + 1); }
-    if (buf_ptr) be(e)->write_mem_string(val, buf_ptr, 2);
+    if (buf_sz < val.size() + 1) { 
+        w32(e)->set_last_error(K32_ERR_INSUFFICIENT_BUF); 
+        return static_cast<uint64_t>(val.size() + 1); 
+    }
+    if (buf_ptr) 
+        be(e)->write_mem_string(val, buf_ptr, 2);
+
     return static_cast<uint64_t>(val.size());
 }
 uint64_t Kernel32::SetEnvironmentVariableW(void* e, ArgList& a, void* c) {
@@ -2683,11 +2732,24 @@ uint64_t Kernel32::OutputDebugStringW(void* e, ArgList& a, void* c) {
     return 0;
 }
 uint64_t Kernel32::CreateProcessW(void* e, ArgList& a, void* c) {
-    uint64_t app_name_ptr = a[0]; uint64_t cmd_line_ptr = a[1];
-    std::string app = app_name_ptr ? be(e)->read_mem_string(app_name_ptr, 2) : "";
-    std::string cmd = cmd_line_ptr ? be(e)->read_mem_string(cmd_line_ptr, 2) : "";
-    auto proc = we(e)->create_process(app, cmd, nullptr, false);
-    return proc ? 1 : 0;
+    uint64_t app_ptr = a[0];
+    uint64_t cmd_ptr = a[1];
+    uint64_t proc_attrs = a[2];
+    uint64_t thread_attrs = a[3];
+    uint32_t inherit = static_cast<uint32_t>(a[4]);
+    uint32_t flags = static_cast<uint32_t>(a[5]);
+    uint64_t env_ptr = a[6];
+    uint64_t cd_ptr = a[7];
+    uint64_t si_ptr = a[8];
+    uint64_t pi_ptr = a[9];
+    (void)proc_attrs; (void)thread_attrs; (void)inherit; (void)env_ptr; (void)cd_ptr; (void)si_ptr;
+
+    std::string app_str;
+    std::string cmd_str;
+    if (app_ptr) app_str = be(e)->read_mem_string(app_ptr, 2);
+    if (cmd_ptr) cmd_str = be(e)->read_mem_string(cmd_ptr, 2);
+
+    return CreateProcess_impl(e, app_str, cmd_str, flags, pi_ptr);
 }
 
 // ==========================================
@@ -2836,21 +2898,26 @@ uint64_t Kernel32::CreatePipe(void* e, ArgList& a, void* c) {
     return 1;
 }
 uint64_t Kernel32::CreateProcessInternal(void* e, ArgList& a, void* c) {
-    // Python kernel32.py:1962-2022 delegates to emu.create_process()
-    (void)c;
-    std::string app_name = a[0] ? be(e)->read_mem_string(a[0], 1) : "";
-    std::string cmd_line = a[1] ? be(e)->read_mem_string(a[1], 1) : "";
-    if (app_name.empty() && !cmd_line.empty()) {
-        auto sp = cmd_line.find(' ');
-        app_name = (sp != std::string::npos) ? cmd_line.substr(0, sp) : cmd_line;
-    }
-    if (!app_name.empty() || !cmd_line.empty()) {
-        we(e)->create_process(app_name, cmd_line, nullptr, false);
-        w32(e)->set_last_error(K32_ERR_SUCCESS);
-        return 1;
-    }
-    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND);
-    return 0;
+    // CreateProcessInternal has 12 args with Reserved1/Reserved2 bookending
+    // the 10 standard CreateProcess params. Delegate to the shared impl.
+    uint64_t app_ptr = a[1];      // lpApplicationName
+    uint64_t cmd_ptr = a[2];      // lpCommandLine
+    uint64_t proc_attrs = a[3];   // lpProcessAttributes
+    uint64_t thread_attrs = a[4]; // lpThreadAttributes
+    uint32_t inherit = static_cast<uint32_t>(a[5]);
+    uint32_t flags = static_cast<uint32_t>(a[6]);
+    uint64_t env_ptr = a[7];
+    uint64_t cd_ptr = a[8];
+    uint64_t si_ptr = a[9];
+    uint64_t pi_ptr = a[10];      // lpProcessInformation
+    (void)proc_attrs; (void)thread_attrs; (void)inherit; (void)env_ptr; (void)cd_ptr; (void)si_ptr;
+
+    std::string app_str;
+    std::string cmd_str;
+    if (app_ptr) app_str = be(e)->read_mem_string(app_ptr, 1);
+    if (cmd_ptr) cmd_str = be(e)->read_mem_string(cmd_ptr, 1);
+
+    return CreateProcess_impl(e, app_str, cmd_str, flags, pi_ptr);
 }
 uint64_t Kernel32::CreateSemaphoreW(void* e, ArgList& a, void* c) {
     // Python kernel32.py:3999-4046  CreateSemaphoreW
@@ -3029,8 +3096,20 @@ uint64_t Kernel32::FlsGetValue2(void* e, ArgList& a, void* c) {
 */
     (void)a; return 0x1000;
 }
-uint64_t Kernel32::FreeEnvironmentStrings(void* e, ArgList& a, void* c) {
-    (void)a; return 1;
+uint64_t Kernel32::FreeEnvironmentStringsA(void* e, ArgList& a, void* c) {
+    uint64_t penv = a[0];
+    if (penv) {
+        try { mm(e)->mem_free(penv); } catch (...) {}
+    }
+    return 1;
+}
+
+uint64_t Kernel32::FreeEnvironmentStringsW(void* e, ArgList& a, void* c) {
+    uint64_t penv = a[0];
+    if (penv) {
+        try { mm(e)->mem_free(penv); } catch (...) {}
+    }
+    return 1;
 }
 uint64_t Kernel32::FreeLibraryAndExitThread(void* e, ArgList& a, void* c) {
     (void)a; we(e)->on_run_complete(); return 0;
@@ -3106,7 +3185,7 @@ uint64_t Kernel32::GetDateFormat(void* e, ArgList& a, void* c) {
     if (buf_ptr) be(e)->write_mem_string("2026-06-09", buf_ptr, 2);
     return 11; // strlen("2026-06-09") + 1 (including null)
 }
-uint64_t Kernel32::GetEnvironmentStrings(void* e, ArgList& a, void* c) {
+uint64_t Kernel32::GetEnvironmentStringsA(void* e, ArgList& a, void* c) {
     (void)a; (void)c;
     std::string out;
     auto env = we(e)->get_env();
@@ -3117,10 +3196,40 @@ uint64_t Kernel32::GetEnvironmentStrings(void* e, ArgList& a, void* c) {
         out += kv.second;
     }
 
-    uint64_t env_ptr = mem_alloc(out.size() + 1, 0, "api.environment.GetEnvironmentStrings");
+    uint64_t env_ptr = mm(e)->mem_map(out.size() + 1, 0, 3, "api.environment.GetEnvironmentStringsA");
     if (!env_ptr) return 0;
 
     std::vector<uint8_t> data(out.begin(), out.end());
+    data.push_back(0);
+    mm(e)->mem_write(env_ptr, data);
+    return env_ptr;
+}
+
+uint64_t Kernel32::GetEnvironmentStringsW(void* e, ArgList& a, void* c) {
+    (void)a; (void)c;
+    std::string out;
+    auto env = we(e)->get_env();
+    for (const auto& kv : env) {
+        if (!out.empty()) out.push_back(' ');
+        out += kv.first;
+        out.push_back(' ');
+        out += kv.second;
+    }
+
+    // Allocate (len+1)*2 bytes for UTF-16LE encoded block
+    uint64_t env_ptr = mm(e)->mem_map((out.size() + 1) * 2, 0, 3, "api.environment.GetEnvironmentStringsW");
+    if (!env_ptr) return 0;
+
+    // Convert to UTF-16LE
+    std::vector<uint8_t> data;
+    data.reserve((out.size() + 1) * 2);
+    for (char ch : out) {
+        uint16_t wc = static_cast<uint8_t>(ch); // ASCII char → UTF-16LE code unit
+        data.push_back(static_cast<uint8_t>(wc & 0xFF));
+        data.push_back(static_cast<uint8_t>((wc >> 8) & 0xFF));
+    }
+    // Null terminator (2 bytes for wide char)
+    data.push_back(0);
     data.push_back(0);
     mm(e)->mem_write(env_ptr, data);
     return env_ptr;
@@ -3215,9 +3324,43 @@ uint64_t Kernel32::GetModuleFileNameExA(void* e, ArgList& a, void* c) {
     return 0;
 }
 uint64_t Kernel32::GetModuleHandleEx(void* e, ArgList& a, void* c) {
-    uint64_t out_ptr = a[2];
-    if (out_ptr) mm(e)->mem_write(out_ptr, std::vector<uint8_t>{0, 0, 0x40, 0, 0, 0, 0, 0}); // 0x400000
-    return 1;
+    // BOOL GetModuleHandleEx(DWORD dwFlags, LPCTSTR lpModuleName, HMODULE *phModule)
+    uint32_t dwFlags = static_cast<uint32_t>(a[0]);
+    uint64_t mod_name_ptr = a[1];
+    uint64_t phModule = a[2];
+    (void)dwFlags;
+
+    uint64_t hmod = 0;
+    if (!mod_name_ptr) {
+        // NULL module name → return handle to the EXE that created the process
+        auto p = we(e)->get_current_process();
+        if (p) hmod = static_cast<uint64_t>(p->base);
+    } else {
+        std::string name = be(e)->read_mem_string(mod_name_ptr, 1);
+        if (!name.empty()) {
+            name = speakeasy::to_lower(name);
+            auto dot = name.rfind(".dll");
+            if (dot != std::string::npos) name = name.substr(0, dot);
+            auto mods = we(e)->get_peb_modules();
+            for (auto& mod : mods) {
+                std::string mname = speakeasy::to_lower(mod->get_base_name());
+                auto mdot = mname.rfind(".dll");
+                if (mdot != std::string::npos) mname = mname.substr(0, mdot);
+                if (mname == name) {
+                    hmod = mod->base;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (phModule) {
+        std::vector<uint8_t> buf(static_cast<size_t>(ptr_sz(e)), 0);
+        write_le(buf, 0, hmod, static_cast<size_t>(ptr_sz(e)));
+        mm(e)->mem_write(phModule, buf);
+    }
+
+    return hmod ? 1 : 0;
 }
 uint64_t Kernel32::GetNativeSystemInfo(void* e, ArgList& a, void* c) {
     uint64_t info_ptr = a[0]; if (!info_ptr) return 0;
@@ -3840,7 +3983,7 @@ uint64_t Kernel32::_lclose(void* e, ArgList& a, void* c) {
         return 0; // success
     }
     w32(e)->set_last_error(K32_ERR_INVALID_HANDLE);
-    return -1; // HFILE_ERROR
+    return static_cast<uint64_t>(-1); // HFILE_ERROR
 }
 uint64_t Kernel32::_llseek(void* e, ArgList& a, void* c) {
     (void)c;
