@@ -4,6 +4,7 @@
 
 import ctypes as ct
 import platform
+import logging
 
 import unicorn as uc
 import unicorn.x86_const as u
@@ -27,6 +28,8 @@ uc_engine = ct.c_void_p
 UC_HOOK_INSN_IN_CB = ct.CFUNCTYPE(ct.c_uint32, uc_engine, ct.c_uint32, ct.c_int, ct.c_void_p)
 UC_HOOK_INSN_SYSCALL_CB = ct.CFUNCTYPE(None, uc_engine, ct.c_void_p)
 hook_id = uc_hook_h()
+
+logger = logging.getLogger(__name__)
 
 
 def is_platform_intel():
@@ -167,13 +170,15 @@ class EmuEngine:
         w = "W" if perm & 2 else "-"
         x = "X" if perm & 4 else "-"
         result = self.emu.mem_map(base, size, perm)  # type: ignore[union-attr]
-        print(f"[uc] MAP   0x{base:010x} size=0x{size:06x} perm={perm} {r}{w}{x} -> 0", file=__import__('sys').stderr)
+        # print(f"[uc] MAP   0x{base:010x} size=0x{size:06x} perm={perm} {r}{w}{x} -> 0", file=__import__('sys').stderr)
+        logger.info(f"[uc] MAP   0x{base:010x} size=0x{size:06x} perm={perm} {r}{w}{x} -> 0")
         return result
 
     def mem_unmap(self, addr, size):
         """Free memory in the cpu engine"""
         result = self.emu.mem_unmap(addr, size)  # type: ignore[union-attr]
-        print(f"[uc] UNMAP 0x{addr:010x} size=0x{size:06x} -> 0", file=__import__('sys').stderr)
+        # print(f"[uc] UNMAP 0x{addr:010x} size=0x{size:06x} -> 0", file=__import__('sys').stderr)
+        logger.info(f"[uc] UNMAP 0x{addr:010x} size=0x{size:06x} -> 0")
         return result
 
     def mem_regions(self):

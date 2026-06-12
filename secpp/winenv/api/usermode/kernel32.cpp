@@ -968,7 +968,7 @@ uint64_t Kernel32::HeapAlloc(void* emu, ArgList& argv, void* ctx) {
     size_t sz = static_cast<size_t>(argv[2]);
     (void)hHeap; (void)flags;
     if (sz == 0) sz = 1;
-    uint64_t buf = mm(emu)->mem_map(sz, 0, 4, "heap");
+    uint64_t buf = we32(emu)->heap_alloc(sz, "HeapAlloc");
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return buf;
 }
@@ -1018,7 +1018,7 @@ uint64_t Kernel32::GlobalAlloc(void* emu, ArgList& argv, void* ctx) {
     size_t sz = static_cast<size_t>(argv[1]);
     (void)flags;
     if (sz == 0) sz = 1;
-    uint64_t buf = mm(emu)->mem_map(sz, 0, 4, "GlobalAlloc");
+    uint64_t buf = we32(emu)->heap_alloc(sz, "GlobalAlloc");
     return buf;
 }
 
@@ -1033,7 +1033,7 @@ uint64_t Kernel32::LocalAlloc(void* emu, ArgList& argv, void* ctx) {
     size_t sz = static_cast<size_t>(argv[1]);
     (void)flags;
     if (sz == 0) sz = 1;
-    uint64_t buf = mm(emu)->mem_map(sz, 0, 4, "LocalAlloc");
+    uint64_t buf = we32(emu)->heap_alloc(sz, "LocalAlloc");
     return buf;
 }
 
@@ -3122,10 +3122,27 @@ uint64_t Kernel32::GlobalUnlock(void* e, ArgList& a, void* c) {
     (void)a; return 1; // success, not locked count = 0
 }
 uint64_t Kernel32::HeapReAlloc(void* e, ArgList& a, void* c) {
-    uint32_t sz = static_cast<uint32_t>(a[1]); (void)a[2];
-    if (sz == 0) return 0;
-    uint64_t ptr = we(e)->mem_map(sz, 0, 4, "kernel32.heap_realloc");
-    return ptr;
+    (void)c;
+    // Python kernel32.py:2256-2280  HeapReAlloc
+    uint64_t hHeap   = a[0];
+    uint64_t dwFlags = a[1];
+    uint64_t lpMem   = a[2];
+    uint64_t dwBytes = a[3];
+    (void)dwFlags;
+
+    if (!hHeap || !lpMem || !dwBytes) return 0;
+
+    auto region = we(e)->get_address_map(lpMem);
+    if (!region) return 0;
+    if (region->get_tag().find("api.heap") != 0) return 0;
+
+    // Copy existing data into new allocation
+    std::vector<uint8_t> data = mm(e)->mem_read(lpMem, static_cast<size_t>(region->get_size()));
+    uint64_t new_buf = we32(e)->heap_alloc(static_cast<size_t>(dwBytes), "HeapReAlloc");
+    if (new_buf && !data.empty()) {
+        mm(e)->mem_write(new_buf, data);
+    }
+    return new_buf;
 }
 uint64_t Kernel32::HeapSetInformation(void* e, ArgList& a, void* c) {
     (void)a; return 1;
@@ -3179,9 +3196,26 @@ uint64_t Kernel32::LocalLock(void* e, ArgList& a, void* c) {
     return a[0]; // hMem == locked address
 }
 uint64_t Kernel32::LocalReAlloc(void* e, ArgList& a, void* c) {
-    uint32_t sz = static_cast<uint32_t>(a[1]); (void)a[2];
-    if (sz == 0) return 0;
-    return we(e)->mem_map(sz, 0, 4, "kernel32.local_realloc");
+    (void)c;
+    // Python kernel32.py:2282-2313  LocalReAlloc
+    uint64_t hMem   = a[0];
+    uint64_t uBytes = a[1];
+    uint64_t uFlags = a[2];
+    (void)uFlags;
+
+    if (!hMem || !uBytes) return 0;
+
+    auto region = we(e)->get_address_map(hMem);
+    if (!region) return 0;
+    if (region->get_tag().find("api.heap") != 0) return 0;
+
+    // Copy existing data into new allocation
+    std::vector<uint8_t> data = mm(e)->mem_read(hMem, static_cast<size_t>(region->get_size()));
+    uint64_t new_buf = we32(e)->heap_alloc(static_cast<size_t>(uBytes), "LocalReAlloc");
+    if (new_buf && !data.empty()) {
+        mm(e)->mem_write(new_buf, data);
+    }
+    return new_buf;
 }
 uint64_t Kernel32::LockResource(void* e, ArgList& a, void* c) {
     return a[0]; // hResData == locked address

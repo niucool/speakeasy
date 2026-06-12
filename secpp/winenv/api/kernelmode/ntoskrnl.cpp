@@ -13,6 +13,7 @@
 #include "struct.h"
 #include "winenv/arch.h"
 #include "windows/winemu.h"
+#include "windows/win32.h"
 
 // Undefine Windows SDK macros that collide with our function names
 #ifdef RtlMoveMemory
@@ -51,9 +52,7 @@ using namespace speakeasy;
 namespace speakeasy { namespace api { namespace kernelmode {
 
 //  Typed cast helpers 
-static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
-static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
+
 static inline int ptr_sz(void* e) { return we(e)->get_ptr_size(); }
 
 //  NTSTATUS constants (avoid Windows SDK macro conflicts) 
@@ -631,13 +630,15 @@ uint64_t Ntoskrnl::FsRtlAllocatePool(void* e, ArgList& a, void* ctx) {
 uint64_t Ntoskrnl::RtlAllocateHeap(void* e, ArgList& a, void* ctx) {
     // PVOID RtlAllocateHeap(PVOID HeapHandle, ULONG Flags, SIZE_T Size)
     uint64_t size = a[2];
-    if (size == 0) size = 1;
-    return mm(e)->mem_map(static_cast<size_t>(size), 0, common::PERM_MEM_RWX, "api.heap");
+    // if (size == 0) size = 1;
+    // return mm(e)->mem_map(static_cast<size_t>(size), 0, common::PERM_MEM_RWX, "api.heap");
+     return we32(e)->heap_alloc(size, "RtlAllocateHeap");
 }
 
 uint64_t Ntoskrnl::RtlFreeHeap(void* e, ArgList& a, void* ctx) {
     // BOOLEAN RtlFreeHeap(PVOID HeapHandle, ULONG Flags, PVOID HeapBase)
     uint64_t addr = a[2];
+    // TODO: create heap_free?
     if (addr) mm(e)->mem_free(addr);
     return 1; // TRUE
 }

@@ -750,6 +750,18 @@ uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {
     return addr;
 }
 
+uint64_t Win32Emulator::heap_free(uint64_t addr) {
+    for (auto it = heap_allocs_.begin(); it != heap_allocs_.end(); ++it) {
+        auto [address, size, tag] = *it;
+        if (address == addr) {
+            mem_unmap(addr, size);
+            heap_allocs_.erase(it);
+            return 0;
+        }
+    }
+    return 0;
+}
+
 std::pair<int, uint64_t> Win32Emulator::build_service_main_args(const std::string& service_name,
                                                                  const std::vector<std::string>& service_args,
                                                                  int char_width) {

@@ -255,6 +255,8 @@ public:
     //     Allocate a memory chunk and add it to the "heap"
     //     """
     uint64_t heap_alloc(size_t size, const std::string& heap = "None");
+
+    uint64_t heap_free(uint64_t addr);
     
    
     // Python win32.py:61

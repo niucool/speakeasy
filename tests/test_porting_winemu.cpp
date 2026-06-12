@@ -20,7 +20,6 @@
 
 using namespace speakeasy;
 using namespace speakeasy::api;
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
 TEST(ObjmanPortingTest, PebTebLinkedlistValidation) {
     SpeakeasyConfig cfg;
