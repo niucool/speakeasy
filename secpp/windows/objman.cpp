@@ -696,11 +696,11 @@ PEB::PEB(void* emu, uint64_t addr)
         object_ = new speakeasy::deffs::nt::PEB<4>();
     }
     if (!addr) {
-        address_ = static_cast<int>(
+        address_ = static_cast<uint64_t>(
             BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
         );
     } else {
-        address_ = static_cast<int>(addr);
+        address_ = static_cast<uint64_t>(addr);
     }
 }
 
@@ -716,9 +716,9 @@ TEB::TEB(void* emu, uint64_t addr)
         object_ = new speakeasy::deffs::nt::TEB<4>();
     }
     if (addr) {
-        address_ = static_cast<int>(addr);
+        address_ = static_cast<uint64_t>(addr);
     } else {
-        address_ = static_cast<int>(
+        address_ = static_cast<uint64_t>(
             BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
         );
     }
@@ -754,7 +754,7 @@ LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, cons
     size += static_cast<int>((dllname.length() + 1) * 2);
 
     std::string tag_str = tag.empty() ? get_mem_tag() : tag;
-    address_ = static_cast<int>(
+    address_ = static_cast<uint64_t>(
         BE(emu)->mem_map(size, 0, 4, tag_str)
     );
 }
@@ -802,7 +802,7 @@ RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* pro
     int string_data_size = static_cast<int>(path_utf16.size() + cmd_utf16.size() + dir_utf16.size() + desk_utf16.size());
     int size = static_cast<int>(sizeof_obj()) + string_data_size;
 
-    address_ = static_cast<int>(
+    address_ = static_cast<uint64_t>(
         BE(emu)->mem_map(size, 0, 4, proc->get_mem_tag() + ".ProcessParameters")
     );
 
@@ -849,7 +849,7 @@ IDT::IDT(void* emu)
     } else {
         object_ = new speakeasy::deffs::nt::IDT<4>();
     }
-    address_ = static_cast<int>(
+    address_ = static_cast<uint64_t>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
 }
@@ -893,7 +893,7 @@ void IDT::init_descriptors() {
 Event::Event(void* emu)
     : KernelObject(emu) {
     object_ = new speakeasy::deffs::nt::KEVENT();
-    address_ = static_cast<int>(
+    address_ = static_cast<uint64_t>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
 }
@@ -904,7 +904,7 @@ Event::Event(void* emu)
 Mutant::Mutant(void* emu)
     : KernelObject(emu) {
     object_ = new speakeasy::deffs::nt::MUTANT();
-    address_ = static_cast<int>(
+    address_ = static_cast<uint64_t>(
         BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
     );
 }
@@ -932,7 +932,7 @@ Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
     if (emu_) {
         int sz = sizeof_obj();
         if (sz > 0) {
-            address_ = static_cast<int>(
+            address_ = static_cast<uint64_t>(
                 BE(emu_)->mem_map(sz, 0xE0000000, 1, get_mem_tag())
             );
         }

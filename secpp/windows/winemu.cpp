@@ -1240,9 +1240,9 @@ void WindowsEmulator::init_teb(std::shared_ptr<Thread> thread, std::shared_ptr<P
     if (!thread) return;
     uint64_t peb_addr_val = peb ? peb->get_address() : 0;
     if (ptr_size_ == 4) {
-        thread->init_teb(fs_addr, static_cast<int>(peb_addr_val));
+        thread->init_teb(fs_addr, peb_addr_val);
     } else {
-        thread->init_teb(gs_addr, static_cast<int>(peb_addr_val));
+        thread->init_teb(gs_addr, peb_addr_val);
     }
 }
 
