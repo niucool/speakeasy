@@ -10,8 +10,6 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
 static constexpr uint32_t SFC_SUCCESS = 1;
 static constexpr uint32_t SFC_ERROR = 0;

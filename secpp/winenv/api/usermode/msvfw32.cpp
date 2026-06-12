@@ -10,8 +10,6 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
 // Next handle generator
 static uint64_t msvfw_next_handle = 0x7000;

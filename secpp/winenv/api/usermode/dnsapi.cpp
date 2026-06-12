@@ -11,8 +11,6 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
 //  DNS constants (DNS_ prefix to avoid Windows macro conflicts) 
 static constexpr uint32_t DNS_TEXT = 0x0010;

@@ -15,9 +15,6 @@ using namespace speakeasy;
 namespace speakeasy { namespace api { namespace kernelmode {
 
 //  Typed cast helpers 
-static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
-static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e); }
 
 Usbd::Usbd(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Usbd)

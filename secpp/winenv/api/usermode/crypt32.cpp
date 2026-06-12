@@ -17,19 +17,6 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-//  Typed cast helpers
-static inline WindowsEmulator* we(void* e) {
-    return static_cast<WindowsEmulator*>(e);
-}
-static inline BinaryEmulator* be(void* e) {
-    return static_cast<BinaryEmulator*>(e);
-}
-static inline Win32Emulator* w32(void* e) {
-    return static_cast<Win32Emulator*>(e);
-}
-static inline MemoryManager* mm(void* e) {
-    return static_cast<MemoryManager*>(e);
-}
 
 //  Constants
 static const uint32_t CRYPT_FLAG_BASE64 = 0x01;

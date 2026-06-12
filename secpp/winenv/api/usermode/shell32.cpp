@@ -17,15 +17,6 @@ using namespace speakeasy;
 namespace speakeasy { namespace api {
 
 //  Typed cast helpers 
-static inline WindowsEmulator* we(void* e) {
-    return static_cast<WindowsEmulator*>(e);
-}
-static inline BinaryEmulator* be(void* e) {
-    return static_cast<BinaryEmulator*>(e);
-}
-static inline MemoryManager* mm(void* e) {
-    return static_cast<MemoryManager*>(e);
-}
 
 //  CSIDL path resolver 
 static std::string resolve_csidl_path(void* e, uint32_t csidl) {

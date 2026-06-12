@@ -19,8 +19,6 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
 // Local error code constants (avoids dependency on windows.h SDK macros)
 static constexpr uint32_t URLMON_S_OK = 0;

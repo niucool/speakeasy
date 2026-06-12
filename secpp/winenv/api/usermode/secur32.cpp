@@ -11,8 +11,6 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
 //  Constants (S32_ prefix to avoid Windows macro conflicts) 
 static constexpr uint32_t S32_SEC_E_INVALID_HANDLE = 0x80090301;

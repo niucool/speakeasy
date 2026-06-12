@@ -15,12 +15,6 @@ using namespace speakeasy;
 namespace speakeasy { namespace api {
 
 //  Typed cast helpers 
-static inline WindowsEmulator* we(void* e) {
-    return static_cast<WindowsEmulator*>(e);
-}
-static inline BinaryEmulator* be(void* e) {
-    return static_cast<BinaryEmulator*>(e);
-}
 static inline int ptr_sz(void* e) {
     return (be(e)->get_arch() == speakeasy::arch::ARCH_AMD64) ? 8 : 4;
 }

@@ -13,12 +13,6 @@ using namespace speakeasy;
 namespace speakeasy { namespace api {
 
 //  Typed cast helpers 
-static inline BinaryEmulator* be(void* e) {
-    return static_cast<BinaryEmulator*>(e);
-}
-static inline MemoryManager* mm(void* e) {
-    return static_cast<MemoryManager*>(e);
-}
 
 //  Static GDI handle counter 
 static uint64_t gdi_handle_counter = 0x1000;

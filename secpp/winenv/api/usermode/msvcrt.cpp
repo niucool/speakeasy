@@ -22,15 +22,6 @@ using namespace speakeasy;
 namespace speakeasy { namespace api {
 
 //  Helper: typed casts from void* 
-static inline Win32Emulator* we32(void* e) {
-    return static_cast<Win32Emulator*>(e);
-}
-static inline WindowsEmulator* we(void* e) {
-    return static_cast<WindowsEmulator*>(e);
-}
-static inline BinaryEmulator* be(void* e) {
-    return static_cast<BinaryEmulator*>(e);
-}
 
 //  Static state for stateful APIs 
 static int msvc_rand_state = 0;

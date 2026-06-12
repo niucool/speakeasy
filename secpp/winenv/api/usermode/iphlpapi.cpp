@@ -12,8 +12,6 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
-static inline BinaryEmulator* be(void* e) { return static_cast<BinaryEmulator*>(e); }
 static inline int ptr_sz(void* e) { return we(e)->get_ptr_size(); }
 
 //  Error constants (IPH_ prefix to avoid Windows macro conflicts) 
