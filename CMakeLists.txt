@@ -78,7 +78,7 @@ set(UNICORN_ARCH "x86" CACHE STRING "Architectures to build" FORCE)
 FetchContent_Declare(
     unicorn
     GIT_REPOSITORY https://github.com/unicorn-engine/unicorn.git
-    GIT_TAG        2.0.1
+    GIT_TAG        2.1.4
 )
 
 # Make pe-parse, capstone, and miniz available with CMAKE_MSVC_RUNTIME_LIBRARY fully set

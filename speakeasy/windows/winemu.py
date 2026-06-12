@@ -2184,7 +2184,7 @@ class WindowsEmulator(BinaryEmulator):
         else:
             regs = ("eax", "ebx", "ecx", "edx", "esi", "edi", "ebp", "esp")
         vals = " : ".join(f"{r}=0x{self.reg_read(r):x}" for r in regs)
-        print(f"0x{addr:x}: {x}, {vals}")
+        logger.debug(f"0x{addr:x}: {x}, {vals}")
         return True
 
     def get_native_module_path(self, mod_name=""):

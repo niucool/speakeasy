@@ -2775,7 +2775,15 @@ uint64_t Kernel32::FindVolumeClose(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
 uint64_t Kernel32::FlsGetValue2(void* e, ArgList& a, void* c) {
-    (void)a; return 0;
+/*
+        fls_index = argv[0]
+        try:
+            val = emu.get_fls_value(fls_index)  # get_fls_value can not be found anywhere
+            return val if val else 0x1000
+        except Exception:
+            return 0x1000
+*/
+    (void)a; return 0x1000;
 }
 uint64_t Kernel32::FreeEnvironmentStrings(void* e, ArgList& a, void* c) {
     (void)a; return 1;
