@@ -994,6 +994,17 @@ void Win32Emulator::_capture_memory_layout() {
         return s;
     };
     
+    bool capture_dumps = config_.snapshot_memory_regions;
+    // Check if tag starts with any excluded prefix (Python: EXCLUDED_TAG_PREFIXES)
+    auto is_excluded = [&](const std::string& t) -> bool {
+        for (auto& pfx : EXCLUDED_TAG_PREFIXES) {
+            if (t.compare(0, pfx.size(), pfx) == 0) return true;
+        }
+        return false;
+    };
+
+
+
     // Build modules_by_base map
     std::map<uint64_t, std::shared_ptr<speakeasy::RuntimeModule>> modules_by_base;
     for (auto img : modules_) {
@@ -1017,8 +1028,19 @@ void Win32Emulator::_capture_memory_layout() {
         }
         
         if (mod && !mod->sections.empty()) {
-            std::string mod_name = mod->name.empty() ? "unknown" : mod->name;
+            std::string mod_name;
+            if (!mod->emu_path.empty()) {
+                auto pos = mod->emu_path.find_last_of("/\\");
+                mod_name = (pos != std::string::npos) ? mod->emu_path.substr(pos + 1) : mod->emu_path;
+            }
+            if (mod_name.empty()) mod_name = mod->name.empty() ? "unknown" : mod->name;
             
+            // Python: full_data = self.mem_read(mm_base, mm_size) if capture_dumps else None
+            std::vector<uint8_t> full_data;
+            if (capture_dumps) {
+                try { full_data = mem_read(mm_base, mm_size); } catch (...) {}
+            }
+
             // Headers region
             uint32_t first_section_rva = mod->sections[0].virtual_address;
             uint64_t hdr_size = (first_section_rva > 0 && first_section_rva < mm_size) 
@@ -1028,11 +1050,19 @@ void Win32Emulator::_capture_memory_layout() {
             
             std::map<std::string,std::string> hdr_dict;
             hdr_dict["tag"] = hdr_tag;
-            hdr_dict["address"] = std::to_string(mm_base);
-            hdr_dict["size"] = std::to_string(hdr_size);
+            hdr_dict["address"] = hex_str(mm_base);
+            hdr_dict["size"] = hex_str(hdr_size);
             hdr_dict["prot"] = "r--";
             hdr_dict["is_free"] = mm->is_free() ? "true" : "false";
             curr_run->memory_regions.push_back(hdr_dict);
+            // Python: if full_data and not hdr_tag.startswith(EXCLUDED) and self.profiler
+            if (!full_data.empty() && !is_excluded(hdr_tag) && profiler_) {
+                try {
+                    size_t hdr_sz = std::min<size_t>(hdr_size, full_data.size());
+                    std::vector<uint8_t> hdr(full_data.begin(), full_data.begin() + hdr_sz);
+                    hdr_dict["data_ref"] = profiler_->handle_binary_data(hdr);
+                } catch (...) {}
+            }
             
             // Section regions
             for (auto& sect : mod->sections) {
@@ -1042,20 +1072,38 @@ void Win32Emulator::_capture_memory_layout() {
                                       ".0x" + std::to_string(sec_addr);
                 std::map<std::string,std::string> sec_dict;
                 sec_dict["tag"] = sec_tag;
-                sec_dict["address"] = std::to_string(sec_addr);
-                sec_dict["size"] = std::to_string((uint64_t)sect.virtual_size);
+                sec_dict["address"] = hex_str(sec_addr);
+                sec_dict["size"] = hex_str((uint64_t)sect.virtual_size);
                 sec_dict["prot"] = sec_prot;
                 sec_dict["is_free"] = mm->is_free() ? "true" : "false";
                 curr_run->memory_regions.push_back(sec_dict);
+            // Python: if full_data and not sec_tag.startswith(EXCLUDED) and self.profiler
+            if (!full_data.empty() && !is_excluded(sec_tag) && profiler_) {
+                try {
+                    size_t off = sect.virtual_address;
+                    size_t sz = std::min<size_t>(sect.virtual_size, full_data.size() > off ? full_data.size() - off : 0);
+                    if (sz > 0) {
+                        std::vector<uint8_t> sd(full_data.begin() + off, full_data.begin() + off + sz);
+                        sec_dict["data_ref"] = profiler_->handle_binary_data(sd);
+                    }
+                } catch (...) {}
+            }
             }
         } else {
             std::map<std::string,std::string> region_dict;
             region_dict["tag"] = tag;
-            region_dict["address"] = std::to_string(mm_base);
-            region_dict["size"] = std::to_string(mm_size);
+            region_dict["address"] = hex_str(mm_base);
+            region_dict["size"] = hex_str(mm_size);
             region_dict["prot"] = prot;
             region_dict["is_free"] = mm->is_free() ? "true" : "false";
             curr_run->memory_regions.push_back(region_dict);
+            // Python: if capture_dumps and not tag.startswith(EXCLUDED) and self.profiler
+            if (capture_dumps && !is_excluded(tag) && profiler_) {
+                try {
+                    auto data = mem_read(mm_base, mm_size);
+                    region_dict["data_ref"] = profiler_->handle_binary_data(data);
+                } catch (...) {}
+            }
         }
     }
     
@@ -1074,8 +1122,8 @@ void Win32Emulator::_capture_memory_layout() {
         for (auto& sect : img->sections) {
             std::map<std::string,std::string> seg;
             seg["name"] = sect.name;
-            seg["address"] = std::to_string((uint64_t)sect.virtual_address + img->base);
-            seg["size"] = std::to_string((uint64_t)sect.virtual_size);
+            seg["address"] = hex_str((uint64_t)sect.virtual_address + img->base);
+            seg["size"] = hex_str((uint64_t)sect.virtual_size);
             seg["prot"] = prot_to_string(sect.perms);
             segments.push_back(seg);
         }
@@ -1083,8 +1131,8 @@ void Win32Emulator::_capture_memory_layout() {
         std::map<std::string,std::string> mod_entry;
         mod_entry["name"] = mod_name;
         mod_entry["path"] = img->emu_path;
-        mod_entry["base"] = std::to_string(img->base);
-        mod_entry["size"] = std::to_string(img->image_size);
+        mod_entry["base"] = hex_str(img->base);
+        mod_entry["size"] = hex_str(img->image_size);
         mod_entry["segments"] = ""; // segments stored separately above
         curr_run->loaded_modules.push_back(mod_entry);
     }
