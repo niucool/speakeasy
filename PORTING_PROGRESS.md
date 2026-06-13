@@ -1,10 +1,33 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-09 (ArgList migration)
+> Last Updated: 2026-06-13
 > Build Status: ✅ **0 compiler errors, 0 warnings** (/W4 clean)
-> Emulation Status: ✅ **Antidbg.exe runs to completion and exits cleanly**
+> Emulation Status: ✅ **GetProcAddress.exe runs to ExitProcess** (207 APIs, clean exit)
 > Remaining TODOs: **0**
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
+
+---
+
+## 2026-06-13: PEB->Ldr NULL 崩溃修复 + Unicorn 2.1.4
+
+### PEB->Ldr NULL Bug
+
+`GetProcAddress.exe` 在读取 `PEB->Ldr` 时崩溃：`mov rcx, [gs:0x30]+0x60` 获取 PEB 地址，然后 `mov rax, [rcx+0x20]` 读取 Ldr 字段为 0，导致 `mov eax, [rax+8]` 访问 `0x8` → `UC_ERR_READ_UNMAPPED`。
+
+**根因：** `init_tls()` → `Thread::init_tls()` → `write_back()` 覆盖了 TEB+0x60 中的 PEB 指针，使模拟代码读取到错误的 PEB 地址。
+
+**修复：** 在 `_prepare_run_context` 中，`init_teb()` + `init_tls()` 之后通过直接 `mem_write` 写入 PEB 指针（TEB+0x60）和 Ldr（PEB+0x20）。
+
+### Unicorn 2.0.1 → 2.1.4
+
+| 版本 | CPUID vendor | 影响 |
+|------|-------------|------|
+| 2.0.1 | "AuthenticAMD" | 分支到错误代码路径 |
+| 2.1.4 | "GenuineIntel" | 与 Python Unicorn 1.x 匹配 ✅ |
+
+### `static_cast<int>` → `static_cast<uint64_t>`
+
+`objman.cpp` 中 10 处 `address_ = static_cast<int>(mem_map(...))` 改为 `static_cast<uint64_t>(...)`。`address_` 是 `uint64_t`，原 `int` 转换会将 x64 地址截断为 32 位。
 
 ---
 
