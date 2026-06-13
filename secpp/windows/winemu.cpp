@@ -804,6 +804,26 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
         if (thread) {
             init_teb(thread, curr_process_->peb);
             init_tls(thread);
+            // After init_teb + init_tls (both call write_back() on the TEB),
+            // ensure TEB+0x60 and PEB->Ldr are correct via direct mem_write.
+            if (curr_process_ && curr_process_->peb && curr_process_->get_peb_ldr()) {
+                int psz = get_ptr_size();
+                uint64_t peb_addr = curr_process_->peb->get_address();
+                uint64_t peb_ptr_off = (psz == 8) ? gs_addr + 0x60 : fs_addr + 0x30;
+                uint64_t ldr_addr = curr_process_->get_peb_ldr()->get_address();
+                // Write PEB pointer to TEB+0x60
+                std::vector<uint8_t> buf(psz);
+                for (int i = 0; i < psz; ++i)
+                    buf[i] = static_cast<uint8_t>((peb_addr >> (i*8)) & 0xFF);
+                mem_write(peb_ptr_off, buf);
+                // Write Ldr to PEB+0x20
+                if (ldr_addr != 0) {
+                    size_t ldr_off = (psz == 8) ? 0x20 : 0x0C;
+                    for (int i = 0; i < psz; ++i)
+                        buf[i] = static_cast<uint8_t>((ldr_addr >> (i*8)) & 0xFF);
+                    mem_write(peb_addr + ldr_off, buf);
+                }
+            }
         }
     }
 

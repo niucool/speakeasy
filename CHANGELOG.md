@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+### 2026-06-13
+
+#### Fixed
+
+- **secpp/windows/winemu.cpp**: 修复了 `_prepare_run_context` 中 PEB->Ldr 为 NULL 导致 `UC_ERR_READ_UNMAPPED` 崩溃的 Bug。`init_tls()` → `Thread::init_tls()` → `write_back()` 会覆盖 TEB+0x60 中的 PEB 指针，导致模拟代码读取到错误的 PEB 地址，然后从 `PEB+0x20`（Ldr 字段）读取到 0。修复为在 `init_teb()` 和 `init_tls()` 调用之后，通过直接 `mem_write` 将 PEB 地址写入 TEB+0x60，并将 Ldr 地址写入 PEB+0x20
+- **CMakeLists.txt**: 将 Unicorn 版本从 2.0.1 升级到 2.1.4，修复了 CPUID 供应商字符串问题（2.0.1 返回 "AuthenticAMD" 而测试样本期望 "GenuineIntel"）
+- **secpp/windows/objman.cpp**: 修复了 `address_` 赋值中的 `static_cast<int>()` 截断问题（10 处），改为 `static_cast<uint64_t>()` 以防止 64 位地址在 x64 仿真中被截断
+- **secpp/windows/winemu.cpp**: `init_teb()` 移除了 `static_cast<int>(peb_addr_val)` 截断
+
 ### 2026-06-09 (ArgList migration)
 
 #### Changed
