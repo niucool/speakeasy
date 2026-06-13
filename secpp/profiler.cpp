@@ -231,7 +231,7 @@ void Profiler::log_error(const std::string& error) {
 // def record_api_event(self, run, pos: TracePosition, name, ret, argv):
 //     """Log a call to an OS API. This includes arguments, return address, and return value"""
 void Profiler::log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name,
-                       void* ret, const std::vector<std::string>& argv,
+    uint64_t ret, const std::vector<std::string>& argv,
                        const std::vector<std::string>& ctx) {
     run->num_apis += 1;
 
@@ -247,11 +247,9 @@ void Profiler::log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string&
     pc_stream << "0x" << std::hex << pc;
 
     std::string ret_val;
-    if (ret != nullptr) {
-        std::stringstream ret_stream;
-        ret_stream << "0x" << std::hex << reinterpret_cast<uint64_t>(ret);
-        ret_val = ret_stream.str();
-    }
+    std::stringstream ret_stream;
+    ret_stream << "0x" << std::hex << ret;
+    ret_val = ret_stream.str();
 
     // Process args: convert numeric strings to hex
     std::vector<std::string> args = argv;

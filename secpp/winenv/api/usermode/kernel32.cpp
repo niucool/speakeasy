@@ -1156,16 +1156,18 @@ uint64_t Kernel32::GetProcAddress(void* emu, ArgList& argv, void* ctx) {
                 std::string bn = mod->get_base_name();
                 auto dot = bn.rfind(".");
                 std::string mname = (dot != std::string::npos) ? bn.substr(0, dot) : bn;
-                rv = reinterpret_cast<uint64_t>(we(emu)->get_proc(mname, proc));
+                auto* entry = mod->get_export_by_name(proc);
+                if(entry || be(emu)->get_config().modules.functions_always_exist)
+                    rv = reinterpret_cast<uint64_t>(we(emu)->get_proc(mname, proc));
                 break;
             }
         }
         // Python-like fallback: if hMod matches no loaded PEB module,
         // use a default module lookup.  LoadLibraryW("ntdll") stores
         // the module at a synthetic base that may not appear in PEB.
-        if (rv == 0) {
-            rv = reinterpret_cast<uint64_t>(we(emu)->get_proc("ntdll", proc));
-        }
+        //if (rv == 0) {
+        //    rv = reinterpret_cast<uint64_t>(we(emu)->get_proc("ntdll", proc));
+        //}
     }
 
     if (rv != 0) {

@@ -185,7 +185,7 @@ public:
     void record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files);
     // Python:227-259
     // """Log a call to an OS API. This includes arguments, return address, and return value"""
-    void log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name, void* ret,
+    void log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name, uint64_t ret,
                  const std::vector<std::string>& argv, const std::vector<std::string>& ctx = {});
     // Python:261-338
     // """Log file access events. This will include things like handles being opened,

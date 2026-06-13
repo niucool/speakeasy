@@ -156,8 +156,8 @@ struct IP_ADAPTER_INFO_POD<8> {
     uint8_t   pad1[7]                               = {}; // offset 425  align CurrentIpAddress to 432
     uint64_t  CurrentIpAddress                      = 0;  // offset 432
     // IpAddressList (IP_ADDR_STRING<8> = 48 bytes)  flattened
-    IP_ADDR_STRING_POD<8> IpAddressList;    uint32_t  IpAddressList_pad                     = 0;  // offset 484
-    // GatewayList (48 bytes)
+    IP_ADDR_STRING_POD<8> IpAddressList;                                                   // offset 440 (nested, size=48)
+    // GatewayList (48 bytes) -- flattened IP_ADDR_STRING<8>
     uint64_t  GatewayList_Next                      = 0;  // offset 488
     uint8_t   GatewayList_IpAddress[16]             = {}; // offset 496
     uint8_t   GatewayList_IpMask[16]                = {}; // offset 512

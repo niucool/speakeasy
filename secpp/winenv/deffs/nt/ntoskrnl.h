@@ -952,7 +952,6 @@ struct TEB_POD<8> {
     NT_TIB_POD<8> NtTib;                    // offset   0 (nested, size=56)
     uint64_t EnvironmentPointer    = 0; // offset  56
     CLIENT_ID_POD<8> ClientId;               // offset  64 (nested, size=16)
-    uint64_t pad0                   = 0; // offset  80 (x64: CLIENT_ID_POD<8> = 16 bytes, starts @64, padded)
     uint64_t ActiveRpcHandle                  = 0; // offset  80
     uint64_t ThreadLocalStoragePointer        = 0; // offset  88
     uint64_t ProcessEnvironmentBlock           = 0; // offset  96

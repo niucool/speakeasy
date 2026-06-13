@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cstring>
 #include <sstream>
+#include <plog/Log.h>
 
 #include "../winenv/arch.h"
 #include "../winenv/deffs/nt/ddk.h"
@@ -616,6 +617,19 @@ void Thread::init_teb(uint64_t teb_addr, uint64_t peb_addr) {
         teb_struct->ProcessEnvironmentBlock = peb_addr;
     }
     this->teb_->write_back();
+
+#if 0
+    if (ptr_sz == 8) {
+        auto vrf = BE(emu_)->mem_read(teb_addr, sizeof(speakeasy::deffs::nt::TEB<8>));
+        auto teb_pod = reinterpret_cast<speakeasy::deffs::nt::TEB_POD<8>*>(vrf.data());
+        PLOG_DEBUG << "[post-tls] TEB+0x60=0x" << std::hex << teb_pod->ProcessEnvironmentBlock << std::dec;
+    }
+    else {
+        auto vrf = BE(emu_)->mem_read(teb_addr, sizeof(speakeasy::deffs::nt::TEB<4>));
+        auto teb_pod = reinterpret_cast<speakeasy::deffs::nt::TEB_POD<4>*>(vrf.data());
+        PLOG_DEBUG << "[post-tls] TEB+0x30=0x" << std::hex << teb_pod->ProcessEnvironmentBlock << std::dec;
+    }
+#endif
 }
 
 std::shared_ptr<TEB> Thread::get_teb() {

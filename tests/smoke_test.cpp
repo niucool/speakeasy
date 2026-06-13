@@ -424,7 +424,7 @@ TEST(ProfilerTest, LogApi) {
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
     std::vector<std::string> argv = {"0x1000", "4", "0"};
-    EXPECT_NO_THROW(prof.log_api(my_run, 0x401000, "kernel32.VirtualAlloc", nullptr, argv));
+    EXPECT_NO_THROW(prof.log_api(my_run, 0x401000, "kernel32.VirtualAlloc", 0, argv));
 }
 
 TEST(ProfilerTest, LogDynCode) {
