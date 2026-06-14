@@ -10,6 +10,7 @@
 #include "../config.h"
 #include "../winenv/api/winapi.h"
 #include "../winenv/api/api.h"
+#include "../winenv/deffs/nt/ntoskrnl.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -2069,171 +2070,134 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_mo
 // Python winemu.py:2364
 // def get_thread_context(self, thread=None):
 //     """Get the current thread CPU context"""
-void* WindowsEmulator::get_thread_context(std::shared_ptr<Thread> thread) {
-    (void)thread;
-    if (!emu_eng_) return nullptr;
+std::shared_ptr<speakeasy::deffs::windows::CONTEXT> WindowsEmulator::get_thread_context32(std::shared_ptr<Thread> thread) {
+    std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT>();
+    ctx->Edi = reg_read(speakeasy::arch::REG_EDI);
+    ctx->Esi = reg_read(speakeasy::arch::REG_ESI);
+    ctx->Eax = reg_read(speakeasy::arch::REG_EAX);
+    ctx->Ebp = reg_read(speakeasy::arch::REG_EBP);
+    ctx->Edx = reg_read(speakeasy::arch::REG_EDX);
+    ctx->Ecx = reg_read(speakeasy::arch::REG_ECX);
+    ctx->Ebx = reg_read(speakeasy::arch::REG_EBX);
+    ctx->Esp = reg_read(speakeasy::arch::REG_ESP);
+    ctx->Eip = reg_read(speakeasy::arch::REG_EIP);
+    ;
+    ctx->EFlags = reg_read(speakeasy::arch::REG_EFLAGS);
+    ctx->SegCs = reg_read(speakeasy::arch::REG_CS);
+    ctx->SegSs = reg_read(speakeasy::arch::REG_SS);
+    ctx->SegDs = reg_read(speakeasy::arch::REG_DS);
+    ctx->SegFs = reg_read(speakeasy::arch::REG_FS);
+    ctx->SegGs = reg_read(speakeasy::arch::REG_GS);
+    ctx->SegEs = reg_read(speakeasy::arch::REG_ES);
 
-    // Allocate memory for a CONTEXT structure
-    size_t ctx_size = (get_arch() == speakeasy::arch::ARCH_AMD64) ? 1232 : 716;
-    uint64_t ctx_addr = mem_map(ctx_size, 0, PERM_MEM_RW, "emu.struct.CONTEXT");
-    std::vector<uint8_t> buf(ctx_size, 0);
-
-    if (get_arch() == speakeasy::arch::ARCH_X86) {
-        // Standard x86 CONTEXT layout (offsets verified from Windows SDK)
-        // Seg registers at offsets 0x6C-0x78
-        write_le(buf, 0x6C, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_GS)), 4);   // SegGs
-        write_le(buf, 0x70, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_FS)), 4);   // SegFs
-        write_le(buf, 0x74, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_ES)), 4);   // SegEs
-        write_le(buf, 0x78, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_DS)), 4);   // SegDs
-        // Integer registers at offsets 0x7C-0xA8
-        write_le(buf, 0x7C, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EDI)), 4);  // Edi
-        write_le(buf, 0x80, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_ESI)), 4);  // Esi
-        write_le(buf, 0x84, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EBX)), 4);  // Ebx
-        write_le(buf, 0x88, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EDX)), 4);  // Edx
-        write_le(buf, 0x8C, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_ECX)), 4);  // Ecx
-        write_le(buf, 0x90, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EAX)), 4);  // Eax
-        write_le(buf, 0x94, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EBP)), 4);  // Ebp
-        write_le(buf, 0x98, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EIP)), 4);  // Eip
-        write_le(buf, 0x9C, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_CS)), 4);   // SegCs
-        write_le(buf, 0xA0, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EFLAGS)), 4); // EFlags
-        write_le(buf, 0xA4, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_ESP)), 4);  // Esp
-        write_le(buf, 0xA8, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_SS)), 4);   // SegSs
-    } else if (get_arch() == speakeasy::arch::ARCH_AMD64) {
-        // Standard x64 CONTEXT layout (offsets verified from Windows SDK)
-        write_le(buf, 0x48, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_CS)), 2);   // SegCs
-        write_le(buf, 0x50, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_DS)), 2);   // SegDs
-        write_le(buf, 0x58, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_ES)), 2);   // SegEs
-        write_le(buf, 0x60, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_FS)), 2);   // SegFs
-        write_le(buf, 0x68, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_GS)), 2);   // SegGs
-        write_le(buf, 0x70, static_cast<uint16_t>(reg_read(speakeasy::arch::REG_SS)), 2);   // SegSs
-        write_le(buf, 0x78, static_cast<uint32_t>(reg_read(speakeasy::arch::REG_EFLAGS)), 4); // EFlags
-        // Integer registers at offsets 0xB8-0x140
-        write_le(buf, 0xB8, reg_read(speakeasy::arch::REG_RAX), 8);   // Rax
-        write_le(buf, 0xC0, reg_read(speakeasy::arch::REG_RCX), 8);   // Rcx
-        write_le(buf, 0xC8, reg_read(speakeasy::arch::REG_RDX), 8);   // Rdx
-        write_le(buf, 0xD0, reg_read(speakeasy::arch::REG_RBX), 8);   // Rbx
-        write_le(buf, 0xD8, reg_read(speakeasy::arch::REG_RSP), 8);   // Rsp
-        write_le(buf, 0xE0, reg_read(speakeasy::arch::REG_RBP), 8);   // Rbp
-        write_le(buf, 0xE8, reg_read(speakeasy::arch::REG_RSI), 8);   // Rsi
-        write_le(buf, 0xF0, reg_read(speakeasy::arch::REG_RDI), 8);   // Rdi
-        write_le(buf, 0xF8, reg_read(speakeasy::arch::REG_R8), 8);    // R8
-        write_le(buf, 0x100, reg_read(speakeasy::arch::REG_R9), 8);   // R9
-        write_le(buf, 0x108, reg_read(speakeasy::arch::REG_R10), 8);  // R10
-        write_le(buf, 0x110, reg_read(speakeasy::arch::REG_R11), 8);  // R11
-        write_le(buf, 0x118, reg_read(speakeasy::arch::REG_R12), 8);  // R12
-        write_le(buf, 0x120, reg_read(speakeasy::arch::REG_R13), 8);  // R13
-        write_le(buf, 0x128, reg_read(speakeasy::arch::REG_R14), 8);  // R14
-        write_le(buf, 0x130, reg_read(speakeasy::arch::REG_R15), 8);  // R15
-        write_le(buf, 0x140, reg_read(speakeasy::arch::REG_RIP), 8);  // Rip
-    }
-
-    mem_write(ctx_addr, buf);
-    return reinterpret_cast<void*>(static_cast<uintptr_t>(ctx_addr));
+    return ctx;
 }
+
+std::shared_ptr<speakeasy::deffs::windows::CONTEXT64> WindowsEmulator::get_thread_context64(std::shared_ptr<Thread> thread) {
+    //(void)thread;
+    //if (!emu_eng_) return nullptr;
+
+    std::shared_ptr<speakeasy::deffs::windows::CONTEXT64> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT64>();
+
+    ctx->Rax = reg_read(speakeasy::arch::REG_RAX);
+    ctx->Rbx = reg_read(speakeasy::arch::REG_RBX);
+    ctx->Rcx = reg_read(speakeasy::arch::REG_RCX);
+    ctx->Rdx = reg_read(speakeasy::arch::REG_RDX);
+    ctx->Rsi = reg_read(speakeasy::arch::REG_RSI);
+    ctx->Rdi = reg_read(speakeasy::arch::REG_RDI);
+    ctx->Rbp = reg_read(speakeasy::arch::REG_RBP);
+    ctx->Rsp = reg_read(speakeasy::arch::REG_RSP);
+    ctx->Rip = reg_read(speakeasy::arch::REG_RIP);
+    ctx->R8 = reg_read(speakeasy::arch::REG_R8);
+    ctx->R9 = reg_read(speakeasy::arch::REG_R9);
+    ctx->R10 = reg_read(speakeasy::arch::REG_R10);
+    ctx->R11 = reg_read(speakeasy::arch::REG_R11);
+    ctx->R12 = reg_read(speakeasy::arch::REG_R12);
+    ctx->R13 = reg_read(speakeasy::arch::REG_R13);
+    ctx->R14 = reg_read(speakeasy::arch::REG_R14);
+    ctx->R15 = reg_read(speakeasy::arch::REG_R15);
+    ctx->EFlags = reg_read(speakeasy::arch::REG_EFLAGS);
+    ctx->SegCs = reg_read(speakeasy::arch::REG_CS);
+    ctx->SegSs = reg_read(speakeasy::arch::REG_SS);
+    ctx->SegDs = reg_read(speakeasy::arch::REG_DS);
+    ctx->SegFs = reg_read(speakeasy::arch::REG_FS);
+    ctx->SegGs = reg_read(speakeasy::arch::REG_GS);
+    ctx->SegEs = reg_read(speakeasy::arch::REG_ES);
+
+    return ctx;
+}
+
+std::shared_ptr<EmuStruct> WindowsEmulator::get_thread_context(std::shared_ptr<Thread> thread) {
+    if (get_arch() == speakeasy::arch::ARCH_X86) {
+        return get_thread_context32(thread);
+    }
+    else if (get_arch() == speakeasy::arch::ARCH_AMD64) {
+        return get_thread_context64(thread);
+    }
+    return nullptr;
+}
+
 
 
 // Python winemu.py:2418
 // def load_thread_context(self, ctx, thread=None):
 //     """Set the current thread CPU context"""
-void WindowsEmulator::load_thread_context(void* ctx, std::shared_ptr<Thread> thread) {
-    (void)thread;
-    if (!emu_eng_ || !ctx) return;
+void WindowsEmulator::load_thread_context32(std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx, std::shared_ptr<Thread> thread) {
+    reg_write(speakeasy::arch::REG_EDI, ctx->Edi);
+    reg_write(speakeasy::arch::REG_ESI, ctx->Esi);
+    reg_write(speakeasy::arch::REG_EAX, ctx->Eax);
+    reg_write(speakeasy::arch::REG_EBP, ctx->Ebp);
+    reg_write(speakeasy::arch::REG_EDX, ctx->Edx);
+    reg_write(speakeasy::arch::REG_ECX, ctx->Ecx);
+    reg_write(speakeasy::arch::REG_EBX, ctx->Ebx);
+    reg_write(speakeasy::arch::REG_ESP, ctx->Esp);
+    reg_write(speakeasy::arch::REG_EIP, ctx->Eip);
+    reg_write(speakeasy::arch::REG_EFLAGS, ctx->EFlags);
+    reg_write(speakeasy::arch::REG_CS, ctx->SegCs);
+    reg_write(speakeasy::arch::REG_SS, ctx->SegSs);
+    reg_write(speakeasy::arch::REG_DS, ctx->SegDs);
+    reg_write(speakeasy::arch::REG_FS, ctx->SegFs);
+    reg_write(speakeasy::arch::REG_GS, ctx->SegGs);
+    reg_write(speakeasy::arch::REG_ES, ctx->SegEs);
+}
 
-    uint64_t ctx_addr = reinterpret_cast<uint64_t>(ctx);
-    size_t ctx_size = (get_arch() == speakeasy::arch::ARCH_AMD64) ? 1232 : 716;
-    auto buf = mem_read(ctx_addr, ctx_size);
-    if (buf.size() < ctx_size) return;
+void WindowsEmulator::load_thread_context64(std::shared_ptr<speakeasy::deffs::windows::CONTEXT64> ctx, std::shared_ptr<Thread> thread) {
+    reg_write(speakeasy::arch::REG_RAX, ctx->Rax);
+    reg_write(speakeasy::arch::REG_RBX, ctx->Rbx);
+    reg_write(speakeasy::arch::REG_RCX, ctx->Rcx);
+    reg_write(speakeasy::arch::REG_RDX, ctx->Rdx);
+    reg_write(speakeasy::arch::REG_RSI, ctx->Rsi);
+    reg_write(speakeasy::arch::REG_RDI, ctx->Rdi);
+    reg_write(speakeasy::arch::REG_RBP, ctx->Rbp);
+    reg_write(speakeasy::arch::REG_RSP, ctx->Rsp);
+    reg_write(speakeasy::arch::REG_RIP, ctx->Rip);
+    reg_write(speakeasy::arch::REG_R8, ctx->R8);
+    reg_write(speakeasy::arch::REG_R9, ctx->R9);
+    reg_write(speakeasy::arch::REG_R10, ctx->R10);
+    reg_write(speakeasy::arch::REG_R11, ctx->R11);
+    reg_write(speakeasy::arch::REG_R12, ctx->R12);
+    reg_write(speakeasy::arch::REG_R13, ctx->R13);
+    reg_write(speakeasy::arch::REG_R14, ctx->R14);
+    reg_write(speakeasy::arch::REG_R15, ctx->R15);
 
+    reg_write(speakeasy::arch::REG_EFLAGS, ctx->EFlags);
+    reg_write(speakeasy::arch::REG_CS, ctx->SegCs);
+    reg_write(speakeasy::arch::REG_SS, ctx->SegSs);
+    reg_write(speakeasy::arch::REG_DS, ctx->SegDs);
+    reg_write(speakeasy::arch::REG_FS, ctx->SegFs);
+    reg_write(speakeasy::arch::REG_GS, ctx->SegGs);
+    reg_write(speakeasy::arch::REG_ES, ctx->SegEs);
+}
+
+void WindowsEmulator::load_thread_context(std::shared_ptr<EmuStruct> ctx, std::shared_ptr<Thread> thread) {
     if (get_arch() == speakeasy::arch::ARCH_X86) {
-        uint32_t edi = static_cast<uint32_t>(read_le(buf, 0x7C, 4));
-        uint32_t esi = static_cast<uint32_t>(read_le(buf, 0x80, 4));
-        uint32_t eax = static_cast<uint32_t>(read_le(buf, 0x90, 4));
-        uint32_t ebp = static_cast<uint32_t>(read_le(buf, 0x94, 4));
-        uint32_t edx = static_cast<uint32_t>(read_le(buf, 0x88, 4));
-        uint32_t ecx = static_cast<uint32_t>(read_le(buf, 0x8C, 4));
-        uint32_t ebx = static_cast<uint32_t>(read_le(buf, 0x84, 4));
-        uint32_t esp = static_cast<uint32_t>(read_le(buf, 0xA4, 4));
-        uint32_t eip = static_cast<uint32_t>(read_le(buf, 0x98, 4));
-
-        reg_write(speakeasy::arch::REG_EDI, edi);
-        reg_write(speakeasy::arch::REG_ESI, esi);
-        reg_write(speakeasy::arch::REG_EAX, eax);
-        reg_write(speakeasy::arch::REG_EBP, ebp);
-        reg_write(speakeasy::arch::REG_EDX, edx);
-        reg_write(speakeasy::arch::REG_ECX, ecx);
-        reg_write(speakeasy::arch::REG_EBX, ebx);
-        reg_write(speakeasy::arch::REG_ESP, esp);
-        reg_write(speakeasy::arch::REG_EIP, eip);
-
-        uint32_t eflags = static_cast<uint32_t>(read_le(buf, 0xA0, 4));
-        uint32_t seg_cs = static_cast<uint32_t>(read_le(buf, 0x9C, 4));
-        uint32_t seg_ss = static_cast<uint32_t>(read_le(buf, 0xA8, 4));
-        uint32_t seg_ds = static_cast<uint32_t>(read_le(buf, 0x78, 4));
-        uint32_t seg_fs = static_cast<uint32_t>(read_le(buf, 0x70, 4));
-        uint32_t seg_gs = static_cast<uint32_t>(read_le(buf, 0x6C, 4));
-        uint32_t seg_es = static_cast<uint32_t>(read_le(buf, 0x74, 4));
-
-        reg_write(speakeasy::arch::REG_EFLAGS, eflags);
-        reg_write(speakeasy::arch::REG_CS, seg_cs);
-        reg_write(speakeasy::arch::REG_SS, seg_ss);
-        reg_write(speakeasy::arch::REG_DS, seg_ds);
-        reg_write(speakeasy::arch::REG_FS, seg_fs);
-        reg_write(speakeasy::arch::REG_GS, seg_gs);
-        reg_write(speakeasy::arch::REG_ES, seg_es);
-    } else if (get_arch() == speakeasy::arch::ARCH_AMD64) {
-        uint64_t rax = read_le(buf, 0xB8, 8);
-        uint64_t rbx = read_le(buf, 0xD0, 8);
-        uint64_t rcx = read_le(buf, 0xC0, 8);
-        uint64_t rdx = read_le(buf, 0xC8, 8);
-        uint64_t rsi = read_le(buf, 0xE8, 8);
-        uint64_t rdi = read_le(buf, 0xF0, 8);
-        uint64_t rbp = read_le(buf, 0xE0, 8);
-        uint64_t rsp = read_le(buf, 0xD8, 8);
-        uint64_t rip = read_le(buf, 0x140, 8);
-        uint64_t r8  = read_le(buf, 0xF8, 8);
-        uint64_t r9  = read_le(buf, 0x100, 8);
-        uint64_t r10 = read_le(buf, 0x108, 8);
-        uint64_t r11 = read_le(buf, 0x110, 8);
-        uint64_t r12 = read_le(buf, 0x118, 8);
-        uint64_t r13 = read_le(buf, 0x120, 8);
-        uint64_t r14 = read_le(buf, 0x128, 8);
-        uint64_t r15 = read_le(buf, 0x130, 8);
-
-        reg_write(speakeasy::arch::REG_RAX, rax);
-        reg_write(speakeasy::arch::REG_RBX, rbx);
-        reg_write(speakeasy::arch::REG_RCX, rcx);
-        reg_write(speakeasy::arch::REG_RDX, rdx);
-        reg_write(speakeasy::arch::REG_RSI, rsi);
-        reg_write(speakeasy::arch::REG_RDI, rdi);
-        reg_write(speakeasy::arch::REG_RBP, rbp);
-        reg_write(speakeasy::arch::REG_RSP, rsp);
-        reg_write(speakeasy::arch::REG_RIP, rip);
-        reg_write(speakeasy::arch::REG_R8, r8);
-        reg_write(speakeasy::arch::REG_R9, r9);
-        reg_write(speakeasy::arch::REG_R10, r10);
-        reg_write(speakeasy::arch::REG_R11, r11);
-        reg_write(speakeasy::arch::REG_R12, r12);
-        reg_write(speakeasy::arch::REG_R13, r13);
-        reg_write(speakeasy::arch::REG_R14, r14);
-        reg_write(speakeasy::arch::REG_R15, r15);
-
-        uint64_t eflags = read_le(buf, 0x78, 4);
-        uint16_t seg_cs = static_cast<uint16_t>(read_le(buf, 0x48, 2));
-        uint16_t seg_ss = static_cast<uint16_t>(read_le(buf, 0x70, 2));
-        uint16_t seg_ds = static_cast<uint16_t>(read_le(buf, 0x50, 2));
-        uint16_t seg_fs = static_cast<uint16_t>(read_le(buf, 0x60, 2));
-        uint16_t seg_gs = static_cast<uint16_t>(read_le(buf, 0x68, 2));
-        uint16_t seg_es = static_cast<uint16_t>(read_le(buf, 0x58, 2));
-
-        reg_write(speakeasy::arch::REG_EFLAGS, eflags);
-        reg_write(speakeasy::arch::REG_CS, seg_cs);
-        reg_write(speakeasy::arch::REG_SS, seg_ss);
-        reg_write(speakeasy::arch::REG_DS, seg_ds);
-        reg_write(speakeasy::arch::REG_FS, seg_fs);
-        reg_write(speakeasy::arch::REG_GS, seg_gs);
-        reg_write(speakeasy::arch::REG_ES, seg_es);
+        return load_thread_context32(std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT>(ctx), thread);
+    }
+    else if (get_arch() == speakeasy::arch::ARCH_AMD64) {
+        return load_thread_context64(std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT64>(ctx), thread);
     }
 }
+
 
 //  SEH 
 
@@ -2269,6 +2233,7 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
 
     // If SEH dispatch failed, try the unhandled exception filter
     if (!rv && unhandled_exception_filter != 0) {
+#if 0
         // Build EXCEPTION_RECORD and EXCEPTION_POINTERS in emulated memory
         // Layout: EXCEPTION_RECORD = {code, flags, record, addr, numparams, params[15]}
         // Simple flat allocation strategy
@@ -2307,6 +2272,7 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
         set_pc(unhandled_exception_filter);
         unhandled_exception_filter = 0;
         rv = true;
+#endif
     }
 
     if (rv && faulting_address != 0) {
@@ -2325,28 +2291,89 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
 // def _dispatch_seh_x86(self, except_code):
 //     """Get the initial SEH handler when dispatching a CPU exception that occurs during emulation"""
 bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
-    // Walk the EXCEPTION_REGISTRATION chain at fs:[0]
-    uint64_t seh_chain = _get_exception_list();
-    if (seh_chain == 0 || seh_chain == 0xFFFFFFFF) return false;
-
-    // Read EXCEPTION_REGISTRATION record: [next_ptr] [handler]
-    uint64_t next_ptr = read_ptr(seh_chain); (void)next_ptr;
-    uint64_t handler = read_ptr(seh_chain + ptr_size_);
-    if (handler == 0 || handler == 0xFFFFFFFF) return false;
-
-    // Call the SEH handler
-    curr_exception_code = except_code;
-
-    // Retrieve thread and SEH context
+    // Python winemu.py:2488-2591  _dispatch_seh_x86
     auto thread = get_current_thread();
-    if (thread) {
-        SEH& seh = thread->get_seh();
-        seh.get_last_exception_code_ref() = static_cast<int>(except_code);
-        void* ctx = get_thread_context(thread);
-        seh.set_context(ctx, static_cast<int>(reinterpret_cast<uintptr_t>(ctx)));
+    if (!thread) return false;
+
+    SEH& seh = thread->get_seh();
+    uint64_t exception_list = _get_exception_list();
+    if (exception_list == 0 || exception_list == 0xFFFFFFFF) return false;
+
+    seh.last_exception_code_ = static_cast<int>(except_code);
+
+    speakeasy::deffs::windows::EXCEPTION_RECORD<4> record;
+    record.ExceptionCode = except_code;
+    record.ExceptionFlags = 0;
+    record.ExceptionAddress = get_pc();
+    record.NumberParameters = 0;
+
+    speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4> ereg;
+    speakeasy::deffs::windows::EXCEPTION_POINTERS<4> eptrs;
+
+    mem_cast(&ereg, exception_list);
+    uint64_t sp = get_stack_ptr();
+
+    auto p_exp_ptrs = mem_map(eptrs.sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_POINTERS");
+    auto prec = mem_map(record.sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_RECORD");
+    auto _ctx = get_thread_context32();
+    auto pctx = mem_map(_ctx->sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_CONTEXT");
+
+    eptrs.ExceptionRecord = prec;
+    eptrs.ContextRecord = pctx;
+
+    mem_write(pctx, _ctx->get_bytes());
+    seh.set_context(_ctx, static_cast<uint64_t>(pctx));
+
+    
+/*
+    // Python: build EXCEPTION_RECORD
+    // struct EXCEPTION_RECORD { code(4), flags(4), record(4), addr(4), numparams(4), params[15](60) } = 80 bytes
+    std::vector<uint8_t> rec_bytes(80, 0);
+    write_le(rec_bytes, 0, static_cast<uint32_t>(except_code), 4);  // ExceptionCode
+    // ExceptionFlags=0, ExceptionRecord=0 (already zeroed)
+    write_le(rec_bytes, 8, static_cast<uint32_t>(get_pc()), 4);    // ExceptionAddress
+    // NumberParameters=0 (already zeroed)
+    // Params array all 0
+
+    // Map EXCEPTION_RECORD into emulated memory
+    uint64_t prec = mem_map(80, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_RECORD");
+    mem_write(prec, rec_bytes);
+
+    // Read EXCEPTION_REGISTRATION from exception_list: {Next@0, Handler@4, ...}
+    uint64_t entry_handler = read_ptr(exception_list + ptr_size_);
+
+    // Build CONTEXT on the stack — read current register state
+    int psz = ptr_size_;
+    uint64_t pctx = mem_map(716, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_CONTEXT");
+    void* ctx_raw = get_thread_context(thread);
+    std::vector<uint8_t> ctx_bytes; // fill from register state if available
+    if (ctx_raw) {
+        seh.set_context(ctx_raw, static_cast<int>(pctx));
     }
 
-    call(handler);  // Jump to the handler
+    // Build EXCEPTION_POINTERS: {ExceptionRecord@0, ContextRecord@psz}
+    std::vector<uint8_t> exp_ptrs(static_cast<size_t>(psz) * 2, 0);
+    write_le(exp_ptrs, 0,                      prec, static_cast<size_t>(psz));
+    write_le(exp_ptrs, static_cast<size_t>(psz), pctx, static_cast<size_t>(psz));
+
+    uint64_t p_exp_ptrs = mem_map(static_cast<size_t>(psz) * 2, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_POINTERS");
+    mem_write(p_exp_ptrs, exp_ptrs);
+
+    // Python: write exp_ptrs BEFORE the exception_list on stack (ms_exc convention)
+    mem_write(exception_list - static_cast<uint64_t>(psz), exp_ptrs);
+
+    // Python: set_func_args(sp, SEH_RETURN_ADDR, prec, exception_list, pctx, 0)
+    auto sp = get_stack_ptr();
+    set_func_args(sp, SEH_RETURN_ADDR, {prec, exception_list, pctx, 0});
+
+    // Python: EBX clobber to 0xFFFFFFFF (observed in real VMs)
+    reg_write(speakeasy::arch::REG_EBX, 0xFFFFFFFF);
+
+    // Python: set_pc(entry.Handler)
+    if (entry_handler == 0 || entry_handler == 0xFFFFFFFF) return false;
+    set_pc(entry_handler);
+*/
+
     return true;
 }
 
@@ -2365,19 +2392,19 @@ void WindowsEmulator::_continue_seh_x86() {
     uint32_t sp = static_cast<uint32_t>(get_stack_ptr());
     uint32_t ret_val = static_cast<uint32_t>(get_return_val());
 
-    if (seh.get_handler_ret_val_ref() == nullptr) {
-        seh.get_handler_ret_val_ref() = reinterpret_cast<void*>(static_cast<uintptr_t>(ret_val));
+    if (seh.handler_ret_val_ == nullptr) {
+        seh.handler_ret_val_ = reinterpret_cast<void*>(static_cast<uintptr_t>(ret_val));
     }
 
-    void* ctx = seh.get_context_ref();
-    if (seh.get_context_address_ref() != 0) {
-        ctx = reinterpret_cast<void*>(static_cast<uintptr_t>(seh.get_context_address_ref()));
+    std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT>();
+    if (seh.context_address_ != 0) {
+        mem_cast(ctx.get(), seh.context_address_);
     }
 
     // Always restore thread context
-    load_thread_context(ctx, thread);
+    load_thread_context32(ctx, thread);
 
-    for (auto& frame : seh.get_frames_ref()) {
+    for (auto& frame : seh.frames_) {
         if (!frame.searched) {
             if (frame.scope_records.empty()) continue;
             auto& scope_record = frame.scope_records[0];
@@ -2389,7 +2416,7 @@ void WindowsEmulator::_continue_seh_x86() {
             if (!scope_record.filter_called && filter_func != 0) {
                 set_func_args(sp, SEH_RETURN_ADDR, {});
                 set_pc(filter_func);
-                seh.get_last_func_ref() = reinterpret_cast<void*>(static_cast<uintptr_t>(filter_func));
+                seh.last_func_ = reinterpret_cast<void*>(static_cast<uintptr_t>(filter_func));
                 scope_record.filter_called = true;
                 return;
             }
@@ -2399,15 +2426,17 @@ void WindowsEmulator::_continue_seh_x86() {
                 filter_func == 0xFFFFFFFF) {
                 if (!scope_record.handler_called) {
                     set_pc(handler_address);
-                    seh.get_last_func_ref() = reinterpret_cast<void*>(static_cast<uintptr_t>(handler_address));
+                    seh.last_func_ = reinterpret_cast<void*>(static_cast<uintptr_t>(handler_address));
                     scope_record.handler_called = true;
                     return;
                 }
             } else if (ret_val == 0xFFFFFFFF /* EXCEPTION_CONTINUE_EXECUTION */) {
-                void* ctx_to_load = seh.get_context_ref();
-                load_thread_context(ctx_to_load, thread);
-                uint32_t eip = static_cast<uint32_t>(read_ptr(reinterpret_cast<uint64_t>(ctx_to_load) + 0x98));
-                set_pc(eip);
+                std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx_to_load = std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT>(seh.context_);
+                if (seh.context_address_ != 0) {
+                    mem_cast(ctx_to_load.get(), seh.context_address_);
+                }
+                load_thread_context(ctx_to_load);
+                set_pc(ctx_to_load->Eip);
                 return;
             } else if (ret_val == 0 /* EXCEPTION_CONTINUE_SEARCH */) {
                 // pass
@@ -2417,9 +2446,9 @@ void WindowsEmulator::_continue_seh_x86() {
         }
     }
 
-    if (ret_val == 0 /* EXCEPTION_CONTINUE_SEARCH */ && seh.get_frames_ref().empty()) {
-        void* ctx_to_load = seh.get_context_ref();
-        uint32_t eip = static_cast<uint32_t>(read_ptr(reinterpret_cast<uint64_t>(ctx_to_load) + 0x98));
+    if (ret_val == 0 /* EXCEPTION_CONTINUE_SEARCH */ && seh.frames_.empty()) {
+        std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx_to_load = std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT>(seh.context_);
+        uint32_t eip = ctx_to_load->Eip;
         set_pc(eip);
         return;
     }
@@ -2435,6 +2464,9 @@ void WindowsEmulator::_continue_seh_x86() {
 void WindowsEmulator::continue_seh() {
     _seh_last_fault = {0, 0};
     _seh_repeat_count = 0;
+    if (arch_ == speakeasy::arch::ARCH_X86) {
+        _continue_seh_x86();
+    }
 }
 
 //  API dispatch 
@@ -3840,14 +3872,17 @@ void WindowsEmulator::_register_interrupt_hook(void* callback) {
 //     """Retrieves the exception handler list for the current thread"""
 uint64_t WindowsEmulator::_get_exception_list() {
     auto t = get_current_thread();
-    if (t) {
-        auto teb = t->get_teb();
-        if (teb) {
-            return read_ptr(teb->get_address());
-        }
+    if (!t) {
+        return 0;
     }
-    uint64_t teb = (ptr_size_ == 4) ? fs_addr : gs_addr;
-    return (teb != 0) ? read_ptr(teb) : 0;
+    if (ptr_size_ == 4) {
+        auto* teb_struct = static_cast<speakeasy::deffs::nt::TEB<4>*>(t->get_teb()->get_object());
+        return teb_struct ? teb_struct->NtTib.ExceptionList : 0;
+    }
+    else {
+        auto* teb_struct = static_cast<speakeasy::deffs::nt::TEB<8>*>(t->get_teb()->get_object());
+        return teb_struct ? teb_struct->NtTib.ExceptionList : 0;
+    }
 }
 
 // Python winemu.py:2652

@@ -3496,20 +3496,14 @@ uint64_t Kernel32::GetThreadContext(void* emu, ArgList& argv, void* ctx) {
     }
 
     // Get the thread's saved context
-    void* saved_ctx = thread->get_context();
+    auto saved_ctx = thread->get_context();
     if (!saved_ctx) {
-        // No saved context - read current context from emulator
-        uint64_t ctx_addr = we(emu)->mem_map(1232, 0, 4, "emu.thread.context.tmp");
-        auto ctx_data = we(emu)->mem_read(ctx_addr, 1232);
+        auto ctx_data = saved_ctx->get_bytes();
         we(emu)->mem_write(lpContext, ctx_data);
         return 1;
     }
 
-    // Write the saved context to the output buffer
-    uint64_t src_addr = reinterpret_cast<uint64_t>(saved_ctx);
-    auto ctx_data = we(emu)->mem_read(src_addr, 1232);
-    we(emu)->mem_write(lpContext, ctx_data);
-    return 1;
+    return 0;
 }
 // ==========================================
 //  Thread / time / misc getters
@@ -3907,12 +3901,30 @@ uint64_t Kernel32::SetProcessPriorityBoost(void* e, ArgList& a, void* c) {
     (void)a; return 1;
 }
 uint64_t Kernel32::SetThreadContext(void* e, ArgList& a, void* c) {
-    uint64_t hThread = a[0]; uint64_t ctx_ptr = a[1];
-    if (!ctx_ptr) { w32(e)->set_last_error(998); return 0; } // ERROR_NOACCESS
+    uint64_t hThread = a[0]; 
+    uint64_t ctx_ptr = a[1];
+    if (!ctx_ptr) { 
+        w32(e)->set_last_error(998); // ERROR_NOACCESS
+        return 0; 
+    } 
     auto thread = we(e)->find_thread(static_cast<int>(hThread));
-    if (!thread) { w32(e)->set_last_error(6); return 0; } // ERROR_INVALID_HANDLE
-    thread->set_context(reinterpret_cast<void*>(ctx_ptr));
-    thread->set_modified_pc(true);
+    if (!thread) { 
+        w32(e)->set_last_error(6); // ERROR_INVALID_HANDLE
+        return 0; 
+    } 
+    if (ctx_ptr) {
+        if (we(e)->get_arch() == speakeasy::arch::ARCH_X86) {
+            std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT>();
+            we(e)->mem_cast(ctx.get(), ctx_ptr);
+            thread->set_context(ctx);
+        }
+        else if (we(e)->get_arch() == speakeasy::arch::ARCH_AMD64) {
+            std::shared_ptr<speakeasy::deffs::windows::CONTEXT64> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT64>();
+            we(e)->mem_cast(ctx.get(), ctx_ptr);
+            thread->set_context(ctx);
+        }
+    }
+
     return 1;
 }
 uint64_t Kernel32::SetThreadDescription(void* e, ArgList& a, void* c) {

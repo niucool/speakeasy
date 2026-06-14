@@ -55,6 +55,8 @@
 #include "errors.h"
 #include "../config.h"
 #include "../struct.h"
+#include "../winenv/deffs/windows/windows.h"
+
 using speakeasy::EmuStruct;
 using speakeasy::write_le;
 using speakeasy::read_le;
@@ -629,11 +631,16 @@ public:
     // Python winemu.py:2364
     // def get_thread_context(self, thread=None):
     //     """Get the current thread CPU context"""
-    void* get_thread_context(std::shared_ptr<Thread> thread = nullptr);
+    std::shared_ptr<EmuStruct> get_thread_context(std::shared_ptr<Thread> thread = nullptr);
+    std::shared_ptr<speakeasy::deffs::windows::CONTEXT> get_thread_context32(std::shared_ptr<Thread> thread = nullptr);
+    std::shared_ptr<speakeasy::deffs::windows::CONTEXT64> get_thread_context64(std::shared_ptr<Thread> thread = nullptr);
+
     // Python winemu.py:2418
     // def load_thread_context(self, ctx, thread=None):
     //     """Set the current thread CPU context"""
-    void load_thread_context(void* ctx, std::shared_ptr<Thread> thread = nullptr);
+    void load_thread_context(std::shared_ptr<EmuStruct> ctx, std::shared_ptr<Thread> thread = nullptr);
+    void load_thread_context32(std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx, std::shared_ptr<Thread> thread = nullptr);
+    void load_thread_context64(std::shared_ptr<speakeasy::deffs::windows::CONTEXT64> ctx, std::shared_ptr<Thread> thread = nullptr);
 
     //  API / import handling 
     // Python winemu.py:1639

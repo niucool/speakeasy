@@ -29,6 +29,7 @@
 #include "../struct.h"      // EmuStruct
 #include "../windows/loaders.h"  // speakeasy::LoadedImage
 #include "../profiler.h"    // Run (indirectly)
+#include "../winenv/deffs/windows/windows.h"
 
 using namespace speakeasy;
 using speakeasy::deffs::nt::IRP_MJ_MAXIMUM_FUNCTION;
@@ -116,34 +117,34 @@ SEH::SEH()
       last_func_(nullptr), last_exception_code_(0),
       exception_ptrs_(0), handler_ret_val_(nullptr) {}
 
-void SEH::set_context(void* context, int address) {
+void SEH::set_context(std::shared_ptr<EmuStruct> context, uint64_t address) {
     this->context_ = context;
     this->context_address_ = address;
 }
 
-void* SEH::get_context() {
-    return this->context_;
-}
-
-void SEH::set_last_func(void* func) {
-    this->last_func_ = func;
-}
-
-void SEH::set_record(void* record, int address) {
-    (void)address;
-    this->record_ = record;
-}
-
-void SEH::set_current_frame(Frame frame) {
-    // Replace the frames list with just this frame (or push it).
-    // Python code does not have an explicit set_current_frame, but
-    // the method exists in the C++ API  push it onto the frame stack.
-    this->frames_.push_back(frame);
-}
-
-std::vector<SEH::Frame> SEH::get_frames() {
-    return this->frames_;
-}
+//std::shared_ptr<EmuStruct> SEH::get_context() {
+//    return this->context_;
+//}
+//
+//void SEH::set_last_func(void* func) {
+//    this->last_func_ = func;
+//}
+//
+//void SEH::set_record(void* record, uint64_t address) {
+//    (void)address;
+//    this->record_ = record;
+//}
+//
+//void SEH::set_current_frame(Frame frame) {
+//    // Replace the frames list with just this frame (or push it).
+//    // Python code does not have an explicit set_current_frame, but
+//    // the method exists in the C++ API  push it onto the frame stack.
+//    this->frames_.push_back(frame);
+//}
+//
+//std::vector<SEH::Frame> SEH::get_frames() {
+//    return this->frames_;
+//}
 
 void SEH::clear_frames() {
     this->frames_.clear();
@@ -553,7 +554,7 @@ SEH& Thread::get_seh() {
     return this->seh_;
 }
 
-void* Thread::get_context() {
+std::shared_ptr<EmuStruct> Thread::get_context() {
     if (this->ctx_) {
         return this->ctx_;
     }
@@ -563,34 +564,20 @@ void* Thread::get_context() {
     return nullptr;
 }
 
-void Thread::set_context(void* ctx) {
+void Thread::set_context(std::shared_ptr<EmuStruct> ctx) {
     if (this->ctx_ && emu_ && ctx) {
         int arch = BE(emu_)->get_arch();
-        uint64_t old_ctx_addr = reinterpret_cast<uint64_t>(this->ctx_);
-        uint64_t new_ctx_addr = reinterpret_cast<uint64_t>(ctx);
         if (arch == speakeasy::arch::ARCH_AMD64) {
-            // CONTEXT is 1232 bytes
-            // RIP is at offset 0x140 (8 bytes)
-            auto old_buf = BE(emu_)->mem_read(old_ctx_addr + 0x140, 8);
-            auto new_buf = BE(emu_)->mem_read(new_ctx_addr + 0x140, 8);
-            if (old_buf.size() == 8 && new_buf.size() == 8) {
-                uint64_t old_rip = speakeasy::read_le(old_buf, 0, 8);
-                uint64_t new_rip = speakeasy::read_le(new_buf, 0, 8);
-                if (old_rip != new_rip) {
-                    this->modified_pc_ = true;
-                }
+            auto old_ctx64 = std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT64>(this->ctx_);
+            auto new_ctx64 = std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT64>(ctx);
+            if (old_ctx64->Rip != new_ctx64->Rip) {
+                this->modified_pc_ = true;
             }
         } else if (arch == speakeasy::arch::ARCH_X86) {
-            // CONTEXT is 716 bytes
-            // EIP is at offset 0x98 (4 bytes)
-            auto old_buf = BE(emu_)->mem_read(old_ctx_addr + 0x98, 4);
-            auto new_buf = BE(emu_)->mem_read(new_ctx_addr + 0x98, 4);
-            if (old_buf.size() == 4 && new_buf.size() == 4) {
-                uint32_t old_eip = static_cast<uint32_t>(speakeasy::read_le(old_buf, 0, 4));
-                uint32_t new_eip = static_cast<uint32_t>(speakeasy::read_le(new_buf, 0, 4));
-                if (old_eip != new_eip) {
-                    this->modified_pc_ = true;
-                }
+            auto old_ctx = std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT>(this->ctx_);
+            auto new_ctx = std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT>(ctx);
+            if (old_ctx->Eip != new_ctx->Eip) {
+                this->modified_pc_ = true;
             }
         }
     }

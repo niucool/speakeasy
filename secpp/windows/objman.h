@@ -9,10 +9,13 @@
 #include <cstdint>
 #include <nlohmann/json.hpp>
 
+#include "../struct.h"
 #include "../winenv/arch.h"
 #include "loaders.h"
 
 // Forward declarations
+using speakeasy::EmuStruct;
+
 class WindowsEmulator;
 class BinaryEmulator;
 
@@ -62,8 +65,8 @@ public:
         Frame(void* entry, void* scope_table, std::vector<void*> records);
     };
 
-private:
-    void* context_;
+public:
+    std::shared_ptr<EmuStruct> context_;
     int context_address_;
     void* record_;
     std::vector<Frame> frames_;
@@ -74,23 +77,23 @@ private:
 
 public:
     SEH();
-    void set_context(void* context, int address = 0);
-    void* get_context();
-    void set_last_func(void* func);
-    void set_record(void* record, int address = 0);
-    void set_current_frame(Frame frame);
-    std::vector<Frame> get_frames();
+    void set_context(std::shared_ptr<EmuStruct> context, uint64_t address = 0);
+    //std::shared_ptr<EmuStruct> get_context();
+    //void set_last_func(void* func);
+    //void set_record(void* record, uint64_t address = 0);
+    //void set_current_frame(Frame frame);
+    //std::vector<Frame> get_frames();
     void clear_frames();
     void add_frame(void* entry, void* scope_table, std::vector<void*> records);
 
-    void*& get_context_ref() { return context_; }
-    int& get_context_address_ref() { return context_address_; }
-    void*& get_record_ref() { return record_; }
-    std::vector<Frame>& get_frames_ref() { return frames_; }
-    void*& get_last_func_ref() { return last_func_; }
-    int& get_last_exception_code_ref() { return last_exception_code_; }
-    int& get_exception_ptrs_ref() { return exception_ptrs_; }
-    void*& get_handler_ret_val_ref() { return handler_ret_val_; }
+    //std::shared_ptr<EmuStruct> get_context_ref() { return context_; }
+    //int& get_context_address_ref() { return context_address_; }
+    //void*& get_record_ref() { return record_; }
+    //std::vector<Frame>& get_frames_ref() { return frames_; }
+    //void*& get_last_func_ref() { return last_func_; }
+    //int& get_last_exception_code_ref() { return last_exception_code_; }
+    //int& get_exception_ptrs_ref() { return exception_ptrs_; }
+    //void*& get_handler_ret_val_ref() { return handler_ret_val_; }
 };
 
 /**
@@ -283,7 +286,7 @@ public:
  */
 class Thread : public KernelObject {
 private:
-    void* ctx_;
+    std::shared_ptr<EmuStruct> ctx_;
     bool modified_pc_;
     std::shared_ptr<TEB> teb_;
     SEH seh_;
@@ -303,8 +306,8 @@ public:
 
     void queue_message(void* msg);
     SEH& get_seh();
-    void* get_context();
-    void set_context(void* ctx);
+    std::shared_ptr<EmuStruct> get_context();
+    void set_context(std::shared_ptr<EmuStruct> ctx);
     std::shared_ptr<Process> get_process() { return process_; }
     void set_process(std::shared_ptr<Process> proc) { process_ = proc; } 
     void init_teb(uint64_t teb_addr, uint64_t peb_addr);

@@ -1086,21 +1086,40 @@ uint64_t Msvcrt::_except_handler4_common(void* e, ArgList& a, void* ctx) {
     if (!thread) return 0;
 
     SEH& seh = thread->get_seh();
-    seh.set_context(reinterpret_cast<void*>(static_cast<uintptr_t>(context)), static_cast<int>(context));
-    seh.get_record_ref() = reinterpret_cast<void*>(static_cast<uintptr_t>(record));
+    //TODO
+    //seh.set_context(reinterpret_cast<void*>(static_cast<uintptr_t>(context)), context);
+    seh.record_ = reinterpret_cast<void*>(static_cast<uintptr_t>(record));
     seh.clear_frames();
+
+    int psz = be(e)->get_ptr_size();
+    // EXCEPTION_REGISTRATION offsets differ by arch:
+    //   x86: Next@0, Handler@4, ScopeTable@8, TryLevel@12 (24 bytes total)
+    //   x64: Next@0, Handler@8, ScopeTable@16, TryLevel@20 (32 bytes total)
+    int off_scope_table = (psz == 8) ? 16 : 8;
+    int off_try_level   = (psz == 8) ? 20 : 12;
+    // EH4_SCOPETABLE: {GSCookieOffset,GSCookieXOROffset,EHCookieOffset,EHCookieXOROffset} = 16 bytes (x86+x64)
+    // EH4_SCOPETABLE_RECORD: {EnclosingLevel,FilterFunc,HandlerFunc}
+    //   x86: 3*u32 = 12 bytes  |  x64: u32+pad+u64+u64 = 24 bytes
+    int scope_table_hdr = 16;
+    int scope_record_sz  = (psz == 8) ? 24 : 12;
 
     uint64_t curr_frame = frame;
     while (curr_frame != 0 && curr_frame != 0xFFFFFFFF) {
-        uint32_t next = static_cast<uint32_t>(be(e)->read_ptr(curr_frame));
-        uint32_t scope_table_enc = static_cast<uint32_t>(be(e)->read_ptr(curr_frame + 8));
-        uint32_t try_level = static_cast<uint32_t>(be(e)->read_ptr(curr_frame + 12));
+        // Python: {Next, Handler, ScopeTable, TryLevel}
+        uint64_t next = be(e)->read_ptr(curr_frame);
+        uint64_t scope_table_enc = be(e)->read_ptr(curr_frame + off_scope_table);
+        uint32_t try_level_raw = static_cast<uint32_t>(be(e)->read_ptr(curr_frame + off_try_level));
+        (void)try_level_raw;
 
-        uint32_t scope_table = scope_table_enc ^ cookie;
-        int32_t tl = static_cast<int32_t>(try_level);
+        uint64_t scope_table = static_cast<uint64_t>(scope_table_enc ^ cookie);
+        int64_t tl = static_cast<int32_t>(try_level_raw);
+        // Python: 0x80000000 sign extension check
+        if (try_level_raw & 0x80000000) {
+            tl = static_cast<int64_t>(try_level_raw) - 0x100000000LL;
+        }
         if (tl == -2) tl = 0;
 
-        uint64_t scope_record_offset = scope_table + 16 + 12 * tl;
+        uint64_t scope_record_offset = scope_table + scope_table_hdr + scope_record_sz * static_cast<int>(tl);
 
         seh.add_frame(
             reinterpret_cast<void*>(static_cast<uintptr_t>(curr_frame)),
@@ -1111,10 +1130,8 @@ uint64_t Msvcrt::_except_handler4_common(void* e, ArgList& a, void* ctx) {
         curr_frame = next;
     }
 
-    // Python returns 0 and native CRT in Unicorn handles the SEH chain.
-    // C++ cannot  on_run_complete() + stop() ends the run cleanly.
-    we(e)->on_run_complete();
-    we(e)->stop();
+    // Python: returns 0 — the CRT SEH chain handles the exception dispatch.
+    // The SEH frames are populated; scope-table walking happens in the emulated CRT.
     return 0;
 }
 

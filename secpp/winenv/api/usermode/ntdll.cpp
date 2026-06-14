@@ -978,11 +978,12 @@ uint64_t Ntdll::NtGetContextThread(void* emu, ArgList& argv, void* ctx) {
         thread_obj = wemu->get_current_thread();
     }
 
-    void* thread_ctx = wemu->get_thread_context(thread_obj);
+    std::shared_ptr<EmuStruct> thread_ctx = wemu->get_thread_context(thread_obj);
     if (thread_ctx && ctx_ptr != 0) {
         // Copy context data to the output pointer
         // CONTEXT structure size varies by arch  just copy pointer
-        write_ptr(emu, ctx_ptr, reinterpret_cast<uint64_t>(thread_ctx));
+        // TODO:
+        //write_ptr(emu, ctx_ptr, reinterpret_cast<uint64_t>(thread_ctx));
     }
 
     return NT_SUCCESS;
