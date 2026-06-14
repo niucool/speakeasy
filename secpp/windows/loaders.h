@@ -63,7 +63,7 @@ class Loader;  // forward declaration
 
 struct LoadedImage {
     int arch = 0;                 // 32 or 64
-    std::string module_type; // "exe", "dll", "driver", "decoy"
+    std::string module_type = "exe"; // "exe", "dll", "driver", "decoy"
     std::string name;
     std::string emu_path;
     uint64_t base = 0;
@@ -102,8 +102,8 @@ public:
     // Constructed from a LoadedImage; the image pointer must remain valid.
     explicit RuntimeModule(std::shared_ptr<speakeasy::LoadedImage> image);
 
-    std::shared_ptr<speakeasy::LoadedImage> image() { return _image_; }
-    const std::shared_ptr<speakeasy::LoadedImage> image() const { return _image_; }
+    std::shared_ptr<speakeasy::LoadedImage> image() { return image_; }
+    const std::shared_ptr<speakeasy::LoadedImage> image() const { return image_; }
 
     // Type checks (Python: 129-139)
     bool is_exe() const;
@@ -141,7 +141,7 @@ public:
     std::string to_string() const;
 
 private:
-    std::shared_ptr<speakeasy::LoadedImage> _image_;
+    std::shared_ptr<speakeasy::LoadedImage> image_;
 };
 
 //  PE Loader 

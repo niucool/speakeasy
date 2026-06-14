@@ -312,7 +312,8 @@ TEST(ObjmanPortingTest, LoadModuleByNamePriorities) {
     EXPECT_EQ(mod_decoy->get_base_name(), "nonexistent.dll");
     // Since default_exe exists in the test config/paths, it resolves as a real template PE (EXE)
     EXPECT_FALSE(mod_decoy->is_decoy());
-    EXPECT_FALSE(mod_decoy->is_dll());
+    // But we set module_type to "dll" in the default_exe template, so it should still be marked as a DLL
+    EXPECT_TRUE(mod_decoy->is_dll());
 }
 
 TEST(ObjmanPortingTest, ShellcodeLoadAndRun) {

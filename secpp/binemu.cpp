@@ -12,7 +12,8 @@
 // Python binemu.py:59-78 doc: "Base class for emulating binaries\n\nSubclasses must define the following attributes:\n    arch: Architecture constant (e.g., ARCH_X86, ARCH_AMD64)\n    modules: List of loaded modules\n    input: Input metadata dictionary (or None)"
 // Constructor
 BinaryEmulator::BinaryEmulator(const speakeasy::SpeakeasyConfig& cfg)
-    : inst_count_(0), curr_instr_size_(0), disasm_eng_(0), arch_(0), ptr_size_(0),
+    : inst_count_(0), curr_instr_size_(0), disasm_eng_(0), 
+        arch_(speakeasy::arch::ARCH_X86), ptr_size_(4),
       builtin_hooks_set_(false), stack_base_(0), profiler_(nullptr),
       runtime_(0), config_(cfg) {
     
@@ -938,6 +939,15 @@ void BinaryEmulator::do_call_return(int argc, uint64_t ret_addr,
 int BinaryEmulator::get_arch() {
     // Python binemu.py:632-636 doc: "Get the current emulated architecture"
     return arch_;  // set by subclass constructor
+}
+
+void BinaryEmulator::set_arch(int arch) {
+    // Python binemu.py:628-630 doc: "Set the current emulated architecture"
+    if (arch != speakeasy::arch::ARCH_AMD64 && arch != speakeasy::arch::ARCH_X86) {
+        throw EmuException("Unsupported architecture");
+    }
+    arch_ = arch;
+    set_ptr_size(arch);
 }
 
 std::string BinaryEmulator::get_arch_name() {

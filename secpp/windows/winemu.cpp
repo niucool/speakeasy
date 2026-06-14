@@ -1927,6 +1927,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_module_by_name(c
     if (img) {
         img->name = name;
         img->emu_path = ep;
+        img->is_dll = true;
         img->module_type = "dll";
         return load_image(img);
     }
@@ -2904,7 +2905,7 @@ void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
     std::stringstream rv_stream;
     rv_stream << "0x" << std::hex << rv;
 
-    PLOG_INFO << pc_stream.str() << ": " << repr(call_str) << " -> " << rv_stream.str();
+    PLOG_DEBUG << pc_stream.str() << ": " << repr(call_str) << " -> " << rv_stream.str();
 
     if (profiler_) {
         profiler_->log_api(curr_run, pc, api, rv, str_argv);

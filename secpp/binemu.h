@@ -240,6 +240,7 @@ public:
     
     // Python binemu.py:632-636 doc: "Get the current emulated architecture"
     int get_arch();
+    void set_arch(int arch);
     // Python binemu.py:638-646 doc: "Get the name of current emulated architecture"
     std::string get_arch_name();
     

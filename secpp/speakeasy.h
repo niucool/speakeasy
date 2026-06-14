@@ -30,7 +30,7 @@ class Win32Emulator;
 class Speakeasy {
 private:
     speakeasy::SpeakeasyConfig config;
-    Win32Emulator* emu;
+    Win32Emulator* emu_;
 
     std::vector<std::tuple<ApiCallback, std::string, std::string, int, std::string>> api_hooks;
     std::vector<std::tuple<CodeCallback, uint64_t, uint64_t, std::map<std::string, std::string>>> code_hooks;
