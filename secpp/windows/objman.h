@@ -9,9 +9,10 @@
 #include <cstdint>
 #include <nlohmann/json.hpp>
 
+#include "loaders.h"
 #include "../struct.h"
 #include "../winenv/arch.h"
-#include "loaders.h"
+#include "../winenv/deffs/windows/windows.h"
 
 // Forward declarations
 using speakeasy::EmuStruct;
@@ -45,11 +46,11 @@ public:
      */
     class ScopeRecord {
     public:
-        void* record;
+        std::shared_ptr<EmuStruct> record;
         bool filter_called;
         bool handler_called;
 
-        ScopeRecord(void* rec);
+        ScopeRecord(std::shared_ptr<EmuStruct> rec);
     };
 
     /**
@@ -57,12 +58,12 @@ public:
      */
     class Frame {
     public:
-        void* entry;
-        void* scope_table;
+        std::shared_ptr<EmuStruct> entry;
+        std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> scope_table;
         std::vector<ScopeRecord> scope_records;
         bool searched;
 
-        Frame(void* entry, void* scope_table, std::vector<void*> records);
+        Frame(std::shared_ptr<EmuStruct> entry, std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> scope_table, std::vector<ScopeRecord> records);
     };
 
 public:
@@ -84,7 +85,7 @@ public:
     //void set_current_frame(Frame frame);
     //std::vector<Frame> get_frames();
     void clear_frames();
-    void add_frame(void* entry, void* scope_table, std::vector<void*> records);
+    void add_frame(std::shared_ptr<EmuStruct> entry, std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> scope_table, std::vector<ScopeRecord> records);
 
     //std::shared_ptr<EmuStruct> get_context_ref() { return context_; }
     //int& get_context_address_ref() { return context_address_; }

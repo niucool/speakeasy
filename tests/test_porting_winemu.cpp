@@ -172,7 +172,8 @@ TEST(ObjmanPortingTest, ThreadContextPcModification) {
     EXPECT_FALSE(thread->get_modified_pc());
 
     // Retrieve initial context (allocated by constructor)
-    void* ctx = thread->get_context();
+    auto ctx_ptr = thread->get_context();
+    void* ctx = ctx_ptr.get();
     EXPECT_NE(ctx, nullptr);
 
     // Allocate a second context for testing and change PC
@@ -190,8 +191,10 @@ TEST(ObjmanPortingTest, ThreadContextPcModification) {
     }
     emu.mem_write(new_ctx_addr, new_ctx_buf);
 
-    // Set the new context on the thread - it should detect the RIP/EIP modification
-    thread->set_context(reinterpret_cast<void*>(new_ctx_addr));
+    // Read context back from the new buffer and set it on the thread
+    auto new_ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT>();
+    emu.mem_cast(new_ctx.get(), new_ctx_addr);
+    thread->set_context(new_ctx);
     EXPECT_TRUE(thread->get_modified_pc());
 }
 

@@ -2231,48 +2231,39 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
         }
     }
 
-    // If SEH dispatch failed, try the unhandled exception filter
+    // Python: if not rv and self.unhandled_exception_filter:
+    //   Fall back to the unhandled exception filter (SetUnhandledExceptionFilter API)
     if (!rv && unhandled_exception_filter != 0) {
-#if 0
-        // Build EXCEPTION_RECORD and EXCEPTION_POINTERS in emulated memory
-        // Layout: EXCEPTION_RECORD = {code, flags, record, addr, numparams, params[15]}
-        // Simple flat allocation strategy
-        uint64_t pc = get_pc();
-        int psz = get_ptr_size();
+        int psz = ptr_size_;
 
-        // Allocate and write a simplified EXCEPTION_RECORD
-        size_t rec_size = static_cast<size_t>(4 + 4 + psz + psz + 4 + 15 * psz);
-        uint64_t prec = mem_map(rec_size, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_RECORD");
-        std::vector<uint8_t> rec_bytes(rec_size, 0);
-        write_le(rec_bytes, 0, static_cast<uint32_t>(except_code), 4);         // ExceptionCode
-        write_le(rec_bytes, 4, static_cast<uint32_t>(0), 4);                   // ExceptionFlags
-        // ExceptionRecord (next) = 0
-        // ExceptionAddress
-        write_le(rec_bytes, static_cast<size_t>(4 + 4 + psz), pc, psz);
-        // NumberParameters = 0
-        // Parameters[15] = 0
-        mem_write(prec, rec_bytes);
+        // Build EXCEPTION_RECORD
+        speakeasy::deffs::windows::EXCEPTION_RECORD<4> record;
+        record.ExceptionCode    = except_code;
+        record.ExceptionFlags   = 0;
+        record.ExceptionAddress = get_pc();
+        record.NumberParameters = 0;
 
-        // Allocate CONTEXT structure
-        void* ctx = get_thread_context();
-        uint64_t pctx = reinterpret_cast<uint64_t>(ctx);
+        // Build EXCEPTION_POINTERS
+        speakeasy::deffs::windows::EXCEPTION_POINTERS<4> eptrs;
+        auto p_exp_ptrs = mem_map(eptrs.sizeof_obj(), 0, PERM_MEM_RWX, "emu.struct.EXCEPTION_POINTERS");
+        auto prec = mem_map(record.sizeof_obj(), 0, PERM_MEM_RWX, "emu.struct.EXCEPTION_RECORD");
+        auto _ctx = get_thread_context32();
+        auto pctx = mem_map(_ctx->sizeof_obj(), 0, PERM_MEM_RWX, "emu.struct.EXCEPTION_CONTEXT");
 
-        // Allocate EXCEPTION_POINTERS
-        size_t eptrs_size = static_cast<size_t>(psz + psz);
-        uint64_t p_exp_ptrs = mem_map(eptrs_size, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_POINTERS");
-        std::vector<uint8_t> eptrs_bytes(eptrs_size, 0);
-        write_le(eptrs_bytes, 0, prec, psz);     // ExceptionRecord
-        write_le(eptrs_bytes, static_cast<size_t>(psz), pctx, psz);  // ContextRecord
-        mem_write(p_exp_ptrs, eptrs_bytes);
+        eptrs.ExceptionRecord = prec;
+        eptrs.ContextRecord   = pctx;
 
-        // Call unhandled exception filter
+        mem_write(p_exp_ptrs, eptrs.get_bytes());
+        mem_write(prec, record.get_bytes());
+        mem_write(pctx, _ctx->get_bytes());
+
+        // Python: set_func_args(sp, EMU_RETURN_ADDR, p_exp_ptrs)
+        //         set_pc(self.unhandled_exception_filter)
         uint64_t sp = get_stack_ptr();
-        std::vector<uint64_t> args = {p_exp_ptrs};
-        set_func_args(sp, EMU_RETURN_ADDR, args);
+        set_func_args(sp, EMU_RETURN_ADDR, {p_exp_ptrs});
         set_pc(unhandled_exception_filter);
         unhandled_exception_filter = 0;
         rv = true;
-#endif
     }
 
     if (rv && faulting_address != 0) {
@@ -2297,83 +2288,102 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
 
     SEH& seh = thread->get_seh();
     uint64_t exception_list = _get_exception_list();
+    int psz = ptr_size_;
     if (exception_list == 0 || exception_list == 0xFFFFFFFF) return false;
 
     seh.last_exception_code_ = static_cast<int>(except_code);
 
+    // Python: create _EXCEPTION_RECORD
     speakeasy::deffs::windows::EXCEPTION_RECORD<4> record;
-    record.ExceptionCode = except_code;
-    record.ExceptionFlags = 0;
+    record.ExceptionCode    = except_code;
+    record.ExceptionFlags   = 0;
     record.ExceptionAddress = get_pc();
     record.NumberParameters = 0;
 
+    // Python: cast EXCEPTION_REGISTRATION from exception_list
     speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4> ereg;
     speakeasy::deffs::windows::EXCEPTION_POINTERS<4> eptrs;
 
     mem_cast(&ereg, exception_list);
     uint64_t sp = get_stack_ptr();
 
+    // Python: map exception structures into emulated memory
     auto p_exp_ptrs = mem_map(eptrs.sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_POINTERS");
     auto prec = mem_map(record.sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_RECORD");
     auto _ctx = get_thread_context32();
     auto pctx = mem_map(_ctx->sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_CONTEXT");
 
     eptrs.ExceptionRecord = prec;
-    eptrs.ContextRecord = pctx;
+    eptrs.ContextRecord   = pctx;
 
+    // Python: self.mem_write(pctx, _ctx.get_bytes())
     mem_write(pctx, _ctx->get_bytes());
     seh.set_context(_ctx, static_cast<uint64_t>(pctx));
 
-    
-/*
-    // Python: build EXCEPTION_RECORD
-    // struct EXCEPTION_RECORD { code(4), flags(4), record(4), addr(4), numparams(4), params[15](60) } = 80 bytes
-    std::vector<uint8_t> rec_bytes(80, 0);
-    write_le(rec_bytes, 0, static_cast<uint32_t>(except_code), 4);  // ExceptionCode
-    // ExceptionFlags=0, ExceptionRecord=0 (already zeroed)
-    write_le(rec_bytes, 8, static_cast<uint32_t>(get_pc()), 4);    // ExceptionAddress
-    // NumberParameters=0 (already zeroed)
-    // Params array all 0
-
-    // Map EXCEPTION_RECORD into emulated memory
-    uint64_t prec = mem_map(80, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_RECORD");
-    mem_write(prec, rec_bytes);
-
-    // Read EXCEPTION_REGISTRATION from exception_list: {Next@0, Handler@4, ...}
-    uint64_t entry_handler = read_ptr(exception_list + ptr_size_);
-
-    // Build CONTEXT on the stack — read current register state
-    int psz = ptr_size_;
-    uint64_t pctx = mem_map(716, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_CONTEXT");
-    void* ctx_raw = get_thread_context(thread);
-    std::vector<uint8_t> ctx_bytes; // fill from register state if available
-    if (ctx_raw) {
-        seh.set_context(ctx_raw, static_cast<int>(pctx));
-    }
-
-    // Build EXCEPTION_POINTERS: {ExceptionRecord@0, ContextRecord@psz}
-    std::vector<uint8_t> exp_ptrs(static_cast<size_t>(psz) * 2, 0);
-    write_le(exp_ptrs, 0,                      prec, static_cast<size_t>(psz));
-    write_le(exp_ptrs, static_cast<size_t>(psz), pctx, static_cast<size_t>(psz));
-
-    uint64_t p_exp_ptrs = mem_map(static_cast<size_t>(psz) * 2, 0, PERM_MEM_RW, "emu.struct.EXCEPTION_POINTERS");
-    mem_write(p_exp_ptrs, exp_ptrs);
+    // Python: self.mem_write(p_exp_ptrs, exp_ptrs.get_bytes())
+    //         self.mem_write(prec, record.get_bytes())
+    mem_write(p_exp_ptrs, eptrs.get_bytes());
+    mem_write(prec, record.get_bytes());
 
     // Python: write exp_ptrs BEFORE the exception_list on stack (ms_exc convention)
-    mem_write(exception_list - static_cast<uint64_t>(psz), exp_ptrs);
+    std::vector<uint8_t> exp_ptr_bytes(static_cast<size_t>(psz), 0);
+    write_le(exp_ptr_bytes, 0, p_exp_ptrs, static_cast<size_t>(psz));
+    mem_write(exception_list - static_cast<uint64_t>(psz), exp_ptr_bytes);
 
-    // Python: set_func_args(sp, SEH_RETURN_ADDR, prec, exception_list, pctx, 0)
-    auto sp = get_stack_ptr();
+    // Python: set_func_args(sp, winemu.SEH_RETURN_ADDR, prec, exception_list, pctx, 0)
     set_func_args(sp, SEH_RETURN_ADDR, {prec, exception_list, pctx, 0});
+
+    // Python: logging -- disasm the faulting instruction
+    auto run = get_current_run();
+    auto regs = get_register_state();
+    uint64_t pc = prev_pc;
+
+    std::string instr = "disasm_failed";
+    try {
+        auto [mnem, op, _] = get_disasm(pc, DISASM_SIZE, false);
+        instr = mnem + (op.empty() ? "" : " " + op);
+    } catch (...) {}
+
+    std::string pc_module = _resolve_module_offset(pc);
+    std::string handler_desc = "0x" + hex_str(ereg.Handler);
+    {
+        auto hm = _resolve_module_offset(ereg.Handler);
+        if (!hm.empty()) handler_desc += " (" + hm + ")";
+    }
+    std::string pc_desc = pc_module.empty() ? ("0x" + hex_str(pc)) : pc_module;
+
+    log_info("0x" + hex_str(pc) + ": Exception caught: code=0x" + hex_str(except_code) +
+             " handler=" + handler_desc + " instr=\"" + instr + "\"\n  pc: " + pc_desc);
+
+    // Python: profiler exception event
+    if (profiler_ && run) {
+        int tick = run->instr_cnt;
+        int tid  = curr_thread ? curr_thread->get_tid() : 0;
+        auto proc = get_current_process();
+        int pid  = proc ? proc->get_pid() : 0;
+        std::string fault_addr;
+        if (except_code == 0xC0000005) {  // STATUS_ACCESS_VIOLATION
+            fault_addr = "0x" + hex_str(prev_pc);
+        }
+        profiler_->log_exception(run, {
+            {"tick",    std::to_string(tick)},
+            {"tid",     std::to_string(tid)},
+            {"pid",     std::to_string(pid)},
+            {"pc",      "0x" + hex_str(pc)},
+            {"instr",   instr},
+            {"code",    "0x" + hex_str(except_code)},
+            {"handler", "0x" + hex_str(ereg.Handler)},
+            {"pc_desc", pc_desc},
+            {"fault_address", fault_addr},
+        });
+    }
 
     // Python: EBX clobber to 0xFFFFFFFF (observed in real VMs)
     reg_write(speakeasy::arch::REG_EBX, 0xFFFFFFFF);
 
-    // Python: set_pc(entry.Handler)
-    if (entry_handler == 0 || entry_handler == 0xFFFFFFFF) return false;
-    set_pc(entry_handler);
-*/
-
+    // Python: self.set_pc(entry.Handler)
+    if (ereg.Handler == 0 || ereg.Handler == 0xFFFFFFFF) return false;
+    set_pc(ereg.Handler);
     return true;
 }
 
@@ -2409,11 +2419,10 @@ void WindowsEmulator::_continue_seh_x86() {
             if (frame.scope_records.empty()) continue;
             auto& scope_record = frame.scope_records[0];
 
-            uint64_t rec_addr = reinterpret_cast<uint64_t>(scope_record.record);
-            uint32_t filter_func = static_cast<uint32_t>(read_ptr(rec_addr + 4));
-            uint32_t handler_address = static_cast<uint32_t>(read_ptr(rec_addr + 8));
+            auto record = std::dynamic_pointer_cast<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>>(scope_record.record);
+            auto filter_func = record->FilterFunc;
 
-            if (!scope_record.filter_called && filter_func != 0) {
+            if (!scope_record.filter_called && record->FilterFunc != 0) {
                 set_func_args(sp, SEH_RETURN_ADDR, {});
                 set_pc(filter_func);
                 seh.last_func_ = reinterpret_cast<void*>(static_cast<uintptr_t>(filter_func));
@@ -2425,8 +2434,8 @@ void WindowsEmulator::_continue_seh_x86() {
                 filter_func == 0 ||
                 filter_func == 0xFFFFFFFF) {
                 if (!scope_record.handler_called) {
-                    set_pc(handler_address);
-                    seh.last_func_ = reinterpret_cast<void*>(static_cast<uintptr_t>(handler_address));
+                    set_pc(record->HandlerAddress);
+                    seh.last_func_ = reinterpret_cast<void*>(static_cast<uintptr_t>(record->HandlerAddress));
                     scope_record.handler_called = true;
                     return;
                 }
@@ -2453,7 +2462,8 @@ void WindowsEmulator::_continue_seh_x86() {
         return;
     }
 
-    on_run_complete();
+    //on_run_complete();
+    run_complete = true;
 }
 
 

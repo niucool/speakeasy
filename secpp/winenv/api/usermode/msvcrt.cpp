@@ -1086,48 +1086,75 @@ uint64_t Msvcrt::_except_handler4_common(void* e, ArgList& a, void* ctx) {
     if (!thread) return 0;
 
     SEH& seh = thread->get_seh();
-    //TODO
-    //seh.set_context(reinterpret_cast<void*>(static_cast<uintptr_t>(context)), context);
+    int psz = be(e)->get_ptr_size();
     seh.record_ = reinterpret_cast<void*>(static_cast<uintptr_t>(record));
     seh.clear_frames();
 
-    int psz = be(e)->get_ptr_size();
-    // EXCEPTION_REGISTRATION offsets differ by arch:
-    //   x86: Next@0, Handler@4, ScopeTable@8, TryLevel@12 (24 bytes total)
-    //   x64: Next@0, Handler@8, ScopeTable@16, TryLevel@20 (32 bytes total)
-    int off_scope_table = (psz == 8) ? 16 : 8;
-    int off_try_level   = (psz == 8) ? 20 : 12;
-    // EH4_SCOPETABLE: {GSCookieOffset,GSCookieXOROffset,EHCookieOffset,EHCookieXOROffset} = 16 bytes (x86+x64)
-    // EH4_SCOPETABLE_RECORD: {EnclosingLevel,FilterFunc,HandlerFunc}
-    //   x86: 3*u32 = 12 bytes  |  x64: u32+pad+u64+u64 = 24 bytes
-    int scope_table_hdr = 16;
-    int scope_record_sz  = (psz == 8) ? 24 : 12;
-
     uint64_t curr_frame = frame;
-    while (curr_frame != 0 && curr_frame != 0xFFFFFFFF) {
-        // Python: {Next, Handler, ScopeTable, TryLevel}
-        uint64_t next = be(e)->read_ptr(curr_frame);
-        uint64_t scope_table_enc = be(e)->read_ptr(curr_frame + off_scope_table);
-        uint32_t try_level_raw = static_cast<uint32_t>(be(e)->read_ptr(curr_frame + off_try_level));
-        (void)try_level_raw;
 
-        uint64_t scope_table = static_cast<uint64_t>(scope_table_enc ^ cookie);
-        int64_t tl = static_cast<int32_t>(try_level_raw);
-        // Python: 0x80000000 sign extension check
-        if (try_level_raw & 0x80000000) {
-            tl = static_cast<int64_t>(try_level_raw) - 0x100000000LL;
+    if (psz == 4) {
+        std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT>();
+        std::shared_ptr<speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4>> reg = std::make_shared<speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4>>();
+        std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> st = std::make_shared<speakeasy::deffs::windows::EH4_SCOPETABLE>();
+        std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>> rec = std::make_shared<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>>();
+        we(e)->mem_cast(ctx.get(), context);
+        seh.set_context(ctx, context);
+
+        while (curr_frame != 0 && curr_frame != 0xFFFFFFFF) {
+            we(e)->mem_cast(reg.get(), curr_frame);
+            uint64_t scope_table = static_cast<uint64_t>(reg->ScopeTable ^ cookie);
+            we(e)->mem_cast(st.get(), scope_table);
+            uint64_t scope_record_offset = scope_table + st->sizeof_obj();
+            uint64_t tl = reg->TryLevel;
+            if (reg->TryLevel & 0x80000000) {
+                tl = static_cast<uint64_t>(static_cast<int64_t>(reg->TryLevel) - 0x100000000LL);
+            }
+            if (tl == -2)  //   - 2 is the outermost scope
+                tl = 0;
+
+            scope_record_offset += rec->sizeof_obj() * static_cast<int>(tl);
+            we(e)->mem_cast(rec.get(), scope_record_offset);
+
+            seh.add_frame(
+                reg,
+                st,
+                { SEH::ScopeRecord(rec) }
+            );
+
+            curr_frame = reg->Next;
         }
-        if (tl == -2) tl = 0;
+    }
+    else {
+        std::shared_ptr<speakeasy::deffs::windows::CONTEXT64> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT64>();
+        std::shared_ptr<speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4>> reg = std::make_shared<speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4>>();
+        std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> st = std::make_shared<speakeasy::deffs::windows::EH4_SCOPETABLE>();
+        std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>> rec = std::make_shared<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>>();
+        we(e)->mem_cast(ctx.get(), context);
+        seh.set_context(ctx, context);
 
-        uint64_t scope_record_offset = scope_table + scope_table_hdr + scope_record_sz * static_cast<int>(tl);
+        while (curr_frame != 0 && curr_frame != 0xFFFFFFFF) {
+            we(e)->mem_cast(reg.get(), curr_frame);
+            uint64_t scope_table = static_cast<uint64_t>(reg->ScopeTable ^ cookie);
+            we(e)->mem_cast(st.get(), scope_table);
+            uint64_t scope_record_offset = scope_table + st->sizeof_obj();
+            uint64_t tl = reg->TryLevel;
+            if (reg->TryLevel & 0x80000000) {
+                tl = static_cast<uint64_t>(static_cast<int64_t>(reg->TryLevel) - 0x100000000LL);
+            }
+            if (tl == -2)  //   - 2 is the outermost scope
+                tl = 0;
 
-        seh.add_frame(
-            reinterpret_cast<void*>(static_cast<uintptr_t>(curr_frame)),
-            reinterpret_cast<void*>(static_cast<uintptr_t>(scope_table)),
-            { reinterpret_cast<void*>(static_cast<uintptr_t>(scope_record_offset)) }
-        );
+            scope_record_offset += rec->sizeof_obj() * static_cast<int>(tl);
+            we(e)->mem_cast(rec.get(), scope_record_offset);
 
-        curr_frame = next;
+            seh.add_frame(
+                reg,
+                st,
+                { SEH::ScopeRecord(rec) }
+            );
+
+            curr_frame = reg->Next;
+        }
     }
 
     // Python: returns 0 — the CRT SEH chain handles the exception dispatch.

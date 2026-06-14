@@ -102,14 +102,13 @@ int Console::get_window() {
 // SEH
 // 
 
-SEH::ScopeRecord::ScopeRecord(void* rec)
+SEH::ScopeRecord::ScopeRecord(std::shared_ptr<EmuStruct> rec)
     : record(rec), filter_called(false), handler_called(false) {}
 
-SEH::Frame::Frame(void* entry, void* scope_table, std::vector<void*> records)
+SEH::Frame::Frame(std::shared_ptr<EmuStruct> entry, std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> scope_table, std::vector<ScopeRecord> records)
     : entry(entry), scope_table(scope_table), searched(false) {
-    for (void* rec : records) {
-        scope_records.emplace_back(rec);
-    }
+    //scope_records.emplace_back(records);
+    scope_records = records;
 }
 
 SEH::SEH()
@@ -150,7 +149,7 @@ void SEH::clear_frames() {
     this->frames_.clear();
 }
 
-void SEH::add_frame(void* entry, void* scope_table, std::vector<void*> records) {
+void SEH::add_frame(std::shared_ptr<EmuStruct> entry, std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> scope_table, std::vector<ScopeRecord> records) {
     Frame frame(entry, scope_table, records);
     this->frames_.push_back(frame);
 }
