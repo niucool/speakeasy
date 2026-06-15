@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <cstring>
 #include <format>
+#include <plog/Log.h>
 
 /**
  * Constructor for MemMap
@@ -202,6 +203,7 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
 
             auto mm = std::make_shared<MemMap>(base, adjusted_size, tag, perms, flags,
                                                this->block_base_, this->block_size_, shared, process);
+            PLOGD << "MemMap created: base=0x" << std::hex << base << ", size=0x" << adjusted_size << "(" << size << "), tag=" << tag;
             
             this->maps_.push_back(mm);
             _hook_mem_map_dispatch(mm);
@@ -220,6 +222,7 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
 
     auto mm = std::make_shared<MemMap>(base, blockSize, tag, perms, flags,
                                        base, actual_block_size, shared, process);
+    // PLOGD << "MemMap created: base=0x" << std::hex << base << ", size=0x" << blockSize << ", tag=" << tag;
 
     if (this->emu_eng_) {
         this->emu_eng_->mem_map(base, blockSize, perms);
@@ -438,6 +441,7 @@ uint64_t MemoryManager::mem_reserve(uint64_t size, uint64_t base, uint32_t perms
 
     auto mm = std::make_shared<MemMap>(base, size, tag, perms, flags, 
                                        base, this->block_size_, shared);
+    // PLOGD << "MemMap reserved: base=0x" << std::hex << base << ", size=0x" << size << ", tag=" << tag;
 
     this->mem_reserves_.push_back(mm);
     return base;

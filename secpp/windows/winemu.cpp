@@ -2708,6 +2708,14 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
             curr_run->error["last_api"] = imp_api;
             on_run_complete();
         }
+        else if (!run_complete) {
+            /*
+            # Re-enable the code hook so the next instruction can unmap the
+            # sentinel range again. Otherwise adjacent sentinel calls may
+            # execute bytes in EMU_RESERVED instead of trapping as imports.
+            */
+            enable_code_hook();
+        }
         return;
     }
 
@@ -2733,6 +2741,9 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         uint64_t ret = get_ret_address();
         log_api(call_pc, imp_api, rv, argv);
         do_call_return(hook_argc, ret, rv, hook_conv);
+        if (!run_complete) {
+            enable_code_hook();
+        }
         return;
     } 
     else if (config_.modules.functions_always_exist) {
@@ -2743,6 +2754,9 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         uint64_t ret = get_ret_address();
         log_api(call_pc, imp_api, rv, argv);
         do_call_return(argc, ret, rv, conv);
+        if (!run_complete) {
+            enable_code_hook();
+        }
         return;
     }
 

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from itertools import groupby
 from operator import itemgetter
 from typing import TYPE_CHECKING, Any
 
 import speakeasy.common as common
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from speakeasy.engines.unicorn_eng import EmuEngine
@@ -92,6 +95,7 @@ class MemoryManager:
         if not process and tag and not tag.startswith("emu"):
             process = self.get_current_process()
 
+        orgin_size = size
         if base is None:
             if size < self.page_size and size % self.page_size:
                 addr = self.block_base + self.block_offset
@@ -109,6 +113,7 @@ class MemoryManager:
                 base = addr
 
                 mm = MemMap(base, size, tag, perms, flags, self.block_base, self.block_size, shared, process)
+                logger.debug(f"MemMap created: base=0x{base:x}, size=0x{size:x} ({orgin_size:x}), tag={tag}")
 
                 self.maps.append(mm)
                 self._hook_mem_map_dispatch(mm)
@@ -121,6 +126,7 @@ class MemoryManager:
         if size > self.block_size:
             block_size = size
         mm = MemMap(base, size, tag, perms, flags, base, block_size, shared, process)
+        # logger.debug(f"MemMap created: base=0x{base:x}, size=0x{size:x}, tag={tag}")
         self.emu_eng.mem_map(base, size, perms=perms)  # type: ignore[union-attr]
         self.maps.append(mm)
         self._hook_mem_map_dispatch(mm)
@@ -249,6 +255,7 @@ class MemoryManager:
             base, size = block
 
         mm = MemMap(base, size, tag, perms, flags, base, self.block_size, shared)
+        logger.debug(f"MemMap reserved: base=0x{base:x}, size=0x{size:x}, tag={tag}")
 
         self.mem_reserves.append(mm)
         return base

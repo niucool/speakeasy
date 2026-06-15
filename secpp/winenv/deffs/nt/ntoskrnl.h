@@ -1036,104 +1036,106 @@ struct PEB_POD<4> {
     uint32_t NumberOfProcessors          = 0;
     // offset 104:  NtGlobalFlag u32
     uint32_t NtGlobalFlag                = 0;
-    // offset 108:  CriticalSectionTimeout LARGE_INTEGER (u64)
+    uint32_t pad_align_cst              = 0; // offset 108 (LARGE_INTEGER 8-byte alignment)
+    // offset 112:  CriticalSectionTimeout LARGE_INTEGER (u64)
     uint64_t CriticalSectionTimeout      = 0;
-    // offset 116:  HeapSegmentReserve Ptr
+    // offset 200:  HeapSegmentReserve Ptr
     uint32_t HeapSegmentReserve          = 0;
-    // offset 120:  HeapSegmentCommit Ptr
+    // offset 200:  HeapSegmentCommit Ptr
     uint32_t HeapSegmentCommit           = 0;
-    // offset 124:  HeapDeCommitTotalFreeThreshold Ptr
+    // offset 200:  HeapDeCommitTotalFreeThreshold Ptr
     uint32_t HeapDeCommitTotalFreeThreshold = 0;
-    // offset 128:  HeapDeCommitFreeBlockThreshold Ptr
+    // offset 200:  HeapDeCommitFreeBlockThreshold Ptr
     uint32_t HeapDeCommitFreeBlockThreshold  = 0;
-    // offset 132:  NumberOfHeaps u32
+    // offset 200:  NumberOfHeaps u32
     uint32_t NumberOfHeaps               = 0;
-    // offset 136:  MaximumNumberOfHeaps u32
+    // offset 200:  MaximumNumberOfHeaps u32
     uint32_t MaximumNumberOfHeaps        = 0;
-    // offset 140:  ProcessHeaps Ptr
+    // offset 200:  ProcessHeaps Ptr
     uint32_t ProcessHeaps                = 0;
-    // offset 144:  GdiSharedHandleTable Ptr
+    // offset 200:  GdiSharedHandleTable Ptr
     uint32_t GdiSharedHandleTable        = 0;
-    // offset 148:  ProcessStarterHelper Ptr
+    // offset 200:  ProcessStarterHelper Ptr
     uint32_t ProcessStarterHelper        = 0;
-    // offset 152:  GdiDCAttributeList Ptr
+    // offset 200:  GdiDCAttributeList Ptr
     uint32_t GdiDCAttributeList          = 0;
-    // offset 156:  LoaderLock Ptr
+    // offset 200:  LoaderLock Ptr
     uint32_t LoaderLock                  = 0;
-    // offset 160:  OSMajorVersion u32
+    // offset 200:  OSMajorVersion u32
     uint32_t OSMajorVersion              = 0;
-    // offset 164:  OSMinorVersion u32
+    // offset 200:  OSMinorVersion u32
     uint32_t OSMinorVersion              = 0;
-    // offset 168:  OSBuildNumber u16
+    // offset 200:  OSBuildNumber u16
     uint16_t OSBuildNumber               = 0;
-    // offset 170:  OSCSDVersion u16
+    // offset 174:  OSCSDVersion u16
     uint16_t OSCSDVersion                = 0;
-    // offset 172:  OSPlatformId u32
+    // offset 200:  OSPlatformId u32
     uint32_t OSPlatformId                = 0;
-    // offset 176:  ImageSubsystem u32
+    // offset 200:  ImageSubsystem u32
     uint32_t ImageSubsystem              = 0;
-    // offset 180:  ImageSubsystemMajorVersion u32
+    // offset 200:  ImageSubsystemMajorVersion u32
     uint32_t ImageSubsystemMajorVersion  = 0;
-    // offset 184:  ImageSubsystemMinorVersion Ptr (u32)
+    // offset 200:  ImageSubsystemMinorVersion Ptr (u32)
     uint32_t ImageSubsystemMinorVersion  = 0;
-    // offset 188:  ActiveProcessAffinityMask Ptr (u32)
+    // offset 200:  ActiveProcessAffinityMask Ptr (u32)
     uint32_t ActiveProcessAffinityMask   = 0;
-    // offset 192:  GdiHandleBuffer[34] (34*u32=136)
+    // offset 200:  GdiHandleBuffer[34] (34*u32=136)
     uint32_t GdiHandleBuffer[34]         = {};
-    // offset 328:  PostProcessInitRoutine Ptr
+    // offset 340:  PostProcessInitRoutine Ptr
     uint32_t PostProcessInitRoutine      = 0;
-    // offset 332:  TlsExpansionBitmap Ptr
+    // offset 340:  TlsExpansionBitmap Ptr
     uint32_t TlsExpansionBitmap          = 0;
-    // offset 336:  TlsExpansionBitmapBits[32] (32*u32=128)
+    // offset 340:  TlsExpansionBitmapBits[32] (32*u32=128)
     uint32_t TlsExpansionBitmapBits[32]  = {};
-    // offset 464:  SessionId Ptr (u32)
+    // offset 472:  SessionId Ptr (u32)
     uint32_t SessionId                   = 0;
-    // offset 468:  AppCompatFlags ULARGE_INTEGER (u64)
+    // offset 472:  AppCompatFlags ULARGE_INTEGER (u64)
     uint64_t AppCompatFlags              = 0;
-    // offset 476:  AppCompatFlagsUser ULARGE_INTEGER (u64)
+    // offset 480:  AppCompatFlagsUser ULARGE_INTEGER (u64)
     uint64_t AppCompatFlagsUser          = 0;
-    // offset 484:  pShimData Ptr
+    // offset 496:  pShimData Ptr
     uint32_t pShimData                   = 0;
-    // offset 488:  AppCompatInfo Ptr
+    // offset 496:  AppCompatInfo Ptr
     uint32_t AppCompatInfo               = 0;
     UNICODE_STRING_POD<4> CSDVersion;     // offset 492 (nested, size=8)
-    // offset 500:  ActivationContextData Ptr
+    // offset 528:  ActivationContextData Ptr
     uint32_t ActivationContextData         = 0;
-    // offset 504:  ProcessAssemblyStorageMap Ptr
+    // offset 528:  ProcessAssemblyStorageMap Ptr
     uint32_t ProcessAssemblyStorageMap     = 0;
-    // offset 508:  SystemDefaultActivationContextData Ptr
+    // offset 528:  SystemDefaultActivationContextData Ptr
     uint32_t SystemDefaultActivationContextData = 0;
-    // offset 512:  SystemAssemblyStorageMap Ptr
+    // offset 528:  SystemAssemblyStorageMap Ptr
     uint32_t SystemAssemblyStorageMap     = 0;
-    // offset 516:  MinimumStackCommit Ptr
+    // offset 528:  MinimumStackCommit Ptr
     uint32_t MinimumStackCommit           = 0;
-    // offset 520:  FlsCallback Ptr
+    // offset 528:  FlsCallback Ptr
     uint32_t FlsCallback                  = 0;
     LIST_ENTRY_POD<4> FlsListHead;        // offset 524 (nested, size=8)
-    // offset 532:  FlsBitmap Ptr
+    // offset 540:  FlsBitmap Ptr
     uint32_t FlsBitmap                    = 0;
-    // offset 536:  FlsBitmapBits[4] (4*u32=16)
+    // offset 540:  FlsBitmapBits[4] (4*u32=16)
     uint32_t FlsBitmapBits[4]             = {};
-    // offset 552:  FlsHighIndex Ptr (u32)
+    // offset 576:  FlsHighIndex Ptr (u32)
     uint32_t FlsHighIndex                 = 0;
-    // offset 556:  WerRegistrationData Ptr
+    // offset 576:  WerRegistrationData Ptr
     uint32_t WerRegistrationData          = 0;
-    // offset 560:  WerShipAssertPtr Ptr
+    // offset 576:  WerShipAssertPtr Ptr
     uint32_t WerShipAssertPtr             = 0;
-    // offset 564:  pUnused Ptr
+    // offset 576:  pUnused Ptr
     uint32_t pUnused                      = 0;
-    // offset 568:  pImageHeaderHash Ptr
+    // offset 576:  pImageHeaderHash Ptr
     uint32_t pImageHeaderHash             = 0;
-    // offset 572:  TracingFlags u64
+    // offset 576:  TracingFlags u64
     uint64_t TracingFlags                         = 0;
-    // offset 580:  CsrServerReadOnlySharedMemoryBase u64
+    // offset 584:  CsrServerReadOnlySharedMemoryBase u64
     uint64_t CsrServerReadOnlySharedMemoryBase     = 0;
-    // offset 588:  TppWorkerpListLock Ptr (u32)
+    // offset 596:  TppWorkerpListLock Ptr (u32)
     uint32_t TppWorkerpListLock                    = 0;
     LIST_ENTRY_POD<4> TppWorkerpList;         // offset 592 (nested, size=8)
-    // offset 600:  WaitOnAddressHashTable[128] (128*u32=512)
+    // offset 604:  WaitOnAddressHashTable[128] (128*u32=512)
     uint32_t WaitOnAddressHashTable[128]           = {};
-    // total = 1112
+    uint32_t pad_align_end = 0;
+    // total = 1120
 };
 
 template <>

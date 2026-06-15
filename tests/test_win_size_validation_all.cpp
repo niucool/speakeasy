@@ -307,12 +307,17 @@ TEST(WinSizeOffsets, PEB_x86) {
     EXPECT_EQ(offsetof(T, ProcessHeap),            24);
     EXPECT_EQ(offsetof(T, NumberOfProcessors),    100);
     EXPECT_EQ(offsetof(T, NtGlobalFlag),          104);
-    EXPECT_EQ(offsetof(T, OSMajorVersion),        160);
-    EXPECT_EQ(offsetof(T, OSBuildNumber),         168);
+    EXPECT_EQ(offsetof(T, pad_align_cst),         108);  // 8-byte align for CriticalSectionTimeout
+    EXPECT_EQ(offsetof(T, CriticalSectionTimeout), 112);
+    EXPECT_EQ(offsetof(T, OSMajorVersion),        164);
+    EXPECT_EQ(offsetof(T, OSBuildNumber),         172);
 }
-// SessionId is at offset 464 in PEB_POD<4> (after TlsExpansionBitmapBits)
+// SessionId is at offset 468 in PEB_POD<4> (after pad_align_cst shifts tail by +4)
 TEST(WinSizeOffsets, PEB_x86_SessionId) {
-    EXPECT_EQ(offsetof(speakeasy::deffs::nt::PEB_POD<4>, SessionId), 464);
+    EXPECT_EQ(offsetof(speakeasy::deffs::nt::PEB_POD<4>, SessionId), 468);
+}
+TEST(WinSizeOffsets, PEB_x86_TotalSize) {
+    EXPECT_EQ(sizeof(speakeasy::deffs::nt::PEB_POD<4>), 1116u);  // was 1112, +4 pad
 }
 TEST(WinSizeOffsets, PEB_x64) {
     using T = speakeasy::deffs::nt::PEB_POD<8>;

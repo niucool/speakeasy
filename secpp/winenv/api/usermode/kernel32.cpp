@@ -110,6 +110,9 @@ static inline int ptr_sz(void* e) {
 #ifdef InterlockedExchange
 #undef InterlockedExchange
 #endif
+#ifdef InterlockedExchangeAdd
+#undef InterlockedExchangeAdd
+#endif
 #ifdef InterlockedCompareExchange
 #undef InterlockedCompareExchange
 #endif
@@ -450,6 +453,7 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, lstrcmpiA, 2)     REG(Kernel32, lstrcmpiW, 2)
     REG(Kernel32, lstrcpyn, 3)
     REG(Kernel32, lstrcpynA, 3)     REG(Kernel32, lstrcpynW, 3)
+    REG(Kernel32, InterlockedExchangeAdd, 2)
     END_API_TABLE
 }
 
@@ -4253,6 +4257,13 @@ uint64_t Kernel32::InterlockedExchange(void* emu, ArgList& argv, void* ctx) {
     mm(emu)->mem_write(target_ptr, out_bytes);
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return static_cast<uint64_t>(static_cast<uint32_t>(old_val));
+}
+
+uint64_t Kernel32::InterlockedExchangeAdd(void* emu, ArgList& argv, void* ctx) {
+    uint64_t target_ptr = argv[0];
+    uint32_t value = static_cast<uint32_t>(argv[1]);
+
+    return 0;
 }
 
 uint64_t Kernel32::InterlockedCompareExchange(void* emu, ArgList& argv, void* ctx) {

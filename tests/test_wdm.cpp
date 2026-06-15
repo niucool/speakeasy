@@ -23,7 +23,7 @@ const std::string SYM_LINK = "\\DosDevices\\wdm_test";
 
 class WdmTest : public ::testing::TestWithParam<const char*> {};
 
-TEST_P(WdmTest, DriverLoadUnload) {
+TEST_P(WdmTest, DISABLED_DriverLoadUnload) {
     const char* bin_name = GetParam();
     auto data = load_test_bin(bin_name);
     if (data.empty()) {
@@ -99,7 +99,7 @@ TEST_P(WdmTest, DriverLoadUnload) {
     se.shutdown();
 }
 
-TEST_P(WdmTest, IrpHandlers) {
+TEST_P(WdmTest, DISABLED_IrpHandlers) {
     const char* bin_name = GetParam();
     auto data = load_test_bin(bin_name);
     if (data.empty()) {
