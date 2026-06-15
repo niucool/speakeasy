@@ -917,7 +917,7 @@ std::vector<void*> Process::ldr_entries;
 
 Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
     const std::vector<std::shared_ptr<speakeasy::RuntimeModule>> user_modules,
-                 const std::string& name, const std::string& path,
+                 const std::string& name, const std::string& pathl,
                  const std::string& cmdline, uint64_t basel, int session)
     : KernelObject(emu),
       modules(user_modules), cmdline(cmdline),
@@ -925,9 +925,9 @@ Process::Process(void* emu, std::shared_ptr<speakeasy::RuntimeModule> pe,
       pe(pe), pe_data(nullptr),
       stdin_handle(0), stdout_handle(0), stderr_handle(0),
       peb(nullptr), peb_ldr_data(nullptr), is_peb_active(false),
-      path(path), base(basel) {
+      path(pathl), base(basel) {
 
-    object_ = new EmuStruct();
+    object_ = new speakeasy::deffs::nt::EPROCESS();
 
     if (emu_) {
         int sz = sizeof_obj();

@@ -132,9 +132,9 @@ std::vector<void*> Win32Emulator::get_processes() {
 //     """
 //     Initialize configured processes_ set in the emulator config
 //     """
-void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& processes_) {
+void Win32Emulator::init_processes(const std::vector<speakeasy::ProcessEntry>& processes) {
     // Python win32.py:140-160  initialize configured processes_ from emulator config
-    for (const auto& proc : processes_) {
+    for (const auto& proc : processes) {
         auto p = std::make_shared<Process>(reinterpret_cast<void*>(this));
         add_object(p);
         
@@ -323,9 +323,14 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
 void Win32Emulator::run_module(std::shared_ptr<speakeasy::RuntimeModule> module, bool all_entrypoints, bool emulate_children, const std::optional<uint64_t>& entry_point) {
     prepare_module_for_emulation(module, all_entrypoints, entry_point);
     if (processes_.empty()) {
-        auto p = std::make_shared<Process>(this, module);
-        p->path = module->emu_path;
-        p->base = module->base;
+        auto p = std::make_shared<Process>(this, 
+            module, 
+            std::vector<std::shared_ptr<speakeasy::RuntimeModule>>{}, 
+            "", 
+            module->emu_path, 
+            command_line_, 
+            module->base);
+        //auto p = std::make_shared<Process>(this, module);
         curr_process_ = p;
         om->add_object(p);
         processes_.push_back(p);
