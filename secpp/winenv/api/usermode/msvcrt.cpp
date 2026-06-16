@@ -1065,7 +1065,7 @@ uint64_t Msvcrt::_CxxThrowException(void* e, ArgList& a, void* ctx) {
     return 0;
 }
 
-uint64_t Msvcrt::_except_handler4_common(void* e, ArgList& a, void* ctx) {
+uint64_t Msvcrt::_except_handler4_common(void* e, ArgList& a, void* ctxl) {
     if (a.size() < 6) return 0;
     uint64_t cookie_ptr = a[0];
     uint64_t cookie_func = a[1];
@@ -1094,13 +1094,14 @@ uint64_t Msvcrt::_except_handler4_common(void* e, ArgList& a, void* ctx) {
 
     if (psz == 4) {
         std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT>();
-        std::shared_ptr<speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4>> reg = std::make_shared<speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4>>();
-        std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> st = std::make_shared<speakeasy::deffs::windows::EH4_SCOPETABLE>();
-        std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>> rec = std::make_shared<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>>();
         we(e)->mem_cast(ctx.get(), context);
         seh.set_context(ctx, context);
 
         while (curr_frame != 0 && curr_frame != 0xFFFFFFFF) {
+            std::shared_ptr<speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4>> reg = std::make_shared<speakeasy::deffs::windows::EXCEPTION_REGISTRATION<4>>();
+            std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE> st = std::make_shared<speakeasy::deffs::windows::EH4_SCOPETABLE>();
+            std::shared_ptr<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>> rec = std::make_shared<speakeasy::deffs::windows::EH4_SCOPETABLE_RECORD<4>>();
+
             we(e)->mem_cast(reg.get(), curr_frame);
             uint64_t scope_table = static_cast<uint64_t>(reg->ScopeTable ^ cookie);
             we(e)->mem_cast(st.get(), scope_table);

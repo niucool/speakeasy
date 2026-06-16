@@ -176,7 +176,7 @@ void WindowsEmulator::enable_code_hook() {
         if (err == UC_ERR_OK) {
             tmp_code_hook_handle = hh;
             tmp_code_hook = reinterpret_cast<void*>(1);  // mark as registered
-            PLOG_DEBUG << "[hook] enable_code_hook: registered handle=" << hh;
+            PLOG_DEBUG << "[hook] enable_code_hook: registered handle=0x" << std::hex << hh;
         } else {
             PLOG_DEBUG << "[hook] enable_code_hook: FAILED err=" << static_cast<int>(err);
         }

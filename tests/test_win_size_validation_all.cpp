@@ -317,7 +317,7 @@ TEST(WinSizeOffsets, PEB_x86_SessionId) {
     EXPECT_EQ(offsetof(speakeasy::deffs::nt::PEB_POD<4>, SessionId), 468);
 }
 TEST(WinSizeOffsets, PEB_x86_TotalSize) {
-    EXPECT_EQ(sizeof(speakeasy::deffs::nt::PEB_POD<4>), 1116u);  // was 1112, +4 pad
+    EXPECT_EQ(sizeof(speakeasy::deffs::nt::PEB_POD<4>), 1120u);  // matches Python PEB<4> sizeof
 }
 TEST(WinSizeOffsets, PEB_x64) {
     using T = speakeasy::deffs::nt::PEB_POD<8>;

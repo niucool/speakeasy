@@ -709,18 +709,25 @@ uint64_t Kernel32::FindClose(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::CreateFileMappingA(void* emu, ArgList& argv, void* ctx) {
-    int hFile = static_cast<int>(argv[0]);
-    uint64_t map_attrs = argv[1];
-    uint32_t prot = static_cast<uint32_t>(argv[2]);
-    uint32_t max_sz_high = static_cast<uint32_t>(argv[3]);
-    uint32_t max_sz_low = static_cast<uint32_t>(argv[4]);
-    uint64_t map_name_ptr = argv[5];
-    (void)hFile; (void)map_attrs; (void)max_sz_high; (void)max_sz_low; (void)map_name_ptr;
-    auto fmgr = we(emu)->get_file_manager();
-    uint32_t handle = fmgr->file_create_mapping(
-        static_cast<uint32_t>(hFile & 0xFFFFFFFF), 
-        "", 
-        (static_cast<uint64_t>(max_sz_high) << 32) | max_sz_low, static_cast<int>(prot));
+    (void)ctx;
+    // Python kernel32.py: CreateFileMapping  read name, compute size, call file_create_mapping
+    uint64_t hFile         = argv[0];
+    uint64_t map_attrs     = argv[1];
+    uint32_t prot          = static_cast<uint32_t>(argv[2]);
+    uint32_t max_sz_high   = static_cast<uint32_t>(argv[3]);
+    uint32_t max_sz_low    = static_cast<uint32_t>(argv[4]);
+    uint64_t map_name_ptr  = argv[5];
+    (void)map_attrs;
+
+    uint64_t size = (static_cast<uint64_t>(max_sz_high) << 32) | max_sz_low;
+    std::string name;
+    if (map_name_ptr) {
+        name = be(emu)->read_mem_string(map_name_ptr, 1);
+        argv[5] = name;
+    }
+
+    void* file_obj = we(emu)->file_get(static_cast<int>(hFile));
+    uint32_t handle = we(emu)->file_create_mapping(file_obj, name, size, static_cast<int>(prot));
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return static_cast<uint64_t>(handle);
 }
@@ -842,32 +849,55 @@ uint64_t Kernel32::GetDiskFreeSpaceExA(void* emu, ArgList& argv, void* ctx) {
 // 
 
 uint64_t Kernel32::VirtualAlloc(void* emu, ArgList& argv, void* ctx) {
-    uint64_t addr = argv[0];
-    size_t size = static_cast<size_t>(argv[1]);
-    uint32_t alloc_type = static_cast<uint32_t>(argv[2]);
-    uint32_t prot = static_cast<uint32_t>(argv[3]);
-    (void)alloc_type;
-    if (size == 0) return 0;
-    int emu_perms = win_to_emu_perms(prot);
-    size = (size + 0xFFF) & ~0xFFF;
-    uint64_t base = (addr == 0) ? 0x10000 : addr;
-    uint64_t buf = mm(emu)->mem_map(size, base, static_cast<uint32_t>(emu_perms), "api.VirtualAlloc");
+    (void)ctx;
+    // Python kernel32.py: VirtualAlloc  check existing map, tag "api.VirtualAlloc"
+    uint64_t lpAddress = argv[0];
+    size_t   dwSize    = static_cast<size_t>(argv[1]);
+    uint32_t flAlloc   = static_cast<uint32_t>(argv[2]);
+    uint32_t flProtect = static_cast<uint32_t>(argv[3]);
+    (void)flAlloc;
+
+    if (dwSize == 0) return 0;
+
+    // Check if address is already committed (Python: emu.get_address_map)
+    auto existing = we(emu)->get_address_map(lpAddress);
+    if (existing && !existing->get_tag().empty() &&
+        existing->get_tag().find("api.VirtualAlloc") == 0) {
+        return lpAddress;
+    }
+
+    int emu_perms = win_to_emu_perms(flProtect);
+    dwSize = (dwSize + 0xFFF) & ~0xFFF;
+    uint64_t base = (lpAddress == 0) ? 0x10000 : lpAddress;
+    uint64_t buf = mm(emu)->mem_map(dwSize, base, static_cast<uint32_t>(emu_perms), "api.VirtualAlloc");
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return buf;
 }
 
 uint64_t Kernel32::VirtualAllocEx(void* emu, ArgList& argv, void* ctx) {
+    (void)ctx;
+    // Python kernel32.py: VirtualAllocEx  resolve hProcess, use process-specific tag
     uint64_t hProcess = argv[0];
-    uint64_t addr = argv[1];
-    size_t size = static_cast<size_t>(argv[2]);
-    uint32_t alloc_type = static_cast<uint32_t>(argv[3]);
-    uint32_t prot = static_cast<uint32_t>(argv[4]);
-    (void)hProcess; (void)alloc_type;
-    if (size == 0) return 0;
-    int emu_perms = win_to_emu_perms(prot);
-    size = (size + 0xFFF) & ~0xFFF;
-    uint64_t base = (addr == 0) ? 0x10000 : addr;
-    uint64_t buf = mm(emu)->mem_map(size, base, static_cast<uint32_t>(emu_perms), "api.VirtualAllocEx");
+    uint64_t lpAddress = argv[1];
+    size_t   dwSize    = static_cast<size_t>(argv[2]);
+    uint32_t flAlloc   = static_cast<uint32_t>(argv[3]);
+    uint32_t flProtect = static_cast<uint32_t>(argv[4]);
+    (void)flAlloc;
+
+    if (dwSize == 0) return 0;
+
+    // Resolve process object (Python: get_object_from_handle / get_current_process)
+    auto proc = we(emu)->get_current_process();
+    if (hProcess != static_cast<uint64_t>(-1)) { // not pseudo-handle
+        auto obj = we(emu)->get_object_from_handle(hProcess);
+        if (!obj) return 0; // NULL on invalid handle
+    }
+
+    std::string tag = "api.VirtualAllocEx";
+    int emu_perms = win_to_emu_perms(flProtect);
+    dwSize = (dwSize + 0xFFF) & ~0xFFF;
+    uint64_t base = (lpAddress == 0) ? 0x10000 : lpAddress;
+    uint64_t buf = mm(emu)->mem_map(dwSize, base, static_cast<uint32_t>(emu_perms), tag);
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return buf;
 }
@@ -1001,11 +1031,9 @@ uint64_t Kernel32::HeapFree(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::HeapCreate(void* emu, ArgList& argv, void* ctx) {
-    uint32_t options = static_cast<uint32_t>(argv[0]);
-    size_t initial_sz = static_cast<size_t>(argv[1]);
-    size_t max_sz = static_cast<size_t>(argv[2]);
-    (void)options; (void)initial_sz; (void)max_sz;
-    uint64_t heap = mm(emu)->mem_map(0x10000, std::nullopt, 4, "heap");
+    (void)argv; (void)ctx;
+    // Python kernel32.py: create_heap allocates 20 bytes tagged "emu.process_heap"
+    uint64_t heap = we32(emu)->heap_alloc(20, "HeapCreate");
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return heap;
 }
@@ -1020,12 +1048,15 @@ uint64_t Kernel32::HeapDestroy(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::GetProcessHeap(void* emu, ArgList& argv, void* ctx) {
-    static thread_local uint64_t process_heap = 0;
-    if (process_heap == 0) {
-        process_heap = mm(emu)->mem_map(0x10000, std::nullopt, 4, "process_heap");
+    (void)argv; (void)ctx;
+    // Python kernel32.py: first heap in heaps list, or create one
+    static thread_local std::vector<uint64_t> heaps;
+    if (heaps.empty()) {
+        uint64_t heap = we32(emu)->heap_alloc(20, "emu.process_heap");
+        heaps.push_back(heap);
     }
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
-    return process_heap;
+    return heaps[0];
 }
 
 uint64_t Kernel32::GlobalAlloc(void* emu, ArgList& argv, void* ctx) {
@@ -2142,23 +2173,44 @@ uint64_t Kernel32::WideCharToMultiByte(void* emu, ArgList& argv, void* ctx) {
 }
 
 uint64_t Kernel32::GetCommandLineA(void* emu, ArgList& argv, void* ctx) {
-    std::string cmdline = "emulated.exe";
-    uint64_t addr = mm(emu)->mem_map(cmdline.size() + 1, std::nullopt, 4, "api.cmdline");
+    (void)argv; (void)ctx;
+    // Python kernel32.py: GetCommandLine  read from process cmdline, cache pointer
+    auto proc = we(emu)->get_current_process();
+    std::string cmdline = proc ? proc->get_command_line() : "emulated.exe";
+    if (cmdline.empty()) cmdline = "emulated.exe";
+
+    static thread_local std::map<int, uint64_t> cmdline_ptrs;
+    uint64_t& ptr = cmdline_ptrs[1]; // cw=1 (ANSI)
+    if (!ptr) {
+        ptr = mm(emu)->mem_map((cmdline.size() + 1) * 2, 0, PERM_MEM_RW, "api.command_line");
+    }
     cmdline.push_back('\0');
-    be(emu)->write_mem_string(cmdline, addr, 1);
-    return addr;
+    be(emu)->write_mem_string(cmdline, ptr, 1);
+    return ptr;
 }
 
 uint64_t Kernel32::GetCommandLineW(void* emu, ArgList& argv, void* ctx) {
-    std::wstring wcmd = L"emulated.exe";
-    size_t bytes = wcmd.size() * 2 + 2;
-    uint64_t addr = mm(emu)->mem_map(bytes, std::nullopt, 4, "api.cmdlineW");
-    std::vector<uint8_t> data(bytes, 0);
-    for (size_t i = 0; i < wcmd.size(); i++) {
-        write_le(data, i * 2, static_cast<uint16_t>(wcmd[i]), 2);
+    (void)argv; (void)ctx;
+    // Python kernel32.py: GetCommandLine  read from process cmdline, encode UTF-16LE
+    auto proc = we(emu)->get_current_process();
+    std::string cmdline = proc ? proc->get_command_line() : "emulated.exe";
+    if (cmdline.empty()) cmdline = "emulated.exe";
+
+    static thread_local std::map<int, uint64_t> cmdline_ptrs;
+    uint64_t& ptr = cmdline_ptrs[2]; // cw=2 (UTF-16LE)
+    if (!ptr) {
+        ptr = mm(emu)->mem_map((cmdline.size() + 1) * 2, 0, PERM_MEM_RW, "api.command_line");
     }
-    mm(emu)->mem_write(addr, data);
-    return addr;
+
+    // Encode as UTF-16LE (Python: cmdline.encode("utf-16le"))
+    std::vector<uint8_t> utf16;
+    for (char c : cmdline) {
+        utf16.push_back(static_cast<uint8_t>(c));
+        utf16.push_back(0);
+    }
+    utf16.push_back(0); utf16.push_back(0); // null terminator
+    mm(emu)->mem_write(ptr, utf16);
+    return ptr;
 }
 
 // 
@@ -2543,11 +2595,27 @@ uint64_t Kernel32::FindNextFileW(void* e, ArgList& a, void* c) {
     w32(e)->set_last_error(K32_ERR_NO_MORE_FILES); return 0;
 }
 uint64_t Kernel32::CreateFileMappingW(void* e, ArgList& a, void* c) {
-    uint64_t name_ptr = a[2];
+    (void)c;
+    // Python kernel32.py: CreateFileMapping  read wide name, call file_create_mapping
+    uint64_t hFile         = a[0];
+    uint64_t map_attrs     = a[1];
+    uint32_t prot          = static_cast<uint32_t>(a[2]);
+    uint32_t max_sz_high   = static_cast<uint32_t>(a[3]);
+    uint32_t max_sz_low    = static_cast<uint32_t>(a[4]);
+    uint64_t map_name_ptr  = a[5];
+    (void)map_attrs;
+
+    uint64_t size = (static_cast<uint64_t>(max_sz_high) << 32) | max_sz_low;
     std::string name;
-    if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
-    uint64_t h = we(e)->mem_map(static_cast<size_t>(a[1]), std::nullopt, 4, "kernel32.filemapping." + name);
-    return h ? h : K32_INVALID_HANDLE;
+    if (map_name_ptr) {
+        name = be(e)->read_mem_string(map_name_ptr, 2);
+        a[5] = name;
+    }
+
+    void* file_obj = we(e)->file_get(static_cast<int>(hFile));
+    uint32_t handle = we(e)->file_create_mapping(file_obj, name, size, static_cast<int>(prot));
+    w32(e)->set_last_error(K32_ERR_SUCCESS);
+    return static_cast<uint64_t>(handle);
 }
 uint64_t Kernel32::GetDriveTypeW(void* e, ArgList& a, void* c) {
     uint64_t root_ptr = a[0];
@@ -3969,13 +4037,9 @@ uint64_t Kernel32::VerifyVersionInfo(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
 }
 uint64_t Kernel32::VirtualAllocExNuma(void* e, ArgList& a, void* c) {
-    uint64_t sz = a[1]; uint32_t flAlloc = static_cast<uint32_t>(a[2]); uint32_t flProt = static_cast<uint32_t>(a[3]);
-    (void)flProt;
-    if (flAlloc & 0x2000) { // MEM_RESERVE
-        we(e)->mem_map(static_cast<size_t>(sz), std::nullopt, 4, "kernel32.virtual_alloc_ex_numa");
-        return 0x10000000;
-    }
-    return we(e)->mem_map(static_cast<size_t>(sz), std::nullopt, 7, "kernel32.virtual_alloc_ex_numa");
+    // Python kernel32.py: strips last arg (nndPreferred) and delegates to VirtualAllocEx
+    ArgList trimmed = {a[0], a[1], a[2], a[3], a[4]};
+    return VirtualAllocEx(e, trimmed, c);
 }
 uint64_t Kernel32::WTSGetActiveConsoleSessionId(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // session 0
