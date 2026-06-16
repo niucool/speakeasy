@@ -19,9 +19,11 @@ class Win32Emulator;
 class WindowsEmulator;
 class BinaryEmulator;
 class MemoryManager;
+class WinKernelEmulator;
 
 class RegKey;
 
+static inline WinKernelEmulator* wke(void* e) { return static_cast<WinKernelEmulator*>(e); }
 static inline Win32Emulator* we32(void* e) { return static_cast<Win32Emulator*>(e); }
 static inline Win32Emulator* w32(void* e)  { return static_cast<Win32Emulator*>(e); }  // alias for we32
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
@@ -113,11 +115,14 @@ protected:
     std::string mod_name_;
     void* emu_; // Kept as void* to avoid circular dependency with WindowsEmulator/BinaryEmulator includes
     int ptr_size_;
+    std::shared_ptr<ApiHandler> _nt_handler = nullptr;
 
 public:
     const std::map<std::string, ApiHookInfo>& get_hook_funcs() const { return funcs_; }
     const std::map<std::string, DataHookInfo>& get_hook_data() const { return data_; }
 
+    std::shared_ptr<ApiHandler> get_nt_handler() const { return _nt_handler; }
+    void set_nt_handler(std::shared_ptr<ApiHandler> handler) { _nt_handler = handler; }
     void set_emu(void* e);
     void add_hook(const std::string& name, ApiFunc func, int argc, int conv, int ordinal = 0);
     void add_data(const std::string& name, DataFunc func);

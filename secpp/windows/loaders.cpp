@@ -321,6 +321,17 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
             data_exports.push_back(d.name);
         }
         
+        if (name_ == "ntdll") {
+            auto nt_handler = handler->get_nt_handler();
+            if (nt_handler) {
+                // nt_funcs = [(f[4], f[0]) for k, f in nt_handler.funcs.items() if isinstance(k, str)]
+                // new = funcs + nt_funcs
+                const auto& nt_hook_funcs = nt_handler->get_hook_funcs();
+                for (const auto& [k, f] : nt_hook_funcs) {
+                    new_funcs.push_back({ f.ordinal, f.name });
+                }
+            }
+        }
         // Prefix / Suffix Expansion matching Python logic
         std::vector<std::pair<int, std::string>> expanded = new_funcs;
         if (name_ == "ntdll" || name_ == "ntoskrnl") {

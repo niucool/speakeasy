@@ -14,6 +14,7 @@
 #include "winenv/arch.h"
 #include "windows/winemu.h"
 #include "windows/win32.h"
+#include "winenv/deffs/nt/ntoskrnl.h"
 
 // Undefine Windows SDK macros that collide with our function names
 #ifdef RtlMoveMemory
@@ -189,31 +190,42 @@ Ntoskrnl::Ntoskrnl(void* emu) : ApiHandler(emu) {
     END_API_TABLE
 }
 
-//  Helper: read a STRING (ANSI_STRING) from memory 
+//  Helper: read a STRING (ANSI_STRING) from memory
 static std::string read_ansi_string_from_mem(void* e, uint64_t addr) {
     if (!addr) return "";
     int psz = ptr_sz(e);
-    // STRING: { USHORT Length; USHORT MaximumLength; PCHAR Buffer; }
-    size_t hdr = 4 + static_cast<size_t>(psz);
-    auto raw = mm(e)->mem_read(addr, hdr);
-    uint16_t len = static_cast<uint16_t>(read_le(raw, 0, 2));
-    uint64_t buf = (psz == 8) ? static_cast<uint64_t>(read_le(raw, 8, 8))
-                               : static_cast<uint64_t>(read_le(raw, 4, 4));
-    if (!buf || len == 0) return "";
-    auto data = mm(e)->mem_read(buf, static_cast<size_t>(len));
-    return std::string(data.begin(), data.end());
+    if (psz == 4) {
+        speakeasy::deffs::nt::STRING<4> s;
+        we(e)->mem_cast(&s, addr);
+        if (!s.Buffer || s.Length == 0) return "";
+        auto data = mm(e)->mem_read(s.Buffer, s.Length);
+        return std::string(data.begin(), data.end());
+    } else {
+        speakeasy::deffs::nt::STRING<8> s;
+        we(e)->mem_cast(&s, addr);
+        if (!s.Buffer || s.Length == 0) return "";
+        auto data = mm(e)->mem_read(s.Buffer, s.Length);
+        return std::string(data.begin(), data.end());
+    }
 }
 
-//  Helper: read a UNICODE_STRING from memory 
+//  Helper: read a UNICODE_STRING from memory
 static std::u16string read_unicode_string_from_mem(void* e, uint64_t addr) {
     if (!addr) return {};
     int psz = ptr_sz(e);
-    // UNICODE_STRING: { USHORT Length; USHORT MaximumLength; PWSTR Buffer; }
-    size_t hdr = 4 + static_cast<size_t>(psz);
-    auto raw = mm(e)->mem_read(addr, hdr);
-    uint16_t len = static_cast<uint16_t>(read_le(raw, 0, 2));
-    uint64_t buf = (psz == 8) ? static_cast<uint64_t>(read_le(raw, 8, 8))
-                               : static_cast<uint64_t>(read_le(raw, 4, 4));
+    uint16_t len = 0;
+    uint64_t buf = 0;
+    if (psz == 4) {
+        speakeasy::deffs::nt::UNICODE_STRING<4> us;
+        we(e)->mem_cast(&us, addr);
+        len = us.Length;
+        buf = us.Buffer;
+    } else {
+        speakeasy::deffs::nt::UNICODE_STRING<8> us;
+        we(e)->mem_cast(&us, addr);
+        len = us.Length;
+        buf = us.Buffer;
+    }
     if (!buf || len == 0) return {};
     auto data = mm(e)->mem_read(buf, static_cast<size_t>(len));
     std::u16string result;
@@ -225,14 +237,22 @@ static std::u16string read_unicode_string_from_mem(void* e, uint64_t addr) {
     return result;
 }
 
-//  Helper: write UNICODE_STRING fields 
+//  Helper: write UNICODE_STRING fields
 static void write_unicode_string_fields(void* e, uint64_t addr, uint16_t length, uint16_t maxlen, uint64_t buffer) {
     int psz = ptr_sz(e);
-    auto data = std::vector<uint8_t>(4 + static_cast<size_t>(psz));
-    write_le(data, 0, static_cast<uint64_t>(length), 2);
-    write_le(data, 2, static_cast<uint64_t>(maxlen), 2);
-    write_le(data, 4, buffer, psz);
-    mm(e)->mem_write(addr, data);
+    if (psz == 4) {
+        speakeasy::deffs::nt::UNICODE_STRING<4> us;
+        us.Length = length;
+        us.MaximumLength = maxlen;
+        us.Buffer = buffer;
+        mm(e)->mem_write(addr, us.get_bytes());
+    } else {
+        speakeasy::deffs::nt::UNICODE_STRING<8> us;
+        us.Length = length;
+        us.MaximumLength = maxlen;
+        us.Buffer = buffer;
+        mm(e)->mem_write(addr, us.get_bytes());
+    }
 }
 
 //  Helper: read a wide string from a raw pointer 
@@ -527,13 +547,20 @@ uint64_t Ntoskrnl::RtlFreeUnicodeString(void* e, ArgList& a, void* ctx) {
     // VOID RtlFreeUnicodeString(PUNICODE_STRING UnicodeString)
     uint64_t us = a[0];
     if (!us) return 0;
-    
+
     int psz = ptr_sz(e);
-    auto raw = mm(e)->mem_read(us, 4 + static_cast<size_t>(psz));
-    uint64_t buf = (psz == 8) ? static_cast<uint64_t>(read_le(raw, 8, 8))
-                               : static_cast<uint64_t>(read_le(raw, 4, 4));
+    uint64_t buf = 0;
+    if (psz == 4) {
+        speakeasy::deffs::nt::UNICODE_STRING<4> us_struct;
+        we(e)->mem_cast(&us_struct, us);
+        buf = us_struct.Buffer;
+    } else {
+        speakeasy::deffs::nt::UNICODE_STRING<8> us_struct;
+        we(e)->mem_cast(&us_struct, us);
+        buf = us_struct.Buffer;
+    }
     if (buf) mm(e)->mem_free(buf);
-    
+
     return 0;
 }
 
@@ -562,9 +589,18 @@ uint64_t Ntoskrnl::RtlAnsiStringToUnicodeString(void* e, ArgList& a, void* ctx) 
         mm(e)->mem_write(buf, wdata);
         write_unicode_string_fields(e, dest, size, size, buf);
     } else {
-        // Check if output buffer is large enough
-        auto raw = mm(e)->mem_read(dest, 4);
-        uint16_t maxlen = static_cast<uint16_t>(read_le(raw, 2, 2));
+        // Check if output buffer is large enough — read MaximumLength from dest UNICODE_STRING
+        int psz = ptr_sz(e);
+        uint16_t maxlen = 0;
+        if (psz == 4) {
+            speakeasy::deffs::nt::UNICODE_STRING<4> us;
+            we(e)->mem_cast(&us, dest);
+            maxlen = us.MaximumLength;
+        } else {
+            speakeasy::deffs::nt::UNICODE_STRING<8> us;
+            we(e)->mem_cast(&us, dest);
+            maxlen = us.MaximumLength;
+        }
         if (maxlen < size) {
             return KERN_STATUS_UNSUCCESSFUL;
         }
@@ -581,34 +617,57 @@ uint64_t Ntoskrnl::RtlCopyUnicodeString(void* e, ArgList& a, void* ctx) {
     
     if (!src || !dst) return 0;
     
-    auto src_str = read_unicode_string_from_mem(e, src);
     int psz = ptr_sz(e);
-    
-    auto dst_raw = mm(e)->mem_read(dst, 4);
-    uint16_t dst_maxlen = static_cast<uint16_t>(read_le(dst_raw, 2, 2));
-    
+    auto src_str = read_unicode_string_from_mem(e, src);
+
+    // Read dst MaximumLength via mem_cast
+    uint16_t dst_maxlen = 0;
+    uint64_t dst_buf = 0;
+    if (psz == 4) {
+        speakeasy::deffs::nt::UNICODE_STRING<4> dst_us;
+        we(e)->mem_cast(&dst_us, dst);
+        dst_maxlen = dst_us.MaximumLength;
+        dst_buf = dst_us.Buffer;
+    } else {
+        speakeasy::deffs::nt::UNICODE_STRING<8> dst_us;
+        we(e)->mem_cast(&dst_us, dst);
+        dst_maxlen = dst_us.MaximumLength;
+        dst_buf = dst_us.Buffer;
+    }
+
     uint16_t copy_len = static_cast<uint16_t>(src_str.length() * 2);
     if (copy_len > dst_maxlen) copy_len = dst_maxlen;
-    
-    // Read src buffer and copy
-    auto raw_src = mm(e)->mem_read(src, 4 + static_cast<size_t>(psz));
-    uint64_t src_buf = (psz == 8) ? static_cast<uint64_t>(read_le(raw_src, 8, 8))
-                                   : static_cast<uint64_t>(read_le(raw_src, 4, 4));
-    
-    if (src_buf && copy_len > 0) {
-        auto data = mm(e)->mem_read(src_buf, static_cast<size_t>(copy_len));
-        auto dst_raw2 = mm(e)->mem_read(dst, 4 + static_cast<size_t>(psz));
-        uint64_t dst_buf = (psz == 8) ? static_cast<uint64_t>(read_le(dst_raw2, 8, 8))
-                                       : static_cast<uint64_t>(read_le(dst_raw2, 4, 4));
-        if (dst_buf) {
-            mm(e)->mem_write(dst_buf, data);
-        }
+
+    // Read src Buffer via mem_cast and copy
+    uint64_t src_buf = 0;
+    if (psz == 4) {
+        speakeasy::deffs::nt::UNICODE_STRING<4> src_us;
+        we(e)->mem_cast(&src_us, src);
+        src_buf = src_us.Buffer;
+    } else {
+        speakeasy::deffs::nt::UNICODE_STRING<8> src_us;
+        we(e)->mem_cast(&src_us, src);
+        src_buf = src_us.Buffer;
     }
-    
-    // Update length
-    write_le(dst_raw, 0, static_cast<uint64_t>(copy_len), 2);
-    mm(e)->mem_write(dst, dst_raw);
-    
+
+    if (src_buf && dst_buf && copy_len > 0) {
+        auto data = mm(e)->mem_read(src_buf, static_cast<size_t>(copy_len));
+        mm(e)->mem_write(dst_buf, data);
+    }
+
+    // Update dst Length
+    if (psz == 4) {
+        speakeasy::deffs::nt::UNICODE_STRING<4> dst_us;
+        we(e)->mem_cast(&dst_us, dst);
+        dst_us.Length = copy_len;
+        mm(e)->mem_write(dst, dst_us.get_bytes());
+    } else {
+        speakeasy::deffs::nt::UNICODE_STRING<8> dst_us;
+        we(e)->mem_cast(&dst_us, dst);
+        dst_us.Length = copy_len;
+        mm(e)->mem_write(dst, dst_us.get_bytes());
+    }
+
     return 0;
 }
 
@@ -1549,14 +1608,23 @@ uint64_t Ntoskrnl::ZwOpenEvent(void* e, ArgList& a, void* ctx) {
 
     if (ObjectAttributes) {
         int psz = ptr_sz(e);
-        // OBJECT_ATTRIBUTES: {Length(u32), RootDir(psz), ObjectName(psz), Attrs(u32), SecDesc(psz), QoS(psz)}
-        uint64_t name_ptr = (psz == 8)
-            ? static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 12, 8), 0, 8))
-            : static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 8, 4), 0, 4));
-        if (name_ptr) {
-            auto name = read_unicode_string_from_mem(e, name_ptr);
-            std::string sname;
-            for (auto c : name) if (c) sname += static_cast<char>(c);
+        std::string sname;
+        if (psz == 4) {
+            speakeasy::deffs::nt::OBJECT_ATTRIBUTES<4> oa;
+            we(e)->mem_cast(&oa, ObjectAttributes);
+            if (oa.ObjectName) {
+                auto name = read_unicode_string_from_mem(e, oa.ObjectName);
+                for (auto c : name) if (c) sname += static_cast<char>(c);
+            }
+        } else {
+            speakeasy::deffs::nt::OBJECT_ATTRIBUTES<8> oa;
+            we(e)->mem_cast(&oa, ObjectAttributes);
+            if (oa.ObjectName) {
+                auto name = read_unicode_string_from_mem(e, oa.ObjectName);
+                for (auto c : name) if (c) sname += static_cast<char>(c);
+            }
+        }
+        if (!sname.empty()) {
             a[2] = sname;  // Replace ObjectAttributes with name for logging (matches Python argv[2])
             auto obj = we(e)->get_object_from_name(sname);
             if (!obj)
@@ -1583,15 +1651,23 @@ uint64_t Ntoskrnl::ZwCreateEvent(void* e, ArgList& a, void* ctx) {
     uint64_t InitialState     = a[4];
     (void)DesiredAccess; (void)EventType; (void)InitialState;
 
+    int psz = ptr_sz(e);
     std::string name;
     if (ObjectAttributes) {
-        int psz = ptr_sz(e);
-        uint64_t name_ptr = (psz == 8)
-            ? static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 12, 8), 0, 8))
-            : static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 8, 4), 0, 4));
-        if (name_ptr) {
-            auto n = read_unicode_string_from_mem(e, name_ptr);
-            for (auto c : n) if (c) name += static_cast<char>(c);
+        if (psz == 4) {
+            speakeasy::deffs::nt::OBJECT_ATTRIBUTES<4> oa;
+            we(e)->mem_cast(&oa, ObjectAttributes);
+            if (oa.ObjectName) {
+                auto n = read_unicode_string_from_mem(e, oa.ObjectName);
+                for (auto c : n) if (c) name += static_cast<char>(c);
+            }
+        } else {
+            speakeasy::deffs::nt::OBJECT_ATTRIBUTES<8> oa;
+            we(e)->mem_cast(&oa, ObjectAttributes);
+            if (oa.ObjectName) {
+                auto n = read_unicode_string_from_mem(e, oa.ObjectName);
+                for (auto c : n) if (c) name += static_cast<char>(c);
+            }
         }
     }
     a[2] = name;                         // Replace ObjectAttributes with name for logging (matches Python argv[2])
@@ -1730,13 +1806,26 @@ uint64_t Ntoskrnl::ZwCreateFile(void* e, ArgList& a, void* ctx) {
     if (!pHndl || !objattr) return KERN_STATUS_INVALID_PARAMETER;
 
     int psz = ptr_sz(e);
-    uint64_t name_ptr = (psz == 8)
-        ? static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 12, 8), 0, 8))
-        : static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 8, 4), 0, 4));
-    if (!name_ptr) return KERN_STATUS_INVALID_PARAMETER;
+    std::string path;
+    std::u16string name;
 
-    auto name = read_unicode_string_from_mem(e, name_ptr);
-    std::string path; for (auto c : name) if (c) path += static_cast<char>(c);
+    if (psz == 4) {
+        speakeasy::deffs::nt::OBJECT_ATTRIBUTES<4> oa;
+        we(e)->mem_cast(&oa, objattr);
+        name = read_unicode_string_from_mem(e, oa.ObjectName);
+    }
+    else {
+        speakeasy::deffs::nt::OBJECT_ATTRIBUTES<8> oa;
+        we(e)->mem_cast(&oa, objattr);
+        name = read_unicode_string_from_mem(e, oa.ObjectName);
+    }
+    //uint64_t name_ptr = (psz == 8)
+    //    ? static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 12, 8), 0, 8))
+    //    : static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 8, 4), 0, 4));
+    //if (!name_ptr) return KERN_STATUS_INVALID_PARAMETER;
+
+    //auto name = read_unicode_string_from_mem(e, name_ptr);
+    for (auto c : name) if (c) path += static_cast<char>(c);
     a[3] = path;  // Replace IoStatusBlock with name for logging (matches Python argv[3])
 
     // Resolve create disposition to human-readable string for logging
@@ -1784,13 +1873,24 @@ uint64_t Ntoskrnl::ZwOpenFile(void* e, ArgList& a, void* ctx) {
     if (!pHndl || !objattr) return KERN_STATUS_INVALID_PARAMETER;
 
     int psz = ptr_sz(e);
-    uint64_t name_ptr = (psz == 8)
-        ? static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 12, 8), 0, 8))
-        : static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 8, 4), 0, 4));
-    if (!name_ptr) return KERN_STATUS_OBJECT_NAME_NOT_FOUND;
+    std::string path;
+    if (psz == 4) {
+        speakeasy::deffs::nt::OBJECT_ATTRIBUTES<4> oa;
+        we(e)->mem_cast(&oa, objattr);
+        if (oa.ObjectName) {
+            auto name = read_unicode_string_from_mem(e, oa.ObjectName);
+            for (auto c : name) if (c) path += static_cast<char>(c);
+        }
+    } else {
+        speakeasy::deffs::nt::OBJECT_ATTRIBUTES<8> oa;
+        we(e)->mem_cast(&oa, objattr);
+        if (oa.ObjectName) {
+            auto name = read_unicode_string_from_mem(e, oa.ObjectName);
+            for (auto c : name) if (c) path += static_cast<char>(c);
+        }
+    }
+    if (path.empty()) return KERN_STATUS_OBJECT_NAME_NOT_FOUND;
 
-    auto name = read_unicode_string_from_mem(e, name_ptr);
-    std::string path; for (auto c : name) if (c) path += static_cast<char>(c);
     a[3] = path;  // Replace IoStatusBlock with path for logging (matches Python argv[3])
 
     void* file_obj = we(e)->file_open(path, false);
@@ -1920,13 +2020,18 @@ uint64_t Ntoskrnl::ZwCreateSection(void* e, ArgList& a, void* ctx) {
         if (raw.size() == 8) size = read_le(raw, 0, 8);
     }
 
+    int psz = ptr_sz(e);
     std::string name;
     if (ObjectAttributes) {
-        int psz = ptr_sz(e);
-        uint64_t name_ptr = (psz == 8)
-            ? static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 12, 8), 0, 8))
-            : static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 8, 4), 0, 4));
-        if (name_ptr) { auto n = read_unicode_string_from_mem(e, name_ptr); for (auto c : n) if (c) name += static_cast<char>(c); }
+        if (psz == 4) {
+            speakeasy::deffs::nt::OBJECT_ATTRIBUTES<4> oa;
+            we(e)->mem_cast(&oa, ObjectAttributes);
+            if (oa.ObjectName) { auto n = read_unicode_string_from_mem(e, oa.ObjectName); for (auto c : n) if (c) name += static_cast<char>(c); }
+        } else {
+            speakeasy::deffs::nt::OBJECT_ATTRIBUTES<8> oa;
+            we(e)->mem_cast(&oa, ObjectAttributes);
+            if (oa.ObjectName) { auto n = read_unicode_string_from_mem(e, oa.ObjectName); for (auto c : n) if (c) name += static_cast<char>(c); }
+        }
         a[2] = name;  // Replace ObjectAttributes with name for logging (matches Python argv[2])
     }
 

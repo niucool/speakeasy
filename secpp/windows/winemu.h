@@ -675,7 +675,7 @@ public:
     //     """This function attempts to fold as many function handlers together as possible.
     //     For example, ntdll functions will be handled by the ntoskrnl handlers, multiple versions
     //     of the C runtime are folded together, and Zw/Nt functions use the same handler."""
-    std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> normalize_import_miss(const std::string& dll, const std::string& name);
+    std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo> normalize_import_miss(const std::string& dll, const std::string& name);
     // Python winemu.py:1604
     // def read_unicode_string(self, addr):
     //     """Read string data from a UNICODE_STRING object located at the specified address"""

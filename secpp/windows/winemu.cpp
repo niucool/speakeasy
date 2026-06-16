@@ -1449,7 +1449,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     bool has_api_exports = false;
     if (api) {
         std::shared_ptr<ApiHandler> handler = nullptr;
-        ApiHookInfo& func_info = InvalidApiInfo;
+        ApiHookInfo func_info = InvalidApiInfo;
 
         for (auto& exp : img->exports) {
             if (exp.name.empty()) continue;
@@ -1896,6 +1896,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_module_by_name(c
                 auto nt_handler = api->load_api_handler("ntoskrnl");
                 if (nt_handler) {
                     // Attach nt_handler to the ntdll handler if supported in C++
+                    handler->set_nt_handler(nt_handler);
                 }
             }
 
@@ -2035,6 +2036,7 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> WindowsEmulator::_init_mo
                         auto nt_handler = api->load_api_handler("ntoskrnl");
                         if (nt_handler) {
                             // Attach nt_handler to the ntdll handler
+                            handler->set_nt_handler(nt_handler);
                         }
                     }
                     
@@ -2500,7 +2502,7 @@ void* WindowsEmulator::get_proc(const std::string& mod_name, const std::string& 
 // Python winemu.py:1561
 // def normalize_import_miss(self, dll, name):
 //     """This function attempts to fold as many function handlers together as possible."""
-std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo&> WindowsEmulator::normalize_import_miss(
+std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo> WindowsEmulator::normalize_import_miss(
     const std::string& dll, const std::string& name) {
     if (!api) {
         return {nullptr, InvalidApiInfo};
@@ -2577,7 +2579,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 
     //  Primary handler lookup 
     std::shared_ptr<ApiHandler> handler_mod = nullptr;
-    ApiHookInfo& func_info = InvalidApiInfo;
+    ApiHookInfo func_info = InvalidApiInfo;
 
     if (api) {
         std::tie(handler_mod, func_info) = api->get_export_func_handler(dll_norm, name);
@@ -2595,7 +2597,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         int argc = 4;
 
         // Re-query handler metadata for argc/conv
-        //const ApiHookInfo& info = handler_mod->get_func_handler(name);
+        //const ApiHookInfo info = handler_mod->get_func_handler(name);
         argc = func_info.argc;
         conv = func_info.conv;
         if (!name.empty() && name.find("ordinal_") == 0 && !func_info.name.empty())
