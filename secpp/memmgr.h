@@ -7,6 +7,7 @@
 #include <memory>
 #include <cstdint>
 #include <map>
+#include <optional>
 
 #include "engines/unicorn_eng.h"
 
@@ -158,7 +159,7 @@ public:
     /**
      * Map a block of memory with specified permissions and a tag
      */
-    uint64_t mem_map(uint64_t size, uint64_t base = 0, uint32_t perms = common::PERM_MEM_RWX,
+    uint64_t mem_map(uint64_t size, std::optional<uint64_t> base = std::nullopt, uint32_t perms = common::PERM_MEM_RWX,
                      const std::string& tag = "", uint32_t flags = 0, bool shared = false,
                      std::shared_ptr<Process> process = nullptr);
 

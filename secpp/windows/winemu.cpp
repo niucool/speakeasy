@@ -729,7 +729,7 @@ std::shared_ptr<Run> WindowsEmulator::_exec_next_run() {
     run_queue.erase(run_queue.begin());
 
     run_complete = false;
-    _seh_last_fault = {0, 0};
+    _seh_last_fault = {0, std::nullopt};
     _seh_repeat_count = 0;
 
     // reset_stack done by base class
@@ -809,7 +809,7 @@ std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> 
     }
 
     // Reset SEH state
-    _seh_last_fault = {0, 0};
+    _seh_last_fault = {0, std::nullopt};
     _seh_repeat_count = 0;
 
     // Unmap reserved region if entry point is there
@@ -2206,7 +2206,7 @@ void WindowsEmulator::load_thread_context(std::shared_ptr<EmuStruct> ctx, std::s
 // def dispatch_seh(self, except_code, faulting_address=None):
 //     """Dispatch a structured exception by walking the SEH chain. Falls back
 //     to unhandled exception filter if available."""
-bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_address) {
+bool WindowsEmulator::dispatch_seh(uint64_t except_code, std::optional<uint64_t> faulting_address) {
     auto fault_key = std::make_tuple(get_pc(), faulting_address);
     if (fault_key == _seh_last_fault) {
         _seh_repeat_count++;
@@ -2245,10 +2245,10 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
 
         // Build EXCEPTION_POINTERS
         speakeasy::deffs::windows::EXCEPTION_POINTERS<4> eptrs;
-        auto p_exp_ptrs = mem_map(eptrs.sizeof_obj(), 0, PERM_MEM_RWX, "emu.struct.EXCEPTION_POINTERS");
-        auto prec = mem_map(record.sizeof_obj(), 0, PERM_MEM_RWX, "emu.struct.EXCEPTION_RECORD");
+        auto p_exp_ptrs = mem_map(eptrs.sizeof_obj(), std::nullopt, PERM_MEM_RWX, "emu.struct.EXCEPTION_POINTERS");
+        auto prec = mem_map(record.sizeof_obj(), std::nullopt, PERM_MEM_RWX, "emu.struct.EXCEPTION_RECORD");
         auto _ctx = get_thread_context32();
-        auto pctx = mem_map(_ctx->sizeof_obj(), 0, PERM_MEM_RWX, "emu.struct.EXCEPTION_CONTEXT");
+        auto pctx = mem_map(_ctx->sizeof_obj(), std::nullopt, PERM_MEM_RWX, "emu.struct.EXCEPTION_CONTEXT");
 
         eptrs.ExceptionRecord = prec;
         eptrs.ContextRecord   = pctx;
@@ -2266,12 +2266,10 @@ bool WindowsEmulator::dispatch_seh(uint64_t except_code, uint64_t faulting_addre
         rv = true;
     }
 
-    if (rv && faulting_address != 0) {
+    if (rv && faulting_address.has_value()) {
         // Map a page at the faulting address so we can continue execution
-        uint64_t page_addr = faulting_address & ~(page_size_ - 1);
-        try {
-            mem_map(page_size_, page_addr, PERM_MEM_RW, "emu.page.fault", 0, false);
-        } catch (...) {}
+        // uint64_t page_addr = faulting_address & ~(page_size_ - 1);
+        _map_faulting_page_for_exception(*faulting_address);
     }
 
     return rv;
@@ -2308,10 +2306,10 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
     uint64_t sp = get_stack_ptr();
 
     // Python: map exception structures into emulated memory
-    auto p_exp_ptrs = mem_map(eptrs.sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_POINTERS");
-    auto prec = mem_map(record.sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_RECORD");
+    auto p_exp_ptrs = mem_map(eptrs.sizeof_obj(), std::nullopt, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_POINTERS");
+    auto prec = mem_map(record.sizeof_obj(), std::nullopt, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_RECORD");
     auto _ctx = get_thread_context32();
-    auto pctx = mem_map(_ctx->sizeof_obj(), 0, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_CONTEXT");
+    auto pctx = mem_map(_ctx->sizeof_obj(), std::nullopt, common::PERM_MEM_RWX, "emu.struct.EXCEPTION_CONTEXT");
 
     eptrs.ExceptionRecord = prec;
     eptrs.ContextRecord   = pctx;
@@ -2472,7 +2470,7 @@ void WindowsEmulator::_continue_seh_x86() {
 // def continue_seh(self):
 //     """Reset SEH repeat-detection state."""
 void WindowsEmulator::continue_seh() {
-    _seh_last_fault = {0, 0};
+    _seh_last_fault = {0, std::nullopt};
     _seh_repeat_count = 0;
     if (arch_ == speakeasy::arch::ARCH_X86) {
         _continue_seh_x86();
@@ -2783,7 +2781,7 @@ uint64_t WindowsEmulator::handle_import_data(const std::string& mod, const std::
     auto [data_mod, data_func] = api->get_data_export_handler(mod, sym);
     if (data_func.func) {
         if (!data_ptr) {
-            data_ptr = mem_map(ptr_size_, 0, 4, "api.import_data");
+            data_ptr = mem_map(ptr_size_, std::nullopt, 4, "api.import_data");
         }
         api->call_data_func(data_mod, data_func.func, data_ptr);
         return data_ptr;

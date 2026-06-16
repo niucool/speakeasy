@@ -172,7 +172,7 @@ std::shared_ptr<Process> MemoryManager::get_current_process() {
 /**
  * Map a block of memory with specified permissions and a tag
  */
-uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
+uint64_t MemoryManager::mem_map(uint64_t size, std::optional<uint64_t> base, uint32_t perms,
                                 const std::string& tag, uint32_t flags, bool shared,
                                 std::shared_ptr<Process> process) {
     
@@ -180,7 +180,7 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
         process = get_current_process();
     }
 
-    if (base == 0) { // nullptr equivalent
+    if (!base.has_value()) { // nullptr equivalent
         if (size < page_size_ && size % page_size_) {
             uint64_t addr = this->block_base_ + this->block_offset_;
             uint64_t pad_size = 0x10 - (size % 0x10);
@@ -199,20 +199,20 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
             }
 
             this->block_offset_ += adjusted_size;
-            base = addr;
+            uint64_t new_base = addr;
 
-            auto mm = std::make_shared<MemMap>(base, adjusted_size, tag, perms, flags,
+            auto mm = std::make_shared<MemMap>(new_base, adjusted_size, tag, perms, flags,
                                                this->block_base_, this->block_size_, shared, process);
-            PLOGD << "MemMap created: base=0x" << std::hex << base << ", size=0x" << adjusted_size << "(" << size << "), tag=" << tag;
+            PLOGD << "MemMap created: base=0x" << std::hex << new_base << ", size=0x" << adjusted_size << "(" << size << "), tag=" << tag;
             
             this->maps_.push_back(mm);
             _hook_mem_map_dispatch(mm);
-            return base;
+            return new_base;
         }
     }
-
-    auto block = get_valid_ranges(size, base);
-    base = block.first;
+    auto base_val = base.value_or(0);
+    auto block = get_valid_ranges(size, base_val);
+    base_val = block.first;
     uint64_t blockSize = block.second;
 
     uint64_t actual_block_size = this->block_size_;
@@ -220,16 +220,16 @@ uint64_t MemoryManager::mem_map(uint64_t size, uint64_t base, uint32_t perms,
         actual_block_size = blockSize;
     }
 
-    auto mm = std::make_shared<MemMap>(base, blockSize, tag, perms, flags,
-                                       base, actual_block_size, shared, process);
+    auto mm = std::make_shared<MemMap>(base_val, blockSize, tag, perms, flags,
+        base_val, actual_block_size, shared, process);
     // PLOGD << "MemMap created: base=0x" << std::hex << base << ", size=0x" << blockSize << ", tag=" << tag;
 
     if (this->emu_eng_) {
-        this->emu_eng_->mem_map(base, blockSize, perms);
+        this->emu_eng_->mem_map(base_val, blockSize, perms);
     }
     this->maps_.push_back(mm);
     _hook_mem_map_dispatch(mm);
-    return base;
+    return base_val;
 }
 
 /**

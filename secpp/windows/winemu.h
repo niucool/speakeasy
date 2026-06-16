@@ -36,6 +36,7 @@
 #include <tuple>
 #include <cstdint>
 #include <exception>
+#include <optional>
 
 #include "../binemu.h"
 #include "../profiler.h"
@@ -141,7 +142,7 @@ protected:
     //  SEH / exceptions 
     uint64_t curr_exception_code = 0;
     uint64_t unhandled_exception_filter = 0;
-    std::tuple<uint64_t, uint64_t> _seh_last_fault = {0, 0};
+    std::tuple<uint64_t, std::optional<uint64_t>> _seh_last_fault = {0, std::nullopt};
     int _seh_repeat_count = 0;
     static constexpr int _SEH_MAX_REPEAT = 3;
 
@@ -765,7 +766,7 @@ public:
     // def dispatch_seh(self, except_code, faulting_address=None):
     //     """Dispatch a structured exception by walking the SEH chain. Falls back
     //     to unhandled exception filter if available."""
-    bool dispatch_seh(uint64_t except_code, uint64_t faulting_address = 0);
+    bool dispatch_seh(uint64_t except_code, std::optional<uint64_t> faulting_address = std::nullopt);
     // Python winemu.py:2707
     // def continue_seh(self):
     //     """Reset SEH repeat-detection state."""
