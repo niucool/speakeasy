@@ -51,7 +51,7 @@ uint64_t WinKernelEmulator::pool_alloc(int pooltype, size_t size, const std::str
     else                       pt = "unk";
     std::string mem_tag = "api.pool." + pt + "." + tag;
     std::shared_ptr<Process> system_proc = get_system_process();
-    uint64_t addr = static_cast<MemoryManager*>(this)->mem_map(size, 0, PERM_MEM_RWX, mem_tag, 0, false, system_proc);
+    uint64_t addr = static_cast<MemoryManager*>(this)->mem_map(size, std::nullopt, PERM_MEM_RWX, mem_tag, 0, false, system_proc);
     pool_allocs_.push_back({addr, pooltype, size, tag});
     return addr;
 }
@@ -299,7 +299,7 @@ void WinKernelEmulator::setup_kernel_mode() {
     // Setup the SSDT (System Service Descriptor Table)
     int ptr_sz = get_ptr_size();
     size_t ssdt_size = static_cast<size_t>(ptr_sz) * 256 + static_cast<size_t>(ptr_sz) * 2;
-    ssdt_ptr_ = mem_map(ssdt_size, 0, PERM_MEM_RW, "api.struct.SSDT");
+    ssdt_ptr_ = mem_map(ssdt_size, std::nullopt, PERM_MEM_RW, "api.struct.SSDT");
     uint64_t tbl_size = static_cast<uint64_t>(ptr_sz) * 256;
     uint64_t ssdt_base = ssdt_ptr_ + static_cast<uint64_t>(ptr_sz) * 2;
     std::vector<uint8_t> ssdt_bytes(static_cast<size_t>(ptr_sz) * 2, 0);
@@ -367,7 +367,7 @@ void* WinKernelEmulator::create_device_object(const std::string& name, void* drv
     std::string devname = name.empty() ? "\\Device\\" + hex_str(dev->id) : name;
     std::string mem_tag = tag.empty() ? (name.empty() ? "emu.device.autogen" : "emu.object") : tag;
     mem_tag += "." + devname;
-    dev->set_address(mem_map(alloc_size, 0, PERM_MEM_RW, mem_tag));
+    dev->set_address(mem_map(alloc_size, std::nullopt, PERM_MEM_RW, mem_tag));
     dev->set_obj_name(devname);
 
     if (om) om->add_object(dev);

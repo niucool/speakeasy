@@ -58,7 +58,7 @@ uint64_t Wsk::WskCaptureProviderNPI(void* e, ArgList& a, void* ctx) {
         size_t psz = static_cast<size_t>(ptr_sz(e));
         auto data = std::vector<uint8_t>(psz, 0);
         // Write a dummy dispatch pointer
-        uint64_t dummy_dispatch = mm(e)->mem_map(psz, 0, common::PERM_MEM_RWX, "wsk.dispatch");
+        uint64_t dummy_dispatch = mm(e)->mem_map(psz, std::nullopt, common::PERM_MEM_RWX, "wsk.dispatch");
         write_le(data, 0, dummy_dispatch, psz);
         mm(e)->mem_write(wsk_provider, data);
     }
@@ -82,7 +82,7 @@ uint64_t Wsk::WskSocket(void* e, ArgList& a, void* ctx) {
     // Return a dummy socket pointer
     size_t psz = static_cast<size_t>(ptr_sz(e));
     (void)psz;
-    uint64_t sock = mm(e)->mem_map(256, 0, common::PERM_MEM_RWX, "wsk.socket");
+    uint64_t sock = mm(e)->mem_map(256, std::nullopt, common::PERM_MEM_RWX, "wsk.socket");
     return sock;
 }
 

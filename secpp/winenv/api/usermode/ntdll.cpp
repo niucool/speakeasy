@@ -337,7 +337,7 @@ uint64_t Ntdll::RtlCreateHeap(void* emu, ArgList& argv, void* ctx) {
     }
 
     // Allocate a new heap
-    uint64_t addr = mm->mem_map(reserve_size, 0, 0x4, "heap");
+    uint64_t addr = mm->mem_map(reserve_size, std::nullopt, 0x4, "heap");
     return addr;
 }
 
@@ -1426,7 +1426,7 @@ uint64_t Ntdll::NtCreateSection(void* emu, ArgList& argv, void* ctx) {
     if (page_prot & 0x04) perms |= 0x2;
     if (page_prot & 0x02) perms |= 0x4;
 
-    uint64_t section_base = mm->mem_map(max_size, 0, perms, "section");
+    uint64_t section_base = mm->mem_map(max_size, std::nullopt, perms, "section");
 
     if (section_handle_ptr != 0) {
         write_ptr(emu, section_handle_ptr, section_base);
@@ -1732,7 +1732,7 @@ uint64_t Ntdll::RtlAnsiStringToUnicodeString(void* emu, ArgList& argv, void* ctx
         size_t buf_size = unicode_byte_len + 2; // + null terminator
         uint64_t buf = 0;
         try {
-            buf = mm->mem_map(buf_size, 0, 0x4, "unicode_string");
+            buf = mm->mem_map(buf_size, std::nullopt, 0x4, "unicode_string");
         } catch (...) {
             return STATUS_NO_MEMORY;
         }

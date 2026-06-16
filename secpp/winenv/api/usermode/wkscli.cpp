@@ -38,7 +38,7 @@ uint64_t Wkscli::NetGetJoinInformation(void* e, ArgList& a, void* ctx) {
     // Allocate memory for the name buffer
     int ps = we(e)->get_ptr_size();
     size_t str_size = domain.size() * 2 + 2;  // wide string
-    uint64_t namebuf = we(e)->mem_map(str_size, 0, 3, "api.wkscli.NetGetJoinInformation.name");
+    uint64_t namebuf = we(e)->mem_map(str_size, std::nullopt, 3, "api.wkscli.NetGetJoinInformation.name");
     be(e)->write_mem_string(domain, namebuf, 2);
 
     // Write the pointer to the output buffer

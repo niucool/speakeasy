@@ -21,8 +21,8 @@ public:
 
 TEST(MemoryManagerPortTest, MemMapMultiple) {
     MemoryManager mm;
-    uint64_t a1 = mm.mem_map(0x1000, 0, PERM_MEM_RWX, "mm1");
-    uint64_t a2 = mm.mem_map(0x2000, 0, PERM_MEM_RW,  "mm2");
+    uint64_t a1 = mm.mem_map(0x1000, std::nullopt, PERM_MEM_RWX, "mm1");
+    uint64_t a2 = mm.mem_map(0x2000, std::nullopt, PERM_MEM_RW,  "mm2");
     EXPECT_NE(a1, 0);
     EXPECT_NE(a2, 0);
     EXPECT_NE(a1, a2);

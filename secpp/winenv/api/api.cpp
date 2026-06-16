@@ -193,7 +193,7 @@ void ApiHandler::write_back(uint64_t addr, EmuStruct* obj) {
 
 uint64_t ApiHandler::pool_alloc(int pool_type, size_t size, const std::string& tag) {
     (void)pool_type;
-    return winemu(emu_)->mem_map(size, 0, 4, tag);
+    return winemu(emu_)->mem_map(size, std::nullopt, 4, tag);
 }
 
 uint64_t ApiHandler::heap_alloc(size_t size, const std::string& heap) {

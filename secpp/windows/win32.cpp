@@ -263,7 +263,7 @@ void Win32Emulator::prepare_module_for_emulation(std::shared_ptr<speakeasy::Runt
         std::vector<uint64_t> args_vals;
         std::vector<std::string> args_strs;
         for (int i = 0; i < 4; ++i) {
-            uint64_t arg_val = mem_map(8, 0, PERM_MEM_RW, "emu.module_arg_" + std::to_string(i));
+            uint64_t arg_val = mem_map(8, std::nullopt, PERM_MEM_RW, "emu.module_arg_" + std::to_string(i));
             args_vals.push_back(arg_val);
             args_strs.push_back(hex_str(arg_val, true));
         }
@@ -750,7 +750,7 @@ void Win32Emulator::on_run_complete() {
 //     Allocate a memory chunk and add it to the "heap"
 //     """
 uint64_t Win32Emulator::heap_alloc(size_t size, const std::string& heap) {
-    uint64_t addr = mem_map(size, 0ULL, PERM_MEM_RW, "api.heap." + heap);
+    uint64_t addr = mem_map(size, std::nullopt, PERM_MEM_RW, "api.heap." + heap);
     heap_allocs_.push_back({addr, size, heap});
     return addr;
 }

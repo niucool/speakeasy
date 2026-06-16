@@ -292,7 +292,7 @@ void Driver::create_reg_path(const std::string& name) {
     size_t us_overhead = (BE(emu_)->get_ptr_size() == 8) ? 16 : 12;  // rough UNICODE_STRING size
     size_t total_size = us_overhead + buf_size;
 
-    uint64_t addr = BE(emu_)->mem_map(total_size, 0, 4 /* RW */,
+    uint64_t addr = BE(emu_)->mem_map(total_size, std::nullopt, 4 /* RW */,
                                       "emu.object." + name + ".reg_path");
 
     // Write the buffer right after the header
@@ -334,7 +334,7 @@ void* Driver::init_driver_section() {
 
     // Build tag
     std::string mem_tag = "emu.object." + name_ + ".DriverSection";
-    uint64_t addr = BE(emu_)->mem_map(ldte_struct_size, 0, 4, mem_tag);
+    uint64_t addr = BE(emu_)->mem_map(ldte_struct_size, std::nullopt, 4, mem_tag);
 
     // Get PE info if available
     uint64_t dll_base = 0;
@@ -657,7 +657,7 @@ void Thread::init_tls(int tls_dir, const std::string& modname) {
     if (!emu_ || !this->teb_) return;
 
     int ptrsz = BE(emu_)->get_ptr_size();
-    uint64_t tls_dirp = BE(emu_)->mem_map(ptrsz, 0, 4, "emu.tls." + modname);
+    uint64_t tls_dirp = BE(emu_)->mem_map(ptrsz, std::nullopt, 4, "emu.tls." + modname);
 
     std::vector<uint8_t> tls_data(ptrsz, 0);
     for (int i = 0; i < ptrsz; ++i) {
@@ -697,7 +697,7 @@ PEB::PEB(void* emu, uint64_t addr)
     }
     if (!addr) {
         address_ = static_cast<uint64_t>(
-            BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+            BE(emu)->mem_map(sizeof_obj(), std::nullopt, 4, get_mem_tag())
         );
     } else {
         address_ = static_cast<uint64_t>(addr);
@@ -719,7 +719,7 @@ TEB::TEB(void* emu, uint64_t addr)
         address_ = static_cast<uint64_t>(addr);
     } else {
         address_ = static_cast<uint64_t>(
-            BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+            BE(emu)->mem_map(sizeof_obj(), std::nullopt, 4, get_mem_tag())
         );
     }
 }
@@ -755,7 +755,7 @@ LdrDataTableEntry::LdrDataTableEntry(void* emu, const std::string& dllname, cons
 
     std::string tag_str = tag.empty() ? get_mem_tag() : tag;
     address_ = static_cast<uint64_t>(
-        BE(emu)->mem_map(size, 0, 4, tag_str)
+        BE(emu)->mem_map(size, std::nullopt, 4, tag_str)
     );
 }
 
@@ -803,7 +803,7 @@ RTL_USER_PROCESS_PARAMETERS::RTL_USER_PROCESS_PARAMETERS(void* emu, Process* pro
     int size = static_cast<int>(sizeof_obj()) + string_data_size;
 
     address_ = static_cast<uint64_t>(
-        BE(emu)->mem_map(size, 0, 4, proc->get_mem_tag() + ".ProcessParameters")
+        BE(emu)->mem_map(size, std::nullopt, 4, proc->get_mem_tag() + ".ProcessParameters")
     );
 
     uint64_t offset = static_cast<uint64_t>(address_) + sizeof_obj();
@@ -850,7 +850,7 @@ IDT::IDT(void* emu)
         object_ = new speakeasy::deffs::nt::IDT<4>();
     }
     address_ = static_cast<uint64_t>(
-        BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+        BE(emu)->mem_map(sizeof_obj(), std::nullopt, 4, get_mem_tag())
     );
 }
 
@@ -862,7 +862,7 @@ void IDT::init_descriptors() {
     uint64_t descs;
     if (ptr_sz == 4) {
         speakeasy::deffs::nt::DESCRIPTOR_TABLE<4> tbl;
-        descs = BE(emu_)->mem_map(tbl.sizeof_obj(), 0, 4, get_mem_tag() + ".idt_entries");
+        descs = BE(emu_)->mem_map(tbl.sizeof_obj(), std::nullopt, 4, get_mem_tag() + ".idt_entries");
         auto* idt_obj = static_cast<speakeasy::deffs::nt::IDT<4>*>(object_);
         idt_obj->Limit = 0xFFF;
         idt_obj->Descriptors = descs;
@@ -873,7 +873,7 @@ void IDT::init_descriptors() {
         BE(emu_)->mem_write(descs, tbl.get_bytes());
     } else {
         speakeasy::deffs::nt::DESCRIPTOR_TABLE<8> tbl;
-        descs = BE(emu_)->mem_map(tbl.sizeof_obj(), 0, 4, get_mem_tag() + ".idt_entries");
+        descs = BE(emu_)->mem_map(tbl.sizeof_obj(), std::nullopt, 4, get_mem_tag() + ".idt_entries");
         auto* idt_obj = static_cast<speakeasy::deffs::nt::IDT<8>*>(object_);
         idt_obj->Limit = 0xFFF;
         idt_obj->Descriptors = descs;
@@ -894,7 +894,7 @@ Event::Event(void* emu)
     : KernelObject(emu) {
     object_ = new speakeasy::deffs::nt::KEVENT();
     address_ = static_cast<uint64_t>(
-        BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+        BE(emu)->mem_map(sizeof_obj(), std::nullopt, 4, get_mem_tag())
     );
 }
 
@@ -905,7 +905,7 @@ Mutant::Mutant(void* emu)
     : KernelObject(emu) {
     object_ = new speakeasy::deffs::nt::MUTANT();
     address_ = static_cast<uint64_t>(
-        BE(emu)->mem_map(sizeof_obj(), 0, 4, get_mem_tag())
+        BE(emu)->mem_map(sizeof_obj(), std::nullopt, 4, get_mem_tag())
     );
 }
 

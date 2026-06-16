@@ -72,7 +72,7 @@ uint64_t DnsApi::DnsQuery_(void* e, ArgList& a, void* ctx) {
     size_t record_size = hdr_size + data_size;
 
     // Allocate memory for the record
-    uint64_t rec_addr = we(e)->mem_map(record_size, 0, PERM_MEM_READ | PERM_MEM_WRITE, "api.dnsapi.DnsRecord");
+    uint64_t rec_addr = we(e)->mem_map(record_size, std::nullopt, PERM_MEM_READ | PERM_MEM_WRITE, "api.dnsapi.DnsRecord");
     std::vector<uint8_t> buf(record_size, 0);
 
     // pNext = 0 (NULL)

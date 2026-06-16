@@ -159,7 +159,7 @@ void ApiHammer::_handle_hammer_x86(const std::string& imp_api, int conv,
                 if (reg_it != speakeasy::arch::REG_LOOKUP.end()) {
                     // Allocate hammer patch region if not yet created
                     if (hammer_memregion == 0) {
-                        hammer_memregion = emu->mem_map(0x1024 * 4, 0, PERM_MEM_RWX,
+                        hammer_memregion = emu->mem_map(0x1024 * 4, std::nullopt, PERM_MEM_RWX,
                                                         "speakeasy.hammerpatch");
                     }
 
@@ -253,7 +253,7 @@ void ApiHammer::_handle_hammer_amd64(const std::string& imp_api, int conv,
                 if (reg_it != speakeasy::arch::REG_LOOKUP.end()) {
                     // Allocate hammer patch region if not yet created
                     if (hammer_memregion == 0) {
-                        hammer_memregion = emu->mem_map(0x1024 * 4, 0, PERM_MEM_RWX,
+                        hammer_memregion = emu->mem_map(0x1024 * 4, std::nullopt, PERM_MEM_RWX,
                                                         "speakeasy.hammerpatch");
                     }
 

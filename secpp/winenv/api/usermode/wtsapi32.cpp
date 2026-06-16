@@ -53,7 +53,7 @@ uint64_t Wtsapi32::WTSEnumerateSessions(void* e, ArgList& a, void* ctx) {
 
     uint32_t total_size = struct_size + static_cast<uint32_t>(sn_bytes.size());
     // Allocate buffer via mem_map
-    uint64_t buf = static_cast<MemoryManager*>(we(e))->mem_map(total_size, 0, common::PERM_MEM_RWX, "api.WTSEnumerateSessions");
+    uint64_t buf = static_cast<MemoryManager*>(we(e))->mem_map(total_size, std::nullopt, common::PERM_MEM_RWX, "api.WTSEnumerateSessions");
 
     // Write SessionId = 1
     {

@@ -114,24 +114,24 @@ uint64_t ComApi::IWbemLocator_ConnectServer(void* e, ArgList& a, void* ctx) {
         if (ps == 8) {
             deffs::windows::IWbemServices<8> svc_vtbl;
             size_t vtbl_size = svc_vtbl.sizeof_obj();
-            uint64_t vtbl_addr = we(e)->mem_map(vtbl_size, 0, 7, "emu.COM.IWbemServices.vtbl");
+            uint64_t vtbl_addr = we(e)->mem_map(vtbl_size, std::nullopt, 7, "emu.COM.IWbemServices.vtbl");
             we(e)->mem_write(vtbl_addr, svc_vtbl.get_bytes());
 
             deffs::windows::ComInterface<8> ci;
             ci.vtable = vtbl_addr;
             size_t ci_size = ci.sizeof_obj();
-            ci_addr = we(e)->mem_map(ci_size, 0, 7, "emu.COM.IWbemServices");
+            ci_addr = we(e)->mem_map(ci_size, std::nullopt, 7, "emu.COM.IWbemServices");
             we(e)->mem_write(ci_addr, ci.get_bytes());
         } else {
             deffs::windows::IWbemServices<4> svc_vtbl;
             size_t vtbl_size = svc_vtbl.sizeof_obj();
-            uint64_t vtbl_addr = we(e)->mem_map(vtbl_size, 0, 7, "emu.COM.IWbemServices.vtbl");
+            uint64_t vtbl_addr = we(e)->mem_map(vtbl_size, std::nullopt, 7, "emu.COM.IWbemServices.vtbl");
             we(e)->mem_write(vtbl_addr, svc_vtbl.get_bytes());
 
             deffs::windows::ComInterface<4> ci;
             ci.vtable = vtbl_addr;
             size_t ci_size = ci.sizeof_obj();
-            ci_addr = we(e)->mem_map(ci_size, 0, 7, "emu.COM.IWbemServices");
+            ci_addr = we(e)->mem_map(ci_size, std::nullopt, 7, "emu.COM.IWbemServices");
             we(e)->mem_write(ci_addr, ci.get_bytes());
         }
 

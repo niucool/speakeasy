@@ -178,7 +178,7 @@ uint64_t Ndis::NdisAllocateGenericObject(void* e, ArgList& a, void* ctx) {
     size_t total = hdr_sz + static_cast<size_t>(size);
     
     std::string tag_str = ndis_tag_to_str(tag);
-    uint64_t ptr = mm(e)->mem_map(total, 0, common::PERM_MEM_RWX,
+    uint64_t ptr = mm(e)->mem_map(total, std::nullopt, common::PERM_MEM_RWX,
                                   "api.struct.NDIS_GENERIC_OBJECT." + tag_str);
     
     // Write DriverObject pointer at offset 0
@@ -196,7 +196,7 @@ uint64_t Ndis::NdisAllocateMemoryWithTag(void* e, ArgList& a, void* ctx) {
     uint32_t tag = static_cast<uint32_t>(a[2]);
     
     std::string tag_str = ndis_tag_to_str(tag);
-    uint64_t ptr = mm(e)->mem_map(length, 0, common::PERM_MEM_RWX,
+    uint64_t ptr = mm(e)->mem_map(length, std::nullopt, common::PERM_MEM_RWX,
                                   "api.ndis_pool." + tag_str);
     
     // Write the pointer
@@ -211,7 +211,7 @@ uint64_t Ndis::NdisAllocateNetBufferListPool(void* e, ArgList& a, void* ctx) {
     // NDIS_HANDLE NdisAllocateNetBufferListPool(...)
     // Allocate a NET_BUFFER_LIST structure
     size_t nbl_size = static_cast<size_t>(ptr_sz(e)) * 8; // rough estimate
-    uint64_t ptr = mm(e)->mem_map(nbl_size, 0, common::PERM_MEM_RWX,
+    uint64_t ptr = mm(e)->mem_map(nbl_size, std::nullopt, common::PERM_MEM_RWX,
                                   "api.struct.NET_BUFFER_LIST");
     return ptr;
 }

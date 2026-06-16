@@ -275,7 +275,7 @@ TEST(MemoryManagerTest, DefaultConstruction) {
 
 TEST(MemoryManagerTest, MemMapAndRead) {
     MemoryManager mm;
-    uint64_t addr = mm.mem_map(4096, 0, PERM_MEM_RWX, "test_map");
+    uint64_t addr = mm.mem_map(4096, std::nullopt, PERM_MEM_RWX, "test_map");
     EXPECT_NE(addr, 0);
 
     auto map = mm.get_address_map(addr);
@@ -287,7 +287,7 @@ TEST(MemoryManagerTest, MemMapAndRead) {
 
 TEST(MemoryManagerTest, MemWriteAndRead) {
     MemoryManager mm;
-    uint64_t addr = mm.mem_map(4096, 0, PERM_MEM_RW, "rw_test");
+    uint64_t addr = mm.mem_map(4096, std::nullopt, PERM_MEM_RW, "rw_test");
 
     std::vector<uint8_t> data = {0x10, 0x20, 0x30, 0x40};
     // mem_write requires a live emulation engine; without one the write
@@ -298,7 +298,7 @@ TEST(MemoryManagerTest, MemWriteAndRead) {
 
 TEST(MemoryManagerTest, MemProtect) {
     MemoryManager mm;
-    uint64_t addr = mm.mem_map(4096, 0, PERM_MEM_RW, "prot_test");
+    uint64_t addr = mm.mem_map(4096, std::nullopt, PERM_MEM_RW, "prot_test");
 
     mm.mem_protect(addr, 4096, PERM_MEM_READ);
     auto map = mm.get_address_map(addr);
@@ -309,7 +309,7 @@ TEST(MemoryManagerTest, MemProtect) {
 
 TEST(MemoryManagerTest, MemFree) {
     MemoryManager mm;
-    uint64_t addr = mm.mem_map(4096, 0, PERM_MEM_RW, "free_test");
+    uint64_t addr = mm.mem_map(4096, std::nullopt, PERM_MEM_RW, "free_test");
     EXPECT_NE(addr, 0);
 
     mm.mem_free(addr);

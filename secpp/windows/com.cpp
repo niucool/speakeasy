@@ -109,7 +109,7 @@ std::shared_ptr<ComInterface> COM::get_interface(void* emu, size_t ptr_size, con
     auto* winemu = static_cast<WindowsEmulator*>(emu);
 
     // Allocate vtable memory
-    uint64_t com_ptr = winemu->mem_map(ci->iface_size, 0, 0x7, "emu.COM." + name);
+    uint64_t com_ptr = winemu->mem_map(ci->iface_size, std::nullopt, 0x7, "emu.COM." + name);
     ci->address = com_ptr;
 
     // Build the vtable

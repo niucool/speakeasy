@@ -981,9 +981,10 @@ uint64_t Kernel32::HeapAlloc(void* emu, ArgList& argv, void* ctx) {
     uint32_t flags = static_cast<uint32_t>(argv[1]);
     size_t sz = static_cast<size_t>(argv[2]);
     (void)hHeap; (void)flags;
-    if (sz == 0) sz = 1;
+    //if (sz == 0) sz = 1;
     uint64_t buf = we32(emu)->heap_alloc(sz, "HeapAlloc");
-    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    if(buf)
+        w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return buf;
 }
 
@@ -1004,7 +1005,7 @@ uint64_t Kernel32::HeapCreate(void* emu, ArgList& argv, void* ctx) {
     size_t initial_sz = static_cast<size_t>(argv[1]);
     size_t max_sz = static_cast<size_t>(argv[2]);
     (void)options; (void)initial_sz; (void)max_sz;
-    uint64_t heap = mm(emu)->mem_map(0x10000, 0, 4, "heap");
+    uint64_t heap = mm(emu)->mem_map(0x10000, std::nullopt, 4, "heap");
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return heap;
 }
@@ -1021,7 +1022,7 @@ uint64_t Kernel32::HeapDestroy(void* emu, ArgList& argv, void* ctx) {
 uint64_t Kernel32::GetProcessHeap(void* emu, ArgList& argv, void* ctx) {
     static thread_local uint64_t process_heap = 0;
     if (process_heap == 0) {
-        process_heap = mm(emu)->mem_map(0x10000, 0, 4, "process_heap");
+        process_heap = mm(emu)->mem_map(0x10000, std::nullopt, 4, "process_heap");
     }
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return process_heap;
@@ -2142,7 +2143,7 @@ uint64_t Kernel32::WideCharToMultiByte(void* emu, ArgList& argv, void* ctx) {
 
 uint64_t Kernel32::GetCommandLineA(void* emu, ArgList& argv, void* ctx) {
     std::string cmdline = "emulated.exe";
-    uint64_t addr = mm(emu)->mem_map(cmdline.size() + 1, 0, 4, "api.cmdline");
+    uint64_t addr = mm(emu)->mem_map(cmdline.size() + 1, std::nullopt, 4, "api.cmdline");
     cmdline.push_back('\0');
     be(emu)->write_mem_string(cmdline, addr, 1);
     return addr;
@@ -2151,7 +2152,7 @@ uint64_t Kernel32::GetCommandLineA(void* emu, ArgList& argv, void* ctx) {
 uint64_t Kernel32::GetCommandLineW(void* emu, ArgList& argv, void* ctx) {
     std::wstring wcmd = L"emulated.exe";
     size_t bytes = wcmd.size() * 2 + 2;
-    uint64_t addr = mm(emu)->mem_map(bytes, 0, 4, "api.cmdlineW");
+    uint64_t addr = mm(emu)->mem_map(bytes, std::nullopt, 4, "api.cmdlineW");
     std::vector<uint8_t> data(bytes, 0);
     for (size_t i = 0; i < wcmd.size(); i++) {
         write_le(data, i * 2, static_cast<uint16_t>(wcmd[i]), 2);
@@ -2545,7 +2546,7 @@ uint64_t Kernel32::CreateFileMappingW(void* e, ArgList& a, void* c) {
     uint64_t name_ptr = a[2];
     std::string name;
     if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
-    uint64_t h = we(e)->mem_map(static_cast<size_t>(a[1]), 0, 4, "kernel32.filemapping." + name);
+    uint64_t h = we(e)->mem_map(static_cast<size_t>(a[1]), std::nullopt, 4, "kernel32.filemapping." + name);
     return h ? h : K32_INVALID_HANDLE;
 }
 uint64_t Kernel32::GetDriveTypeW(void* e, ArgList& a, void* c) {
@@ -3202,7 +3203,7 @@ uint64_t Kernel32::GetEnvironmentStringsA(void* e, ArgList& a, void* c) {
         out += kv.second;
     }
 
-    uint64_t env_ptr = mm(e)->mem_map(out.size() + 1, 0, 3, "api.environment.GetEnvironmentStringsA");
+    uint64_t env_ptr = mm(e)->mem_map(out.size() + 1, std::nullopt, 3, "api.environment.GetEnvironmentStringsA");
     if (!env_ptr) return 0;
 
     std::vector<uint8_t> data(out.begin(), out.end());
@@ -3223,7 +3224,7 @@ uint64_t Kernel32::GetEnvironmentStringsW(void* e, ArgList& a, void* c) {
     }
 
     // Allocate (len+1)*2 bytes for UTF-16LE encoded block
-    uint64_t env_ptr = mm(e)->mem_map((out.size() + 1) * 2, 0, 3, "api.environment.GetEnvironmentStringsW");
+    uint64_t env_ptr = mm(e)->mem_map((out.size() + 1) * 2, std::nullopt, 3, "api.environment.GetEnvironmentStringsW");
     if (!env_ptr) return 0;
 
     // Convert to UTF-16LE
@@ -3971,10 +3972,10 @@ uint64_t Kernel32::VirtualAllocExNuma(void* e, ArgList& a, void* c) {
     uint64_t sz = a[1]; uint32_t flAlloc = static_cast<uint32_t>(a[2]); uint32_t flProt = static_cast<uint32_t>(a[3]);
     (void)flProt;
     if (flAlloc & 0x2000) { // MEM_RESERVE
-        we(e)->mem_map(static_cast<size_t>(sz), 0, 4, "kernel32.virtual_alloc_ex_numa");
+        we(e)->mem_map(static_cast<size_t>(sz), std::nullopt, 4, "kernel32.virtual_alloc_ex_numa");
         return 0x10000000;
     }
-    return we(e)->mem_map(static_cast<size_t>(sz), 0, 7, "kernel32.virtual_alloc_ex_numa");
+    return we(e)->mem_map(static_cast<size_t>(sz), std::nullopt, 7, "kernel32.virtual_alloc_ex_numa");
 }
 uint64_t Kernel32::WTSGetActiveConsoleSessionId(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // session 0

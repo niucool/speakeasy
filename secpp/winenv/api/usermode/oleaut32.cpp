@@ -48,7 +48,7 @@ uint64_t Oleaut32::SysAllocString(void* e, ArgList& a, void* ctx) {
 
     uint32_t bstr_len = static_cast<uint32_t>(wide_str.size()) - 2;
     size_t total_size = 4 + wide_str.size();
-    uint64_t bstr = static_cast<MemoryManager*>(we(e))->mem_map(total_size, 0, PERM_MEM_RWX, "oleaut32.SysAllocString");
+    uint64_t bstr = static_cast<MemoryManager*>(we(e))->mem_map(total_size, std::nullopt, PERM_MEM_RWX, "oleaut32.SysAllocString");
 
     std::vector<uint8_t> len_bytes(4);
     write_le(len_bytes, 0, bstr_len, 4);
@@ -63,7 +63,7 @@ uint64_t Oleaut32::SysAllocStringLen(void* e, ArgList& a, void* ctx) {
 
     size_t ws_len = static_cast<size_t>(ui + 1) * 2;
     size_t total_size = 4 + ws_len;
-    uint64_t bstr = static_cast<MemoryManager*>(we(e))->mem_map(total_size, 0, PERM_MEM_RWX, "oleaut32.SysAllocStringLen");
+    uint64_t bstr = static_cast<MemoryManager*>(we(e))->mem_map(total_size, std::nullopt, PERM_MEM_RWX, "oleaut32.SysAllocStringLen");
 
     uint32_t bstr_len = static_cast<uint32_t>(ui * 2);
     std::vector<uint8_t> len_bytes(4);

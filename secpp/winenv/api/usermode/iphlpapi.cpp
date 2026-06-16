@@ -548,7 +548,7 @@ static uint64_t alloc_and_get_table_impl(void* e, const ArgList& a, size_t row_s
     if (!ppTable) return IPH_INVALID_PARAM;
 
     size_t struct_size = 4 + row_size;
-    uint64_t table_addr = we(e)->mem_map(struct_size, 0, PERM_MEM_READ | PERM_MEM_WRITE, "api.iphlpapi.table");
+    uint64_t table_addr = we(e)->mem_map(struct_size, std::nullopt, PERM_MEM_READ | PERM_MEM_WRITE, "api.iphlpapi.table");
 
     std::vector<uint8_t> buf(struct_size, 0);
     write_le(buf, 0, 1, 4);

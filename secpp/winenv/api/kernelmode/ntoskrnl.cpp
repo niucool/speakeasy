@@ -455,7 +455,7 @@ uint64_t Ntoskrnl::RtlAnsiStringToUnicodeString(void* e, ArgList& a, void* ctx) 
     uint16_t size = static_cast<uint16_t>(ansi.length() * 2); // UTF-16 size
     
     if (do_alloc) {
-        uint64_t buf = mm(e)->mem_map(static_cast<size_t>(size), 0, common::PERM_MEM_RWX,
+        uint64_t buf = mm(e)->mem_map(static_cast<size_t>(size), std::nullopt, common::PERM_MEM_RWX,
                                       "api.struct.STRING." + ansi);
         auto wdata = std::vector<uint8_t>(static_cast<size_t>(size));
         for (size_t i = 0; i < ansi.length(); i++) {
@@ -595,7 +595,7 @@ uint64_t Ntoskrnl::ExAllocatePoolWithTag(void* e, ArgList& a, void* ctx) {
     }
     
     (void)pool_type;
-    return mm(e)->mem_map(static_cast<size_t>(num_bytes), 0, common::PERM_MEM_RWX,
+    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, common::PERM_MEM_RWX,
                           "api.pool." + tag_str);
 }
 
@@ -610,7 +610,7 @@ uint64_t Ntoskrnl::ExAllocatePool(void* e, ArgList& a, void* ctx) {
     // PVOID ExAllocatePool(POOL_TYPE PoolType, SIZE_T NumberOfBytes)
     uint64_t num_bytes = a[1];
     if (num_bytes == 0) num_bytes = 1;
-    return mm(e)->mem_map(static_cast<size_t>(num_bytes), 0, common::PERM_MEM_RWX, "api.pool");
+    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, common::PERM_MEM_RWX, "api.pool");
 }
 
 uint64_t Ntoskrnl::ExFreePool(void* e, ArgList& a, void* ctx) {
@@ -624,7 +624,7 @@ uint64_t Ntoskrnl::FsRtlAllocatePool(void* e, ArgList& a, void* ctx) {
     // PVOID FsRtlAllocatePool(POOL_TYPE PoolType, SIZE_T NumberOfBytes)
     uint64_t num_bytes = a[1];
     if (num_bytes == 0) num_bytes = 1;
-    return mm(e)->mem_map(static_cast<size_t>(num_bytes), 0, common::PERM_MEM_RWX, "api.fsrtl.pool");
+    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, common::PERM_MEM_RWX, "api.fsrtl.pool");
 }
 
 uint64_t Ntoskrnl::RtlAllocateHeap(void* e, ArgList& a, void* ctx) {
@@ -647,7 +647,7 @@ uint64_t Ntoskrnl::MmAllocateContiguousMemory(void* e, ArgList& a, void* ctx) {
     // PVOID MmAllocateContiguousMemory(SIZE_T NumberOfBytes, PHYSICAL_ADDRESS HighestAcceptableAddress)
     uint64_t num_bytes = a[0];
     if (num_bytes == 0) num_bytes = 1;
-    return mm(e)->mem_map(static_cast<size_t>(num_bytes), 0, common::PERM_MEM_RWX,
+    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, common::PERM_MEM_RWX,
                           "api.contiguous");
 }
 
@@ -673,7 +673,7 @@ uint64_t Ntoskrnl::MmMapLockedPagesSpecifyCache(void* e, ArgList& a, void* ctx) 
     uint64_t byte_count = (ptr_sz(e) == 8) ? static_cast<uint64_t>(read_le(raw, 24, 4))
                                             : static_cast<uint64_t>(read_le(raw, 16, 4));
     if (byte_count == 0) byte_count = 0x1000;
-    return mm(e)->mem_map(static_cast<size_t>(byte_count), 0, common::PERM_MEM_RWX,
+    return mm(e)->mem_map(static_cast<size_t>(byte_count), std::nullopt, common::PERM_MEM_RWX,
                           "api.mdl.map");
 }
 
@@ -958,7 +958,7 @@ uint64_t Ntoskrnl::IoCreateDevice(void* e, ArgList& a, void* ctx) {
     
     // Allocate a DEVICE_OBJECT
     size_t dev_obj_size = 80; // rough DEVICE_OBJECT size
-    uint64_t dev_obj = mm(e)->mem_map(dev_obj_size, 0, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
+    uint64_t dev_obj = mm(e)->mem_map(dev_obj_size, std::nullopt, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
     
     if (name) {
         auto dev_name = read_unicode_string_from_mem(e, name);
@@ -1027,7 +1027,7 @@ uint64_t Ntoskrnl::IoCreateSynchronizationEvent(void* e, ArgList& a, void* ctx) 
 uint64_t Ntoskrnl::IoAllocateIrp(void* e, ArgList& a, void* ctx) {
     // PIRP IoAllocateIrp(CCHAR StackSize, BOOLEAN ChargeQuota)
     size_t irp_size = 0x100;
-    return mm(e)->mem_map(irp_size, 0, common::PERM_MEM_RWX, "api.irp");
+    return mm(e)->mem_map(irp_size, std::nullopt, common::PERM_MEM_RWX, "api.irp");
 }
 
 uint64_t Ntoskrnl::IoFreeIrp(void* e, ArgList& a, void* ctx) {
@@ -1045,7 +1045,7 @@ uint64_t Ntoskrnl::IoReuseIrp(void* e, ArgList& a, void* ctx) {
 uint64_t Ntoskrnl::IoAllocateMdl(void* e, ArgList& a, void* ctx) {
     // PMDL IoAllocateMdl(PVOID VirtualAddress, ULONG Length, BOOLEAN SecondaryBuffer, BOOLEAN ChargeQuota, PIRP Irp)
     size_t mdl_size = static_cast<size_t>(ptr_sz(e)) * 8;
-    return mm(e)->mem_map(mdl_size, 0, common::PERM_MEM_RWX, "api.mdl");
+    return mm(e)->mem_map(mdl_size, std::nullopt, common::PERM_MEM_RWX, "api.mdl");
 }
 
 uint64_t Ntoskrnl::IoFreeMdl(void* e, ArgList& a, void* ctx) {
@@ -1412,7 +1412,7 @@ uint64_t Ntoskrnl::ZwAllocateVirtualMemory(void* e, ArgList& a, void* ctx) {
         size = read_le(raw, 0, ptr_sz(e));
     }
     
-    uint64_t addr = mm(e)->mem_map(static_cast<size_t>(size), 0, common::PERM_MEM_RWX,
+    uint64_t addr = mm(e)->mem_map(static_cast<size_t>(size), std::nullopt, common::PERM_MEM_RWX,
                                    "api.virtual");
     
     if (paddr) {

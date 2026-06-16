@@ -821,7 +821,7 @@ uint64_t Msvcrt::fopen(void* e, ArgList& a, void* ctx) {
     if (!hfile) return 0;
     int fd = *reinterpret_cast<int*>(hfile);
     int ptr_sz = msvc_ptr_size(e);
-    uint64_t stream = we(e)->mem_map(static_cast<size_t>(ptr_sz), 0, 4, "msvcrt.fopen");
+    uint64_t stream = we(e)->mem_map(static_cast<size_t>(ptr_sz), std::nullopt, 4, "msvcrt.fopen");
     std::vector<uint8_t> fdbuf(static_cast<size_t>(ptr_sz), 0);
     write_le(fdbuf, 0, static_cast<uint64_t>(fd), static_cast<size_t>(ptr_sz));
     we(e)->mem_write(stream, fdbuf);
@@ -842,7 +842,7 @@ uint64_t Msvcrt::_wfopen(void* e, ArgList& a, void* ctx) {
     if (!hfile) return 0;
     int fd = *reinterpret_cast<int*>(hfile);
     int ptr_sz = msvc_ptr_size(e);
-    uint64_t stream = we(e)->mem_map(static_cast<size_t>(ptr_sz), 0, 4, "msvcrt._wfopen");
+    uint64_t stream = we(e)->mem_map(static_cast<size_t>(ptr_sz), std::nullopt, 4, "msvcrt._wfopen");
     std::vector<uint8_t> fdbuf(static_cast<size_t>(ptr_sz), 0);
     write_le(fdbuf, 0, static_cast<uint64_t>(fd), static_cast<size_t>(ptr_sz));
     we(e)->mem_write(stream, fdbuf);
@@ -1208,7 +1208,7 @@ uint64_t Msvcrt::__p__acmdln(void* e, ArgList& a, void* ctx) {
     auto argv_list = we(e)->get_env(); // not ideal; use get_argv if available
     (void)argv_list;
     // Simplified: alloc a small block and return pointer to it
-    uint64_t cmdln = we(e)->mem_map(static_cast<size_t>(ptr_sz + 8), 0, 4, "api.msvcrt._acmdln");
+    uint64_t cmdln = we(e)->mem_map(static_cast<size_t>(ptr_sz + 8), std::nullopt, 4, "api.msvcrt._acmdln");
     return cmdln;
 }
 
@@ -1288,14 +1288,14 @@ uint64_t Msvcrt::__getmainargs(void* e, ArgList& a, void* ctx) {
     }
     if (_Argv) {
         // Write a basic argv pointer
-        uint64_t argmem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), 0, 4, "api.argv");
+        uint64_t argmem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), std::nullopt, 4, "api.argv");
         std::vector<uint8_t> argvptr(static_cast<size_t>(ptr_sz), 0);
         write_le(argvptr, 0, argmem, static_cast<size_t>(ptr_sz));
         we(e)->mem_write(_Argv, argvptr);
     }
     if (_Env) {
         // TODO: envmem allocation not yet wired  environment block write incomplete
-        uint64_t envmem = we(e)->mem_map(static_cast<size_t>(ptr_sz), 0, 4, "api.envp");
+        uint64_t envmem = we(e)->mem_map(static_cast<size_t>(ptr_sz), std::nullopt, 4, "api.envp");
         (void)envmem;
         std::vector<uint8_t> envptr(static_cast<size_t>(ptr_sz), 0);
         we(e)->mem_write(_Env, envptr);
@@ -1344,7 +1344,7 @@ uint64_t Msvcrt::__p___wargv(void* e, ArgList& a, void* ctx) {
     size_t total = array_size;
     for (auto& enc : argv_encoded) total += enc.size();
 
-    uint64_t arg_mem = we(e)->mem_map(total, 0, 4, "api.argv");
+    uint64_t arg_mem = we(e)->mem_map(total, std::nullopt, 4, "api.argv");
     uint64_t pptr = arg_mem + static_cast<uint64_t>(ptr_sz);
     std::vector<uint8_t> pptr_buf(static_cast<size_t>(ptr_sz), 0);
     write_le(pptr_buf, 0, pptr, static_cast<size_t>(ptr_sz));
@@ -1389,7 +1389,7 @@ uint64_t Msvcrt::__p___argv(void* e, ArgList& a, void* ctx) {
     size_t total = array_size;
     for (auto& enc : argv_encoded) total += enc.size();
 
-    uint64_t arg_mem = we(e)->mem_map(total, 0, 4, "api.argv");
+    uint64_t arg_mem = we(e)->mem_map(total, std::nullopt, 4, "api.argv");
     uint64_t pptr = arg_mem + static_cast<uint64_t>(ptr_sz);
     std::vector<uint8_t> pptr_buf(static_cast<size_t>(ptr_sz), 0);
     write_le(pptr_buf, 0, pptr, static_cast<size_t>(ptr_sz));
@@ -1423,7 +1423,7 @@ uint64_t Msvcrt::__p___argc(void* e, ArgList& a, void* ctx) {
     auto argv = w32->get_argv();
     uint32_t argc = static_cast<uint32_t>(argv.size());
 
-    uint64_t mem = we(e)->mem_map(4, 0, 4, "api.argc");
+    uint64_t mem = we(e)->mem_map(4, std::nullopt, 4, "api.argc");
     std::vector<uint8_t> buf(4, 0);
     write_le(buf, 0, argc, 4);
     we(e)->mem_write(mem, buf);
@@ -1433,7 +1433,7 @@ uint64_t Msvcrt::__p___argc(void* e, ArgList& a, void* ctx) {
 uint64_t Msvcrt::__p___initenv(void* e, ArgList& a, void* ctx) {
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
-    uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz), 0, 4, "api.initenv");
+    uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz), std::nullopt, 4, "api.initenv");
     std::vector<uint8_t> zero(static_cast<size_t>(ptr_sz), 0);
     we(e)->mem_write(mem, zero); // null env pointer
     return mem;
@@ -1443,7 +1443,7 @@ uint64_t Msvcrt::_get_initial_narrow_environment(void* e, ArgList& a, void* ctx)
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
     // envp = array of ptr_sz * 2 (first ptr = env string, second = NULL terminator)
-    uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), 0, 4, "api.envp");
+    uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), std::nullopt, 4, "api.envp");
     std::vector<uint8_t> zero(static_cast<size_t>(ptr_sz * 2), 0);
     we(e)->mem_write(mem, zero); // empty environment
     return mem;
@@ -1452,7 +1452,7 @@ uint64_t Msvcrt::_get_initial_narrow_environment(void* e, ArgList& a, void* ctx)
 uint64_t Msvcrt::_get_initial_wide_environment(void* e, ArgList& a, void* ctx) {
     (void)a;
     int ptr_sz = msvc_ptr_size(e);
-    uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), 0, 4, "api.envp");
+    uint64_t mem = we(e)->mem_map(static_cast<size_t>(ptr_sz * 2), std::nullopt, 4, "api.envp");
     return mem;
 }
 
@@ -1472,7 +1472,7 @@ uint64_t Msvcrt::_set_app_type(void* e, ArgList& a, void* ctx) {
 
 uint64_t Msvcrt::__p__fmode(void* e, ArgList& a, void* ctx) {
     (void)a;
-    uint64_t ptr = we(e)->mem_map(4, 0, 4, "api.fmode");
+    uint64_t ptr = we(e)->mem_map(4, std::nullopt, 4, "api.fmode");
     std::vector<uint8_t> buf(4, 0);
     write_le(buf, 0, 0x4000, 4); // _O_TEXT
     we(e)->mem_write(ptr, buf);
@@ -1481,7 +1481,7 @@ uint64_t Msvcrt::__p__fmode(void* e, ArgList& a, void* ctx) {
 
 uint64_t Msvcrt::__p__commode(void* e, ArgList& a, void* ctx) {
     (void)a;
-    uint64_t ptr = we(e)->mem_map(4, 0, 4, "api.commode");
+    uint64_t ptr = we(e)->mem_map(4, std::nullopt, 4, "api.commode");
     std::vector<uint8_t> buf(4, 0);
     write_le(buf, 0, 0x4000, 4); // _IOCOMMIT
     we(e)->mem_write(ptr, buf);
@@ -1635,7 +1635,7 @@ uint64_t Msvcrt::_adjust_fdiv(void* e, ArgList& a, void* ctx) {
 uint64_t Msvcrt::_errno(void* e, ArgList& a, void* ctx) {
     (void)a;
     if (!msvc_errno_ptr) {
-        msvc_errno_ptr = we(e)->mem_map(4, 0, 4, "api.msvcrt._errno");
+        msvc_errno_ptr = we(e)->mem_map(4, std::nullopt, 4, "api.msvcrt._errno");
         std::vector<uint8_t> buf(4, 0);
         write_le(buf, 0, 12, 4); // _VAL = 0x0C
         we(e)->mem_write(msvc_errno_ptr, buf);

@@ -178,7 +178,7 @@ TEST(ObjmanPortingTest, ThreadContextPcModification) {
 
     // Allocate a second context for testing and change PC
     size_t ctx_size = (emu.get_arch() == speakeasy::arch::ARCH_AMD64) ? 1232 : 716;
-    uint64_t new_ctx_addr = emu.mem_map(ctx_size, 0, PERM_MEM_RW, "test.CONTEXT");
+    uint64_t new_ctx_addr = emu.mem_map(ctx_size, std::nullopt, PERM_MEM_RW, "test.CONTEXT");
     std::vector<uint8_t> new_ctx_buf(ctx_size, 0xff);
 
     // Write a different RIP/EIP value into the new context buffer
@@ -214,7 +214,7 @@ TEST(ObjmanPortingTest, TebReadbackIntegration) {
     auto thread = std::make_shared<Thread>(&emu, 0x20000, 0x2000);
     
     // Initialize TEB
-    uint64_t teb_addr = emu.mem_map(4096, 0, PERM_MEM_RW, "test.TEB");
+    uint64_t teb_addr = emu.mem_map(4096, std::nullopt, PERM_MEM_RW, "test.TEB");
     thread->init_teb(static_cast<int>(teb_addr), 0x30000);
 
     // Verify initial values
@@ -528,7 +528,7 @@ TEST(ApiRegressionTest, ReadMemStringWideRoundTrip) {
     emu.setup();
 
     std::string original = "Hello World!";
-    uint64_t addr = emu.mem_map(256, 0, PERM_MEM_RW, "test.rw");
+    uint64_t addr = emu.mem_map(256, std::nullopt, PERM_MEM_RW, "test.rw");
     be(&emu)->write_mem_string(original, addr, 2);
     std::string decoded = be(&emu)->read_mem_string(addr, 2);
     EXPECT_EQ(original, decoded);
@@ -540,7 +540,7 @@ TEST(ApiRegressionTest, ReadMemStringUnicodeRoundTrip) {
     emu.setup();
 
     std::string unicode_str = "H\xe2\x82\xacllo W\xc3\xb6rld \xe2\x80\x94 test"; // Hllo Wrld  test
-    uint64_t addr = emu.mem_map(256, 0, PERM_MEM_RW, "test.uni");
+    uint64_t addr = emu.mem_map(256, std::nullopt, PERM_MEM_RW, "test.uni");
     be(&emu)->write_mem_string(unicode_str, addr, 2);
     std::string decoded = be(&emu)->read_mem_string(addr, 2);
     EXPECT_EQ(unicode_str, decoded);

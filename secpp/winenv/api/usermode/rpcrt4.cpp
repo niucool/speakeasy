@@ -80,7 +80,7 @@ uint64_t Rpcrt4::UuidToStringA(void* e, ArgList& a, void* ctx) {
     // Allocate memory for the result string and write pointer
     int ps = we(e)->get_ptr_size();
     size_t str_size = result.size() + 1;  // include null terminator
-    uint64_t str_addr = we(e)->mem_map(str_size, 0, 3, "api.rpcrt4.UuidString");
+    uint64_t str_addr = we(e)->mem_map(str_size, std::nullopt, 3, "api.rpcrt4.UuidString");
     be(e)->write_mem_string(result, str_addr, 1);
 
     std::vector<uint8_t> ptr_buf(static_cast<size_t>(ps), 0);

@@ -90,7 +90,7 @@ uint64_t Ole32::CoCreateInstance(void* e, ArgList& a, void* ctx) {
 
     if (riid && ppv) {
         size_t psz = static_cast<size_t>(ptr_sz(e));
-        uint64_t pv = static_cast<MemoryManager*>(we(e))->mem_map(psz, 0, PERM_MEM_RWX, "emu.COM.pv");
+        uint64_t pv = static_cast<MemoryManager*>(we(e))->mem_map(psz, std::nullopt, PERM_MEM_RWX, "emu.COM.pv");
         std::vector<uint8_t> addr_bytes(psz);
         write_le(addr_bytes, 0, pv, psz);
         be(e)->mem_write(ppv, addr_bytes);
@@ -106,7 +106,7 @@ uint64_t Ole32::CoGetClassObject(void* e, ArgList& a, void* ctx) {
 
     if (ppv) {
         size_t psz = static_cast<size_t>(ptr_sz(e));
-        uint64_t pv = static_cast<MemoryManager*>(we(e))->mem_map(psz, 0, PERM_MEM_RWX, "emu.COM.pv");
+        uint64_t pv = static_cast<MemoryManager*>(we(e))->mem_map(psz, std::nullopt, PERM_MEM_RWX, "emu.COM.pv");
         std::vector<uint8_t> addr_bytes(psz);
         write_le(addr_bytes, 0, pv, psz);
         be(e)->mem_write(ppv, addr_bytes);
@@ -117,7 +117,7 @@ uint64_t Ole32::CoGetClassObject(void* e, ArgList& a, void* ctx) {
 uint64_t Ole32::CoTaskMemAlloc(void* e, ArgList& a, void* ctx) {
     size_t cb = static_cast<size_t>(a[0]);
     if (cb == 0) cb = 1;
-    return static_cast<MemoryManager*>(we(e))->mem_map(cb, 0, PERM_MEM_RWX, "ole32.CoTaskMemAlloc");
+    return static_cast<MemoryManager*>(we(e))->mem_map(cb, std::nullopt, PERM_MEM_RWX, "ole32.CoTaskMemAlloc");
 }
 
 uint64_t Ole32::CoTaskMemFree(void* e, ArgList& a, void* ctx) {
@@ -198,7 +198,7 @@ uint64_t Ole32::CreateBindCtx(void* e, ArgList& a, void* ctx) {
 
     if (ppbc) {
         size_t psz = static_cast<size_t>(ptr_sz(e));
-        uint64_t pv = static_cast<MemoryManager*>(we(e))->mem_map(psz, 0, PERM_MEM_RWX, "ole32.IBindCtx");
+        uint64_t pv = static_cast<MemoryManager*>(we(e))->mem_map(psz, std::nullopt, PERM_MEM_RWX, "ole32.IBindCtx");
         std::vector<uint8_t> addr_bytes(psz);
         write_le(addr_bytes, 0, pv, psz);
         be(e)->mem_write(ppbc, addr_bytes);

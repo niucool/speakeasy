@@ -72,7 +72,7 @@ uint64_t Wdfldr::WdfVersionBind(void* e, ArgList& a, void* ctx) {
         // Read WDF_BIND_INFO: at offset 0 is FunctionTable pointer, then Version
         size_t psz = static_cast<size_t>(ptr_sz(e));
         size_t func_tbl_size = psz * 64; // enough for WDFFUNCTIONS table
-        uint64_t func_tbl = mm(e)->mem_map(func_tbl_size, 0, common::PERM_MEM_RWX,
+        uint64_t func_tbl = mm(e)->mem_map(func_tbl_size, std::nullopt, common::PERM_MEM_RWX,
                                            "api.struct.WDFFUNCTIONS");
         
         auto data = std::vector<uint8_t>(psz);
@@ -82,7 +82,7 @@ uint64_t Wdfldr::WdfVersionBind(void* e, ArgList& a, void* ctx) {
     
     if (comp_globals) {
         size_t psz = static_cast<size_t>(ptr_sz(e));
-        uint64_t globals = mm(e)->mem_map(psz * 8, 0, common::PERM_MEM_RWX,
+        uint64_t globals = mm(e)->mem_map(psz * 8, std::nullopt, common::PERM_MEM_RWX,
                                           "api.struct.WDF_COMPONENT_GLOBALS");
         auto data = std::vector<uint8_t>(psz);
         write_le(data, 0, globals, psz);
@@ -129,7 +129,7 @@ uint64_t Wdfldr::WdfDeviceCreate(void* e, ArgList& a, void* ctx) {
         mm(e)->mem_write(device_out, data);
         
         // Allocate a DEVICE_OBJECT structure
-        mm(e)->mem_map(psz * 16, 0, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
+        mm(e)->mem_map(psz * 16, std::nullopt, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
     }
     return 0; // STATUS_SUCCESS
 }
@@ -138,7 +138,7 @@ uint64_t Wdfldr::WdfObjectGetTypedContextWorker(void* e, ArgList& a, void* ctx) 
     // PVOID WdfObjectGetTypedContextWorker(Handle, TypeInfo)
     size_t psz = static_cast<size_t>(ptr_sz(e));
     (void)psz;
-    uint64_t mapped_ctx = mm(e)->mem_map(psz * 8, 0, common::PERM_MEM_RWX,
+    uint64_t mapped_ctx = mm(e)->mem_map(psz * 8, std::nullopt, common::PERM_MEM_RWX,
                                   "api.struct.WDF_TYPED_CONTEXT_WORKER");
     return mapped_ctx;
 }
@@ -193,14 +193,14 @@ uint64_t Wdfldr::WdfDeviceWdmGetAttachedDevice(void* e, ArgList& a, void* ctx) {
     // Return a dummy device object
     size_t psz = static_cast<size_t>(ptr_sz(e));
     (void)psz;
-    return mm(e)->mem_map(psz * 16, 0, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
+    return mm(e)->mem_map(psz * 16, std::nullopt, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
 }
 
 uint64_t Wdfldr::WdfDeviceWdmGetDeviceObject(void* e, ArgList& a, void* ctx) {
     // Return a dummy device object
     size_t psz = static_cast<size_t>(ptr_sz(e));
     (void)psz;
-    return mm(e)->mem_map(psz * 16, 0, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
+    return mm(e)->mem_map(psz * 16, std::nullopt, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
 }
 
 uint64_t Wdfldr::WdfUsbTargetDeviceCreateWithParameters(void* e, ArgList& a, void* ctx) {
@@ -243,7 +243,7 @@ uint64_t Wdfldr::WdfMemoryCreate(void* e, ArgList& a, void* ctx) {
     
     if (buf_size == 0) buf_size = 1;
     
-    uint64_t buf = mm(e)->mem_map(buf_size, 0, common::PERM_MEM_RWX, "wdf.memory.buffer");
+    uint64_t buf = mm(e)->mem_map(buf_size, std::nullopt, common::PERM_MEM_RWX, "wdf.memory.buffer");
     
     if (mem_out) {
         uint32_t handle = wdf_new_handle();
