@@ -5,6 +5,38 @@
 
 ## [Unreleased]
 
+### 2026-06-14 — kernel32 & ntoskrnl API porting, SEH overhaul, struct fixes
+
+#### Added
+- **ntoskrnl printf-family functions**: `DbgPrint`, `DbgPrintEx`, `_vsnprintf`, `vsprintf_s`, `sprintf`, `_snprintf`, `_snwprintf` now fully implemented with variadic format-arg counting, `do_str_format`-style formatting, and output-param writing matching Python behavior. Added `ntos_va_arg_count` + `ntos_do_str_format` static helpers.
+
+#### Fixed
+- **kernel32 API fixes** (9 APIs re-implemented matching Python):
+  - `HeapCreate`: now calls `heap_alloc(20, "HeapCreate")` (was hardcoded 0x10000 bytes)
+  - `GetProcessHeap`: uses `heaps` vector (was thread_local single heap)
+  - `VirtualAlloc`: checks `get_address_map()` for committed regions (was blind remap)
+  - `VirtualAllocEx`: resolves process object handle (was ignoring hProcess)
+  - `VirtualAllocExNuma`: delegates to `VirtualAllocEx` matching Python (was wrong standalone impl)
+  - `GetCommandLineA/W`: reads from `proc->get_command_line()` with caching (was hardcoded "emulated.exe")
+  - `CreateFileMappingA/W`: reads name strings via `read_mem_string`, calls `file_create_mapping` (was ignoring name)
+  
+- **PEB_POD<4> size fix**: Added `pad_align_cst` field between `NtGlobalFlag` and `CriticalSectionTimeout` for 8-byte alignment matching Python ctypes. C++ sizeof now 1120 (exact match with Python PEB<4>). Resolved 4 WDM kernel-mode test failures.
+
+- **SEH dispatch overhaul**:
+  - `_except_handler4_common`: no longer calls `on_run_complete()`/`stop()`; returns 0 like Python, letting CRT SEH chain handle exception dispatch. Added x64-aware field offsets for scope table/record walking. Fixed `SehTest.SehDispatchDisabled` (was 60s timeout).
+  - `_dispatch_seh_x86`: full port — creates EXCEPTION_RECORD + POINTERS in emulated memory, writes `ms_exc.exc_ptr` before exception_list, sets stack args via `set_func_args(SEH_RETURN_ADDR)`, clobbers EBX=0xFFFFFFFF, jumps to handler via `set_pc`. Added disassembly logging + profiler exception event recording.
+  - `dispatch_seh`: unhandled exception filter fallback un-commented (was `#if 0`-disabled), now creates EXCEPTION_POINTERS + calls `SetUnhandledExceptionFilter` handler.
+
+- **IsBadReadPtr/IsBadWritePtr/IsBadStringPtr**: replaced try/catch with `is_address_valid()` calls matching Python. Split `IsBadStringPtr` into A/W variants with proper char-width address range checks.
+
+- **GlobalFlags/GlobalSize/GlobalHandle**: now iterate `get_mem_maps()` to look up flags/size/handle matching Python (were hardcoded constants).
+
+#### Tests
+- **282 → 284 passing** (+2: `SehTest.SehDispatchDisabled`, WDM kernel-mode tests)
+- **Failing: 7 → 2** (`SehTest.SehDispatchEnabled`, `FileAccessTest.FileAccessEmulation/0`)
+- Added `WinSizeOffsets.PEB_x86_TotalSize` test — verifies PEB_POD<4> sizeof matches Python 1120
+- Added `WinSizeOffsets.NT_TIB`, `CLIENT_ID`, `PEB_LDR_DATA`, `LDR_DATA_TABLE_ENTRY`, `RTL_USER_PROCESS_PARAMETERS`, `UNICODE_STRING`, `LIST_ENTRY` offset tests
+
 ### 2026-06-13
 
 #### Fixed

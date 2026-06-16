@@ -59,9 +59,12 @@ static inline int ptr_sz(void* e) { return we(e)->get_ptr_size(); }
 static constexpr uint64_t KERN_STATUS_SUCCESS                  = 0x00000000;
 static constexpr uint64_t KERN_STATUS_INFO_LENGTH_MISMATCH    = 0xC0000004;
 static constexpr uint64_t KERN_STATUS_INVALID_PARAMETER       = 0xC000000D;
+static constexpr uint64_t STATUS_OBJECT_NAME_NOT_FOUND   = 0xC0000034;
 static constexpr uint64_t KERN_STATUS_OBJECT_NAME_NOT_FOUND   = 0xC0000034;
 static constexpr uint64_t KERN_STATUS_UNSUCCESSFUL            = 0xC0000001;
 static constexpr uint64_t KERN_STATUS_NOT_FOUND               = 0xC0000135;
+static constexpr uint64_t KERN_STATUS_INVALID_HANDLE          = 0xC0000008;
+static constexpr uint64_t KERN_STATUS_INVALID_DEVICE_REQUEST  = 0xC0000010;
 
 // SYSTEM_INFORMATION_CLASS values
 static constexpr int KERN_SYSTEM_MODULE_INFORMATION           = 0x0B;
@@ -316,45 +319,105 @@ uint64_t Ntoskrnl::ObSetSecurityObjectByPointer(void* e, ArgList& a, void* ctx) 
     return KERN_STATUS_SUCCESS;
 }
 
-//  Debug/Print 
+//  Debug/Print
+
+// Helper: count format specifiers (%s, %d, etc.) in a string
+static int ntos_va_arg_count(const std::string& fmt) {
+    int count = 0;
+    for (size_t i = 0; i < fmt.size(); ++i)
+        if (fmt[i] == '%' && i + 1 < fmt.size() && fmt[i + 1] != '%') ++count;
+    return count;
+}
+
+// Helper: simple string format for kernel debug printing
+static std::string ntos_do_str_format(void* e, const std::string& fmt, const std::vector<uint64_t>& argv) {
+    std::string result; size_t i = 0; size_t ai = 0;
+    while (i < fmt.size()) {
+        if (fmt[i] == '%' && i + 1 < fmt.size() && fmt[i + 1] != '%') {
+            ++i; char c = fmt[i];
+            if (ai < argv.size()) {
+                switch (c) {
+                case 's': case 'S': {
+                    uint64_t addr = argv[ai];
+                    if (c == 'S') {
+                        auto ws = read_wide_string_ptr(e, addr);
+                        for (auto ch : ws) if (ch) result += static_cast<char>(ch);
+                    } else {
+                        result += read_ansi_string_ptr(e, addr);
+                    }
+                    break;
+                }
+                case 'd': case 'i': result += std::to_string(static_cast<int32_t>(argv[ai])); break;
+                case 'u': result += std::to_string(argv[ai]); break;
+                case 'x': case 'X': { char buf[32]; snprintf(buf, sizeof(buf), "%llx", (unsigned long long)argv[ai]); result += buf; break; }
+                default: result += argv[ai]; break;
+                }
+                ++ai;
+            }
+            ++i;
+        } else {
+            result += fmt[i]; ++i;
+        }
+    }
+    return result;
+}
 
 uint64_t Ntoskrnl::DbgPrint(void* e, ArgList& a, void* ctx) {
-    // ULONG DbgPrint(PCSTR Format, ...);
-    uint64_t fmt = a[0];
-    std::string msg = read_ansi_string_ptr(e, fmt);
-    // Just log it
-    (void)msg;
-    return static_cast<uint64_t>(msg.length());
+    (void)ctx;
+    // Python ntoskrnl.py: DbgPrint  read format string, count % args, format
+    if (a.empty()) return 0;
+    uint64_t fmt_addr = static_cast<uint64_t>(a[0]);
+    std::string fmt_str = read_ansi_string_ptr(e, fmt_addr);
+    int fmt_cnt = ntos_va_arg_count(fmt_str);
+    std::vector<uint64_t> vargs;
+    for (size_t n = 1; n < a.size() && static_cast<int>(vargs.size()) < fmt_cnt; ++n)
+        vargs.push_back(static_cast<uint64_t>(a[n]));
+    std::string fin = ntos_do_str_format(e, fmt_str, vargs);
+    a.clear(); a.push_back(fin);
+    return static_cast<uint64_t>(fin.size());
 }
 
 uint64_t Ntoskrnl::DbgPrintEx(void* e, ArgList& a, void* ctx) {
-    // ULONG DbgPrintEx(ULONG ComponentId, ULONG Level, PCSTR Format, ...);
-    uint64_t fmt = (ptr_sz(e) == 8) ? a[2] : a[2];
-    (void)fmt;
-    std::string msg = read_ansi_string_ptr(e, fmt);
-    (void)msg;
-    return static_cast<uint64_t>(msg.length());
+    (void)ctx;
+    // Python ntoskrnl.py: DbgPrintEx  read cid+level+format, count % args, format
+    if (a.size() < 3) return 0;
+    uint64_t cid   = static_cast<uint64_t>(a[0]);
+    uint64_t level = static_cast<uint64_t>(a[1]);
+    uint64_t fmt_addr = static_cast<uint64_t>(a[2]);
+    std::string fmt_str = read_ansi_string_ptr(e, fmt_addr);
+    int fmt_cnt = ntos_va_arg_count(fmt_str);
+    std::vector<uint64_t> vargs;
+    for (size_t n = 3; n < a.size() && static_cast<int>(vargs.size()) < fmt_cnt; ++n)
+        vargs.push_back(static_cast<uint64_t>(a[n]));
+    std::string fin = ntos_do_str_format(e, fmt_str, vargs);
+    a.clear(); a.push_back(cid); a.push_back(level); a.push_back(fin);
+    return static_cast<uint64_t>(fin.size());
 }
 
-//  String/Format 
+//  String/Format
 
 uint64_t Ntoskrnl::_vsnprintf(void* e, ArgList& a, void* ctx) {
-    // int _vsnprintf(char *buffer, size_t count, const char *format, va_list argptr)
-    uint64_t buffer = a[0];
-    uint64_t count = a[1];
-    uint64_t format = a[2];
-    (void)a[3]; // argptr - skip for now
-    
-    std::string fmt = read_ansi_string_ptr(e, format);
-    
-    if (!buffer || count == 0) return 0;
-    
-    size_t n = (fmt.length() < count - 1) ? fmt.length() : (static_cast<size_t>(count) - 1);
-    auto data = std::vector<uint8_t>(fmt.begin(), fmt.begin() + static_cast<ptrdiff_t>(n));
-    data.push_back(0);
-    mm(e)->mem_write(buffer, data);
-    
-    return static_cast<uint64_t>(n);
+    (void)ctx;
+    // Python ntoskrnl.py: _vsnprintf  read format, count args from va_list, do_str_format
+    uint64_t buffer = a[0]; uint64_t count = a[1];
+    uint64_t format = a[2]; uint64_t argptr = a[3];
+    std::string fmt_str = read_ansi_string_ptr(e, format);
+    int fmt_cnt = ntos_va_arg_count(fmt_str);
+    // Read args from va_list pointer
+    std::vector<uint64_t> vargs;
+    int psz = be(e)->get_ptr_size();
+    uint64_t ptr = argptr;
+    for (int n = 0; n < fmt_cnt; ++n) {
+        auto raw = we(e)->mem_read(ptr, static_cast<size_t>(psz));
+        uint64_t arg = raw.empty() ? 0 : read_le(raw, 0, static_cast<size_t>(psz));
+        vargs.push_back(arg); ptr += psz;
+    }
+    std::string fin = ntos_do_str_format(e, fmt_str, vargs);
+    if (count > 0 && fin.size() >= count) fin = fin.substr(0, count - 1);
+    if (buffer) { auto data = std::vector<uint8_t>(fin.begin(), fin.end()); data.push_back(0); mm(e)->mem_write(buffer, data); }
+    a.resize(std::max<size_t>(a.size(), 2));
+    a[0] = std::string(fin.data(), fin.size()); a[1] = fmt_str;
+    return static_cast<uint64_t>(fin.size());
 }
 
 uint64_t Ntoskrnl::vsprintf_s(void* e, ArgList& a, void* ctx) {
@@ -362,23 +425,58 @@ uint64_t Ntoskrnl::vsprintf_s(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Ntoskrnl::sprintf(void* e, ArgList& a, void* ctx) {
-    uint64_t buf = a[0];
-    uint64_t format = a[1];
-    
-    std::string fmt = read_ansi_string_ptr(e, format);
-    auto data = std::vector<uint8_t>(fmt.begin(), fmt.end());
-    data.push_back(0);
-    if (buf) mm(e)->mem_write(buf, data);
-    return static_cast<uint64_t>(fmt.length());
+    (void)ctx;
+    // Python ntoskrnl.py: sprintf  read buffer+format, count args, format
+    if (a.size() < 2) return 0;
+    uint64_t buf = a[0]; uint64_t fmt_addr = a[1];
+    std::string fmt_str = read_ansi_string_ptr(e, fmt_addr);
+    int fmt_cnt = ntos_va_arg_count(fmt_str);
+    std::vector<uint64_t> vargs;
+    for (size_t n = 2; n < a.size() && static_cast<int>(vargs.size()) < fmt_cnt; ++n)
+        vargs.push_back(static_cast<uint64_t>(a[n]));
+    std::string fin = ntos_do_str_format(e, fmt_str, vargs);
+    if (buf) { auto data = std::vector<uint8_t>(fin.begin(), fin.end()); data.push_back(0); mm(e)->mem_write(buf, data); }
+    a.clear(); a.push_back(fin);
+    return static_cast<uint64_t>(fin.size());
 }
 
 uint64_t Ntoskrnl::_snprintf(void* e, ArgList& a, void* ctx) {
-    return _vsnprintf(e, a, ctx);
+    (void)ctx;
+    // Python ntoskrnl.py: _snprintf  read buf+cnt+fmt, count args, format
+    if (a.size() < 3) return 0;
+    uint64_t buf = a[0]; uint64_t cnt = a[1]; uint64_t fmt_addr = a[2];
+    std::string fmt_str = read_ansi_string_ptr(e, fmt_addr);
+    int fmt_cnt = ntos_va_arg_count(fmt_str);
+    std::vector<uint64_t> vargs;
+    for (size_t n = 3; n < a.size() && static_cast<int>(vargs.size()) < fmt_cnt; ++n)
+        vargs.push_back(static_cast<uint64_t>(a[n]));
+    std::string fin = ntos_do_str_format(e, fmt_str, vargs);
+    if (cnt > 0 && fin.size() >= cnt) fin = fin.substr(0, cnt - 1);
+    if (buf) { auto data = std::vector<uint8_t>(fin.begin(), fin.end()); data.push_back(0); mm(e)->mem_write(buf, data); }
+    a.clear(); a.push_back(fin);
+    return static_cast<uint64_t>(fin.size());
 }
 
 uint64_t Ntoskrnl::_snwprintf(void* e, ArgList& a, void* ctx) {
-    (void)e; (void)a;
-    return 0;
+    (void)ctx;
+    // Python ntoskrnl.py: _snwprintf  read wide format, count args, format, write wide
+    if (a.size() < 3) return 0;
+    uint64_t buf = a[0]; uint64_t cnt = a[1]; uint64_t fmt_addr = a[2];
+    std::u16string wfmt = read_wide_string_ptr(e, fmt_addr);
+    // Convert to UTF-8 for format processing, replace %s→%S
+    std::string fmt_str; for (auto c : wfmt) if (c) fmt_str += static_cast<char>(c);
+    size_t pos = 0;
+    while ((pos = fmt_str.find("%s", pos)) != std::string::npos) { fmt_str.replace(pos, 2, "%S"); pos += 2; }
+    int fmt_cnt = ntos_va_arg_count(fmt_str);
+    std::vector<uint64_t> vargs;
+    for (size_t n = 3; n < a.size() && static_cast<int>(vargs.size()) < fmt_cnt; ++n)
+        vargs.push_back(static_cast<uint64_t>(a[n]));
+    std::string fin = ntos_do_str_format(e, fmt_str, vargs);
+    if (cnt > 0 && fin.size() >= cnt) fin = fin.substr(0, cnt - 1);
+    if (buf) be(e)->write_mem_string(fin, buf, 2);
+    a.resize(std::max<size_t>(a.size(), 3));
+    a[0] = buf; a[1] = cnt; a[2] = fmt_str;
+    return static_cast<uint64_t>(fin.size());
 }
 
 //  Rtl string 
@@ -455,7 +553,7 @@ uint64_t Ntoskrnl::RtlAnsiStringToUnicodeString(void* e, ArgList& a, void* ctx) 
     uint16_t size = static_cast<uint16_t>(ansi.length() * 2); // UTF-16 size
     
     if (do_alloc) {
-        uint64_t buf = mm(e)->mem_map(static_cast<size_t>(size), std::nullopt, common::PERM_MEM_RWX,
+        uint64_t buf = mm(e)->mem_map(static_cast<size_t>(size), std::nullopt, PERM_MEM_RWX,
                                       "api.struct.STRING." + ansi);
         auto wdata = std::vector<uint8_t>(static_cast<size_t>(size));
         for (size_t i = 0; i < ansi.length(); i++) {
@@ -595,7 +693,7 @@ uint64_t Ntoskrnl::ExAllocatePoolWithTag(void* e, ArgList& a, void* ctx) {
     }
     
     (void)pool_type;
-    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, common::PERM_MEM_RWX,
+    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, PERM_MEM_RWX,
                           "api.pool." + tag_str);
 }
 
@@ -610,7 +708,7 @@ uint64_t Ntoskrnl::ExAllocatePool(void* e, ArgList& a, void* ctx) {
     // PVOID ExAllocatePool(POOL_TYPE PoolType, SIZE_T NumberOfBytes)
     uint64_t num_bytes = a[1];
     if (num_bytes == 0) num_bytes = 1;
-    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, common::PERM_MEM_RWX, "api.pool");
+    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, PERM_MEM_RWX, "api.pool");
 }
 
 uint64_t Ntoskrnl::ExFreePool(void* e, ArgList& a, void* ctx) {
@@ -624,14 +722,14 @@ uint64_t Ntoskrnl::FsRtlAllocatePool(void* e, ArgList& a, void* ctx) {
     // PVOID FsRtlAllocatePool(POOL_TYPE PoolType, SIZE_T NumberOfBytes)
     uint64_t num_bytes = a[1];
     if (num_bytes == 0) num_bytes = 1;
-    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, common::PERM_MEM_RWX, "api.fsrtl.pool");
+    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, PERM_MEM_RWX, "api.fsrtl.pool");
 }
 
 uint64_t Ntoskrnl::RtlAllocateHeap(void* e, ArgList& a, void* ctx) {
     // PVOID RtlAllocateHeap(PVOID HeapHandle, ULONG Flags, SIZE_T Size)
     uint64_t size = a[2];
     // if (size == 0) size = 1;
-    // return mm(e)->mem_map(static_cast<size_t>(size), 0, common::PERM_MEM_RWX, "api.heap");
+    // return mm(e)->mem_map(static_cast<size_t>(size), 0, PERM_MEM_RWX, "api.heap");
      return we32(e)->heap_alloc(size, "RtlAllocateHeap");
 }
 
@@ -647,7 +745,7 @@ uint64_t Ntoskrnl::MmAllocateContiguousMemory(void* e, ArgList& a, void* ctx) {
     // PVOID MmAllocateContiguousMemory(SIZE_T NumberOfBytes, PHYSICAL_ADDRESS HighestAcceptableAddress)
     uint64_t num_bytes = a[0];
     if (num_bytes == 0) num_bytes = 1;
-    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, common::PERM_MEM_RWX,
+    return mm(e)->mem_map(static_cast<size_t>(num_bytes), std::nullopt, PERM_MEM_RWX,
                           "api.contiguous");
 }
 
@@ -673,7 +771,7 @@ uint64_t Ntoskrnl::MmMapLockedPagesSpecifyCache(void* e, ArgList& a, void* ctx) 
     uint64_t byte_count = (ptr_sz(e) == 8) ? static_cast<uint64_t>(read_le(raw, 24, 4))
                                             : static_cast<uint64_t>(read_le(raw, 16, 4));
     if (byte_count == 0) byte_count = 0x1000;
-    return mm(e)->mem_map(static_cast<size_t>(byte_count), std::nullopt, common::PERM_MEM_RWX,
+    return mm(e)->mem_map(static_cast<size_t>(byte_count), std::nullopt, PERM_MEM_RWX,
                           "api.mdl.map");
 }
 
@@ -958,7 +1056,7 @@ uint64_t Ntoskrnl::IoCreateDevice(void* e, ArgList& a, void* ctx) {
     
     // Allocate a DEVICE_OBJECT
     size_t dev_obj_size = 80; // rough DEVICE_OBJECT size
-    uint64_t dev_obj = mm(e)->mem_map(dev_obj_size, std::nullopt, common::PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
+    uint64_t dev_obj = mm(e)->mem_map(dev_obj_size, std::nullopt, PERM_MEM_RWX, "api.struct.DEVICE_OBJECT");
     
     if (name) {
         auto dev_name = read_unicode_string_from_mem(e, name);
@@ -1014,20 +1112,31 @@ uint64_t Ntoskrnl::IoDeleteDevice(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Ntoskrnl::IoCreateSynchronizationEvent(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS IoCreateSynchronizationEvent(PUNICODE_STRING EventName, PHANDLE EventHandle)
-    uint64_t evt_handle = a[1];
-    if (evt_handle) {
-        int psz = ptr_sz(e);
-        auto data = std::vector<uint8_t>(static_cast<size_t>(psz), 0);
-        mm(e)->mem_write(evt_handle, data);
+    (void)ctx;
+    // Python ntoskrnl.py: IoCreateSynchronizationEvent  read name, create event, write handle
+    uint64_t EventName   = a[0];
+    uint64_t EventHandle = a[1];
+
+    std::string name;
+    if (EventName) {
+        auto n = read_unicode_string_from_mem(e, EventName);
+        for (auto c : n) if (c) name += static_cast<char>(c);
     }
-    return KERN_STATUS_SUCCESS;
+    a[0] = name;
+
+    auto [hnd, evt] = we(e)->create_event(name);
+    if (EventHandle) {
+        std::vector<uint8_t> buf(ptr_sz(e) == 8 ? 8 : 4);
+        write_le(buf, 0, static_cast<uint64_t>(hnd), buf.size());
+        mm(e)->mem_write(EventHandle, buf);
+    }
+    return evt ? static_cast<uint64_t>(reinterpret_cast<uintptr_t>(evt.get())) : KERN_STATUS_UNSUCCESSFUL;
 }
 
 uint64_t Ntoskrnl::IoAllocateIrp(void* e, ArgList& a, void* ctx) {
     // PIRP IoAllocateIrp(CCHAR StackSize, BOOLEAN ChargeQuota)
     size_t irp_size = 0x100;
-    return mm(e)->mem_map(irp_size, std::nullopt, common::PERM_MEM_RWX, "api.irp");
+    return mm(e)->mem_map(irp_size, std::nullopt, PERM_MEM_RWX, "api.irp");
 }
 
 uint64_t Ntoskrnl::IoFreeIrp(void* e, ArgList& a, void* ctx) {
@@ -1045,7 +1154,7 @@ uint64_t Ntoskrnl::IoReuseIrp(void* e, ArgList& a, void* ctx) {
 uint64_t Ntoskrnl::IoAllocateMdl(void* e, ArgList& a, void* ctx) {
     // PMDL IoAllocateMdl(PVOID VirtualAddress, ULONG Length, BOOLEAN SecondaryBuffer, BOOLEAN ChargeQuota, PIRP Irp)
     size_t mdl_size = static_cast<size_t>(ptr_sz(e)) * 8;
-    return mm(e)->mem_map(mdl_size, std::nullopt, common::PERM_MEM_RWX, "api.mdl");
+    return mm(e)->mem_map(mdl_size, std::nullopt, PERM_MEM_RWX, "api.mdl");
 }
 
 uint64_t Ntoskrnl::IoFreeMdl(void* e, ArgList& a, void* ctx) {
@@ -1412,7 +1521,7 @@ uint64_t Ntoskrnl::ZwAllocateVirtualMemory(void* e, ArgList& a, void* ctx) {
         size = read_le(raw, 0, ptr_sz(e));
     }
     
-    uint64_t addr = mm(e)->mem_map(static_cast<size_t>(size), std::nullopt, common::PERM_MEM_RWX,
+    uint64_t addr = mm(e)->mem_map(static_cast<size_t>(size), std::nullopt, PERM_MEM_RWX,
                                    "api.virtual");
     
     if (paddr) {
@@ -1431,21 +1540,106 @@ uint64_t Ntoskrnl::ZwAllocateVirtualMemory(void* e, ArgList& a, void* ctx) {
 }
 
 uint64_t Ntoskrnl::ZwOpenEvent(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwOpenEvent(PHANDLE EventHandle, ACCESS_MASK, POBJECT_ATTRIBUTES)
-    (void)e; (void)a;
-    return KERN_STATUS_SUCCESS;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwOpenEvent  read OBJECT_ATTRIBUTES, lookup name, return handle
+    uint64_t EventHandle      = a[0];
+    uint64_t DesiredAccess    = a[1];
+    uint64_t ObjectAttributes = a[2];
+    (void)DesiredAccess;
+
+    if (ObjectAttributes) {
+        int psz = ptr_sz(e);
+        // OBJECT_ATTRIBUTES: {Length(u32), RootDir(psz), ObjectName(psz), Attrs(u32), SecDesc(psz), QoS(psz)}
+        uint64_t name_ptr = (psz == 8)
+            ? static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 12, 8), 0, 8))
+            : static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 8, 4), 0, 4));
+        if (name_ptr) {
+            auto name = read_unicode_string_from_mem(e, name_ptr);
+            std::string sname;
+            for (auto c : name) if (c) sname += static_cast<char>(c);
+            a[2] = sname;  // Replace ObjectAttributes with name for logging (matches Python argv[2])
+            auto obj = we(e)->get_object_from_name(sname);
+            if (!obj)
+                return STATUS_OBJECT_NAME_NOT_FOUND;
+            if (EventHandle) {
+                uint64_t hnd = static_cast<uint64_t>(obj->get_handle());
+                std::vector<uint8_t> buf(psz == 8 ? 8 : 4);
+                write_le(buf, 0, hnd, buf.size());
+                mm(e)->mem_write(EventHandle, buf);
+            }
+            return KERN_STATUS_SUCCESS;
+        }
+    }
+    return STATUS_OBJECT_NAME_NOT_FOUND;
 }
 
 uint64_t Ntoskrnl::ZwCreateEvent(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwCreateEvent(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, EVENT_TYPE, BOOLEAN)
-    (void)e; (void)a;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwCreateEvent  read OBJECT_ATTRIBUTES name, create event, write handle
+    uint64_t EventHandle      = a[0];
+    uint64_t DesiredAccess    = a[1];
+    uint64_t ObjectAttributes = a[2];
+    uint64_t EventType        = a[3];
+    uint64_t InitialState     = a[4];
+    (void)DesiredAccess; (void)EventType; (void)InitialState;
+
+    std::string name;
+    if (ObjectAttributes) {
+        int psz = ptr_sz(e);
+        uint64_t name_ptr = (psz == 8)
+            ? static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 12, 8), 0, 8))
+            : static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 8, 4), 0, 4));
+        if (name_ptr) {
+            auto n = read_unicode_string_from_mem(e, name_ptr);
+            for (auto c : n) if (c) name += static_cast<char>(c);
+        }
+    }
+    a[2] = name;                         // Replace ObjectAttributes with name for logging (matches Python argv[2])
+    a[4] = static_cast<uint64_t>(InitialState & 0xFF);  // Replace InitialState with bool (matches Python argv[4])
+
+    auto [hnd, evt] = we(e)->create_event(name);
+    if (EventHandle && hnd) {
+        std::vector<uint8_t> buf(ptr_sz(e) == 8 ? 8 : 4);
+        write_le(buf, 0, static_cast<uint64_t>(hnd), buf.size());
+        mm(e)->mem_write(EventHandle, buf);
+    }
     return KERN_STATUS_SUCCESS;
 }
 
 uint64_t Ntoskrnl::ZwDeviceIoControlFile(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwDeviceIoControlFile(HANDLE, HANDLE, ..., ULONG IoControlCode, ...)
-    (void)e; (void)a;
-    return KERN_STATUS_SUCCESS;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwDeviceIoControlFile  resolve handle, dispatch IOCTL
+    uint64_t hnd       = a[0];
+    uint64_t ioctl     = a[5];
+    uint64_t in_buf    = a[6];
+    uint64_t in_len    = a[7];
+    uint64_t out_buf   = a[8];
+    uint64_t out_len   = a[9];
+    uint64_t isb       = a[4];
+    (void)out_buf; (void)out_len; (void)isb;
+
+    auto obj = we(e)->get_object_from_handle(hnd);
+    if (!obj) return KERN_STATUS_INVALID_HANDLE;
+
+    auto* dev = dynamic_cast<Device*>(obj.get());
+    if (!dev) return KERN_STATUS_INVALID_DEVICE_REQUEST;
+
+    std::vector<uint8_t> in_data;
+    if (in_buf && in_len) in_data = mm(e)->mem_read(in_buf, static_cast<size_t>(in_len));
+
+    auto [status, out_data] = we(e)->dev_ioctl(ptr_sz(e) == 8 ? speakeasy::arch::ARCH_AMD64 : speakeasy::arch::ARCH_X86,
+                                                 dev, static_cast<uint32_t>(ioctl), in_data);
+
+    if (out_buf && !out_data.empty()) {
+        mm(e)->mem_write(out_buf, out_data);
+    }
+    if (isb) {
+        std::vector<uint8_t> isb_buf(8, 0);
+        write_le(isb_buf, 0, static_cast<uint64_t>(status), 4);
+        write_le(isb_buf, 4, static_cast<uint64_t>(out_data.size()), 4);
+        mm(e)->mem_write(isb, isb_buf);
+    }
+    return static_cast<uint64_t>(status);
 }
 
 uint64_t Ntoskrnl::ZwDeleteKey(void* e, ArgList& a, void* ctx) {
@@ -1514,54 +1708,283 @@ uint64_t Ntoskrnl::ZwOpenKey(void* e, ArgList& a, void* ctx) {
 uint64_t Ntoskrnl::ZwQueryValueKey(void* e, ArgList& a, void* ctx) {
     // NTSTATUS ZwQueryValueKey(HANDLE, PUNICODE_STRING, KEY_VALUE_INFORMATION_CLASS, PVOID, ULONG, PULONG)
     (void)e; (void)a;
-    return KERN_STATUS_OBJECT_NAME_NOT_FOUND;
+    return STATUS_OBJECT_NAME_NOT_FOUND;
 }
 
 uint64_t Ntoskrnl::ZwCreateFile(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwCreateFile(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, PIO_STATUS_BLOCK, ...)
-    (void)e; (void)a;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwCreateFile  read OBJECT_ATTRIBUTES, open/create file
+    uint64_t pHndl         = a[0];
+    uint64_t access        = a[1];
+    uint64_t objattr       = a[2];
+    uint64_t statblock     = a[3];
+    uint64_t alloc_size    = a[4];
+    uint64_t file_attrs    = a[5];
+    uint64_t share         = a[6];
+    uint64_t create_disp   = a[7];
+    uint64_t create_opts   = a[8];
+    uint64_t ea_buf        = a[9];
+    uint64_t ea_len        = a[10];
+    (void)access; (void)alloc_size; (void)file_attrs; (void)create_opts; (void)ea_buf; (void)ea_len;
+
+    if (!pHndl || !objattr) return KERN_STATUS_INVALID_PARAMETER;
+
+    int psz = ptr_sz(e);
+    uint64_t name_ptr = (psz == 8)
+        ? static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 12, 8), 0, 8))
+        : static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 8, 4), 0, 4));
+    if (!name_ptr) return KERN_STATUS_INVALID_PARAMETER;
+
+    auto name = read_unicode_string_from_mem(e, name_ptr);
+    std::string path; for (auto c : name) if (c) path += static_cast<char>(c);
+    a[3] = path;  // Replace IoStatusBlock with name for logging (matches Python argv[3])
+
+    // Resolve create disposition to human-readable string for logging
+    static const char* disp_names[] = {"FILE_SUPERSEDE","FILE_CREATE","FILE_OPEN","FILE_OPEN_IF","FILE_OVERWRITE","FILE_OVERWRITE_IF"};
+    uint32_t cd = static_cast<uint32_t>(create_disp);
+    if (cd < 6) a[7] = std::string(disp_names[cd]);  // Replace create_disp with string (matches Python argv[7])
+
+    // Open or create file
+    bool exists = we(e)->does_file_exist(path);
+    void* file_obj = nullptr;
+    if (exists && share != 0) {
+        file_obj = we(e)->file_open(path, false);
+    } else if (cd == 1 || cd == 2) { // FILE_CREATE or FILE_OVERWRITE
+        file_obj = we(e)->file_open(path, true);
+    } else {
+        file_obj = we(e)->file_open(path, (cd == 0 || cd == 3));
+    }
+
+    if (!file_obj) return KERN_STATUS_OBJECT_NAME_NOT_FOUND;
+    uint64_t hnd = reinterpret_cast<uint64_t>(file_obj);
+    std::vector<uint8_t> hnd_buf(psz == 8 ? 8 : 4);
+    write_le(hnd_buf, 0, hnd, hnd_buf.size());
+    mm(e)->mem_write(pHndl, hnd_buf);
+
+    // Write IO_STATUS_BLOCK
+    if (statblock) {
+        std::vector<uint8_t> isb(8, 0);
+        write_le(isb, 0, KERN_STATUS_SUCCESS, 4);
+        mm(e)->mem_write(statblock, isb);
+    }
     return KERN_STATUS_SUCCESS;
 }
 
 uint64_t Ntoskrnl::ZwOpenFile(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwOpenFile(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, PIO_STATUS_BLOCK, ...)
-    (void)e; (void)a;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwOpenFile  read OBJECT_ATTRIBUTES, open existing file
+    uint64_t pHndl       = a[0];
+    uint64_t access      = a[1];
+    uint64_t objattr     = a[2];
+    uint64_t statblock   = a[3];
+    uint64_t share       = a[4];
+    uint64_t open_opts   = a[5];
+    (void)access; (void)statblock; (void)share; (void)open_opts;
+
+    if (!pHndl || !objattr) return KERN_STATUS_INVALID_PARAMETER;
+
+    int psz = ptr_sz(e);
+    uint64_t name_ptr = (psz == 8)
+        ? static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 12, 8), 0, 8))
+        : static_cast<uint64_t>(read_le(mm(e)->mem_read(objattr + 8, 4), 0, 4));
+    if (!name_ptr) return KERN_STATUS_OBJECT_NAME_NOT_FOUND;
+
+    auto name = read_unicode_string_from_mem(e, name_ptr);
+    std::string path; for (auto c : name) if (c) path += static_cast<char>(c);
+    a[3] = path;  // Replace IoStatusBlock with path for logging (matches Python argv[3])
+
+    void* file_obj = we(e)->file_open(path, false);
+    if (!file_obj) return KERN_STATUS_OBJECT_NAME_NOT_FOUND;
+
+    uint64_t hnd = reinterpret_cast<uint64_t>(file_obj);
+    std::vector<uint8_t> buf(psz == 8 ? 8 : 4);
+    write_le(buf, 0, hnd, buf.size());
+    mm(e)->mem_write(pHndl, buf);
     return KERN_STATUS_SUCCESS;
 }
 
 uint64_t Ntoskrnl::ZwQueryInformationFile(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwQueryInformationFile(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG, FILE_INFORMATION_CLASS)
-    (void)e; (void)a;
-    return KERN_STATUS_SUCCESS;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwQueryInformationFile  get file info
+    uint64_t FileHandle   = a[0];
+    uint64_t IoStatusBlock = a[1];
+    uint64_t FileInfo     = a[2];
+    uint64_t Length       = a[3];
+    uint64_t FileInfoClass = a[4];
+
+    auto* f = static_cast<::File*>(we(e)->file_get(static_cast<int>(FileHandle)));
+    if (!f || !FileInfo) return KERN_STATUS_INVALID_PARAMETER;
+
+    // FileStandardInformation (class 5)
+    if (FileInfoClass == 5 && Length >= 24) {
+        std::vector<uint8_t> fsi(24, 0);
+        write_le(fsi, 8, static_cast<uint64_t>(512 - (f->get_size() % 512)), 8); // AllocationSize
+        write_le(fsi, 16, f->get_size(), 8); // EndOfFile
+        mm(e)->mem_write(FileInfo, fsi);
+        if (IoStatusBlock) {
+            std::vector<uint8_t> isb(8, 0);
+            write_le(isb, 0, KERN_STATUS_SUCCESS, 4);
+            write_le(isb, 4, static_cast<uint64_t>(24), 4);
+            mm(e)->mem_write(IoStatusBlock, isb);
+        }
+        return KERN_STATUS_SUCCESS;
+    }
+    return KERN_STATUS_NOT_FOUND;
 }
 
 uint64_t Ntoskrnl::ZwWriteFile(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwWriteFile(HANDLE, HANDLE, ..., PVOID Buffer, ULONG Length, ...)
-    (void)e; (void)a;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwWriteFile  write data to file
+    uint64_t FileHandle = a[0];
+    uint64_t evt        = a[1];
+    uint64_t apc        = a[2];
+    uint64_t apc_ctx    = a[3];
+    uint64_t ios        = a[4];
+    uint64_t buf        = a[5];
+    uint64_t length     = a[6] & 0xFFFFFFFF;
+    uint64_t offset     = a[7];
+    uint64_t key        = a[8];
+    (void)evt; (void)apc; (void)apc_ctx; (void)offset; (void)key;
+
+    if (!buf || !length) return KERN_STATUS_INVALID_PARAMETER;
+    auto* f = static_cast<::File*>(we(e)->file_get(static_cast<int>(FileHandle)));
+    if (!f) return KERN_STATUS_INVALID_PARAMETER;
+
+    a[0] = f->get_path();  // Replace FileHandle with path for logging (matches Python argv[0])
+    auto data = mm(e)->mem_read(buf, static_cast<size_t>(length));
+    f->add_data(data);
+    // Replace Length with data preview for logging (matches Python argv[6] = data[:0x10])
+    std::string preview;
+    for (size_t i = 0; i < data.size() && i < 0x10; ++i)
+        preview += (data[i] >= 0x20 && data[i] < 0x7F) ? static_cast<char>(data[i]) : '.';
+    a[6] = preview;
+    if (ios) {
+        std::vector<uint8_t> isb(8, 0);
+        write_le(isb, 0, KERN_STATUS_SUCCESS, 4);
+        write_le(isb, 4, static_cast<uint64_t>(data.size()), 4);
+        mm(e)->mem_write(ios, isb);
+    }
     return KERN_STATUS_SUCCESS;
 }
 
 uint64_t Ntoskrnl::ZwReadFile(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwReadFile(HANDLE, HANDLE, ..., PVOID Buffer, ULONG Length, ...)
-    (void)e; (void)a;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwReadFile  read data from file
+    uint64_t FileHandle = a[0];
+    uint64_t evt        = a[1];
+    uint64_t apc        = a[2];
+    uint64_t apc_ctx    = a[3];
+    uint64_t ios        = a[4];
+    uint64_t buf        = a[5];
+    uint64_t length     = a[6] & 0xFFFFFFFF;
+    uint64_t offset     = a[7];
+    uint64_t key        = a[8];
+    (void)evt; (void)apc; (void)apc_ctx; (void)offset; (void)key;
+
+    if (!buf || !length) return KERN_STATUS_INVALID_PARAMETER;
+    auto* f = static_cast<::File*>(we(e)->file_get(static_cast<int>(FileHandle)));
+    if (!f) return KERN_STATUS_INVALID_PARAMETER;
+
+    a[0] = f->get_path();
+    auto data = f->get_data();
+    if (!data.empty()) {
+        size_t sz = std::min(static_cast<size_t>(length), data.size());
+        mm(e)->mem_write(buf, std::vector<uint8_t>(data.begin(), data.begin() + static_cast<ptrdiff_t>(sz)));
+        if (ios) {
+            std::vector<uint8_t> isb(8, 0);
+            write_le(isb, 0, KERN_STATUS_SUCCESS, 4);
+            write_le(isb, 4, static_cast<uint64_t>(sz), 4);
+            mm(e)->mem_write(ios, isb);
+        }
+    }
     return KERN_STATUS_SUCCESS;
 }
 
 uint64_t Ntoskrnl::ZwCreateSection(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwCreateSection(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, ...)
-    (void)e; (void)a;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwCreateSection  create section backed by file
+    uint64_t SectionHandle = a[0];
+    uint64_t DesiredAccess = a[1];
+    uint64_t ObjectAttributes = a[2];
+    uint64_t MaximumSize   = a[3];
+    uint64_t SectionPageProt = a[4];
+    uint64_t AllocationAttr  = a[5];
+    uint64_t FileHandle    = a[6];
+    (void)DesiredAccess; (void)AllocationAttr;
+
+    if (!SectionHandle) return KERN_STATUS_INVALID_PARAMETER;
+
+    uint64_t size = 0;
+    if (MaximumSize) {
+        auto raw = mm(e)->mem_read(MaximumSize, 8);
+        if (raw.size() == 8) size = read_le(raw, 0, 8);
+    }
+
+    std::string name;
+    if (ObjectAttributes) {
+        int psz = ptr_sz(e);
+        uint64_t name_ptr = (psz == 8)
+            ? static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 12, 8), 0, 8))
+            : static_cast<uint64_t>(read_le(mm(e)->mem_read(ObjectAttributes + 8, 4), 0, 4));
+        if (name_ptr) { auto n = read_unicode_string_from_mem(e, name_ptr); for (auto c : n) if (c) name += static_cast<char>(c); }
+        a[2] = name;  // Replace ObjectAttributes with name for logging (matches Python argv[2])
+    }
+
+    // Pass raw FileHandle as void* (matching file_open return convention: uint32 handle in void*)
+    void* hfile_raw = reinterpret_cast<void*>(static_cast<uintptr_t>(static_cast<uint32_t>(FileHandle)));
+    uint32_t hnd = we(e)->file_create_mapping(hfile_raw, name, size, static_cast<int>(SectionPageProt));
+    a[0] = hnd;  // Replace SectionHandle with mapping handle for logging (matches Python argv[0])
+    std::vector<uint8_t> buf(4); write_le(buf, 0, hnd, 4);
+    mm(e)->mem_write(SectionHandle, buf);
     return KERN_STATUS_SUCCESS;
 }
 
 uint64_t Ntoskrnl::ZwUnmapViewOfSection(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwUnmapViewOfSection(HANDLE, PVOID BaseAddress)
-    (void)e; (void)a;
-    return KERN_STATUS_SUCCESS;
+    (void)e; (void)ctx;
+    // Python ntoskrnl.py: ZwUnmapViewOfSection  unmap view
+    uint64_t ProcessHandle = a[0];
+    uint64_t BaseAddress   = a[1];
+    (void)ProcessHandle;
+    if (BaseAddress) try { mm(e)->mem_free(BaseAddress); } catch (...) {}
+    return 0;
 }
 
 uint64_t Ntoskrnl::ZwMapViewOfSection(void* e, ArgList& a, void* ctx) {
-    // NTSTATUS ZwMapViewOfSection(HANDLE, HANDLE, PVOID*, ULONG_PTR, SIZE_T, ...)
-    (void)e; (void)a;
+    (void)ctx;
+    // Python ntoskrnl.py: ZwMapViewOfSection  map section into process
+    uint64_t SectionHandle  = a[0];
+    uint64_t ProcessHandle  = a[1];
+    uint64_t BaseAddress    = a[2];
+    uint64_t ZeroBits       = a[3];
+    uint64_t CommitSize     = a[4];
+    uint64_t SectionOffset  = a[5];
+    uint64_t ViewSize       = a[6];
+    uint64_t Inherit        = a[7];
+    uint64_t AllocType      = a[8];
+    uint64_t Win32Protect   = a[9];
+    (void)ProcessHandle; (void)ZeroBits; (void)CommitSize; (void)Inherit; (void)AllocType;
+
+    if (!BaseAddress) return KERN_STATUS_INVALID_PARAMETER;
+    int psz = ptr_sz(e);
+    uint64_t bytes_to_map = 0x1000; // default page size
+    if (ViewSize) {
+        auto raw = mm(e)->mem_read(ViewSize, static_cast<size_t>(psz));
+        if (raw.size() >= static_cast<size_t>(psz)) bytes_to_map = read_le(raw, 0, static_cast<size_t>(psz));
+    }
+    // Convert Windows protection to emu perms (inline, win_to_emu_perms not in this TU)
+    int emu_perms = PERM_MEM_READ;
+    uint32_t wp = static_cast<uint32_t>(Win32Protect);
+    if (wp & 0x04) emu_perms |= PERM_MEM_READ | PERM_MEM_WRITE; // PAGE_READWRITE
+    if (wp & 0x20) emu_perms |= PERM_MEM_EXEC | PERM_MEM_READ | PERM_MEM_WRITE; // PAGE_EXECUTE_READWRITE
+    if (wp & 0x02) emu_perms = PERM_MEM_READ; // PAGE_READONLY
+    uint64_t mapped = mm(e)->mem_map(static_cast<size_t>(bytes_to_map), 0, static_cast<uint32_t>(emu_perms), "api.ZwMapViewOfSection");
+
+    a[2] = mapped;       // Replace BaseAddress with mapped addr for logging (matches Python argv[2])
+    a[6] = bytes_to_map;  // Replace ViewSize with actual size for logging (matches Python argv[6])
+
+    std::vector<uint8_t> addr_buf(static_cast<size_t>(psz), 0);
+    write_le(addr_buf, 0, mapped, static_cast<size_t>(psz));
+    mm(e)->mem_write(BaseAddress, addr_buf);
     return KERN_STATUS_SUCCESS;
 }
 
