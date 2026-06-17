@@ -9,9 +9,13 @@
 #include <memory>
 #include "windows/winemu.h"
 #include "struct.h"
+#include "../../deffs/windows/advapi32.h"
+#include "../../deffs/windows/kernel32.h"
 
 using namespace speakeasy;
+using namespace speakeasy::deffs::windows;
 namespace speakeasy { namespace api {
+static uint64_t g_service_status_handle = 0x1000;
 
 
 //  In-memory registry store 
@@ -201,14 +205,7 @@ uint64_t Advapi32::OpenProcessToken(void* e, ArgList& a, void* ctx) {
     write_le(buf,0,nt,ps); we(e)->mem_write(a[2],buf); return 1;
 }
 
-//  LookupPrivilegeValueA 
-uint64_t Advapi32::LookupPrivilegeValueA(void* e, ArgList& a, void* ctx) {
-    if (a.size()<3||!a[2]) return 0;
-    std::vector<uint8_t> buf(8,0); write_le(buf,0,0x20,4); write_le(buf,4,0,4);
-    we(e)->mem_write(a[2],buf); return 1;
-}
-
-//  AdjustTokenPrivileges 
+//  AdjustTokenPrivileges
 uint64_t Advapi32::AdjustTokenPrivileges(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
@@ -318,92 +315,301 @@ uint64_t Advapi32::OpenSCManagerW(void* e, ArgList& a, void* ctx) {
     if (a[0]) { a[0] = be(e)->read_mem_string(a[0], 2); }
     return OpenSCManagerA(e, a, ctx);
 }
+uint64_t Advapi32::StartServiceCtrlDispatcherA(void* e, ArgList& a, void* ctx) {
+    if (a.size()<1||!a[0]) return 0;
+    int ps=we(e)->get_ptr_size();
+    // Read SERVICE_TABLE_ENTRY
+    auto raw=we(e)->mem_read(a[0], (size_t)(ps*2));
+    if (raw.size()<(size_t)(ps*2)) return 0;
+    uint64_t svcName=0, svcProc=0;
+    if (ps==8){
+        svcName=read_le(raw,0,8); svcProc=read_le(raw,8,8);
+    } else {
+        svcName=read_le(raw,0,4); svcProc=read_le(raw,4,4);
+    }
+    // Update argv for logging: build service table description
+    std::string desc="lpServiceStartTable=[";
+    uint64_t off=0;
+    while (svcName!=0||svcProc!=0){
+        uint64_t entryAddr=a[0]+off;
+        auto eraw=we(e)->mem_read(entryAddr,(size_t)(ps*2));
+        if(eraw.size()<(size_t)(ps*2)) break;
+        uint64_t en=0,ep=0;
+        if(ps==8){en=read_le(eraw,0,8);ep=read_le(eraw,8,8);}
+        else{en=read_le(eraw,0,4);ep=read_le(eraw,4,4);}
+        desc+=" {lpServiceName=";
+        if(en) desc+="\""+be(e)->read_mem_string(en,1)+"\"";
+        else desc+="NULL";
+        desc+=", lpServiceProc=";
+        if(ep){char buf[32];snprintf(buf,sizeof(buf),"0x%llx",(unsigned long long)ep);desc+=buf;}
+        else desc+="NULL";
+        desc+="} ";
+        off+=ps*2;
+        if (off>=0x1000) break; // safety limit
+        // Read next entry
+        auto nraw=we(e)->mem_read(a[0]+off,(size_t)(ps*2));
+        if(nraw.size()<(size_t)(ps*2)) break;
+        if(ps==8){svcName=read_le(nraw,0,8);svcProc=read_le(nraw,8,8);}
+        else{svcName=read_le(nraw,0,4);svcProc=read_le(nraw,4,4);}
+    }
+    desc+="]"; a[0]=desc; return 1;
+}
+uint64_t Advapi32::StartServiceCtrlDispatcherW(void* e, ArgList& a, void* ctx) {
+    if (a.size()<1||!a[0]) return 0;
+    int ps=we(e)->get_ptr_size();
+    auto raw=we(e)->mem_read(a[0],(size_t)(ps*2));
+    if (raw.size()<(size_t)(ps*2)) return 0;
+    uint64_t svcName=0, svcProc=0;
+    if(ps==8){svcName=read_le(raw,0,8);svcProc=read_le(raw,8,8);}
+    else{svcName=read_le(raw,0,4);svcProc=read_le(raw,4,4);}
+    // Build description reading wide strings
+    std::string desc="lpServiceStartTable=[";
+    uint64_t off=0;
+    while (svcName!=0||svcProc!=0){
+        uint64_t entryAddr=a[0]+off;
+        auto eraw=we(e)->mem_read(entryAddr,(size_t)(ps*2));
+        if(eraw.size()<(size_t)(ps*2)) break;
+        uint64_t en=0,ep=0;
+        if(ps==8){en=read_le(eraw,0,8);ep=read_le(eraw,8,8);}
+        else{en=read_le(eraw,0,4);ep=read_le(eraw,4,4);}
+        desc+=" {lpServiceName=";
+        if(en) desc+="\""+be(e)->read_mem_string(en,2)+"\"";
+        else desc+="NULL";
+        desc+=", lpServiceProc=";
+        if(ep){char buf[32];snprintf(buf,sizeof(buf),"0x%llx",(unsigned long long)ep);desc+=buf;}
+        else desc+="NULL";
+        desc+="} ";
+        off+=ps*2; if(off>=0x1000) break;
+        auto nraw=we(e)->mem_read(a[0]+off,(size_t)(ps*2));
+        if(nraw.size()<(size_t)(ps*2)) break;
+        if(ps==8){svcName=read_le(nraw,0,8);svcProc=read_le(nraw,8,8);}
+        else{svcName=read_le(nraw,0,4);svcProc=read_le(nraw,4,4);}
+    }
+    desc+="]"; a[0]=desc; return 1;
+}
 
+// ── RegisterServiceCtrlHandler A/W/Ex ──────────────────────────────
+uint64_t Advapi32::RegisterServiceCtrlHandlerA(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; g_service_status_handle++; return g_service_status_handle;
+}
+uint64_t Advapi32::RegisterServiceCtrlHandlerW(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; g_service_status_handle++; return g_service_status_handle;
+}
+uint64_t Advapi32::RegisterServiceCtrlHandlerExA(void* e, ArgList& a, void* ctx) {
+    (void)e; g_service_status_handle++; return g_service_status_handle;
+}
+uint64_t Advapi32::RegisterServiceCtrlHandlerExW(void* e, ArgList& a, void* ctx) {
+    (void)e; g_service_status_handle++; return g_service_status_handle;
+}
+uint64_t Advapi32::SetServiceStatus(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+
+// ── OpenService ─────────────────────────────────────────────────────
+uint64_t Advapi32::OpenServiceA(void* e, ArgList& a, void* ctx) {
+    if (a.size()<3) return 0;
+    if (a[1]) { a[1]=be(e)->read_mem_string(a[1],1); }
+    static uint64_t ns=0x3100; ns+=4; return ns;
+}
+uint64_t Advapi32::OpenServiceW(void* e, ArgList& a, void* ctx) {
+    if (a.size()<3) return 0;
+    if (a[1]) { a[1]=be(e)->read_mem_string(a[1],2); }
+    static uint64_t ns=0x3100; ns+=4; return ns;
+}
+
+// ── CreateServiceA (Python: reads strings, mem_alloc, returns handle) ──
 uint64_t Advapi32::CreateServiceA(void* e, ArgList& a, void* ctx) {
-    // Python: reads svc_name, disp_name, bin_path and updates argv.
-    // Returns hSvc = self.mem_alloc(size=8)
-    if (a[1]) { a[1] = be(e)->read_mem_string(a[1], 1); }
-    if (a[2]) { a[2] = be(e)->read_mem_string(a[2], 1); }
-    if (a[7]) { a[7] = be(e)->read_mem_string(a[7], 1); }
-    uint64_t hSvc = we(e)->mem_map(8, 0, 4, "advapi32.service");
-    
-    return hSvc;
-}
-uint64_t Advapi32::CreateServiceW(void* e, ArgList& a, void* ctx) {
-    if (a[1]) { a[1] = be(e)->read_mem_string(a[1], 2); }
-    if (a[2]) { a[2] = be(e)->read_mem_string(a[2], 2); }
-    if (a[7]) { a[7] = be(e)->read_mem_string(a[7], 2); }
-    uint64_t hSvc = we(e)->mem_map(8, 0, 4, "advapi32.service");
-    
-    return hSvc;
+    // Read string args into argv for logging
+    if (a.size()>=2&&a[1]) { a[1]=be(e)->read_mem_string(a[1],1); }
+    if (a.size()>=3&&a[2]) { a[2]=be(e)->read_mem_string(a[2],1); }
+    if (a.size()>=8&&a[7]) { a[7]=be(e)->read_mem_string(a[7],1); }
+    return we(e)->mem_map(8,0,4,"advapi32.service");
 }
 
+// ── StartServiceA (Python: reads strings, set_last_error, returns 1) ──
 uint64_t Advapi32::StartServiceA(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
-uint64_t Advapi32::StartServiceW(void* e, ArgList& a, void* ctx) {
+
+// ── ChangeServiceConfigA (Python: reads 6 strings, updates argv) ──
+uint64_t Advapi32::ChangeServiceConfigA(void* e, ArgList& a, void* ctx) {
+    if (a.size()>=5&&a[4])  { a[4] =be(e)->read_mem_string(a[4], 1); }
+    if (a.size()>=6&&a[5])  { a[5] =be(e)->read_mem_string(a[5], 1); }
+    if (a.size()>=8&&a[7])  { a[7] =be(e)->read_mem_string(a[7], 1); }
+    if (a.size()>=9&&a[8])  { a[8] =be(e)->read_mem_string(a[8], 1); }
+    if (a.size()>=10&&a[9]) { a[9] =be(e)->read_mem_string(a[9], 1); }
+    if (a.size()>=11&&a[10]){ a[10]=be(e)->read_mem_string(a[10],1); }
+    return 1;
+}
+
+// ── GetUserName ─────────────────────────────────────────────────────
+uint64_t Advapi32::GetUserNameA(void* e, ArgList& a, void* ctx) {
+    if (a.size()<2||!a[0]||!a[1]) return 0;
+    auto user=be(e)->get_user(); std::string name=user.count("name")?user.at("name"):"user";
+    uint32_t sz=static_cast<uint32_t>(a[1]);
+    uint32_t need=static_cast<uint32_t>(name.size()+1);
+    if (sz<need) return 0; // ERROR_INSUFFICIENT_BUFFER
+    be(e)->write_mem_string(name,a[0],1);
+    return 1;
+}
+uint64_t Advapi32::GetUserNameW(void* e, ArgList& a, void* ctx) {
+    if (a.size()<2||!a[0]||!a[1]) return 0;
+    auto user=be(e)->get_user(); std::string name=user.count("name")?user.at("name"):"user";
+    uint32_t sz=static_cast<uint32_t>(a[1]);
+    uint32_t need=static_cast<uint32_t>(name.size()+1);
+    if (sz<need) return 0;
+    be(e)->write_mem_string(name,a[0],2);
+    return 1;
+}
+
+// ── LookupAccountNameA ──────────────────────────────────────────────
+uint64_t Advapi32::LookupAccountNameA(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+uint64_t Advapi32::LookupAccountNameW(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
-uint64_t Advapi32::ControlService(void* e, ArgList& a, void* ctx) {
+// ── Crypto stubs ────────────────────────────────────────────────────
+uint64_t Advapi32::CryptCreateHash(void* e, ArgList& a, void* ctx) {
+    static uint64_t nh=0x3200; if(a.size()>=2&&a[1]){nh+=4;return nh;} return 0;
+}
+uint64_t Advapi32::CryptDestroyHash(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
-
-uint64_t Advapi32::DeleteService(void* e, ArgList& a, void* ctx) {
+uint64_t Advapi32::CryptGetHashParam(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
+uint64_t Advapi32::CryptHashData(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+uint64_t Advapi32::CryptDecrypt(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+uint64_t Advapi32::CryptDeriveKey(void* e, ArgList& a, void* ctx) {
+    static uint64_t nk=0x3300; nk+=4; return nk;
+}
 
-uint64_t Advapi32::QueryServiceStatus(void* e, ArgList& a, void* ctx) {
-    (void)e;
-    if (a.size()>=2 && a[1]) {
-        std::vector<uint8_t>buf(28,0); write_le(buf,0,0x30,4);
-        we(e)->mem_write(a[1],buf);
+// ── More registry / token / misc ────────────────────────────────────
+uint64_t Advapi32::GetTokenInformation(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+uint64_t Advapi32::LookupAccountSidA(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+uint64_t Advapi32::LookupAccountSidW(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+uint64_t Advapi32::LookupPrivilegeValueA(void* e, ArgList& a, void* ctx) {
+    if (a.size()<3||!a[2]) return 0;
+    std::vector<uint8_t>buf(8,0); write_le(buf,0,0x20,4); write_le(buf,4,0,4);
+    we(e)->mem_write(a[2],buf); return 1;
+}
+uint64_t Advapi32::EqualSid(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+uint64_t Advapi32::GetSidSubAuthority(void* e, ArgList& a, void* ctx) {
+    if (a.size()>=2&&a[1]) { std::vector<uint8_t>buf(4,0); write_le(buf,0,0x20,4); we(e)->mem_write(a[1],buf); }
+    return 1;
+}
+uint64_t Advapi32::GetSidSubAuthorityCount(void* e, ArgList& a, void* ctx) {
+    if (a.size()>=1&&a[0]) { std::vector<uint8_t>buf(1,1); we(e)->mem_write(a[0],buf); }
+    return 1;
+}
+uint64_t Advapi32::GetSidIdentifierAuthority(void* e, ArgList& a, void* ctx) {
+    if (a.size()>=1&&a[0]) { std::vector<uint8_t>buf(6,0); buf[5]=5; we(e)->mem_write(a[0],buf); }
+    return 1;
+}
+uint64_t Advapi32::GetCurrentHwProfileA(void* e, ArgList& a, void* ctx) {
+    if (a.size()>=1&&a[0]) {
+        std::vector<uint8_t>buf(64,0); write_le(buf,0,64,4); // dwSize
+        be(e)->write_mem_string("{00000000-0000-0000-0000-000000000000}",a[0]+4,1);
     }
     return 1;
 }
-
-uint64_t Advapi32::CloseServiceHandle(void* e, ArgList& a, void* ctx) {
-    (void)e; (void)a; return 1;
-}
-
-// ── ChangeServiceConfig / ChangeServiceConfig2 ─────────────────────
-uint64_t Advapi32::ChangeServiceConfigA(void* e, ArgList& a, void* ctx) {
-    // Python: reads name strings and updates argv for logging
-    if (a[4]) { a[4] = be(e)->read_mem_string(a[4], 1); }
-    if (a[5]) { a[5] = be(e)->read_mem_string(a[5], 1); }
-    if (a[7]) { a[7] = be(e)->read_mem_string(a[7], 1); }
-    if (a[8]) { a[8] = be(e)->read_mem_string(a[8], 1); }
-    if (a[9]) { a[9] = be(e)->read_mem_string(a[9], 1); }
-    if (a[10]){ a[10]= be(e)->read_mem_string(a[10],1); }
+// Python advapi32.py: CreateProcessAsUser — reads app/cmdline strings,
+// creates a process via emu.create_process(), writes PROCESS_INFORMATION output.
+uint64_t Advapi32::CreateProcessAsUserA(void* e, ArgList& a, void* ctx) {
+    if (a.size()<11) return 0;
+    uint64_t app=a[1], cmd=a[2], env=a[7], cd=a[8], si=a[9], ppi=a[10];
+    std::string appstr, cmdstr;
+    if (app) { appstr=be(e)->read_mem_string(app,1); a[1]=appstr; }
+    if (cmd) { cmdstr=be(e)->read_mem_string(cmd,1); a[2]=cmdstr; }
+    if (appstr.empty() && !cmdstr.empty()) appstr=cmdstr.substr(0,cmdstr.find(' '));
+    auto proc = we(e)->create_process(appstr, cmdstr, nullptr, false);
+    if (!proc) return 0;
+    auto proc_hnd = we(e)->get_object_handle(proc);
+    uint64_t tid=0, th_hnd=0;
+    if (!proc->threads.empty()) {
+        auto t=proc->threads[0]; tid=t->get_tid();
+        th_hnd=we(e)->get_object_handle(t);
+    }
+    int ps=we(e)->get_ptr_size();
+    if (ppi) {
+        if (ps==8) {
+            PROCESS_INFORMATION_POD<8> pi;
+            pi.hProcess=static_cast<uint64_t>(proc_hnd);
+            pi.hThread=static_cast<uint64_t>(th_hnd);
+            pi.dwProcessId=static_cast<uint32_t>(proc->get_pid());
+            pi.dwThreadId=static_cast<uint32_t>(tid);
+            std::vector<uint8_t> buf(sizeof(pi));
+            cast_to_bytes(buf, 0, pi);
+            we(e)->mem_write(ppi, buf);
+        } else {
+            PROCESS_INFORMATION_POD<4> pi;
+            pi.hProcess=static_cast<uint32_t>(proc_hnd);
+            pi.hThread=static_cast<uint32_t>(th_hnd);
+            pi.dwProcessId=static_cast<uint32_t>(proc->get_pid());
+            pi.dwThreadId=static_cast<uint32_t>(tid);
+            std::vector<uint8_t> buf(sizeof(pi));
+            cast_to_bytes(buf, 0, pi);
+            we(e)->mem_write(ppi, buf);
+        }
+    }
+    (void)env; (void)cd; (void)si;
     return 1;
 }
+uint64_t Advapi32::EnumServicesStatusA(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 0; // ERROR_NO_MORE_ITEMS
+}
+uint64_t Advapi32::EnumServicesStatusW(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 0;
+}
+uint64_t Advapi32::QueryServiceConfigA(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+uint64_t Advapi32::QueryServiceConfigW(void* e, ArgList& a, void* ctx) {
+    (void)e; (void)a; return 1;
+}
+// ── Remaining A/W wrappers and stubs ───────────────────────────────
+uint64_t Advapi32::CreateServiceW(void* e, ArgList& a, void* ctx) {
+    if(a.size()>=2&&a[1]){a[1]=be(e)->read_mem_string(a[1],2);}
+    if(a.size()>=3&&a[2]){a[2]=be(e)->read_mem_string(a[2],2);}
+    if(a.size()>=8&&a[7]){a[7]=be(e)->read_mem_string(a[7],2);}
+    return we(e)->mem_map(8,0,4,"advapi32.service");
+}
+uint64_t Advapi32::StartServiceW(void* e, ArgList& a, void* ctx) { (void)e;(void)a;return 1; }
+uint64_t Advapi32::ControlService(void* e, ArgList& a, void* ctx) { (void)e;(void)a;return 1; }
+uint64_t Advapi32::DeleteService(void* e, ArgList& a, void* ctx) { (void)e;(void)a;return 1; }
+uint64_t Advapi32::QueryServiceStatus(void* e, ArgList& a, void* ctx) {
+    (void)e; if(a.size()>=2&&a[1]){std::vector<uint8_t>buf(28,0);write_le(buf,0,0x30,4);we(e)->mem_write(a[1],buf);}
+    return 1;
+}
+uint64_t Advapi32::CloseServiceHandle(void* e, ArgList& a, void* ctx) { (void)e;(void)a;return 1; }
 uint64_t Advapi32::ChangeServiceConfigW(void* e, ArgList& a, void* ctx) {
-    if (a[4]) { a[4] = be(e)->read_mem_string(a[4], 2); }
-    if (a[5]) { a[5] = be(e)->read_mem_string(a[5], 2); }
-    if (a[7]) { a[7] = be(e)->read_mem_string(a[7], 2); }
-    if (a[8]) { a[8] = be(e)->read_mem_string(a[8], 2); }
-    if (a[9]) { a[9] = be(e)->read_mem_string(a[9], 2); }
-    if (a[10]){ a[10]= be(e)->read_mem_string(a[10],2); }
+    if(a.size()>=5&&a[4]){a[4]=be(e)->read_mem_string(a[4],2);}
+    if(a.size()>=6&&a[5]){a[5]=be(e)->read_mem_string(a[5],2);}
+    if(a.size()>=8&&a[7]){a[7]=be(e)->read_mem_string(a[7],2);}
+    if(a.size()>=9&&a[8]){a[8]=be(e)->read_mem_string(a[8],2);}
+    if(a.size()>=10&&a[9]){a[9]=be(e)->read_mem_string(a[9],2);}
+    if(a.size()>=11&&a[10]){a[10]=be(e)->read_mem_string(a[10],2);}
     return 1;
 }
-uint64_t Advapi32::ChangeServiceConfig2A(void* e, ArgList& a, void* ctx) {
-    (void)e; (void)a; return 1;
-}
-uint64_t Advapi32::ChangeServiceConfig2W(void* e, ArgList& a, void* ctx) {
-    (void)e; (void)a; return 1;
-}
-
-// ── Misc ────────────────────────────────────────────────────────────
-uint64_t Advapi32::RevertToSelf(void* e, ArgList& a, void* ctx) {
-    (void)e; (void)a; return 1;
-}
-uint64_t Advapi32::ImpersonateLoggedOnUser(void* e, ArgList& a, void* ctx) {
-    (void)e; (void)a; return 1;
-}
-
-uint64_t Advapi32::stub(void* e, ArgList& a, void* ctx) {
-    (void)e; (void)a; return 1;
-}
+uint64_t Advapi32::ChangeServiceConfig2A(void* e, ArgList& a, void* ctx) { (void)e;(void)a;return 1; }
+uint64_t Advapi32::ChangeServiceConfig2W(void* e, ArgList& a, void* ctx) { (void)e;(void)a;return 1; }
+uint64_t Advapi32::RevertToSelf(void* e, ArgList& a, void* ctx) { (void)e;(void)a;return 1; }
+uint64_t Advapi32::ImpersonateLoggedOnUser(void* e, ArgList& a, void* ctx) { (void)e;(void)a;return 1; }
+uint64_t Advapi32::stub(void* e, ArgList& a, void* ctx) { (void)e; (void)a; return 1; }
 
 Advapi32::Advapi32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Advapi32)
@@ -430,6 +636,24 @@ Advapi32::Advapi32(void* emu) : ApiHandler(emu) {
     REG(Advapi32, RevertToSelf, 0)      REG(Advapi32, ImpersonateLoggedOnUser, 1)
     REG(Advapi32, AllocateAndInitializeSid, 11)
     REG(Advapi32, CheckTokenMembership, 3) REG(Advapi32, FreeSid, 1)
+    REG(Advapi32, StartServiceCtrlDispatcherA, 1) REG(Advapi32, StartServiceCtrlDispatcherW, 1)
+    REG(Advapi32, RegisterServiceCtrlHandlerA, 2) REG(Advapi32, RegisterServiceCtrlHandlerW, 2)
+    REG(Advapi32, RegisterServiceCtrlHandlerExA, 3) REG(Advapi32, RegisterServiceCtrlHandlerExW, 3)
+    REG(Advapi32, SetServiceStatus, 2)
+    REG(Advapi32, OpenServiceA, 3)          REG(Advapi32, OpenServiceW, 3)
+    REG(Advapi32, GetUserNameA, 2)          REG(Advapi32, GetUserNameW, 2)
+    REG(Advapi32, LookupAccountNameA, 4)    REG(Advapi32, LookupAccountNameW, 4)
+    REG(Advapi32, LookupAccountSidA, 7)     REG(Advapi32, LookupAccountSidW, 7)
+    REG(Advapi32, CryptCreateHash, 5)       REG(Advapi32, CryptDestroyHash, 1)
+    REG(Advapi32, CryptGetHashParam, 6)     REG(Advapi32, CryptHashData, 5)
+    REG(Advapi32, CryptDecrypt, 6)          REG(Advapi32, CryptDeriveKey, 3)
+    REG(Advapi32, GetTokenInformation, 5)
+    REG(Advapi32, GetCurrentHwProfileA, 1)
+    REG(Advapi32, CreateProcessAsUserA, 11)
+    REG(Advapi32, EnumServicesStatusA, 5)   REG(Advapi32, EnumServicesStatusW, 5)
+    REG(Advapi32, QueryServiceConfigA, 4)   REG(Advapi32, QueryServiceConfigW, 4)
+    REG(Advapi32, EqualSid, 2)              REG(Advapi32, GetSidSubAuthority, 2)
+    REG(Advapi32, GetSidSubAuthorityCount, 1) REG(Advapi32, GetSidIdentifierAuthority, 1)
     END_API_TABLE
 }
 
