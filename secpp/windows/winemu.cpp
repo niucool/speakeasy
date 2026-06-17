@@ -857,7 +857,7 @@ void WindowsEmulator::start() {
     // Use a large count instead of 0 because Unicorn 2.x may return UC_ERR_MAP
     // with count=0 when the hook chain modifies memory mappings.
     int max_instr = config_.max_instructions;
-    if (max_instr < 0) max_instr = 50000;  // finite limit, > Python antidbg's ~844 instructions
+    //if (max_instr < 0) max_instr = 50000;  // finite limit, > Python antidbg's ~844 instructions
 
     while (true) {
         try {
