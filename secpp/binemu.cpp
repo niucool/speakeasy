@@ -36,6 +36,10 @@ BinaryEmulator::~BinaryEmulator() {
     }
 }
 
+void BinaryEmulator::log_debug(const std::string& msg) {
+    PLOG_DEBUG << msg;
+}
+
 void BinaryEmulator::log_info(const std::string& msg) {
     PLOG_INFO << msg;
 }
@@ -99,6 +103,8 @@ void BinaryEmulator::_parse_config(const speakeasy::SpeakeasyConfig& cfg) {
     for (const auto& drv : cfg.drives) {
         drive_config_.push_back(drv.root_path);
     }
+
+    env_ = cfg.env;
 }
 
 std::string BinaryEmulator::get_emu_version() {

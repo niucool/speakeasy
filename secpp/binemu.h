@@ -114,6 +114,7 @@ public:
 
     // Logging methods
     // Python binemu.py:33-34 doc: "Base class for emulating binaries\n\nSubclasses must define the following attributes:\n    arch: Architecture constant (e.g., ARCH_X86, ARCH_AMD64)\n    modules: List of loaded modules\n    input: Input metadata dictionary (or None)"
+    void log_debug(const std::string& msg);
     void log_info(const std::string& msg);
     void log_error(const std::string& msg);
     void log_exception(const std::string& msg);

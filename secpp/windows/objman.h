@@ -105,7 +105,7 @@ protected:
     void* emu_;
     uint64_t address_;
     std::string name_;
-    void* object_;
+    EmuStruct* object_;
     int arch_;
 
 public:
@@ -122,7 +122,9 @@ public:
         id = KernelObject::curr_id;
         KernelObject::curr_id += 4;
     }
-    virtual ~KernelObject() = default;
+    virtual ~KernelObject() {
+        if (object_) delete object_;
+    }
 
     int sizeof_obj(void* obj = nullptr);
     void* get_bytes(void* obj = nullptr);

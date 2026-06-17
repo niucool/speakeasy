@@ -429,7 +429,7 @@ class WindowsEmulator(BinaryEmulator):
         """
         Prepare CPU and memory state for the given run without starting emulation.
         """
-        logger.info("* exec: %s", run.type)
+        logger.debug("* exec: %s", run.type)
 
         self.curr_run = run
         if self.profiler:

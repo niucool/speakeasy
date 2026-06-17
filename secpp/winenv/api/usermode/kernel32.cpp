@@ -30,6 +30,7 @@
 #include "windows/win32.h"    // Win32Emulator (set_last_error)
 #include "windows/fileman.h"  // File, FileManager
 #include "windows/objman.h"   // Process, Thread
+#include "winenv/deffs/windows/kernel32.h"
 
 using namespace speakeasy;
 
@@ -1368,14 +1369,23 @@ static uint64_t CreateProcess_impl(void* emu,
 
     // Write PROCESS_INFORMATION back to guest memory
     if (pi_ptr) {
-        size_t ps = static_cast<size_t>(ptr_sz(emu));
-        std::vector<uint8_t> pi_buf(static_cast<size_t>(ps == 8 ? 24 : 16), 0);
-        write_le(pi_buf, 0, static_cast<uint64_t>(proc_handle), ps);
-        write_le(pi_buf, ps, static_cast<uint64_t>(thread_handle), ps);
-        write_le(pi_buf, ps * 2, static_cast<uint64_t>(proc->get_pid()), 4);
+        int ps = ptr_sz(emu);
         int tid = (!threads.empty()) ? threads[0]->get_id() : 0;
-        write_le(pi_buf, ps * 2 + 4, static_cast<uint64_t>(tid), 4);
-        mm(emu)->mem_write(pi_ptr, pi_buf);
+        if (ps == 4) {
+            speakeasy::deffs::windows::PROCESS_INFORMATION<4> pi;
+            pi.hProcess = static_cast<uint32_t>(proc_handle);
+            pi.hThread = static_cast<uint32_t>(thread_handle);
+            pi.dwProcessId = static_cast<uint32_t>(proc->get_pid());
+            pi.dwThreadId = static_cast<uint32_t>(tid);
+            mm(emu)->mem_write(pi_ptr, pi.get_bytes());
+        } else {
+            speakeasy::deffs::windows::PROCESS_INFORMATION<8> pi;
+            pi.hProcess = static_cast<uint64_t>(proc_handle);
+            pi.hThread = static_cast<uint64_t>(thread_handle);
+            pi.dwProcessId = static_cast<uint32_t>(proc->get_pid());
+            pi.dwThreadId = static_cast<uint32_t>(tid);
+            mm(emu)->mem_write(pi_ptr, pi.get_bytes());
+        }
     }
 
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
@@ -1836,31 +1846,33 @@ uint64_t Kernel32::GetSystemInfo(void* emu, ArgList& argv, void* ctx) {
     uint64_t lpSystemInfo = argv[0];
     if (!lpSystemInfo) return 0;
     int ps = ptr_sz(emu);
-    size_t sz = (ps == 8) ? 48 : 36;
-    std::vector<uint8_t> b(sz, 0);
-    write_le(b, 0, static_cast<uint16_t>((ps == 8) ? 9 : 0), 2);
-    write_le(b, 2, static_cast<uint16_t>(0), 2);
-    write_le(b, 4, static_cast<uint32_t>(0x1000), 4);
     if (ps == 8) {
-        write_le(b, 8,  static_cast<uint64_t>(0x10000), 8);
-        write_le(b, 16, static_cast<uint64_t>(0x7FFFFFFF0000), 8);
-        write_le(b, 24, static_cast<uint64_t>(1), 8);
-        write_le(b, 32, static_cast<uint32_t>(1), 4);
-        write_le(b, 36, static_cast<uint32_t>(0), 4);
-        write_le(b, 40, static_cast<uint32_t>(0x10000), 4);
-        write_le(b, 44, static_cast<uint16_t>(0), 2);
-        write_le(b, 46, static_cast<uint16_t>(0), 2);
+        speakeasy::deffs::windows::SYSTEM_INFO<8> si;
+        si.wProcessorArchitecture = 9; // PROCESSOR_ARCHITECTURE_AMD64
+        si.dwPageSize = 0x1000;
+        si.lpMinimumApplicationAddress = 0x10000;
+        si.lpMaximumApplicationAddress = 0x7FFFFFFF0000;
+        si.dwActiveProcessorMask = 1;
+        si.dwNumberOfProcessors = 1;
+        si.dwProcessorType = 0;
+        si.dwAllocationGranularity = 0x10000;
+        si.wProcessorLevel = 0;
+        si.wProcessorRevision = 0;
+        mm(emu)->mem_write(lpSystemInfo, si.get_bytes());
     } else {
-        write_le(b, 8,  static_cast<uint64_t>(0x10000), 4);
-        write_le(b, 12, static_cast<uint64_t>(0x7FFEFFFF), 4);
-        write_le(b, 16, static_cast<uint64_t>(1), 4);
-        write_le(b, 20, static_cast<uint32_t>(1), 4);
-        write_le(b, 24, static_cast<uint32_t>(0), 4);
-        write_le(b, 28, static_cast<uint32_t>(0x10000), 4);
-        write_le(b, 32, static_cast<uint16_t>(0), 2);
-        write_le(b, 34, static_cast<uint16_t>(0), 2);
+        speakeasy::deffs::windows::SYSTEM_INFO<4> si;
+        si.wProcessorArchitecture = 0; // PROCESSOR_ARCHITECTURE_INTEL
+        si.dwPageSize = 0x1000;
+        si.lpMinimumApplicationAddress = 0x10000;
+        si.lpMaximumApplicationAddress = 0x7FFEFFFF;
+        si.dwActiveProcessorMask = 1;
+        si.dwNumberOfProcessors = 1;
+        si.dwProcessorType = 0;
+        si.dwAllocationGranularity = 0x10000;
+        si.wProcessorLevel = 0;
+        si.wProcessorRevision = 0;
+        mm(emu)->mem_write(lpSystemInfo, si.get_bytes());
     }
-    mm(emu)->mem_write(lpSystemInfo, b);
     return 0;
 }
 
@@ -1876,13 +1888,14 @@ uint64_t Kernel32::GetVersion(void* emu, ArgList& argv, void* ctx) {
 uint64_t Kernel32::GetVersionExA(void* emu, ArgList& argv, void* ctx) {
     uint64_t info_ptr = argv[0];
     if (!info_ptr) return 0;
-    std::vector<uint8_t> info(156, 0);
-    write_le(info, 0, static_cast<uint32_t>(156), 4);
-    write_le(info, 4, static_cast<uint32_t>(10), 4);
-    write_le(info, 8, static_cast<uint32_t>(0), 4);
-    write_le(info, 12, static_cast<uint32_t>(19041), 4);
-    write_le(info, 16, static_cast<uint32_t>(10), 4);
-    mm(emu)->mem_write(info_ptr, info);
+    auto& os = be(emu)->get_config().os_ver;
+    speakeasy::deffs::windows::OSVERSIONINFO ver;
+    ver.dwOSVersionInfoSize = 276;  // Size of OSVERSIONINFOW
+    ver.dwMajorVersion = static_cast<uint32_t>(os.major);
+    ver.dwMinorVersion = static_cast<uint32_t>(os.minor);
+    ver.dwBuildNumber = static_cast<uint32_t>(os.build);
+    ver.dwPlatformId = 2; // VER_PLATFORM_WIN32_NT
+    mm(emu)->mem_write(info_ptr, ver.get_bytes());
     return 1;
 }
 
@@ -1901,16 +1914,16 @@ uint64_t Kernel32::GetSystemTime(void* emu, ArgList& argv, void* ctx) {
     if (!st_ptr) return 0;
     auto now = std::time(nullptr);
     auto* tm = std::gmtime(&now);
-    std::vector<uint8_t> st(16, 0);
-    write_le(st, 0, static_cast<uint16_t>(tm->tm_year + 1900), 2);
-    write_le(st, 2, static_cast<uint16_t>(tm->tm_mon + 1), 2);
-    write_le(st, 4, static_cast<uint16_t>(tm->tm_wday), 2);
-    write_le(st, 6, static_cast<uint16_t>(tm->tm_mday), 2);
-    write_le(st, 8, static_cast<uint16_t>(tm->tm_hour), 2);
-    write_le(st, 10, static_cast<uint16_t>(tm->tm_min), 2);
-    write_le(st, 12, static_cast<uint16_t>(tm->tm_sec), 2);
-    write_le(st, 14, static_cast<uint16_t>(0), 2);
-    mm(emu)->mem_write(st_ptr, st);
+    speakeasy::deffs::windows::SYSTEMTIME st;
+    st.wYear         = static_cast<uint16_t>(tm->tm_year + 1900);
+    st.wMonth        = static_cast<uint16_t>(tm->tm_mon + 1);
+    st.wDayOfWeek    = static_cast<uint16_t>(tm->tm_wday);
+    st.wDay          = static_cast<uint16_t>(tm->tm_mday);
+    st.wHour         = static_cast<uint16_t>(tm->tm_hour);
+    st.wMinute       = static_cast<uint16_t>(tm->tm_min);
+    st.wSecond       = static_cast<uint16_t>(tm->tm_sec);
+    st.wMilliseconds = 0;
+    mm(emu)->mem_write(st_ptr, st.get_bytes());
     return 0;
 }
 
@@ -1941,16 +1954,16 @@ uint64_t Kernel32::FileTimeToSystemTime(void* emu, ArgList& argv, void* ctx) {
     if (st_ptr) {
         auto now = std::time(nullptr);
         auto* tm = std::gmtime(&now);
-        std::vector<uint8_t> st(16, 0);
-        write_le(st, 0, static_cast<uint16_t>(tm->tm_year + 1900), 2);
-        write_le(st, 2, static_cast<uint16_t>(tm->tm_mon + 1), 2);
-        write_le(st, 4, static_cast<uint16_t>(tm->tm_wday), 2);
-        write_le(st, 6, static_cast<uint16_t>(tm->tm_mday), 2);
-        write_le(st, 8, static_cast<uint16_t>(tm->tm_hour), 2);
-        write_le(st, 10, static_cast<uint16_t>(tm->tm_min), 2);
-        write_le(st, 12, static_cast<uint16_t>(tm->tm_sec), 2);
-        write_le(st, 14, static_cast<uint16_t>(0), 2);
-        mm(emu)->mem_write(st_ptr, st);
+        speakeasy::deffs::windows::SYSTEMTIME st;
+        st.wYear         = static_cast<uint16_t>(tm->tm_year + 1900);
+        st.wMonth        = static_cast<uint16_t>(tm->tm_mon + 1);
+        st.wDayOfWeek    = static_cast<uint16_t>(tm->tm_wday);
+        st.wDay          = static_cast<uint16_t>(tm->tm_mday);
+        st.wHour         = static_cast<uint16_t>(tm->tm_hour);
+        st.wMinute       = static_cast<uint16_t>(tm->tm_min);
+        st.wSecond       = static_cast<uint16_t>(tm->tm_sec);
+        st.wMilliseconds = 0;
+        mm(emu)->mem_write(st_ptr, st.get_bytes());
     }
     return 1;
 }
@@ -2386,19 +2399,26 @@ static uint64_t process32_impl(void* emu, const ArgList& argv, bool first) {
         return 0;
     }
     int ps = ptr_sz(emu);
-    size_t struct_sz = 4 + 4 + 4 + static_cast<size_t>(ps) + 4 + 4 + 4 + 4 + 4 + 260;
-    std::vector<uint8_t> buf(struct_sz, 0);
-    write_le(buf, 0, static_cast<uint32_t>(struct_sz), 4);
     auto proc = we(emu)->find_process(entry.items[static_cast<size_t>(idx)]);
     if (!proc) return 0;
-    write_le(buf, 8, static_cast<uint32_t>(proc->get_pid()), 4);
     std::string exe = proc->image.empty() ? "emulated.exe" : proc->image;
-    size_t exe_off = struct_sz - 260;
-    for (size_t i = 0; i < exe.size() && i < 259; i++) {
-        buf[exe_off + i] = static_cast<uint8_t>(exe[i]);
+    if (ps == 8) {
+        speakeasy::deffs::windows::PROCESSENTRY32<8> pe;
+        pe.dwSize = pe.sizeof_obj();
+        pe.th32ProcessID = static_cast<uint32_t>(proc->get_pid());
+        size_t n = std::min(exe.size(), sizeof(pe.szExeFile) - 1);
+        std::memcpy(pe.szExeFile, exe.c_str(), n);
+        pe.szExeFile[n] = 0;
+        mm(emu)->mem_write(pe32, pe.get_bytes());
+    } else {
+        speakeasy::deffs::windows::PROCESSENTRY32<4> pe;
+        pe.dwSize = pe.sizeof_obj();
+        pe.th32ProcessID = static_cast<uint32_t>(proc->get_pid());
+        size_t n = std::min(exe.size(), sizeof(pe.szExeFile) - 1);
+        std::memcpy(pe.szExeFile, exe.c_str(), n);
+        pe.szExeFile[n] = 0;
+        mm(emu)->mem_write(pe32, pe.get_bytes());
     }
-    buf[exe_off + exe.size()] = 0;
-    mm(emu)->mem_write(pe32, buf);
     return 1;
 }
 
@@ -2427,13 +2447,12 @@ static uint64_t thread32_impl(void* emu, const ArgList& argv, bool first) {
         w32(emu)->set_last_error(K32_ERR_NO_MORE_FILES);
         return 0;
     }
-    size_t struct_sz = 28;
-    std::vector<uint8_t> buf(struct_sz, 0);
-    write_le(buf, 0, static_cast<uint32_t>(struct_sz), 4);
     auto* thread = static_cast<Thread*>(entry.items[static_cast<size_t>(idx)]);
-    write_le(buf, 8, static_cast<uint32_t>(thread->get_id()), 4);
-    write_le(buf, 12, static_cast<uint32_t>(entry.pid), 4);
-    mm(emu)->mem_write(te32, buf);
+    speakeasy::deffs::windows::THREADENTRY32 te;
+    te.dwSize = te.sizeof_obj();
+    te.th32ThreadID = static_cast<uint32_t>(thread->get_id());
+    te.th32OwnerProcessID = static_cast<uint32_t>(entry.pid);
+    mm(emu)->mem_write(te32, te.get_bytes());
     return 1;
 }
 
@@ -2463,28 +2482,31 @@ static uint64_t module32_impl(void* emu, const ArgList& argv, bool first) {
         return 0;
     }
     int ps = ptr_sz(emu);
-    size_t struct_sz = 4 + 4 + 4 + static_cast<size_t>(ps) * 4 + 4 + 4 + 260 + 260;
-    std::vector<uint8_t> buf(struct_sz, 0);
-    write_le(buf, 0, static_cast<uint32_t>(struct_sz), 4);
     auto* mod = static_cast<KernelObject*>(entry.items[static_cast<size_t>(idx)]);
-    write_le(buf, 8, static_cast<uint32_t>(mod->get_id()), 4);
-    write_le(buf, 12, static_cast<uint32_t>(entry.pid), 4);
-    size_t base_off = (ps == 8) ? 20 : 16;
-    write_le(buf, base_off, reinterpret_cast<uint64_t>(mod), static_cast<size_t>(ps));
-    size_t size_off = base_off + static_cast<size_t>(ps);
-    write_le(buf, size_off, static_cast<uint64_t>(0x1000), static_cast<size_t>(ps));
     std::string mname = mod->get_obj_name();
-    size_t module_off = struct_sz - 520;
-    for (size_t i = 0; i < mname.size() && i < 259; i++) {
-        buf[module_off + i] = static_cast<uint8_t>(mname[i]);
+    if (ps == 8) {
+        speakeasy::deffs::windows::MODULEENTRY32<8> me;
+        me.dwSize = me.sizeof_obj();
+        me.th32ModuleID = static_cast<uint32_t>(mod->get_id());
+        me.th32ProcessID = static_cast<uint32_t>(entry.pid);
+        me.modBaseAddr = reinterpret_cast<uint64_t>(mod);
+        me.modBaseSize = 0x1000;
+        size_t n = std::min(mname.size(), sizeof(me.szModule) - 1);
+        std::memcpy(me.szModule, mname.c_str(), n); me.szModule[n] = 0;
+        std::memcpy(me.szExePath, mname.c_str(), n); me.szExePath[n] = 0;
+        mm(emu)->mem_write(me32, me.get_bytes());
+    } else {
+        speakeasy::deffs::windows::MODULEENTRY32<4> me;
+        me.dwSize = me.sizeof_obj();
+        me.th32ModuleID = static_cast<uint32_t>(mod->get_id());
+        me.th32ProcessID = static_cast<uint32_t>(entry.pid);
+        me.modBaseAddr = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(mod));
+        me.modBaseSize = 0x1000;
+        size_t n = std::min(mname.size(), sizeof(me.szModule) - 1);
+        std::memcpy(me.szModule, mname.c_str(), n); me.szModule[n] = 0;
+        std::memcpy(me.szExePath, mname.c_str(), n); me.szExePath[n] = 0;
+        mm(emu)->mem_write(me32, me.get_bytes());
     }
-    buf[module_off + mname.size()] = 0;
-    size_t path_off = struct_sz - 260;
-    for (size_t i = 0; i < mname.size() && i < 259; i++) {
-        buf[path_off + i] = static_cast<uint8_t>(mname[i]);
-    }
-    buf[path_off + mname.size()] = 0;
-    mm(emu)->mem_write(me32, buf);
     return 1;
 }
 
@@ -2663,16 +2685,13 @@ uint64_t Kernel32::GetVersionExW(void* e, ArgList& a, void* c) {
     uint64_t info_ptr = a[0];
     if (!info_ptr) return 0;
     auto& os = be(e)->get_config().os_ver;
-    uint32_t major = static_cast<uint32_t>(os.major);
-    uint32_t minor = static_cast<uint32_t>(os.minor);
-    uint32_t build = static_cast<uint32_t>(os.build);
-    int ps = ptr_sz(e);
-    mm(e)->mem_write(info_ptr + 4, std::vector<uint8_t>{(uint8_t)major, 0, 0, 0});
-    mm(e)->mem_write(info_ptr + 8, std::vector<uint8_t>{(uint8_t)minor, 0, 0, 0});
-    mm(e)->mem_write(info_ptr + 12, std::vector<uint8_t>{(uint8_t)(build & 0xFF), (uint8_t)((build >> 8) & 0xFF), 0, 0});
-    mm(e)->mem_write(info_ptr + 16, std::vector<uint8_t>{2, 0, 0, 0}); // VER_PLATFORM_WIN32_NT
-    std::string csd = "";
-    be(e)->write_mem_string(csd, info_ptr + 20 + static_cast<uint64_t>(ps), 2);
+    speakeasy::deffs::windows::OSVERSIONINFO ver;
+    ver.dwOSVersionInfoSize = 276;  // Size of OSVERSIONINFOW
+    ver.dwMajorVersion = static_cast<uint32_t>(os.major);
+    ver.dwMinorVersion = static_cast<uint32_t>(os.minor);
+    ver.dwBuildNumber = static_cast<uint32_t>(os.build);
+    ver.dwPlatformId = 2; // VER_PLATFORM_WIN32_NT
+    mm(e)->mem_write(info_ptr, ver.get_bytes());
     return 1;
 }
 uint64_t Kernel32::GetComputerNameW(void* e, ArgList& a, void* c) {
@@ -3481,12 +3500,62 @@ uint64_t Kernel32::GetShortPathName(void* e, ArgList& a, void* c) {
     return static_cast<uint64_t>(s.size() + 1);
 }
 uint64_t Kernel32::GetStartupInfo(void* e, ArgList& a, void* c) {
-    uint64_t info_ptr = a[0]; if (!info_ptr) return 0;
+    // Python kernel32.py: GetStartupInfo  fill STARTUPINFO with desktop/title/standard handles
+    uint64_t info_ptr = a[0];
+    if (!info_ptr) return 0;
+
     int ps = ptr_sz(e);
-    size_t sz = ps == 4 ? 68 : 104;
-    auto buf = std::vector<uint8_t>(sz, 0);
-    buf[0] = static_cast<uint8_t>(sz); // cb
-    mm(e)->mem_write(info_ptr, buf);
+    auto proc = we(e)->get_current_process();
+
+    std::string desk_name = proc ? proc->get_desktop_name() : "Default";
+    std::string title_name = proc ? proc->get_title_name() : "";
+    if (title_name.empty()) title_name = proc ? proc->path : "emulated.exe";
+
+    if (ps == 4) {
+        speakeasy::deffs::windows::STARTUPINFO<4> si;
+        si.cb = si.sizeof_obj();
+        si.hStdInput = 0;
+        si.hStdOutput = 1;
+        si.hStdError = 2;
+        // Allocate desktop name as UTF-8 (ANSI path — common for x86)
+        {
+            std::string out = desk_name;
+            uint64_t ptr = mm(e)->mem_map(out.size() + 2, std::nullopt, PERM_MEM_RW,
+                                         "api.struct.STARTUPINFOA.lpDesktop");
+            be(e)->write_mem_string(out, ptr, 1);
+            si.lpDesktop = static_cast<uint32_t>(ptr);
+        }
+        // Allocate title as UTF-8
+        {
+            std::string out = title_name;
+            uint64_t ptr = mm(e)->mem_map(out.size() + 2, std::nullopt, PERM_MEM_RW,
+                                         "api.struct.STARTUPINFOA.lpTitle");
+            be(e)->write_mem_string(out, ptr, 1);
+            si.lpTitle = static_cast<uint32_t>(ptr);
+        }
+        mm(e)->mem_write(info_ptr, si.get_bytes());
+    } else {
+        speakeasy::deffs::windows::STARTUPINFO<8> si;
+        si.cb = si.sizeof_obj();
+        si.hStdInput = 0;
+        si.hStdOutput = 1;
+        si.hStdError = 2;
+        // Allocate desktop name as UTF-16 (Unicode path — default for x64)
+        {
+            uint64_t ptr = mm(e)->mem_map((desk_name.size() + 1) * 2, std::nullopt, PERM_MEM_RW,
+                                         "api.struct.STARTUPINFOW.lpDesktop");
+            be(e)->write_mem_string(desk_name, ptr, 2);
+            si.lpDesktop = ptr;
+        }
+        // Allocate title as UTF-16
+        {
+            uint64_t ptr = mm(e)->mem_map((title_name.size() + 1) * 2, std::nullopt, PERM_MEM_RW,
+                                         "api.struct.STARTUPINFOW.lpTitle");
+            be(e)->write_mem_string(title_name, ptr, 2);
+            si.lpTitle = ptr;
+        }
+        mm(e)->mem_write(info_ptr, si.get_bytes());
+    }
     return 0;
 }
 uint64_t Kernel32::GetStringTypeA(void* e, ArgList& a, void* c) {
@@ -4019,10 +4088,9 @@ uint64_t Kernel32::SizeofResource(void* e, ArgList& a, void* c) {
     // Python kernel32.py: SizeofResource  read Size at IMAGE_RESOURCE_DATA_ENTRY+4
     uint64_t hModule = a[0]; uint64_t hResInfo = a[1]; (void)hModule;
     if (hResInfo) {
-        auto raw = mm(e)->mem_read(hResInfo + 4, 4);
-        if (raw.size() == 4)
-            return static_cast<uint32_t>(raw[0]) | (static_cast<uint32_t>(raw[1]) << 8) |
-                   (static_cast<uint32_t>(raw[2]) << 16) | (static_cast<uint32_t>(raw[3]) << 24);
+        speakeasy::deffs::windows::IMAGE_RESOURCE_DATA_ENTRY entry;
+        we(e)->mem_cast(&entry, hResInfo);
+        return entry.Size;
     }
     return 0;
 }

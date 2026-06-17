@@ -338,6 +338,21 @@ struct SYSTEMTIME : public EmuStructHelper<SYSTEMTIME>, public SYSTEMTIME_POD {
 };
 
 // ==========================================================================================================
+// IMAGE_RESOURCE_DATA_ENTRY: fixed-size, 16 bytes (4*uint32)
+// Used by FindResource, SizeofResource, LdrAccessResource
+// ==========================================================================================================
+struct IMAGE_RESOURCE_DATA_ENTRY_POD {
+    uint32_t OffsetToData = 0;   // offset  0
+    uint32_t Size         = 0;   // offset  4
+    uint32_t CodePage     = 0;   // offset  8
+    uint32_t Reserved     = 0;   // offset 12
+    // total = 16
+};
+struct IMAGE_RESOURCE_DATA_ENTRY : public EmuStructHelper<IMAGE_RESOURCE_DATA_ENTRY>, public IMAGE_RESOURCE_DATA_ENTRY_POD {
+    std::string get_mem_tag() const override { return "image_resource_data_entry"; }
+};
+
+// ==========================================================================================================
 // STARTUPINFO: ptr-size polymorphic
 // x86: cb(4)+lpReserved(4)+lpDesktop(4)+lpTitle(4)+dwX(4)+dwY(4)+dwXSize(4)+dwYSize(4)
 //      +dwXCountChars(4)+dwYCountChars(4)+dwFillAttribute(4)+dwFlags(4)+wShowWindow(2)+cbReserved2(2)

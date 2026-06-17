@@ -19,6 +19,7 @@
 #include "windows/win32.h"    // Win32Emulator
 #include "struct.h"           // speakeasy::write_le, speakeasy::read_le
 #include "winenv/arch.h"      // ARCH_X86, ARCH_AMD64
+#include "winenv/deffs/windows/kernel32.h"  // IMAGE_RESOURCE_DATA_ENTRY, SYSTEMTIME, etc.
 
 // NTSTATUS constants
 static constexpr uint32_t NT_SUCCESS          = 0x00000000;
@@ -482,9 +483,10 @@ uint64_t Ntdll::LdrAccessResource(void* emu, ArgList& argv, void* ctx) {
 
     if (res_entry == 0) return STATUS_INVALID_PARAMETER;
 
-    // IMAGE_RESOURCE_DATA_ENTRY: OffsetToData(4), Size(4), CodePage(4), Reserved(4)
-    uint32_t offset = read_u32(emu, res_entry);
-    uint32_t size   = read_u32(emu, res_entry + 4);
+    speakeasy::deffs::windows::IMAGE_RESOURCE_DATA_ENTRY entry;
+    we(emu)->mem_cast(&entry, res_entry);
+    uint32_t offset = entry.OffsetToData;
+    uint32_t size   = entry.Size;
 
     if (size_ptr != 0) {
         write_ptr(emu, size_ptr, static_cast<uint64_t>(size));  // PULONG written as pointer-sized (matches Python write_ptr)
