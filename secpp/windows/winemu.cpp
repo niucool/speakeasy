@@ -1178,7 +1178,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::get_mod_by_name(const
     std::string nl = speakeasy::to_lower(name);
 
     for (auto pe : modules_) {
-        fs::path full_path = pe->emu_path;
+        fs::path full_path = speakeasy::parse_nt_path(pe->emu_path);
 
         // 1. Get the filename (equivalent to ntpath.basename)
         fs::path mod_name = full_path.filename();
