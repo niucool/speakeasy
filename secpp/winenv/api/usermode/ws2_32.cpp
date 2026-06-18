@@ -72,7 +72,7 @@ uint64_t Ws2_32::connect(void* e, ArgList& a, void* ctx) {
     auto prof = be(e)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-        prof->log_network(run, "connected", 0, "connect", "tcp", {}, "winsock.connect");
+        prof->record_network_event(run, "connected", 0, "connect", "tcp", {}, "winsock.connect");
     }
     return 0; // ERROR_SUCCESS
 }
@@ -95,7 +95,7 @@ uint64_t Ws2_32::send(void* e, ArgList& a, void* ctx) {
     auto prof = be(e)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-        prof->log_network(run, "", 0, "data_out", "tcp", data, "winsock.send");
+        prof->record_network_event(run, "", 0, "data_out", "tcp", data, "winsock.send");
     }
     return blen;
 }
@@ -140,7 +140,7 @@ uint64_t Ws2_32::bind(void* e, ArgList& a, void* ctx) {
             auto prof = be(e)->get_profiler();
             if (prof) {
                 auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-                prof->log_network(run, "0.0.0.0", port, "bind", "tcp", {}, "winsock.bind");
+                prof->record_network_event(run, "0.0.0.0", port, "bind", "tcp", {}, "winsock.bind");
             }
         }
     }
@@ -190,7 +190,7 @@ uint64_t Ws2_32::gethostbyname(void* e, ArgList& a, void* ctx) {
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-            prof->log_dns(run, name, "");
+            prof->record_dns_event(run, name, "");
         }
     }
 

@@ -649,9 +649,9 @@ public:
     //     """Forward imported functions to the corresponding handler (if any)."""
     void handle_import_func(const std::string& dll, const std::string& name);
     // Python winemu.py:1614
-    // def log_api(self, pc, imp_api, rv, argv):
+    // def record_api_event(self, pc, imp_api, rv, argv):
     //     """Log an API call with its arguments and return value."""
-    void log_api(uint64_t pc, const std::string& api, uint64_t rv, const ArgList& argv);
+    void record_api_event(uint64_t pc, const std::string& api, uint64_t rv, const ArgList& argv);
     std::optional<std::string> read_string_heuristic(uint64_t addr);
     // Python winemu.py:1372
     // def handle_import_data(self, mod_name, sym, data_ptr=0):

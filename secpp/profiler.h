@@ -181,50 +181,49 @@ public:
     // """Log a top level emulator error for the emulation report."""
     void record_error_event(const speakeasy::ErrorInfo& error);
     // Python:214-225  log dropped files from an emulation run
-    void log_dropped_files(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files);
     void record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files);
     // Python:227-259
     // """Log a call to an OS API. This includes arguments, return address, and return value"""
-    void log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name, uint64_t ret,
+    void record_api_event(std::shared_ptr<Run> run, uint64_t pc, const std::string& name, uint64_t ret,
                  const std::vector<std::string>& argv, const std::vector<std::string>& ctx = {});
     // Python:261-338
     // """Log file access events. This will include things like handles being opened,
     //    data reads, and data writes."""
-    void log_file_access(std::shared_ptr<Run> run, const std::string& path, const std::string& event_type,
+    void record_file_access_event(std::shared_ptr<Run> run, const std::string& path, const std::string& event_type,
                          const std::vector<uint8_t>& data = {}, int handle = 0,
                          const std::vector<std::string>& disposition = {},
                          const std::vector<std::string>& access = {}, uint64_t buffer = 0, int size = -1);
     // Python:340-416
     // """Log registry access events that occur during emulation including values being read/written"""
-    void log_registry_access(std::shared_ptr<Run> run, const std::string& path, const std::string& event_type,
+    void record_registry_access_event(std::shared_ptr<Run> run, const std::string& path, const std::string& event_type,
                              const std::string& value_name = "", const std::vector<uint8_t>& data = {},
                              int handle = 0, const std::vector<std::string>& disposition = {},
                              const std::vector<std::string>& access = {}, uint64_t buffer = 0, int size = -1);
     // Python:418-522
     // """Log process events (create, exit, memory alloc/free/protect, thread create/inject)
     //    that are created within another process."""
-    void log_process_event(std::shared_ptr<Run> run, void* proc, const std::string& event_type,
+    void record_process_event(std::shared_ptr<Run> run, void* proc, const std::string& event_type,
                            const std::map<std::string,std::string>& kwargs);
     // Python:524-537
     // """Log DNS name lookups for the emulation report"""
-    void log_dns(std::shared_ptr<Run> run, const std::string& domain, const std::string& ip = "");
+    void record_dns_event(std::shared_ptr<Run> run, const std::string& domain, const std::string& ip = "");
     // Python:539-567
     // """Log HTTP traffic that occur during emulation"""
-    void log_http(std::shared_ptr<Run> run, const std::string& server, int port,
+    void record_http_event(std::shared_ptr<Run> run, const std::string& server, int port,
                   const std::string& proto = "http", const std::string& headers = "",
                   const std::vector<uint8_t>& body = {}, bool secure = false);
     // Python:569-576
     // """Log code that is generated at runtime and then executed"""
-    void log_dyn_code(std::shared_ptr<Run> run, const std::string& tag, uint64_t base, uint64_t size);
+    void record_dyn_code_event(std::shared_ptr<Run> run, const std::string& tag, uint64_t base, uint64_t size);
     // Python:578-595
     // """Log network activity for an emulation run"""
-    void log_network(std::shared_ptr<Run> run, const std::string& server, int port,
+    void record_network_event(std::shared_ptr<Run> run, const std::string& server, int port,
                      const std::string& typ = "unknown", const std::string& proto = "unknown",
                      const std::vector<uint8_t>& data = {}, const std::string& method = "");
     // Python:597-620  TODO: full impl with ExceptionEvent typed events
-    void log_exception(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info);
+    void record_exception_event(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info);
     // Python:622-633  TODO: full impl with ModuleLoadEvent typed events
-    void log_module_load(std::shared_ptr<Run> run, const std::string& name, const std::string& path,
+    void record_module_load_event(std::shared_ptr<Run> run, const std::string& name, const std::string& path,
                          uint64_t base, uint64_t size);
     // Python:635-796  build full speakeasy::Report
     speakeasy::Report get_report() const;
@@ -232,7 +231,7 @@ public:
     std::string get_json_report_string() const;
     // Legacy string-based error logging (Python compat)
     std::map<std::string,std::string> get_profile_summary() const;
-    void log_error(const std::string& error);
+    void record_error_event(const std::string& error);
 };
 
 #endif // PROFILER_H

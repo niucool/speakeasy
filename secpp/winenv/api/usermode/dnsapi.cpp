@@ -44,7 +44,7 @@ uint64_t DnsApi::DnsQuery_(void* e, ArgList& a, void* ctx) {
     auto prof = be(e)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-        prof->log_dns(run, name, "");
+        prof->record_dns_event(run, name, "");
     }
 
     if (!ppQueryResults) return 87; // ERROR_INVALID_PARAMETER

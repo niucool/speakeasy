@@ -34,7 +34,7 @@ uint64_t Sfc_os::SfcIsFileProtected(void* e, ArgList& a, void* ctx) {
         auto prof = be(e)->get_profiler();
         if (prof && !path.empty()) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-            prof->log_file_access(run, path, "ACCESS");
+            prof->record_file_access_event(run, path, "ACCESS");
         }
     }
     return SFC_ERROR;  // Return FALSE (not protected) to let operations proceed

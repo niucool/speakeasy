@@ -212,7 +212,7 @@ uint64_t WinHttp::WinHttpSendRequest(void* e, ArgList& a, void* ctx) {
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-            prof->log_dns(run, req.server, "");
+            prof->record_dns_event(run, req.server, "");
         }
     }
 
@@ -220,7 +220,7 @@ uint64_t WinHttp::WinHttpSendRequest(void* e, ArgList& a, void* ctx) {
     auto prof = be(e)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-        prof->log_http(run, req.server, req.port, "http", req_str, body, req.secure);
+        prof->record_http_event(run, req.server, req.port, "http", req_str, body, req.secure);
     }
 
     return 1; // TRUE

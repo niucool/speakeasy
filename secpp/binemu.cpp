@@ -44,11 +44,11 @@ void BinaryEmulator::log_info(const std::string& msg) {
     PLOG_INFO << msg;
 }
 
-void BinaryEmulator::log_error(const std::string& msg) {
+void BinaryEmulator::record_error_event(const std::string& msg) {
     PLOG_ERROR << msg;
 }
 
-void BinaryEmulator::log_exception(const std::string& msg) {
+void BinaryEmulator::record_exception_event(const std::string& msg) {
     PLOG_ERROR << "EXCEPTION: " << msg;
 }
 
@@ -174,7 +174,7 @@ void BinaryEmulator::start(uint64_t addr, size_t size) {
         }
     } catch (const std::exception& e) {
         if (profiler_) {
-            profiler_->log_error(e.what());
+            profiler_->record_error_event(e.what());
         }
         on_emu_complete();
     }
@@ -515,7 +515,7 @@ void BinaryEmulator::_fire_dyn_code_hooks(uint64_t addr) {
     if (prof) {
         auto run = get_current_run();
         if (run) {
-            prof->log_dyn_code(run, mm ? mm->get_tag() : "", mm ? mm->get_base() : 0, mm ? mm->get_size() : 0);
+            prof->record_dyn_code_event(run, mm ? mm->get_tag() : "", mm ? mm->get_base() : 0, mm ? mm->get_size() : 0);
         }
     }
     auto it = hooks_.find(HOOK_DYN_CODE);

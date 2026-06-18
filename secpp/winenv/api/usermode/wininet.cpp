@@ -309,7 +309,7 @@ uint64_t Wininet::HttpSendRequest(void* e, ArgList& a, void* ctx) {
     auto prof = be(e)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-        prof->log_http(run, req.server, req.port, "wininet", req_str, body, req.secure);
+        prof->record_http_event(run, req.server, req.port, "wininet", req_str, body, req.secure);
     }
 
     return 1; // TRUE
@@ -521,7 +521,7 @@ uint64_t Wininet::InternetOpenUrl(void* e, ArgList& a, void* ctx) {
     auto prof = be(e)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-        prof->log_http(run, server, port, "wininet", req_str, {}, secure);
+        prof->record_http_event(run, server, port, "wininet", req_str, {}, secure);
     }
 
     // Create a session and request

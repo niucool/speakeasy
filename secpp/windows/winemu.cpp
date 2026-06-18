@@ -889,17 +889,17 @@ void WindowsEmulator::start() {
 
                     // Log details for UC_ERR_EXCEPTION and other unexpected errors
                     if (err == UC_ERR_EXCEPTION) {
-                        log_error("* CPU exception at 0x" + hex_str(get_pc())
+                        record_error_event("* CPU exception at 0x" + hex_str(get_pc())
                                   + " (insn count " + std::to_string(curr_run->instr_cnt) + ")");
                     } else {
-                        log_error("* Unicorn engine error " + std::to_string(static_cast<int>(err))
+                        record_error_event("* Unicorn engine error " + std::to_string(static_cast<int>(err))
                                   + " at 0x" + hex_str(get_pc()));
                     }
 
                     // Check for timeout after execution
                     if (profiler_ && timeout_usec > 0 &&
                         profiler_->get_run_time() > static_cast<double>(config_.timeout)) {
-                        log_error("* Timeout of " + std::to_string(config_.timeout) + " sec(s) reached.");
+                        record_error_event("* Timeout of " + std::to_string(config_.timeout) + " sec(s) reached.");
                     } else {
                         // Non-OK result: try next run via on_run_complete
                         on_run_complete();
@@ -914,7 +914,7 @@ void WindowsEmulator::start() {
                 // Check timeout after successful emulation
                 if (profiler_ && timeout_usec > 0 &&
                     profiler_->get_run_time() > static_cast<double>(config_.timeout)) {
-                    log_error("* Timeout of " + std::to_string(config_.timeout) + " sec(s) reached.");
+                    record_error_event("* Timeout of " + std::to_string(config_.timeout) + " sec(s) reached.");
                 }
             }
         } catch (const std::exception& e) {
@@ -2365,7 +2365,7 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
         if (except_code == 0xC0000005) {  // STATUS_ACCESS_VIOLATION
             fault_addr = "0x" + hex_str(prev_pc);
         }
-        profiler_->log_exception(run, {
+        profiler_->record_exception_event(run, {
             {"tick",    std::to_string(tick)},
             {"tid",     std::to_string(tid)},
             {"pid",     std::to_string(pid)},
@@ -2683,7 +2683,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
             _fire_dyn_code_hooks(ret);
         }
 
-        log_api(call_pc, imp_api, rv, argv);
+        record_api_event(call_pc, imp_api, rv, argv);
 
         PLOG_DEBUG << "[api-dispatch] post-call: run_complete=" << run_complete
                     << " ret=0x" << std::hex << ret << " oret=0x" << oret
@@ -2739,7 +2739,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         uint64_t rv = cb ? cb(this, imp_api, nullptr, raw_hook_argv) : 0;
 
         uint64_t ret = get_ret_address();
-        log_api(call_pc, imp_api, rv, argv);
+        record_api_event(call_pc, imp_api, rv, argv);
         do_call_return(hook_argc, ret, rv, hook_conv);
         if (!run_complete) {
             enable_code_hook();
@@ -2752,7 +2752,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         auto argv = get_func_argv(conv, argc);
         uint64_t rv = 1;
         uint64_t ret = get_ret_address();
-        log_api(call_pc, imp_api, rv, argv);
+        record_api_event(call_pc, imp_api, rv, argv);
         do_call_return(argc, ret, rv, conv);
         if (!run_complete) {
             enable_code_hook();
@@ -2761,7 +2761,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
     }
 
     // Unregistered / Unsupported fallback
-    log_error("Unsupported API: " + imp_api + " (ret: 0x" + hex_str(oret) + ")");
+    record_error_event("Unsupported API: " + imp_api + " (ret: 0x" + hex_str(oret) + ")");
     if (curr_run) {
         curr_run->error["error"] = "unsupported_api";
         curr_run->error["pc"] = hex_str(get_pc());
@@ -2897,9 +2897,9 @@ std::optional<std::string> WindowsEmulator::read_string_heuristic(uint64_t addr)
 }
 
 // Python winemu.py:1614
-// def log_api(self, pc, imp_api, rv, argv):
+// def record_api_event(self, pc, imp_api, rv, argv):
 //     """Log an API call with its arguments and return value."""
-void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
+void WindowsEmulator::record_api_event(uint64_t pc, const std::string& api,
                                uint64_t rv, const ArgList& argv) {
     std::string call_str = api + "(";
     std::vector<std::string> str_argv;
@@ -2964,7 +2964,7 @@ void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
     PLOG_DEBUG << pc_stream.str() << ": " << repr(call_str) << " -> " << rv_stream.str();
 
     if (profiler_) {
-        profiler_->log_api(curr_run, pc, api, rv, str_argv);
+        profiler_->record_api_event(curr_run, pc, api, rv, str_argv);
     }
 }
 

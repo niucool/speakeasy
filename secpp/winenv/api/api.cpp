@@ -322,7 +322,7 @@ void ApiHandler::queue_run(const std::string& run_type, uint64_t ep,
 // Event Logging
 // 
 
-void ApiHandler::log_file_access(const std::string& path, const std::string& event_type,
+void ApiHandler::record_file_access_event(const std::string& path, const std::string& event_type,
                                  const std::vector<uint8_t>* in_data, int handle,
                                  const std::vector<std::string>& disposition,
                                  const std::vector<std::string>& access, uint64_t buffer,
@@ -331,21 +331,21 @@ void ApiHandler::log_file_access(const std::string& path, const std::string& eve
     if (prof) {
         auto run = std::static_pointer_cast<Run>(winemu(emu_)->get_current_run());
         const std::vector<uint8_t>& data_ref = in_data ? *in_data : std::vector<uint8_t>();
-        prof->log_file_access(run, path, event_type, data_ref, handle,
+        prof->record_file_access_event(run, path, event_type, data_ref, handle,
                               disposition, access, buffer, size);
     }
 }
 
-void ApiHandler::log_process_event(void* proc, const std::string& event_type,
+void ApiHandler::record_process_event(void* proc, const std::string& event_type,
                                    const std::map<std::string, std::string>& kwargs) {
     auto prof = binemu(emu_)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(winemu(emu_)->get_current_run());
-        prof->log_process_event(run, proc, event_type, kwargs);
+        prof->record_process_event(run, proc, event_type, kwargs);
     }
 }
 
-void ApiHandler::log_registry_access(const std::string& path, const std::string& event_type,
+void ApiHandler::record_registry_access_event(const std::string& path, const std::string& event_type,
                                      const std::string& value_name,
                                      const std::vector<uint8_t>* in_data, int handle,
                                      const std::vector<std::string>& disposition,
@@ -355,35 +355,35 @@ void ApiHandler::log_registry_access(const std::string& path, const std::string&
     if (prof) {
         auto run = std::static_pointer_cast<Run>(winemu(emu_)->get_current_run());
         const std::vector<uint8_t>& data_ref = in_data ? *in_data : std::vector<uint8_t>();
-        prof->log_registry_access(run, path, event_type, value_name, data_ref, handle,
+        prof->record_registry_access_event(run, path, event_type, value_name, data_ref, handle,
                                   disposition, access, buffer, size);
     }
 }
 
-void ApiHandler::log_dns(const std::string& domain, const std::string& ip) {
+void ApiHandler::record_dns_event(const std::string& domain, const std::string& ip) {
     auto prof = binemu(emu_)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(winemu(emu_)->get_current_run());
-        prof->log_dns(run, domain, ip);
+        prof->record_dns_event(run, domain, ip);
     }
 }
 
-void ApiHandler::log_network(const std::string& server, int port, const std::string& typ,
+void ApiHandler::record_network_event(const std::string& server, int port, const std::string& typ,
                              const std::string& proto, const std::vector<uint8_t>& in_data,
                              const std::string& method) {
     auto prof = binemu(emu_)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(winemu(emu_)->get_current_run());
-        prof->log_network(run, server, port, typ, proto, in_data, method);
+        prof->record_network_event(run, server, port, typ, proto, in_data, method);
     }
 }
 
-void ApiHandler::log_http(const std::string& server, int port, const std::string& headers,
+void ApiHandler::record_http_event(const std::string& server, int port, const std::string& headers,
                           const std::vector<uint8_t>& body, bool secure) {
     auto prof = binemu(emu_)->get_profiler();
     if (prof) {
         auto run = std::static_pointer_cast<Run>(winemu(emu_)->get_current_run());
-        prof->log_http(run, server, port, "http", headers, body, secure);
+        prof->record_http_event(run, server, port, "http", headers, body, secure);
     }
 }
 

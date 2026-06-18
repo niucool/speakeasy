@@ -471,10 +471,10 @@ TEST(WindowsEmulatorTest, LogApiValidation) {
     std::string unicode_str = "test_unicode_event_name";
     emu.write_mem_string(unicode_str, wstr_addr, 2);
 
-    // Trigger log_api with both string pointers and hex numbers
+    // Trigger record_api_event with both string pointers and hex numbers
     ArgList argv = { uint64_t(0), uint64_t(0x15), str_addr, wstr_addr };
     EXPECT_NO_THROW({
-        emu.log_api(0x401000, "kernel32.CreateMutexA", 0x1804, argv);
+        emu.record_api_event(0x401000, "kernel32.CreateMutexA", 0x1804, argv);
     });
 
     // Check if the event was correctly logged to the profiler report

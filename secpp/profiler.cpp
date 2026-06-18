@@ -162,10 +162,6 @@ std::string Profiler::merge_binary_data(const std::string& ref, const std::vecto
 //         run.dropped_files.append({
 //             "name": f.get_name(), "hash": f.get_hash(), "path": f.get_path(),
 //         })
-void Profiler::log_dropped_files(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files) {
-    record_dropped_files_event(run, files);
-}
-
 // Python:214-225  log dropped files from an emulation run
 // def record_dropped_files_event(self, run, files):
 //     for f in files:
@@ -220,7 +216,7 @@ void Profiler::record_error_event(const speakeasy::ErrorInfo& error) {
 }
 
 // Legacy string-based error logging (Python compat)
-void Profiler::log_error(const std::string& error) {
+void Profiler::record_error_event(const std::string& error) {
     speakeasy::ErrorInfo ei;
     ei.type = "internal_error";
     ei.context_summary = error;
@@ -230,7 +226,7 @@ void Profiler::log_error(const std::string& error) {
 // Python:227-259
 // def record_api_event(self, run, pos: TracePosition, name, ret, argv):
 //     """Log a call to an OS API. This includes arguments, return address, and return value"""
-void Profiler::log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string& name,
+void Profiler::record_api_event(std::shared_ptr<Run> run, uint64_t pc, const std::string& name,
     uint64_t ret, const std::vector<std::string>& argv,
                        const std::vector<std::string>& ctx) {
     run->num_apis += 1;
@@ -314,7 +310,7 @@ void Profiler::log_api(std::shared_ptr<Run> run, uint64_t pc, const std::string&
 //                               disposition=[], access=[], buffer=0, size=None):
 //     """Log file access events. This will include things like handles being opened,
 //     data reads, and data writes."""
-void Profiler::log_file_access(std::shared_ptr<Run> run, const std::string& path,
+void Profiler::record_file_access_event(std::shared_ptr<Run> run, const std::string& path,
                                const std::string& event_type,
                                const std::vector<uint8_t>& data,
                                int handle,
@@ -379,7 +375,7 @@ void Profiler::log_file_access(std::shared_ptr<Run> run, const std::string& path
 //                                   data=None, handle=0, disposition=[], access=[],
 //                                   buffer=0, size=None):
 //     """Log registry access events that occur during emulation including values being read/written"""
-void Profiler::log_registry_access(std::shared_ptr<Run> run, const std::string& path,
+void Profiler::record_registry_access_event(std::shared_ptr<Run> run, const std::string& path,
                                    const std::string& event_type,
                                    const std::string& value_name,
                                    const std::vector<uint8_t>& data,
@@ -423,7 +419,7 @@ void Profiler::log_registry_access(std::shared_ptr<Run> run, const std::string& 
 // def record_process_event(self, run, pos: TracePosition, proc, event_type, kwargs):
 //     """Log process events (create, exit, memory alloc/free/protect, thread create/inject)
 //     that are created within another process."""
-void Profiler::log_process_event(std::shared_ptr<Run> run, void* proc,
+void Profiler::record_process_event(std::shared_ptr<Run> run, void* proc,
                                  const std::string& event_type,
                                  const std::map<std::string, std::string>& kwargs) {
     (void)proc;
@@ -485,7 +481,7 @@ void Profiler::log_process_event(std::shared_ptr<Run> run, void* proc,
 // Python:524-537
 // def record_dns_event(self, run, pos: TracePosition, domain, ip=""):
 //     """Log DNS name lookups for the emulation report"""
-void Profiler::log_dns(std::shared_ptr<Run> run, const std::string& domain,
+void Profiler::record_dns_event(std::shared_ptr<Run> run, const std::string& domain,
                        const std::string& ip) {
     for (const auto& evt : run->network["dns"]) {
         auto q = evt.find("query");
@@ -504,7 +500,7 @@ void Profiler::log_dns(std::shared_ptr<Run> run, const std::string& domain,
 // Python:539-567
 // def record_http_event(self, run, pos, server, port, proto, headers, body, secure):
 //     """Log HTTP traffic that occur during emulation"""
-void Profiler::log_http(std::shared_ptr<Run> run, const std::string& server, int port,
+void Profiler::record_http_event(std::shared_ptr<Run> run, const std::string& server, int port,
                         const std::string& /*proto*/,
                         const std::string& headers,
                         const std::vector<uint8_t>& body, bool secure) {
@@ -537,7 +533,7 @@ void Profiler::log_http(std::shared_ptr<Run> run, const std::string& server, int
 //     if base not in run.base_addrs:
 //         run.dyn_code["mmap"].append({"tag": tag, "base": hex(base), ...})
 //         run.base_addrs.add(base)
-void Profiler::log_dyn_code(std::shared_ptr<Run> run, const std::string& tag,
+void Profiler::record_dyn_code_event(std::shared_ptr<Run> run, const std::string& tag,
                             uint64_t base, uint64_t size) {
     if (run->base_addrs.find(base) == run->base_addrs.end()) {
         std::map<std::string, std::string> entry;
@@ -552,7 +548,7 @@ void Profiler::log_dyn_code(std::shared_ptr<Run> run, const std::string& tag,
 // Python:578-595
 // def record_network_event(self, run, pos, server, port, typ, proto, data, method):
 //     """Log network activity for an emulation run"""
-void Profiler::log_network(std::shared_ptr<Run> run, const std::string& server, int port,
+void Profiler::record_network_event(std::shared_ptr<Run> run, const std::string& server, int port,
                            const std::string& typ,
                            const std::string& proto,
                            const std::vector<uint8_t>& data,
@@ -573,14 +569,14 @@ void Profiler::log_network(std::shared_ptr<Run> run, const std::string& server, 
 // Python:597-620  handled exception event
 // def record_exception_event(self, run, pos, exc_va, handler_va, code, ...):
 //     """Log an exception that was generated during emulation"""
-void Profiler::log_exception(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info) {
+void Profiler::record_exception_event(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info) {
     run->handled_exceptions.push_back(info);
 }
 
 // Python:622-633  module load event
 // def record_module_load_event(self, run, pos, name, path, base, size):
 //     """Log a module being loaded into the emulated process"""
-void Profiler::log_module_load(std::shared_ptr<Run> run, const std::string& name,
+void Profiler::record_module_load_event(std::shared_ptr<Run> run, const std::string& name,
                                const std::string& path, uint64_t base, uint64_t size) {
     std::map<std::string, std::string> entry;
     entry["name"] = name;  entry["path"] = path;
@@ -642,7 +638,7 @@ speakeasy::Report Profiler::get_report() const {
                 if (name_it != api_entry.end()) ae->api_name = name_it->second;
                 auto rv_it = api_entry.find("ret_val");
                 if (rv_it != api_entry.end()) ae->ret_val = rv_it->second;
-                // Parse args from JSON array string, strip outer quotes added by log_api
+                // Parse args from JSON array string, strip outer quotes added by record_api_event
                 auto args_it = api_entry.find("args");
                 if (args_it != api_entry.end()) {
                     try {

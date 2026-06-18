@@ -1,5 +1,5 @@
 /**
- * test_porting_profiler.cpp  ProfilerEventTest (log_file_access, log_registry)
+ * test_porting_profiler.cpp  ProfilerEventTest (record_file_access_event, log_registry)
  */
 
 #include <gtest/gtest.h>
@@ -17,7 +17,7 @@ TEST(ProfilerEventTest, LogFileAccess) {
     auto run = std::make_shared<::Run>();
     prof.add_run(run);
     EXPECT_NO_THROW(
-        prof.log_file_access(run, "C:\\test\\write.exe", "write",
+        prof.record_file_access_event(run, "C:\\test\\write.exe", "write",
                              std::vector<uint8_t>{'a','b','c'})
     );
 }
@@ -27,7 +27,7 @@ TEST(ProfilerEventTest, LogRegistryAccess) {
     auto run = std::make_shared<::Run>();
     prof.add_run(run);
     EXPECT_NO_THROW(
-        prof.log_registry_access(run, "HKLM\\SOFTWARE\\Test", "write",
+        prof.record_registry_access_event(run, "HKLM\\SOFTWARE\\Test", "write",
                                  "TestValue", std::vector<uint8_t>{1,2,3,4})
     );
 }
@@ -44,6 +44,6 @@ TEST(ProfilerEventTest, MultipleFileAccesses) {
     auto run = std::make_shared<::Run>();
     prof.add_run(run);
     for (int i = 0; i < 5; i++)
-        EXPECT_NO_THROW(prof.log_file_access(run, "C:\\multi\\file" +
+        EXPECT_NO_THROW(prof.record_file_access_event(run, "C:\\multi\\file" +
             std::to_string(i) + ".bin", "write"));
 }

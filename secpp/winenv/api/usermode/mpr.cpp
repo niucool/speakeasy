@@ -92,7 +92,7 @@ uint64_t Mpr::WNetAddConnection2(void* e, ArgList& a, void* ctx) {
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-            prof->log_network(run, "", 0, "connect", "smb");
+            prof->record_network_event(run, "", 0, "connect", "smb");
         }
     }
 

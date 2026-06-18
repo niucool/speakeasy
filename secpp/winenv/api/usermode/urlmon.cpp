@@ -55,8 +55,8 @@ uint64_t Urlmon::URLDownloadToFile(void* e, ArgList& a, void* ctx) {
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-            prof->log_dns(run, url, 0);
-            prof->log_network(run, url, 80, "http", "tcp");
+            prof->record_dns_event(run, url, 0);
+            prof->record_network_event(run, url, 80, "http", "tcp");
         }
     }
 
@@ -65,8 +65,8 @@ uint64_t Urlmon::URLDownloadToFile(void* e, ArgList& a, void* ctx) {
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-            prof->log_file_access(run, name, "CREATE");
-            prof->log_file_access(run, name, "WRITE");
+            prof->record_file_access_event(run, name, "CREATE");
+            prof->record_file_access_event(run, name, "WRITE");
         }
     }
 
@@ -103,8 +103,8 @@ uint64_t Urlmon::URLDownloadToCacheFile(void* e, ArgList& a, void* ctx) {
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
-            prof->log_dns(run, url, 0);
-            prof->log_network(run, url, 80, "http", "tcp");
+            prof->record_dns_event(run, url, 0);
+            prof->record_network_event(run, url, 80, "http", "tcp");
         }
         // Try to extract filename from URL
         size_t last_slash = url.rfind('/');

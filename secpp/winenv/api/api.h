@@ -35,7 +35,7 @@ static inline MemoryManager* mm(void* e) { return static_cast<MemoryManager*>(e)
 //
 // Input:  all args are uint64_t (raw stack values).
 // Output: handlers may replace raw values with resolved strings/blobs/pointers
-//         for log_api display.  Implicit conversion to uint64_t keeps existing
+//         for record_api_event display.  Implicit conversion to uint64_t keeps existing
 //         handler body code compiling without changes.
 // ---------------------------------------------------------------------------
 struct ApiArg {
@@ -194,29 +194,29 @@ public:
     void queue_run(const std::string& run_type, uint64_t ep, const std::vector<std::string>& run_args = {});
     
     // Logging methods
-    void log_file_access(const std::string& path, const std::string& event_type, 
+    void record_file_access_event(const std::string& path, const std::string& event_type, 
                          const std::vector<uint8_t>* data = nullptr,
                          int handle = 0, const std::vector<std::string>& disposition = {},
                          const std::vector<std::string>& access = {}, uint64_t buffer = 0,
                          int size = -1);
                          
-    void log_process_event(void* proc, const std::string& event_type, 
+    void record_process_event(void* proc, const std::string& event_type, 
                            const std::map<std::string, std::string>& kwargs);
                            
-    void log_registry_access(const std::string& path, const std::string& event_type, 
+    void record_registry_access_event(const std::string& path, const std::string& event_type, 
                              const std::string& value_name = "", 
                              const std::vector<uint8_t>* data = nullptr,
                              int handle = 0, const std::vector<std::string>& disposition = {},
                              const std::vector<std::string>& access = {}, uint64_t buffer = 0,
                              int size = -1);
                              
-    void log_dns(const std::string& domain, const std::string& ip = "");
+    void record_dns_event(const std::string& domain, const std::string& ip = "");
     
-    void log_network(const std::string& server, int port, const std::string& typ = "unknown", 
+    void record_network_event(const std::string& server, int port, const std::string& typ = "unknown", 
                      const std::string& proto = "unknown", const std::vector<uint8_t>& data = {},
                      const std::string& method = "");
                      
-    void log_http(const std::string& server, int port, const std::string& headers = "", 
+    void record_http_event(const std::string& server, int port, const std::string& headers = "", 
                   const std::vector<uint8_t>& body = {}, bool secure = false);
     
     // Utility methods

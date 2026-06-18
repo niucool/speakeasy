@@ -357,7 +357,7 @@ TEST(ProfilerTest, ProfilerAddRun) {
 
 TEST(ProfilerTest, ProfilerLogError) {
     Profiler prof;
-    EXPECT_NO_THROW(prof.log_error("test error"));
+    EXPECT_NO_THROW(prof.record_error_event("test error"));
 }
 
 TEST(ProfilerTest, ProfilerGetReport) {
@@ -378,14 +378,14 @@ TEST(ProfilerTest, LogFileAccess) {
     Profiler prof;
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
-    EXPECT_NO_THROW(prof.log_file_access(my_run, "/tmp/test", "open"));
+    EXPECT_NO_THROW(prof.record_file_access_event(my_run, "/tmp/test", "open"));
 }
 
 TEST(ProfilerTest, LogRegistryAccess) {
     Profiler prof;
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
-    EXPECT_NO_THROW(prof.log_registry_access(my_run, "HKLM\\Software\\Test", "open"));
+    EXPECT_NO_THROW(prof.record_registry_access_event(my_run, "HKLM\\Software\\Test", "open"));
 }
 
 TEST(ProfilerTest, LogProcessEvent) {
@@ -393,14 +393,14 @@ TEST(ProfilerTest, LogProcessEvent) {
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
     std::map<std::string, std::string> kwargs = {{"pid", "1234"}};
-    EXPECT_NO_THROW(prof.log_process_event(my_run, nullptr, "create", kwargs));
+    EXPECT_NO_THROW(prof.record_process_event(my_run, nullptr, "create", kwargs));
 }
 
 TEST(ProfilerTest, LogDns) {
     Profiler prof;
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
-    EXPECT_NO_THROW(prof.log_dns(my_run, "example.com", "1.2.3.4"));
+    EXPECT_NO_THROW(prof.record_dns_event(my_run, "example.com", "1.2.3.4"));
 }
 
 TEST(ProfilerTest, LogNetwork) {
@@ -408,7 +408,7 @@ TEST(ProfilerTest, LogNetwork) {
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
     std::vector<uint8_t> data = {0x01, 0x02};
-    EXPECT_NO_THROW(prof.log_network(my_run, "1.2.3.4", 80, "connect", "tcp", data));
+    EXPECT_NO_THROW(prof.record_network_event(my_run, "1.2.3.4", 80, "connect", "tcp", data));
 }
 
 TEST(ProfilerTest, LogHttp) {
@@ -416,7 +416,7 @@ TEST(ProfilerTest, LogHttp) {
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
     std::vector<uint8_t> body = {'O', 'K'};
-    EXPECT_NO_THROW(prof.log_http(my_run, "example.com", 80, "http", "GET /", body));
+    EXPECT_NO_THROW(prof.record_http_event(my_run, "example.com", 80, "http", "GET /", body));
 }
 
 TEST(ProfilerTest, LogApi) {
@@ -424,14 +424,14 @@ TEST(ProfilerTest, LogApi) {
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
     std::vector<std::string> argv = {"0x1000", "4", "0"};
-    EXPECT_NO_THROW(prof.log_api(my_run, 0x401000, "kernel32.VirtualAlloc", 0, argv));
+    EXPECT_NO_THROW(prof.record_api_event(my_run, 0x401000, "kernel32.VirtualAlloc", 0, argv));
 }
 
 TEST(ProfilerTest, LogDynCode) {
     Profiler prof;
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
-    EXPECT_NO_THROW(prof.log_dyn_code(my_run, "mmap", 0x100000, 4096));
+    EXPECT_NO_THROW(prof.record_dyn_code_event(my_run, "mmap", 0x100000, 4096));
 }
 
 TEST(ProfilerTest, HandleBinaryData) {
