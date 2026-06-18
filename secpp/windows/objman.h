@@ -128,7 +128,7 @@ public:
 
     int sizeof_obj(void* obj = nullptr);
     void* get_bytes(void* obj = nullptr);
-    virtual KernelObject read_back();
+    virtual void read_back();
     void write_back();
     int get_id();
     void set_id(int oid);
@@ -171,7 +171,7 @@ public:
     std::string get_reg_path();
     void* init_driver_section();
     void init_driver_object(const std::string& name = "", std::shared_ptr<speakeasy::RuntimeModule> pe = nullptr, bool is_decoy = true);
-    KernelObject read_back() override;
+    void read_back() override;
 };
 
 /**

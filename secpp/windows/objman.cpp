@@ -202,7 +202,7 @@ void* KernelObject::get_bytes(void* obj) {
     return nullptr;
 }
 
-KernelObject KernelObject::read_back() {
+void KernelObject::read_back() {
     // Python: data = emu.mem_read(address, sizeof()); object.cast(data)
     if (emu_ && address_ && object_) {
         size_t sz = sizeof_obj();
@@ -212,7 +212,7 @@ KernelObject KernelObject::read_back() {
             es->from_bytes(data);
         }
     }
-    return *this;
+    //return this;
 }
 
 void KernelObject::write_back() {
@@ -402,7 +402,7 @@ void Driver::init_driver_object(const std::string& name, std::shared_ptr<speakea
     init_driver_section();
 }
 
-KernelObject Driver::read_back() {
+void Driver::read_back() {
     KernelObject::read_back();
 
     // Python: read MajorFunction entries from DRIVER_OBJECT
@@ -444,7 +444,7 @@ KernelObject Driver::read_back() {
         on_unload_ = reinterpret_cast<void*>(static_cast<uintptr_t>(unload_addr));
     }
 
-    return *this;
+    // return *this;
 }
 
 // 
