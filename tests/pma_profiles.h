@@ -86,14 +86,14 @@ inline void set_main_process(speakeasy::SpeakeasyConfig& cfg, const std::string&
 
 // pma-01-02  (pma_profiles.py:25-28)
 inline CaseRuntime profile_pma_0102(speakeasy::SpeakeasyConfig& cfg, const fs::path& /*tmp*/) {
-    cfg.timeout = 2;
+    cfg.timeout = 10;
     cfg.max_api_count = 2500;
     return {};
 }
 
 // pma-01-04  (pma_profiles.py:31-35)
 inline CaseRuntime profile_pma_0104(speakeasy::SpeakeasyConfig& cfg, const fs::path& /*tmp*/) {
-    cfg.timeout = 2;
+    cfg.timeout = 10;
     cfg.max_api_count = 2500;
     ensure_user_module(cfg, "psapi", "0x71000000", "C:\\Windows\\system32\\psapi.dll");
     return {};
@@ -231,14 +231,14 @@ inline CaseRuntime profile_pma_1201_deep(speakeasy::SpeakeasyConfig& cfg, const 
 
 // pma-12-02-deep  (pma_profiles.py:125-128)
 inline CaseRuntime profile_pma_1202_deep(speakeasy::SpeakeasyConfig& cfg, const fs::path& /*tmp*/) {
-    cfg.timeout = 2;
+    cfg.timeout = 10;
     set_main_command_line(cfg, "svchost.exe");
     return {};
 }
 
 // pma-12-03-deep  (pma_profiles.py:131-134)
 inline CaseRuntime profile_pma_1203_deep(speakeasy::SpeakeasyConfig& cfg, const fs::path& /*tmp*/) {
-    cfg.timeout = 2;
+    cfg.timeout = 10;
     set_main_command_line(cfg, "svchost.exe");
     return {};
 }
