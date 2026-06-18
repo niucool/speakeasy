@@ -72,6 +72,7 @@ struct ApiArg {
 };
 
 using ArgList = std::vector<ApiArg>;
+using ApiContext = std::map<std::string, std::variant<uint64_t, std::string, std::vector<uint8_t>>>;
 
 // Helper: read raw uint64_t from an ArgList (same as std::get<uint64_t>(a[i])).
 // Kept for cases where the implicit conversion is ambiguous.
@@ -106,6 +107,7 @@ struct ApiEntry {
 static ApiHookInfo InvalidApiInfo;
 static DataHookInfo InvalidDataInfo;
 
+int get_char_width(ApiContext* ctx);
 
 // Base class for handling exported functions
 class ApiHandler {
@@ -256,7 +258,6 @@ public:
     void exit_process();
     
     // Character and format methods
-    int get_char_width(const std::map<std::string, std::string>& ctx);
     int get_va_arg_count(const std::string& fmt);
     std::vector<uint64_t> va_args(uint64_t va_list, int num_args);
     void setup_callback(uint64_t func, const std::vector<uint64_t>& args, 

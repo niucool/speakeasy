@@ -2613,6 +2613,9 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         uint64_t rv = 0;
         bool hook_called = false;
 
+        ApiContext api_ctx;
+        api_ctx["func_name"] = name;
+
         auto func_ptr_func = func_info.func;
         // Gap B: Invoke User API Hooks
         if (!hooks.empty()) {
@@ -2624,13 +2627,13 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
                 raw_argv.push_back(static_cast<uint64_t>(arg));
 
             // Original handler wrapped as callback
-            ApiCallback orig = [this, handler_mod, func_ptr_func](void* emu, const std::string& api_name, void* orig_ptr, std::vector<uint64_t> args) -> bool {
+            ApiCallback orig = [this, handler_mod, func_ptr_func, api_ctx](void* emu, const std::string& api_name, void* orig_ptr, std::vector<uint64_t> args) -> bool {
                 (void)emu; (void)api_name; (void)orig_ptr;
                 // Convert back to ArgList for internal dispatch
                 ArgList inner_argv;
                 inner_argv.reserve(args.size());
                 for (auto v : args) inner_argv.push_back(v);
-                void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, inner_argv, nullptr);
+                void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, inner_argv, (void *)(&api_ctx));
                 uint64_t sub_rv = reinterpret_cast<uintptr_t>(rv_ptr);
                 return sub_rv != 0;
             };
@@ -2659,7 +2662,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
                 saved_ebp = reg_read(speakeasy::arch::REG_EBP);
             }
             try {
-                void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, argv, nullptr);
+                void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, argv, &api_ctx);
                 rv = reinterpret_cast<uintptr_t>(rv_ptr);
             } catch (...) {
                 on_run_complete();

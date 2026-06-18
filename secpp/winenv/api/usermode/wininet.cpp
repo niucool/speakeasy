@@ -463,13 +463,22 @@ uint64_t Wininet::InternetOpenUrl(void* e, ArgList& a, void* ctx) {
     uint64_t dwContext = a[5];
     (void)dwHeadersLength; (void)dwContext;
 
+    ApiContext* api_ctx = (ApiContext*)ctx;
+    int char_width = get_char_width(api_ctx);
+
     if (internets().find(hInternet) == internets().end()) return 0;
 
     std::string url;
-    if (url_ptr) url = be(e)->read_mem_string(url_ptr, 2);
+    if (url_ptr) {
+        url = be(e)->read_mem_string(url_ptr, char_width);
+        a[1] = url;
+    }
 
     std::string headers;
-    if (headers_ptr) headers = be(e)->read_mem_string(headers_ptr, 2);
+    if (headers_ptr) {
+        headers = be(e)->read_mem_string(headers_ptr, char_width);
+        a[2] = headers;
+    }
 
     // Parse URL to extract host and port
     std::string server;
