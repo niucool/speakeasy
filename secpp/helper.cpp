@@ -27,7 +27,7 @@ std::filesystem::path parse_nt_path(std::string path_str) {
 #else
     // Linux/macOS treat backslashes as literal characters, so we must normalize them.
     std::replace(path_str.begin(), path_str.end(), '\\', '/');
-    return fs::path(path_str);
+    return std::filesystem::path(path_str);
 #endif
 }
 
