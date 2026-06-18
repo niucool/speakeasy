@@ -2704,7 +2704,8 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 
         // Gap E: Max API Count Enforcement
         if (curr_run && curr_run->get_api_count() > config_.max_api_count) {
-            log_info("* Maximum number of API calls reached. Stopping current run.");
+            // log_info("* Maximum number of API calls reached. Stopping current run.");
+            PLOG_INFO << "* Maximum number of API calls reached ." << config_.max_api_count << " Stopping current run.";
             curr_run->error["error"] = "max_api_count";
             curr_run->error["pc"] = hex_str(get_pc());
             curr_run->error["count"] = config_.max_api_count;
