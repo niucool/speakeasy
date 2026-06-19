@@ -558,6 +558,8 @@ class Win32Emulator(WindowsEmulator):
         Get the system modules (e.g. drivers) that are loaded in the emulator
         """
         rtmods = super().init_sys_modules(modules_config)
+        for mod in rtmods:
+            mod.visible_in_peb = False
 
         for modconf in modules_config:
             drv = modconf.driver
