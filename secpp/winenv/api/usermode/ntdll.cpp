@@ -121,7 +121,7 @@ static inline std::string read_ansi_string_content(void* emu, uint64_t as_addr) 
 }
 
 //
-// Constructor — register 21 APIs matching Python ntdll.py exactly
+// Constructor  register 21 APIs matching Python ntdll.py exactly
 //
 
 Ntdll::Ntdll(void* emu) : ApiHandler(emu) {
@@ -211,7 +211,7 @@ uint64_t Ntdll::LdrLoadDll(void* emu, ArgList& argv, void* ctx) {
         req_lib = read_unicode_string_content(emu, name_ptr);
     }
 
-    // Normalize DLL name (e.g. "kernel32" → "kernel32.dll")
+    // Normalize DLL name (e.g. "kernel32"  "kernel32.dll")
     std::string norm_name;
     auto dot = req_lib.find_last_of('.');
     std::string base = (dot != std::string::npos) ? req_lib.substr(0, dot) : req_lib;
@@ -451,7 +451,7 @@ uint64_t Ntdll::LdrFindResource_U(void* emu, ArgList& argv, void* ctx) {
     uint64_t name_id = read_ptr(emu, ResourceInfo + psz);
 
     // Write a placeholder IMAGE_RESOURCE_DATA_ENTRY address
-    // (Full PE resource directory walk not implemented — matches kernel32's simplified FindResource)
+    // (Full PE resource directory walk not implemented  matches kernel32's simplified FindResource)
     uint64_t entry_addr = pe->base + 0x3000;  // placeholder data entry
     write_ptr(emu, ResourceDataEntry, entry_addr);
 
@@ -547,7 +547,7 @@ uint64_t Ntdll::RtlGetVersion(void* emu, ArgList& argv, void* ctx) {
 }
 
 //
-// Fallback stub — unregistered ntdll exports are handled by ntoskrnl
+// Fallback stub  unregistered ntdll exports are handled by ntoskrnl
 //
 
 uint64_t Ntdll::stub_api(void* e, ArgList& a, void* ctx) {

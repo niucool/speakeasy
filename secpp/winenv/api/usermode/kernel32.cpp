@@ -3098,7 +3098,7 @@ uint64_t Kernel32::FindAtom(void* e, ArgList& a, void* c) {
 }
 uint64_t Kernel32::FindFirstFileEx(void* e, ArgList& a, void* c) {
     (void)c;
-    // Python kernel32.py: delegates to FindFirstFile → fileman.find_files()
+    // Python kernel32.py: delegates to FindFirstFile  fileman.find_files()
     uint64_t fname_ptr = a[0]; uint64_t level = a[1]; uint64_t data_ptr = a[2];
     uint64_t search_op = a[3]; uint64_t filter_ptr = a[4]; uint64_t flags = a[5];
     (void)level; (void)search_op; (void)filter_ptr; (void)flags;
@@ -3318,7 +3318,7 @@ uint64_t Kernel32::GetEnvironmentStringsW(void* e, ArgList& a, void* c) {
     std::vector<uint8_t> data;
     data.reserve((out.size() + 1) * 2);
     for (char ch : out) {
-        uint16_t wc = static_cast<uint8_t>(ch); // ASCII char → UTF-16LE code unit
+        uint16_t wc = static_cast<uint8_t>(ch); // ASCII char  UTF-16LE code unit
         data.push_back(static_cast<uint8_t>(wc & 0xFF));
         data.push_back(static_cast<uint8_t>((wc >> 8) & 0xFF));
     }
@@ -3426,7 +3426,7 @@ uint64_t Kernel32::GetModuleHandleEx(void* e, ArgList& a, void* c) {
 
     uint64_t hmod = 0;
     if (!mod_name_ptr) {
-        // NULL module name → return handle to the EXE that created the process
+        // NULL module name  return handle to the EXE that created the process
         auto p = we(e)->get_current_process();
         if (p) hmod = static_cast<uint64_t>(p->base);
     } else {
@@ -3517,7 +3517,7 @@ uint64_t Kernel32::GetStartupInfo(void* e, ArgList& a, void* c) {
         si.hStdInput = 0;
         si.hStdOutput = 1;
         si.hStdError = 2;
-        // Allocate desktop name as UTF-8 (ANSI path — common for x86)
+        // Allocate desktop name as UTF-8 (ANSI path  common for x86)
         {
             std::string out = desk_name;
             uint64_t ptr = mm(e)->mem_map(out.size() + 2, std::nullopt, PERM_MEM_RW,
@@ -3540,7 +3540,7 @@ uint64_t Kernel32::GetStartupInfo(void* e, ArgList& a, void* c) {
         si.hStdInput = 0;
         si.hStdOutput = 1;
         si.hStdError = 2;
-        // Allocate desktop name as UTF-16 (Unicode path — default for x64)
+        // Allocate desktop name as UTF-16 (Unicode path  default for x64)
         {
             uint64_t ptr = mm(e)->mem_map((desk_name.size() + 1) * 2, std::nullopt, PERM_MEM_RW,
                                          "api.struct.STARTUPINFOW.lpDesktop");

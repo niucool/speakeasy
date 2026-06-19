@@ -1,4 +1,4 @@
-// wininet.cpp — wininet.dll handler, follows Python wininet.py logic.
+// wininet.cpp  wininet.dll handler, follows Python wininet.py logic.
 // Uses ApiContext for char width, reads strings correctly per A/W, updates
 // argv with resolved strings and flag names, delegates to NetworkManager.
 #include "wininet.h"
@@ -15,14 +15,14 @@ using namespace speakeasy;
 
 namespace speakeasy { namespace api {
 
-// ── Helpers ─────────────────────────────────────────────────────────
+//  Helpers 
 
 static inline WindowsEmulator* we(void* e) { return static_cast<WindowsEmulator*>(e); }
 static inline BinaryEmulator*  be(void* e) { return static_cast<BinaryEmulator*>(e); }
 
 static uint32_t INTERNET_CONNECTION_LAN = 0x02;
 
-// ── InternetOpen ────────────────────────────────────────────────────
+//  InternetOpen 
 // Python: reads ua/proxy/bypass with char width, updates argv, uses netman
 uint64_t Wininet::InternetOpen(void* e, ArgList& a, void* ctx) {
     if (a.size() < 5) return 0;
@@ -41,7 +41,7 @@ uint64_t Wininet::InternetOpen(void* e, ArgList& a, void* ctx) {
     return conn->get_handle();
 }
 
-// ── InternetConnect ─────────────────────────────────────────────────
+//  InternetConnect 
 uint64_t Wininet::InternetConnect(void* e, ArgList& a, void* ctx) {
     if (a.size() < 8) return 0;
     ApiContext* actx = (ApiContext*)ctx;
@@ -64,7 +64,7 @@ uint64_t Wininet::InternetConnect(void* e, ArgList& a, void* ctx) {
     return sess ? sess->get_handle() : 0;
 }
 
-// ── HttpOpenRequest ─────────────────────────────────────────────────
+//  HttpOpenRequest 
 uint64_t Wininet::HttpOpenRequest(void* e, ArgList& a, void* ctx) {
     if (a.size() < 8) return 0;
     ApiContext* actx = (ApiContext*)ctx;
@@ -87,7 +87,7 @@ uint64_t Wininet::HttpOpenRequest(void* e, ArgList& a, void* ctx) {
     return req ? req->get_handle() : 0;
 }
 
-// ── InternetCrackUrl ────────────────────────────────────────────────
+//  InternetCrackUrl 
 uint64_t Wininet::InternetCrackUrl(void* e, ArgList& a, void* ctx) {
     if (a.size() < 4) return 0;
     if (!a[0] || !a[3]) return 0;
@@ -108,12 +108,12 @@ uint64_t Wininet::InternetCrackUrl(void* e, ArgList& a, void* ctx) {
     return 1;
 }
 
-// ── InternetSetOption ───────────────────────────────────────────────
+//  InternetSetOption 
 uint64_t Wininet::InternetSetOption(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; (void)ctx; return 1;
 }
 
-// ── InternetGetConnectedState ───────────────────────────────────────
+//  InternetGetConnectedState 
 uint64_t Wininet::InternetGetConnectedState(void* e, ArgList& a, void* ctx) {
     if (a.size() < 2) return 0;
     if (a[0]) {
@@ -125,7 +125,7 @@ uint64_t Wininet::InternetGetConnectedState(void* e, ArgList& a, void* ctx) {
     (void)a[1]; (void)ctx; return 1;
 }
 
-// ── HttpSendRequest ─────────────────────────────────────────────────
+//  HttpSendRequest 
 uint64_t Wininet::HttpSendRequest(void* e, ArgList& a, void* ctx) {
     if (a.size() < 5) return 0;
     ApiContext* actx = (ApiContext*)ctx;
@@ -156,12 +156,12 @@ uint64_t Wininet::HttpSendRequest(void* e, ArgList& a, void* ctx) {
     return 1;
 }
 
-// ── InternetErrorDlg ────────────────────────────────────────────────
+//  InternetErrorDlg 
 uint64_t Wininet::InternetErrorDlg(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; (void)ctx; return 0;
 }
 
-// ── InternetQueryOption ─────────────────────────────────────────────
+//  InternetQueryOption 
 uint64_t Wininet::InternetQueryOption(void* e, ArgList& a, void* ctx) {
     if (a.size() < 4) return 0;
     uint32_t opt = static_cast<uint32_t>(a[1]);
@@ -174,7 +174,7 @@ uint64_t Wininet::InternetQueryOption(void* e, ArgList& a, void* ctx) {
     (void)a[0]; (void)a[3]; (void)ctx; return 1;
 }
 
-// ── InternetReadFile ────────────────────────────────────────────────
+//  InternetReadFile 
 uint64_t Wininet::InternetReadFile(void* e, ArgList& a, void* ctx) {
     if (a.size() < 4) return 0;
     auto nm = we(e)->get_network_manager();
@@ -192,7 +192,7 @@ uint64_t Wininet::InternetReadFile(void* e, ArgList& a, void* ctx) {
     (void)a[2]; (void)ctx; return 1;
 }
 
-// ── HttpQueryInfo ───────────────────────────────────────────────────
+//  HttpQueryInfo 
 uint64_t Wininet::HttpQueryInfo(void* e, ArgList& a, void* ctx) {
     if (a.size() < 5) return 0;
     ApiContext* actx = (ApiContext*)ctx;
@@ -216,7 +216,7 @@ uint64_t Wininet::HttpQueryInfo(void* e, ArgList& a, void* ctx) {
     (void)a[4]; return 1;
 }
 
-// ── InternetQueryDataAvailable ──────────────────────────────────────
+//  InternetQueryDataAvailable 
 uint64_t Wininet::InternetQueryDataAvailable(void* e, ArgList& a, void* ctx) {
     if (a.size() < 2) return 0;
     auto nm = we(e)->get_network_manager();
@@ -226,7 +226,7 @@ uint64_t Wininet::InternetQueryDataAvailable(void* e, ArgList& a, void* ctx) {
     (void)a[2]; (void)a[3]; (void)ctx; return avail > 0 ? 1 : 0;
 }
 
-// ── InternetCloseHandle ─────────────────────────────────────────────
+//  InternetCloseHandle 
 uint64_t Wininet::InternetCloseHandle(void* e, ArgList& a, void* ctx) {
     if (a.size() < 1) return 0;
     auto nm = we(e)->get_network_manager();
@@ -234,7 +234,7 @@ uint64_t Wininet::InternetCloseHandle(void* e, ArgList& a, void* ctx) {
     (void)e; (void)ctx; return 1;
 }
 
-// ── InternetOpenUrl ─────────────────────────────────────────────────
+//  InternetOpenUrl 
 // Python reference implementation; uses ApiContext, netman, urlparse-style parsing
 uint64_t Wininet::InternetOpenUrl(void* e, ArgList& a, void* ctx) {
     if (a.size() < 6) return 0;
@@ -285,7 +285,7 @@ uint64_t Wininet::InternetOpenUrl(void* e, ArgList& a, void* ctx) {
     return req ? req->get_handle() : 0;
 }
 
-// ── Constructor ─────────────────────────────────────────────────────
+//  Constructor 
 Wininet::Wininet(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Wininet)
     REG(Wininet, InternetOpen, 5)

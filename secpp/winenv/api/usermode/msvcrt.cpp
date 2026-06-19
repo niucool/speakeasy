@@ -1158,7 +1158,7 @@ uint64_t Msvcrt::_except_handler4_common(void* e, ArgList& a, void* ctxl) {
         }
     }
 
-    // Python: returns 0 — the CRT SEH chain handles the exception dispatch.
+    // Python: returns 0  the CRT SEH chain handles the exception dispatch.
     // The SEH frames are populated; scope-table walking happens in the emulated CRT.
     return 0;
 }

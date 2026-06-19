@@ -257,7 +257,7 @@ struct EntryPoint {
     std::optional<int> pid, tid, instr_count;
     std::optional<uint64_t> ret_val;
     std::optional<ErrorInfo> error;
-    std::optional<std::vector<events::Event*>> events;
+    std::optional<std::vector<std::shared_ptr<events::Event>>> events;
     std::optional<std::vector<SymAccessReport>> sym_accesses;
     std::optional<std::vector<DynamicCodeSegment>> dynamic_code_segments;
     std::optional<std::vector<uint64_t>> coverage;
@@ -276,7 +276,8 @@ struct EntryPoint {
         if (error.has_value()) j["error"] = error->to_json();
         if (events.has_value()) {
             nlohmann::json evts = nlohmann::json::array();
-            for (auto* e : *events) if (e) evts.push_back(e->to_json());
+            for (auto e : *events) 
+                if (e) evts.push_back(e->to_json());
             j["events"] = evts;
         }
         if (sym_accesses.has_value()) {

@@ -84,7 +84,7 @@ public:
     void* ret_val = nullptr;           // Python:100  self.ret_val: int | None = None
     std::vector<std::shared_ptr<speakeasy::events::Event>> events;  // Python:101  self.events: list[AnyEvent]
     std::map<std::string,MemAccess> sym_access;                    // Python:102
-    // Python:103  self.dropped_files: list[dict] — stored as DroppedFileEvent in events
+    // Python:103  self.dropped_files: list[dict]  stored as DroppedFileEvent in events
     std::map<std::string,MemAccess> mem_access;                    // Python:104
     // Python:105  self.section_access: dict[tuple[int, int], MemAccess] = {}  NOT PORTED
     std::map<std::string,std::vector<std::map<std::string,std::string>>> dyn_code; // Python:106

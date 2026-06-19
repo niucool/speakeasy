@@ -483,7 +483,7 @@ uint64_t Ntoskrnl::_snwprintf(void* e, ArgList& a, void* ctx) {
     if (a.size() < 3) return 0;
     uint64_t buf = a[0]; uint64_t cnt = a[1]; uint64_t fmt_addr = a[2];
     std::u16string wfmt = read_wide_string_ptr(e, fmt_addr);
-    // Convert to UTF-8 for format processing, replace %s→%S
+    // Convert to UTF-8 for format processing, replace %s%S
     std::string fmt_str; for (auto c : wfmt) if (c) fmt_str += static_cast<char>(c);
     size_t pos = 0;
     while ((pos = fmt_str.find("%s", pos)) != std::string::npos) { fmt_str.replace(pos, 2, "%S"); pos += 2; }
@@ -589,7 +589,7 @@ uint64_t Ntoskrnl::RtlAnsiStringToUnicodeString(void* e, ArgList& a, void* ctx) 
         mm(e)->mem_write(buf, wdata);
         write_unicode_string_fields(e, dest, size, size, buf);
     } else {
-        // Check if output buffer is large enough — read MaximumLength from dest UNICODE_STRING
+        // Check if output buffer is large enough  read MaximumLength from dest UNICODE_STRING
         int psz = ptr_sz(e);
         uint16_t maxlen = 0;
         if (psz == 4) {

@@ -61,7 +61,7 @@ public:
     static uint64_t RtlGetCurrentPeb(void*, ArgList&, void* ctx);
     static uint64_t RtlGetVersion(void*, ArgList&, void* ctx);
 
-    // Fallback for unregistered ntdll exports → handled by ntoskrnl
+    // Fallback for unregistered ntdll exports  handled by ntoskrnl
     static uint64_t stub_api(void*, ArgList&, void* ctx);
 
 private:

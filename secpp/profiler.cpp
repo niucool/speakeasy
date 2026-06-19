@@ -103,7 +103,7 @@ std::string Profiler::merge_binary_data(const std::string& ref, const std::vecto
     return artifact_store.put_bytes(merged);
 }
 
-// Python:214-225  log dropped files — uses DroppedFileEvent in run->events
+// Python:214-225  log dropped files  uses DroppedFileEvent in run->events
 void Profiler::record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files) {
     for (const auto& f : files) {
         if (!f) continue;
@@ -146,7 +146,7 @@ void Profiler::record_error_event(const std::string& error) {
     record_error_event(ei);
 }
 
-// Python:227-259  record_api_event — creates typed ApiEvent, push to run->events
+// Python:227-259  record_api_event  creates typed ApiEvent, push to run->events
 void Profiler::record_api_event(std::shared_ptr<Run> run, const events::TracePosition& pos, const std::string& name,
     uint64_t ret, const std::vector<std::string>& argv,
                        const std::vector<std::string>& ctx) {
@@ -163,7 +163,7 @@ void Profiler::record_api_event(std::shared_ptr<Run> run, const events::TracePos
     evt->pos = pos;
     evt->api_name = name;
 
-    // Convert numeric args to hex strings (Python: isinstance(arg, int) → hex(arg))
+    // Convert numeric args to hex strings (Python: isinstance(arg, int)  hex(arg))
     for (const auto& arg : argv) {
         if (!arg.empty()) {
             bool is_number = true;
@@ -190,6 +190,8 @@ void Profiler::record_api_event(std::shared_ptr<Run> run, const events::TracePos
     // Dedup against last 3 ApiEvents (Python: last 3 isinstance(e, ApiEvent))
     int start_idx = std::max(0, static_cast<int>(run->events.size()) - 3);
     for (int i = start_idx; i < static_cast<int>(run->events.size()); i++) {
+        if (run->events[i]->event != API)
+            continue;
         auto* existing = dynamic_cast<ApiEvent*>(run->events[i].get());
         if (existing && existing->pos.pc == evt->pos.pc &&
             existing->api_name == evt->api_name &&
@@ -203,7 +205,7 @@ void Profiler::record_api_event(std::shared_ptr<Run> run, const events::TracePos
     run->events.push_back(evt);
 }
 
-// Python:261-338  record_file_access_event — typed File*Event to run->events
+// Python:261-338  record_file_access_event  typed File*Event to run->events
 void Profiler::record_file_access_event(std::shared_ptr<Run> run, const std::string& path,
                                const std::string& event_type,
                                const std::vector<uint8_t>& data,
@@ -229,7 +231,7 @@ void Profiler::record_file_access_event(std::shared_ptr<Run> run, const std::str
                         existing->data_ref = merge_binary_data(existing->data_ref, data, 1024);
                     return;
                 }
-            } else {
+            } else if (event_type == FILE_READ) {
                 auto* existing = dynamic_cast<FileReadEvent*>(it->get());
                 if (existing && existing->path == path) {
                     if (!data_ref.empty())
@@ -284,7 +286,7 @@ void Profiler::record_file_access_event(std::shared_ptr<Run> run, const std::str
     run->events.push_back(evt);
 }
 
-// Python:340-416  record_registry_access_event — typed Reg*Event to run->events
+// Python:340-416  record_registry_access_event  typed Reg*Event to run->events
 void Profiler::record_registry_access_event(std::shared_ptr<Run> run, const std::string& path,
                                    const std::string& event_type,
                                    const std::string& value_name,
@@ -355,7 +357,7 @@ void Profiler::record_registry_access_event(std::shared_ptr<Run> run, const std:
     run->events.push_back(evt);
 }
 
-// Python:418-522  record_process_event — typed process events to run->events
+// Python:418-522  record_process_event  typed process events to run->events
 void Profiler::record_process_event(std::shared_ptr<Run> run, void* proc,
                                  const std::string& event_type,
                                  const std::map<std::string, std::string>& kwargs) {
@@ -470,7 +472,7 @@ void Profiler::record_process_event(std::shared_ptr<Run> run, void* proc,
     run->events.push_back(evt);
 }
 
-// Python:524-537  record_dns_event — NetDnsEvent
+// Python:524-537  record_dns_event  NetDnsEvent
 void Profiler::record_dns_event(std::shared_ptr<Run> run, const std::string& domain,
                        const std::string& ip) {
     // Dedup by query+response (Python: same logic)
@@ -486,7 +488,7 @@ void Profiler::record_dns_event(std::shared_ptr<Run> run, const std::string& dom
     run->events.push_back(evt);
 }
 
-// Python:539-567  record_http_event — NetHttpEvent
+// Python:539-567  record_http_event  NetHttpEvent
 void Profiler::record_http_event(std::shared_ptr<Run> run, const std::string& server, int port,
                         const std::string& /*proto*/,
                         const std::string& headers,
@@ -496,10 +498,12 @@ void Profiler::record_http_event(std::shared_ptr<Run> run, const std::string& se
 
     // Dedup by server+port+proto+headers (Python: same logic)
     for (const auto& evt : run->events) {
-        auto* existing = dynamic_cast<NetHttpEvent*>(evt.get());
-        if (existing && existing->url.find(server) != std::string::npos &&
-            existing->verb == (secure ? "https" : "http")) {
-            return;
+        if (evt->event == NET_HTTP) {
+            auto* existing = dynamic_cast<NetHttpEvent*>(evt.get());
+            if (existing && existing->url.find(server) != std::string::npos &&
+                existing->verb == (secure ? "https" : "http")) {
+                return;
+            }
         }
     }
 
@@ -510,7 +514,7 @@ void Profiler::record_http_event(std::shared_ptr<Run> run, const std::string& se
     run->events.push_back(evt);
 }
 
-// Python:569-576  record_dyn_code_event — stored separately (not in events list)
+// Python:569-576  record_dyn_code_event  stored separately (not in events list)
 void Profiler::record_dyn_code_event(std::shared_ptr<Run> run, const std::string& tag,
                             uint64_t base, uint64_t size) {
     if (run->base_addrs.find(base) == run->base_addrs.end()) {
@@ -523,7 +527,7 @@ void Profiler::record_dyn_code_event(std::shared_ptr<Run> run, const std::string
     }
 }
 
-// Python:578-595  record_network_event — NetTrafficEvent
+// Python:578-595  record_network_event  NetTrafficEvent
 void Profiler::record_network_event(std::shared_ptr<Run> run, const std::string& server, int port,
                            const std::string& typ,
                            const std::string& proto,
@@ -539,7 +543,7 @@ void Profiler::record_network_event(std::shared_ptr<Run> run, const std::string&
     run->events.push_back(evt);
 }
 
-// Python:597-620  record_exception_event — ExceptionEvent
+// Python:597-620  record_exception_event  ExceptionEvent
 void Profiler::record_exception_event(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info) {
     auto evt = std::make_shared<ExceptionEvent>();
     auto tit = info.find("type");     if (tit != info.end()) evt->exception_type = tit->second;
@@ -548,7 +552,7 @@ void Profiler::record_exception_event(std::shared_ptr<Run> run, const std::map<s
     run->events.push_back(evt);
 }
 
-// Python:622-633  record_module_load_event — ModuleLoadEvent
+// Python:622-633  record_module_load_event  ModuleLoadEvent
 void Profiler::record_module_load_event(std::shared_ptr<Run> run, const std::string& name,
                                const std::string& path, uint64_t base, uint64_t size) {
     auto evt = std::make_shared<ModuleLoadEvent>();
@@ -559,7 +563,7 @@ void Profiler::record_module_load_event(std::shared_ptr<Run> run, const std::str
     run->events.push_back(evt);
 }
 
-// Python:642-796  get_report — reads directly from run->events (matches Python)
+// Python:642-796  get_report  reads directly from run->events (matches Python)
 speakeasy::Report Profiler::get_report() const {
     speakeasy::Report rpt;
     rpt.report_version = __report_version__;
@@ -598,9 +602,7 @@ speakeasy::Report Profiler::get_report() const {
 
         // Pass run->events directly (matches Python's ep.events = events)
         if (!run->events.empty()) {
-            std::vector<events::Event*> evts;
-            for (auto& evt : run->events) evts.push_back(evt.get());
-            ep.events = evts;
+            ep.events = run->events;
         }
 
         rpt.entry_points.push_back(ep);

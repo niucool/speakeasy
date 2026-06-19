@@ -254,7 +254,7 @@ uint64_t Advapi32::RegDeleteValueA(void* e, ArgList& a, void* ctx) {
     node->values.erase(vn); return 0;
 }
 
-// ── Token / SID ────────────────────────────────────────────────────
+//  Token / SID 
 uint64_t Advapi32::OpenThreadToken(void* e, ArgList& a, void* ctx) {
     if (a.size()<4||!a[3]) return 0;
     uint64_t h = we(e)->mem_map(8, 0, 4, "advapi32.token");
@@ -287,7 +287,7 @@ uint64_t Advapi32::FreeSid(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 0;
 }
 
-// ── Crypto ──────────────────────────────────────────────────────────
+//  Crypto 
 uint64_t Advapi32::CryptAcquireContextW(void* e, ArgList& a, void* ctx) {
     return CryptAcquireContextA(e, a, ctx);
 }
@@ -295,7 +295,7 @@ uint64_t Advapi32::CryptReleaseContext(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 uint64_t Advapi32::SystemFunction036(void* e, ArgList& a, void* ctx) {
-    // RtlGenRandom — Python: fills buffer with range bytes
+    // RtlGenRandom  Python: fills buffer with range bytes
     if (a.size()<2||!a[0]||!a[1]) return 0;
     uint32_t len=static_cast<uint32_t>(a[1]);
     std::vector<uint8_t>buf(len);
@@ -303,7 +303,7 @@ uint64_t Advapi32::SystemFunction036(void* e, ArgList& a, void* ctx) {
     we(e)->mem_write(a[0],buf); return 1;
 }
 
-// ── Service Manager ─────────────────────────────────────────────────
+//  Service Manager 
 uint64_t Advapi32::OpenSCManagerA(void* e, ArgList& a, void* ctx) {
     // Python: hScm = self.mem_alloc(size=8)
     (void)a;
@@ -388,7 +388,7 @@ uint64_t Advapi32::StartServiceCtrlDispatcherW(void* e, ArgList& a, void* ctx) {
     desc+="]"; a[0]=desc; return 1;
 }
 
-// ── RegisterServiceCtrlHandler A/W/Ex ──────────────────────────────
+//  RegisterServiceCtrlHandler A/W/Ex 
 uint64_t Advapi32::RegisterServiceCtrlHandlerA(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; g_service_status_handle++; return g_service_status_handle;
 }
@@ -405,7 +405,7 @@ uint64_t Advapi32::SetServiceStatus(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
-// ── OpenService ─────────────────────────────────────────────────────
+//  OpenService 
 uint64_t Advapi32::OpenServiceA(void* e, ArgList& a, void* ctx) {
     if (a.size()<3) return 0;
     if (a[1]) { a[1]=be(e)->read_mem_string(a[1],1); }
@@ -417,7 +417,7 @@ uint64_t Advapi32::OpenServiceW(void* e, ArgList& a, void* ctx) {
     static uint64_t ns=0x3100; ns+=4; return ns;
 }
 
-// ── CreateServiceA (Python: reads strings, mem_alloc, returns handle) ──
+//  CreateServiceA (Python: reads strings, mem_alloc, returns handle) 
 uint64_t Advapi32::CreateServiceA(void* e, ArgList& a, void* ctx) {
     // Read string args into argv for logging
     if (a.size()>=2&&a[1]) { a[1]=be(e)->read_mem_string(a[1],1); }
@@ -426,12 +426,12 @@ uint64_t Advapi32::CreateServiceA(void* e, ArgList& a, void* ctx) {
     return we(e)->mem_map(8,0,4,"advapi32.service");
 }
 
-// ── StartServiceA (Python: reads strings, set_last_error, returns 1) ──
+//  StartServiceA (Python: reads strings, set_last_error, returns 1) 
 uint64_t Advapi32::StartServiceA(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
-// ── ChangeServiceConfigA (Python: reads 6 strings, updates argv) ──
+//  ChangeServiceConfigA (Python: reads 6 strings, updates argv) 
 uint64_t Advapi32::ChangeServiceConfigA(void* e, ArgList& a, void* ctx) {
     if (a.size()>=5&&a[4])  { a[4] =be(e)->read_mem_string(a[4], 1); }
     if (a.size()>=6&&a[5])  { a[5] =be(e)->read_mem_string(a[5], 1); }
@@ -442,7 +442,7 @@ uint64_t Advapi32::ChangeServiceConfigA(void* e, ArgList& a, void* ctx) {
     return 1;
 }
 
-// ── GetUserName ─────────────────────────────────────────────────────
+//  GetUserName 
 uint64_t Advapi32::GetUserNameA(void* e, ArgList& a, void* ctx) {
     if (a.size()<2||!a[0]||!a[1]) return 0;
     auto user=be(e)->get_user(); std::string name=user.count("name")?user.at("name"):"user";
@@ -462,7 +462,7 @@ uint64_t Advapi32::GetUserNameW(void* e, ArgList& a, void* ctx) {
     return 1;
 }
 
-// ── LookupAccountNameA ──────────────────────────────────────────────
+//  LookupAccountNameA 
 uint64_t Advapi32::LookupAccountNameA(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
@@ -470,7 +470,7 @@ uint64_t Advapi32::LookupAccountNameW(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
 
-// ── Crypto stubs ────────────────────────────────────────────────────
+//  Crypto stubs 
 uint64_t Advapi32::CryptCreateHash(void* e, ArgList& a, void* ctx) {
     static uint64_t nh=0x3200; if(a.size()>=2&&a[1]){nh+=4;return nh;} return 0;
 }
@@ -490,7 +490,7 @@ uint64_t Advapi32::CryptDeriveKey(void* e, ArgList& a, void* ctx) {
     static uint64_t nk=0x3300; nk+=4; return nk;
 }
 
-// ── More registry / token / misc ────────────────────────────────────
+//  More registry / token / misc 
 uint64_t Advapi32::GetTokenInformation(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
@@ -527,7 +527,7 @@ uint64_t Advapi32::GetCurrentHwProfileA(void* e, ArgList& a, void* ctx) {
     }
     return 1;
 }
-// Python advapi32.py: CreateProcessAsUser — reads app/cmdline strings,
+// Python advapi32.py: CreateProcessAsUser  reads app/cmdline strings,
 // creates a process via emu.create_process(), writes PROCESS_INFORMATION output.
 uint64_t Advapi32::CreateProcessAsUserA(void* e, ArgList& a, void* ctx) {
     if (a.size()<11) return 0;
@@ -581,7 +581,7 @@ uint64_t Advapi32::QueryServiceConfigA(void* e, ArgList& a, void* ctx) {
 uint64_t Advapi32::QueryServiceConfigW(void* e, ArgList& a, void* ctx) {
     (void)e; (void)a; return 1;
 }
-// ── Remaining A/W wrappers and stubs ───────────────────────────────
+//  Remaining A/W wrappers and stubs 
 uint64_t Advapi32::CreateServiceW(void* e, ArgList& a, void* ctx) {
     if(a.size()>=2&&a[1]){a[1]=be(e)->read_mem_string(a[1],2);}
     if(a.size()>=3&&a[2]){a[2]=be(e)->read_mem_string(a[2],2);}
