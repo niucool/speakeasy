@@ -36,6 +36,7 @@
 #include "report.h"
 #include "windows/objman.h"
 #include "profiler_events.h"
+#include "winenv/api/api.h"
 
 const std::string __report_version__ = "3.0.0";
 
@@ -179,7 +180,7 @@ public:
     // Python:227-259
     // """Log a call to an OS API. This includes arguments, return address, and return value"""
     void record_api_event(std::shared_ptr<Run> run, const speakeasy::events::TracePosition& pos, const std::string& name, uint64_t ret,
-                 const std::vector<std::string>& argv, const std::vector<std::string>& ctx = {});
+                 const ArgList& argv, const std::vector<std::string>& ctx = {});
     // Python:261-338
     // """Log file access events. This will include things like handles being opened,
     //    data reads, and data writes."""

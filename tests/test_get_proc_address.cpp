@@ -31,11 +31,11 @@ TEST(GetProcAddressTest, MissingFunctionReturnsZero) {
         ASSERT_FALSE(eps.empty());
 
         // Find all GetProcAddress API calls
-        std::vector<const speakeasy::events::ApiEvent*> gpa_calls;
+        std::vector<std::shared_ptr<speakeasy::events::ApiEvent>> gpa_calls;
         if (eps[0].events.has_value()) {
             for (auto evt : *eps[0].events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                 if (api && api->api_name == "kernel32.GetProcAddress")
                     gpa_calls.push_back(api);
             }

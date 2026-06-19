@@ -423,7 +423,7 @@ TEST(ProfilerTest, LogApi) {
     Profiler prof;
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
-    std::vector<std::string> argv = {"0x1000", "4", "0"};
+    ArgList argv = { uint64_t(0x1000), uint64_t(4), uint64_t(0) };
     speakeasy::events::TracePosition pos;
     pos.pc = 0x401000;
     EXPECT_NO_THROW(prof.record_api_event(my_run, pos, "kernel32.VirtualAlloc", 0, argv));

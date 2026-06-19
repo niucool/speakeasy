@@ -19,14 +19,14 @@
 namespace {
 
 // Find API events matching a name pattern
-std::vector<const speakeasy::events::ApiEvent*> find_api_events(
+std::vector<std::shared_ptr<speakeasy::events::ApiEvent>> find_api_events(
     const speakeasy::EntryPoint& ep, const std::string& pattern)
 {
-    std::vector<const speakeasy::events::ApiEvent*> result;
+    std::vector<std::shared_ptr<speakeasy::events::ApiEvent>> result;
     if (!ep.events.has_value()) return result;
     for (auto evt : *ep.events) {
         if (!evt || evt->event != "api") continue;
-        auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+        auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
         if (api && api->api_name.find(pattern) != std::string::npos)
             result.push_back(api);
     }

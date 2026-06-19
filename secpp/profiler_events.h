@@ -13,6 +13,7 @@
 #include <vector>
 #include <cstdint>
 #include <nlohmann/json.hpp>
+#include "winenv/api/api.h"
 
 namespace speakeasy {
 namespace events {
@@ -91,7 +92,8 @@ struct Event {
 
 struct ApiEvent : Event {
     std::string api_name;
-    std::vector<std::string> args;
+    //std::vector<std::string> args;
+    ArgList args;       // stringified args; interpretation deferred to consumer
     std::string ret_val;   // empty when not captured
 
     ApiEvent() { event = API; }

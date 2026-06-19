@@ -1178,6 +1178,8 @@ uint64_t Kernel32::GetProcAddress(void* emu, ArgList& argv, void* ctx) {
         }
     }
 
+    argv[1] = proc;
+
     // Python kernel32.py:1980-1992  matches Python logic.
     // get_proc() creates a sentinel; normalize_import_miss bridges ntdll Nt* 
     // ntoskrnl Zw* during dispatch, so we don't need to verify exports here.

@@ -10,9 +10,11 @@
 #include <nlohmann/json.hpp>
 #include "picosha2.h"
 #include "helper.h"
+#include <windows.h>
 #include <cmath>
 #include <cctype>
 #include <iomanip>
+
 
 using namespace speakeasy;
 using namespace speakeasy::events;
@@ -148,7 +150,7 @@ void Profiler::record_error_event(const std::string& error) {
 
 // Python:227-259  record_api_event  creates typed ApiEvent, push to run->events
 void Profiler::record_api_event(std::shared_ptr<Run> run, const events::TracePosition& pos, const std::string& name,
-    uint64_t ret, const std::vector<std::string>& argv,
+    uint64_t ret, const ArgList& argv,
                        const std::vector<std::string>& ctx) {
     run->num_apis += 1;
 
@@ -163,24 +165,32 @@ void Profiler::record_api_event(std::shared_ptr<Run> run, const events::TracePos
     evt->pos = pos;
     evt->api_name = name;
 
-    // Convert numeric args to hex strings (Python: isinstance(arg, int)  hex(arg))
+    // Convert ArgList to display strings (Python: isinstance(arg, int) → hex(arg), strings → quoted)
     for (const auto& arg : argv) {
-        if (!arg.empty()) {
-            bool is_number = true;
-            for (char c : arg) {
-                if (!std::isdigit(static_cast<unsigned char>(c))) { is_number = false; break; }
+        if (arg.is_string()) {
+            std::string escaped;
+            escaped.reserve(arg.as_string().size() + 2);
+            escaped += '"';
+            for (char c : arg.as_string()) {
+                if (c == '\n') escaped += "\\n";
+                else if (c == '\r') escaped += "\\r";
+                else if (c == '\t') escaped += "\\t";
+                else if (c == '"') escaped += "\\\"";
+                else if (c == '\\') escaped += "\\\\";
+                else escaped += c;
             }
-            if (is_number) {
-                try {
-                    uint64_t num = std::stoull(arg);
-                    std::stringstream hex_s;
-                    hex_s << "0x" << std::hex << num;
-                    evt->args.push_back(hex_s.str());
-                    continue;
-                } catch (...) {}
-            }
+            escaped += '"';
+            evt->args.push_back(escaped);
+        } else if (arg.is_uint64()) {
+            std::stringstream hex_s;
+            hex_s << "0x" << std::hex << static_cast<uint64_t>(arg);
+            evt->args.push_back(hex_s.str());
+        } else {
+            // blob or pointer — use hex representation
+            std::stringstream hex_s;
+            hex_s << "0x" << std::hex << static_cast<uint64_t>(arg);
+            evt->args.push_back(hex_s.str());
         }
-        evt->args.push_back(arg);
     }
 
     std::stringstream ret_stream;
@@ -507,7 +517,7 @@ void Profiler::record_http_event(std::shared_ptr<Run> run, const std::string& se
     for (const auto& evt : run->events) {
         if (evt->event == NET_HTTP) {
             auto* existing = dynamic_cast<NetHttpEvent*>(evt.get());
-            if (existing && (http_evt == *existing)) {
+            if (existing && (*http_evt.get() == *existing)) {
                 return;
             }
         }

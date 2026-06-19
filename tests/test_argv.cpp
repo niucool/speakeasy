@@ -47,7 +47,7 @@ TEST(ArgvTest, ArgvPassedToExe) {
             int printf_count = 0;
             for (auto evt : *eps[0].events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                 if (api && api->api_name.find("printf") != std::string::npos)
                     printf_count++;
             }

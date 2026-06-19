@@ -11,7 +11,7 @@
 #include <variant>
 #include <cstdint>
 #include "../../struct.h"
-#include "../../profiler.h"
+//#include "../../profiler.h"
 #include "../../winenv/arch.h"
 
 // Forward declarations
@@ -22,6 +22,7 @@ class MemoryManager;
 class WinKernelEmulator;
 
 class RegKey;
+class KernelObject;
 
 static inline WinKernelEmulator* wke(void* e) { return static_cast<WinKernelEmulator*>(e); }
 static inline Win32Emulator* we32(void* e) { return static_cast<Win32Emulator*>(e); }

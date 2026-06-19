@@ -185,7 +185,7 @@ inline ObservedBehavior collect_behavior(const speakeasy::Report& report) {
 
             // API events
             if (evt->event == "api") {
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                 if (api && !api->api_name.empty()) {
                     ob.api_names.insert(normalize_value(api->api_name));
                 }
@@ -228,10 +228,8 @@ inline ObservedBehavior collect_behavior(const speakeasy::Report& report) {
             // HTTP events -- extract domain from URL
             if (evt->event == "net_http") {
                 auto* he = dynamic_cast<speakeasy::events::NetHttpEvent*>(evt.get());
-                if (he && !he->url.empty()) {
-                    ob.domains.insert(normalize_value(extract_domain(he->url)));
-                    // also capture full URL
-                    ob.urls.insert(normalize_value(he->url));
+                if (he && !he->server.empty()) {
+                    ob.domains.insert(he->server);
                 }
             }
 

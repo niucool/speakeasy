@@ -2906,12 +2906,10 @@ std::optional<std::string> WindowsEmulator::read_string_heuristic(uint64_t addr)
 void WindowsEmulator::record_api_event(uint64_t pc, const std::string& api,
                                uint64_t rv, const ArgList& argv) {
     std::string call_str = api + "(";
-    std::vector<std::string> str_argv;
 
     for (size_t i = 0; i < argv.size(); ++i) {
         auto& arg = argv[i];
         if (arg.is_string()) {
-            // Handler already resolved this arg to a string
             std::string escaped_str;
             for (char c : arg.as_string()) {
                 if (c == '\n') escaped_str += "\\n";
@@ -2921,16 +2919,10 @@ void WindowsEmulator::record_api_event(uint64_t pc, const std::string& api,
                 else if (c == '\\') escaped_str += "\\\\";
                 else escaped_str += c;
             }
-            std::string quoted = "\"" + escaped_str + "\"";
-            call_str += quoted;
-            str_argv.push_back(quoted);
+            call_str += "\"" + escaped_str + "\"";
         } else if (arg.is_blob()) {
-            // Binary blob: show size
-            std::string blob_str = "{blob:" + std::to_string(arg.as_blob().size()) + "}";
-            call_str += blob_str;
-            str_argv.push_back(blob_str);
+            call_str += "{blob:" + std::to_string(arg.as_blob().size()) + "}";
         } else {
-            // uint64_t or void*: try heuristic string detection, fallback to hex
             uint64_t raw = static_cast<uint64_t>(arg);
             std::optional<std::string> s = read_string_heuristic(raw);
             if (s.has_value()) {
@@ -2943,19 +2935,14 @@ void WindowsEmulator::record_api_event(uint64_t pc, const std::string& api,
                     else if (c == '\\') escaped_str += "\\\\";
                     else escaped_str += c;
                 }
-                std::string quoted = "\"" + escaped_str + "\"";
-                call_str += quoted;
-                str_argv.push_back(quoted);
+                call_str += "\"" + escaped_str + "\"";
             } else {
                 std::stringstream hex_s;
                 hex_s << "0x" << std::hex << raw;
                 call_str += hex_s.str();
-                str_argv.push_back(hex_s.str());
             }
         }
-        if (i + 1 < argv.size()) {
-            call_str += ", ";
-        }
+        if (i + 1 < argv.size()) call_str += ", ";
     }
     call_str += ")";
 
@@ -2974,7 +2961,7 @@ void WindowsEmulator::record_api_event(uint64_t pc, const std::string& api,
         auto proc = get_current_process();
         pos.pid = proc ? proc->get_pid() : 0;
         pos.tid = curr_thread ? curr_thread->get_id() : 0;
-        profiler_->record_api_event(curr_run, pos, api, rv, str_argv);
+        profiler_->record_api_event(curr_run, pos, api, rv, argv);
     }
 }
 

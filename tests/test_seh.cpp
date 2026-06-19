@@ -49,7 +49,7 @@ TEST(SehTest, SehDispatchEnabled) {
         if (eps[0].events.has_value()) {
             for (auto evt : *eps[0].events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                 if (api && api->api_name.find("__stdio_common_vfprintf") != std::string::npos) {
                     if (api->args.size() > 2)
                         fmt_strings.push_back(api->args[2]);
@@ -90,7 +90,7 @@ TEST(SehTest, SehDispatchDisabled) {
         if (eps[0].events.has_value()) {
             for (auto evt : *eps[0].events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                 if (api && api->api_name.find("__stdio_common_vfprintf") != std::string::npos) {
                     printf_count++;
                     break;

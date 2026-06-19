@@ -33,7 +33,7 @@ TEST(ModuleSystemTest, StaticImportDispatchesApiHandler) {
             if (ep.events.has_value()) {
                 for (auto evt : *ep.events) {
                     if (!evt || evt->event != "api") continue;
-                    auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                    auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                     if (api && api->api_name.find("MessageBox") != std::string::npos) {
                         found_msgbox = true;
                         break;
@@ -68,7 +68,7 @@ TEST(ModuleSystemTest, GetProcAddressDynamicResolution) {
             if (ep.events.has_value()) {
                 for (auto evt : *ep.events) {
                     if (!evt || evt->event != "api") continue;
-                    auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                    auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                     if (api && api->api_name == "kernel32.GetProcAddress") {
                         found_gpa = true;
                         if (!api->ret_val.empty() && api->ret_val != "0x0")

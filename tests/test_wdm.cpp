@@ -45,7 +45,7 @@ TEST_P(WdmTest, DISABLED_DriverLoadUnload) {
         if (driver_entry.events.has_value()) {
             for (auto evt : *driver_entry.events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                 if (!api) continue;
 
                 if (api->api_name == "ntoskrnl.IoCreateDeviceSecure") {
@@ -74,7 +74,7 @@ TEST_P(WdmTest, DISABLED_DriverLoadUnload) {
         if (unload_entry.events.has_value()) {
             for (auto evt : *unload_entry.events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                 if (!api) continue;
 
                 if (api->api_name == "ntoskrnl.IoDeleteSymbolicLink") {
@@ -122,7 +122,7 @@ TEST_P(WdmTest, DISABLED_IrpHandlers) {
                 if (ep.events.has_value()) {
                     for (auto evt : *ep.events) {
                         if (!evt || evt->event != "api") continue;
-                        auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
+                        auto api = std::dynamic_pointer_cast<speakeasy::events::ApiEvent>(evt);
                         if (api && api->api_name == "ntoskrnl.DbgPrint") {
                             found_dbgprint = true;
                             ASSERT_GE(api->args.size(), 1);
