@@ -481,26 +481,26 @@ TEST(WindowsEmulatorTest, LogApiValidation) {
     auto report = prof->get_report();
     ASSERT_EQ(report.entry_points.size(), 1ULL);
 
-    // Find the logged API call
-    ASSERT_FALSE(mock_run->apis.empty());
-    auto api_event = mock_run->apis[0];
+    // Find the logged API call from run->events
+    ASSERT_FALSE(mock_run->events.empty());
+    auto* api_event = dynamic_cast<speakeasy::events::ApiEvent*>(mock_run->events[0].get());
+    ASSERT_NE(api_event, nullptr);
 
-    EXPECT_EQ(api_event["api_name"], "kernel32.CreateMutexA");
-    EXPECT_EQ(api_event["pc"], "0x401000");
-    EXPECT_EQ(api_event["ret_val"], "0x1804");
+    EXPECT_EQ(api_event->api_name, "kernel32.CreateMutexA");
+    EXPECT_EQ(api_event->pos.pc, 0x401000);
+    EXPECT_EQ(api_event->ret_val, "0x1804");
 
     // Check arguments formatting:
-    // argv[0] should be "0x0"
-    // argv[1] should be "0x15"
-    // argv[2] should be "\"test_ansi_mutex_name\""
-    // argv[3] should be "\"test_unicode_event_name\""
+    // args[0] should be "0x0" (numeric hex)
+    // args[1] should be "0x15" (numeric hex)
+    // args[2] should be "\"test_ansi_mutex_name\"" (string, quoted)
+    // args[3] should be "\"test_unicode_event_name\"" (string, quoted)
 
-    auto j_args = nlohmann::json::parse(api_event["args"]);
-    ASSERT_EQ(j_args.size(), 4ULL);
-    EXPECT_EQ(j_args[0].get<std::string>(), "0x0");
-    EXPECT_EQ(j_args[1].get<std::string>(), "0x15");
-    EXPECT_EQ(j_args[2].get<std::string>(), "\"test_ansi_mutex_name\"");
-    EXPECT_EQ(j_args[3].get<std::string>(), "\"test_unicode_event_name\"");
+    ASSERT_EQ(api_event->args.size(), 4ULL);
+    EXPECT_EQ(api_event->args[0], "0x0");
+    EXPECT_EQ(api_event->args[1], "0x15");
+    EXPECT_EQ(api_event->args[2], "\"test_ansi_mutex_name\"");
+    EXPECT_EQ(api_event->args[3], "\"test_unicode_event_name\"");
 }
 
 //
