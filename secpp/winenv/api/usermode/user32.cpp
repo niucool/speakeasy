@@ -95,16 +95,28 @@ uint64_t User32::LoadStringW(void* e, ArgList& a, void* ctx) {
 uint64_t User32::MessageBoxA(void* e, ArgList& a, void* ctx) {
     if (a.size()<4) return 2;
     uint64_t lpText = a[1], lpCaption = a[2];
-    if (lpText) { std::string s = be(e)->read_mem_string(lpText,1); (void)s; }
-    if (lpCaption) { std::string s = be(e)->read_mem_string(lpCaption,1); (void)s; }
+    if (lpText) { 
+        std::string s = be(e)->read_mem_string(lpText,1); 
+        a[1] = s; 
+    }
+    if (lpCaption) {
+        std::string s = be(e)->read_mem_string(lpCaption,1); 
+        a[2] = s; 
+    }
     return 2; // IDCANCEL
 }
 
 uint64_t User32::MessageBoxW(void* e, ArgList& a, void* ctx) {
     if (a.size()<4) return 2;
     uint64_t lpText = a[1], lpCaption = a[2];
-    if (lpText) { std::string s = be(e)->read_mem_string(lpText,2); (void)s; }
-    if (lpCaption) { std::string s = be(e)->read_mem_string(lpCaption,2); (void)s; }
+    if (lpText) { 
+        std::string s = be(e)->read_mem_string(lpText,2); 
+        a[1] = s; 
+    }
+    if (lpCaption) { 
+        std::string s = be(e)->read_mem_string(lpCaption,2); 
+        a[2] = s;
+    }
     return 2; // IDCANCEL
 }
 

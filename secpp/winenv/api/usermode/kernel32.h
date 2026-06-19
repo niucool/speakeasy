@@ -242,7 +242,7 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(ExpandEnvironmentStringsA, 3)
     // Toolhelp / Snapshot
     API_ENTRY(CreateToolhelp32Snapshot, 2)
-    API_ENTRY(Process32FirstA, 2)   API_ENTRY(Process32NextA, 2)
+    API_ENTRY(Process32First, 2)   API_ENTRY(Process32Next, 2)
     API_ENTRY(Thread32First, 2)     API_ENTRY(Thread32Next, 2)
     API_ENTRY(Module32FirstA, 2)    API_ENTRY(Module32NextA, 2)
     // Misc

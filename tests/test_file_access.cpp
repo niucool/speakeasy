@@ -45,7 +45,7 @@ TEST_P(FileAccessTest, FileAccessEmulation) {
                 if (api->api_name == "ntdll.NtCreateFile") {
                     found_create = true;
                     ASSERT_GE(api->args.size(), 4);
-                    EXPECT_EQ(api->args[3], "\\\\??\\\\c:\\\\myfile.txt");
+                    EXPECT_EQ(api->args[3], "\\??\\c:\\myfile.txt");
                 }
                 if (api->api_name == "ntdll.NtReadFile") {
                     found_read = true;

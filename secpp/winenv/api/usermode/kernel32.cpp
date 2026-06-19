@@ -353,7 +353,8 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, GetCurrentDirectoryA, 2) REG(Kernel32, GetCurrentDirectoryW, 2) REG(Kernel32, SetCurrentDirectoryA, 1)
     REG(Kernel32, ExpandEnvironmentStringsA, 3) REG(Kernel32, ExpandEnvironmentStringsW, 3)
     REG(Kernel32, CreateToolhelp32Snapshot, 2)
-    REG(Kernel32, Process32FirstA, 2) REG(Kernel32, Process32FirstW, 2) REG(Kernel32, Process32NextA, 2) REG(Kernel32, Process32NextW, 2)
+    REG(Kernel32, Process32First, 2)   REG(Kernel32, Process32Next, 2)
+    REG(Kernel32, Process32FirstW, 2) REG(Kernel32, Process32NextW, 2)
     REG(Kernel32, Thread32First, 2)  REG(Kernel32, Thread32Next, 2)
     REG(Kernel32, Module32FirstA, 2) REG(Kernel32, Module32FirstW, 2) REG(Kernel32, Module32NextA, 2) REG(Kernel32, Module32NextW, 2)
     REG(Kernel32, AllocConsole, 0)   REG(Kernel32, FreeConsole, 0)
@@ -2426,11 +2427,11 @@ static uint64_t process32_impl(void* emu, const ArgList& argv, bool first) {
     return 1;
 }
 
-uint64_t Kernel32::Process32FirstA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::Process32First(void* emu, ArgList& argv, void* ctx) {
     return process32_impl(emu, argv, true);
 }
 
-uint64_t Kernel32::Process32NextA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::Process32Next(void* emu, ArgList& argv, void* ctx) {
     return process32_impl(emu, argv, false);
 }
 

@@ -141,10 +141,10 @@ void Speakeasy::_auto_mount_target_directory(const std::string& path) {
     
     // Log
     if (true) {
-        PLOG_INFO << "[speakeasy] Auto-mounted " << new_entries.size()
+        PLOG_DEBUG << "[speakeasy] Auto-mounted " << new_entries.size()
                   << " file(s) from " << target_dir.string() << " into " << guest_cd;
         for (auto& e : new_entries) {
-            PLOG_INFO << "[speakeasy]   " << e.emu_path << " -> " << e.path;
+            PLOG_DEBUG << "[speakeasy]   " << e.emu_path << " -> " << e.path;
         }
     }
 }

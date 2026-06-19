@@ -17,13 +17,13 @@
 namespace {
 
 const std::vector<std::string> DISPATCH_SCRIPT = {
-    "Hello emulator\\n",
-    "First access violation\\r\\n",
-    "First nested access violation\\r\\n",
-    "Second nested access violation\\r\\n",
-    "After access violations\\r\\n",
-    "In finally\\r\\n",
-    "Returning...\\n",
+    "Hello emulator\n",
+    "First access violation\r\n",
+    "First nested access violation\r\n",
+    "Second nested access violation\r\n",
+    "After access violations\r\n",
+    "In finally\r\n",
+    "Returning...\n",
 };
 
 } // namespace

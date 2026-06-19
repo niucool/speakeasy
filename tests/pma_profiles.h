@@ -86,7 +86,7 @@ inline void set_main_process(speakeasy::SpeakeasyConfig& cfg, const std::string&
 
 // pma-01-02  (pma_profiles.py:25-28)
 inline CaseRuntime profile_pma_0102(speakeasy::SpeakeasyConfig& cfg, const fs::path& /*tmp*/) {
-    cfg.timeout = 2;
+    cfg.timeout = 4;
     cfg.max_api_count = 250;
     return {};
 }

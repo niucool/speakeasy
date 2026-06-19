@@ -760,7 +760,7 @@ void WindowsEmulator::call(uint64_t addr, const std::vector<std::string>& params
 std::shared_ptr<Run> WindowsEmulator::_prepare_run_context(std::shared_ptr<Run> run) {
     curr_run = run;
 
-    PLOG_INFO << "* exec: " << run->type;
+    PLOG_DEBUG << "* exec: " << run->type;
 
     if (profiler_) {
         profiler_->add_run(run);
@@ -2352,7 +2352,7 @@ bool WindowsEmulator::_dispatch_seh_x86(uint64_t except_code) {
     }
     std::string pc_desc = pc_module.empty() ? ("0x" + hex_str(pc)) : pc_module;
 
-    log_info(hex_str(pc) + ": Exception caught: code=" + hex_str(except_code) +
+    log_debug(hex_str(pc) + ": Exception caught: code=" + hex_str(except_code) +
              " handler=" + handler_desc + " instr=\"" + instr + "\"\n  pc: " + pc_desc);
 
     // Python: profiler exception event
