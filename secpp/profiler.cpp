@@ -10,7 +10,6 @@
 #include <nlohmann/json.hpp>
 #include "picosha2.h"
 #include "helper.h"
-#include <windows.h>
 #include <cmath>
 #include <cctype>
 #include <iomanip>

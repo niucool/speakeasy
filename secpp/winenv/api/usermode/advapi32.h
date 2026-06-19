@@ -18,6 +18,8 @@ private:
     static uint64_t RegQueryValueExA(void*, ArgList&, void* ctx);
     static uint64_t RegQueryValueExW(void*, ArgList&, void* ctx);
     static uint64_t RegCloseKey(void*, ArgList&, void* ctx);
+    static uint64_t RegCreateKeyA(void*, ArgList&, void* ctx);
+    static uint64_t RegCreateKeyW(void*, ArgList&, void* ctx);
     static uint64_t RegCreateKeyExA(void*, ArgList&, void* ctx);
     static uint64_t RegCreateKeyExW(void*, ArgList&, void* ctx);
     static uint64_t RegSetValueExA(void*, ArgList&, void* ctx);

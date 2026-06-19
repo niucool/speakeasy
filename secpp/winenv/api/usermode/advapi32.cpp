@@ -161,7 +161,48 @@ uint64_t Advapi32::RegCloseKey(void* e, ArgList& a, void* ctx) {
     return resolve_hk(a[0]).empty() ? 6 : 0;
 }
 
-//  RegCreateKeyExA 
+//  RegCreateKeyA — Python advapi32.py: follows the ApiContext pattern (like wininet InternetOpen)
+uint64_t Advapi32::RegCreateKeyA(void* e, ArgList& a, void* ctx) {
+    if (a.size() < 3) return 2;
+    ApiContext* actx = (ApiContext*)ctx;
+    int cw = get_char_width(actx);
+    uint64_t hkey_arg = a[0], lpSubKey = a[1], phkResult = a[2];
+    std::string key_path = resolve_hk(hkey_arg);
+    if (key_path.empty()) return 2; // ERROR_FILE_NOT_FOUND
+    a[0] = key_path;
+    if (lpSubKey) {
+        std::string sk = be(e)->read_mem_string(lpSubKey, cw);
+        a[1] = sk;
+        std::string full = key_path + "\\" + sk;
+        we(e)->reg_create_key(full);
+        // Record registry event
+        auto prof = be(e)->get_profiler();
+        if (prof) {
+            auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
+            prof->record_registry_access_event(run, full, "create_key", "", {}, 0, {}, {}, 0, -1);
+        }
+        if (phkResult) {
+            uint32_t hnd = open_rk(full, true);
+            int ps = we(e)->get_ptr_size();
+            std::vector<uint8_t> buf((size_t)ps, 0);
+            write_le(buf, 0, hnd, ps);
+            we(e)->mem_write(phkResult, buf);
+        }
+    } else {
+        if (phkResult) {
+            int ps = we(e)->get_ptr_size();
+            std::vector<uint8_t> buf((size_t)ps, 0);
+            write_le(buf, 0, static_cast<uint64_t>(hkey_arg), ps);
+            we(e)->mem_write(phkResult, buf);
+        }
+    }
+    return 0; // ERROR_SUCCESS
+}
+uint64_t Advapi32::RegCreateKeyW(void* e, ArgList& a, void* ctx) {
+    return RegCreateKeyA(e, a, ctx); // char width handled by ApiContext in RegCreateKeyA
+}
+
+//  RegCreateKeyExA
 uint64_t Advapi32::RegCreateKeyExA(void* e, ArgList& a, void* ctx) {
     if (a.size()<9) return 0xFFFFFFFF;
     uint64_t hKey=a[0], lpSubKey=a[1], phkResult=a[7], lpdwDisposition=a[8];
@@ -616,6 +657,7 @@ Advapi32::Advapi32(void* emu) : ApiHandler(emu) {
     REG(Advapi32, RegOpenKeyExA, 5)     REG(Advapi32, RegOpenKeyExW, 5)
     REG(Advapi32, RegQueryValueExA, 6)  REG(Advapi32, RegQueryValueExW, 6)
     REG(Advapi32, RegCloseKey, 1)
+    REG(Advapi32, RegCreateKeyA, 3)     REG(Advapi32, RegCreateKeyW, 3)
     REG(Advapi32, RegCreateKeyExA, 9)   REG(Advapi32, RegCreateKeyExW, 9)
     REG(Advapi32, RegSetValueExA, 6)    REG(Advapi32, RegSetValueExW, 6)
     REG(Advapi32, RegDeleteKeyA, 1)     REG(Advapi32, RegDeleteValueA, 2)
