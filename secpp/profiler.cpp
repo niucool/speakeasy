@@ -180,7 +180,8 @@ void Profiler::record_api_event(std::shared_ptr<Run> run, const events::TracePos
                 else escaped += c;
             }
             escaped += '"';
-            evt->args.push_back(escaped);
+            //evt->args.push_back(escaped);
+            evt->args.push_back(arg.as_string());
         } else if (arg.is_uint64()) {
             std::stringstream hex_s;
             hex_s << "0x" << std::hex << static_cast<uint64_t>(arg);

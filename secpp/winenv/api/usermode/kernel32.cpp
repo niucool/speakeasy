@@ -1689,6 +1689,7 @@ uint64_t Kernel32::CreateMutexA(void* emu, ArgList& argv, void* ctx) {
     (void)attrs; (void)initial_owner;
     std::string name;
     if (name_ptr) name = be(emu)->read_mem_string(name_ptr, 1);
+    argv[2] = name;
 
     auto [h, mut] = we(emu)->create_mutant(name);
     if (h == 0) {
@@ -1706,6 +1707,7 @@ uint64_t Kernel32::CreateMutexW(void* emu, ArgList& argv, void* ctx) {
     (void)attrs; (void)initial_owner;
     std::string name;
     if (name_ptr) name = be(emu)->read_mem_string(name_ptr, 2);
+    argv[2] = name;
 
     auto [h, mut] = we(emu)->create_mutant(name);
     if (h == 0) {
