@@ -2968,7 +2968,13 @@ void WindowsEmulator::record_api_event(uint64_t pc, const std::string& api,
     PLOG_DEBUG << pc_stream.str() << ": " << repr(call_str) << " -> " << rv_stream.str();
 
     if (profiler_) {
-        profiler_->record_api_event(curr_run, pc, api, rv, str_argv);
+        speakeasy::events::TracePosition pos;
+        pos.pc = static_cast<int>(pc);
+        pos.tick = static_cast<int>(inst_count_);
+        auto proc = get_current_process();
+        pos.pid = proc ? proc->get_pid() : 0;
+        pos.tid = curr_thread ? curr_thread->get_id() : 0;
+        profiler_->record_api_event(curr_run, pos, api, rv, str_argv);
     }
 }
 

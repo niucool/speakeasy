@@ -424,7 +424,9 @@ TEST(ProfilerTest, LogApi) {
     auto my_run = std::make_shared<::Run>();
     prof.add_run(my_run);
     std::vector<std::string> argv = {"0x1000", "4", "0"};
-    EXPECT_NO_THROW(prof.record_api_event(my_run, 0x401000, "kernel32.VirtualAlloc", 0, argv));
+    speakeasy::events::TracePosition pos;
+    pos.pc = 0x401000;
+    EXPECT_NO_THROW(prof.record_api_event(my_run, pos, "kernel32.VirtualAlloc", 0, argv));
 }
 
 TEST(ProfilerTest, LogDynCode) {

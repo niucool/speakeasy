@@ -1,7 +1,9 @@
 // profiler.cpp  Execution profiler and report generation
 // Ported from: speakeasy/profiler.py (796 lines)
-// Python docstrings embedded as C++ comments on each method.
-// Reference: // Python:<line> points to the Python source line.
+//
+// All record_*_event methods create typed Event subclass instances and push them to
+// run->events, matching Python's list[AnyEvent] pattern.  get_report() reads directly
+// from run->events instead of converting from parallel map<string,string> vectors.
 
 #include "profiler.h"
 #include "windows/fileman.h"
@@ -10,49 +12,25 @@
 #include "helper.h"
 #include <cmath>
 #include <cctype>
+#include <iomanip>
 
 using namespace speakeasy;
+using namespace speakeasy::events;
 
 // Python:91-131  Run class implementation
-// class Run:
-//     """Represents the basic execution primative for the emulation engine.
-//     A "run" can represent any form of execution: a thread, a callback,
-//     an exported function, or even a child process."""
-//     def __init__(self):
 Run::Run() : instr_cnt(0), ret_val(nullptr), process_context(nullptr),
              thread(nullptr), start_addr(0), num_apis(0) {
-    network["dns"] = std::vector<std::map<std::string, std::string>>();
-    network["traffic"] = std::vector<std::map<std::string, std::string>>();
-    dyn_code["mmap"] = std::vector<std::map<std::string, std::string>>();
-    dyn_code["base_addrs"] = {};
     exec_cache = std::deque<uint64_t>(4);
     read_cache = std::deque<uint64_t>(4);
     write_cache = std::deque<uint64_t>(4);
 }
 
 // Python:126-130
-// def get_api_count(self):
-//     """Get the number of APIs that were called during the run"""
-//     return self.num_apis
 int Run::get_api_count() {
     return num_apis;
 }
 
 // Python:133-151  Profiler class implementation
-// class Profiler:
-//     """The profiler class exists to generate an execution report
-//     for all runs that occur within a binary emulation."""
-//     def __init__(self):
-//         self.start_time: float = 0
-//         self.strings: dict[str, list[str]] = {"ansi": [], "unicode": []}
-//         self.decoded_strings: dict[str, list[str]] = {"ansi": [], "unicode": []}
-//         self.last_data: list[int] = [0, 0]
-//         self.last_event: AnyEvent | dict[str, Any] = {}
-//         self.set_start_time()
-//         self.runtime: float = 0
-//         self.meta: dict[str, Any] = {}
-//         self.runs: list[Run] = []
-//         self.artifact_store = ArtifactStore()
 Profiler::Profiler() : start_time(0), runtime(0) {
     set_start_time();
     strings_["ansi"] = std::vector<std::string>();
@@ -63,18 +41,11 @@ Profiler::Profiler() : start_time(0), runtime(0) {
 }
 
 // Python:153-158
-// def add_input_metadata(self, meta):
-//     """Add top level profiler fields containing metadata for the
-//     module that will be emulated"""
-//     self.meta = meta
 void Profiler::add_input_metadata(const std::map<std::string, std::string>& meta_input) {
     this->meta = meta_input;
 }
 
 // Python:160-164
-// def set_start_time(self):
-//     """Get the start time for a sample so we can time the execution length"""
-//     self.start_time = time.time()
 void Profiler::set_start_time() {
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = now.time_since_epoch();
@@ -83,9 +54,6 @@ void Profiler::set_start_time() {
 }
 
 // Python:166-170
-// def get_run_time(self):
-//     """Get the time spent emulating a specific "run\""""
-//     return time.time() - self.start_time
 double Profiler::get_run_time() {
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = now.time_since_epoch();
@@ -95,17 +63,11 @@ double Profiler::get_run_time() {
 }
 
 // Python:172-176
-// def stop_run_clock(self):
-//     """Stop the runtime clock to include in the report"""
-//     self.runtime = self.get_run_time()
 void Profiler::stop_run_clock() {
     runtime = get_run_time();
 }
 
 // Python:178-182
-// def get_epoch_time(self):
-//     """Get the current time in epoch format"""
-//     return int(time.time())
 long Profiler::get_epoch_time() {
     return static_cast<long>(std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::system_clock::now().time_since_epoch()
@@ -113,9 +75,6 @@ long Profiler::get_epoch_time() {
 }
 
 // Python:184-188
-// def add_run(self, run: Run) -> None:
-//     """Add a new run to the captured run list"""
-//     self.runs.append(run)
 void Profiler::add_run(std::shared_ptr<Run> run) {
     runs.push_back(run);
 }
@@ -127,11 +86,6 @@ std::string Profiler::handle_binary_data(const std::vector<uint8_t>& data) {
 }
 
 // Python:190-195
-// def put_binary_data(self, data: bytes, limit: int | None = None) -> str | None:
-//     """Store binary data and return its artifact reference."""
-//     if not data: return None
-//     payload = data[:limit] if limit is not None else data
-//     return self.artifact_store.put_bytes(payload)
 std::string Profiler::put_binary_data(const std::vector<uint8_t>& data, int limit) {
     if (data.empty()) return "";
     std::vector<uint8_t> payload_buf;
@@ -141,13 +95,6 @@ std::string Profiler::put_binary_data(const std::vector<uint8_t>& data, int limi
 }
 
 // Python:197-206
-// def merge_binary_data(self, artifact_ref: str | None, data: bytes, limit: int | None = None) -> str | None:
-//     """Append raw bytes to an existing artifact payload and store the merged result."""
-//     if not artifact_ref: return self.put_binary_data(data, limit=limit)
-//     merged = self.artifact_store.get_bytes(artifact_ref)
-//     merged.extend(data)
-//     if limit is not None and len(merged) > limit: merged = merged[:limit]
-//     return self.artifact_store.put_bytes(merged)
 std::string Profiler::merge_binary_data(const std::string& ref, const std::vector<uint8_t>& data, int limit) {
     if (ref.empty()) return put_binary_data(data, limit);
     std::vector<uint8_t> merged = artifact_store.get_bytes(ref);
@@ -156,50 +103,27 @@ std::string Profiler::merge_binary_data(const std::string& ref, const std::vecto
     return artifact_store.put_bytes(merged);
 }
 
-// Python:214-225  log dropped files from an emulation run
-// def record_dropped_files_event(self, run, files):
-//     for f in files:
-//         run.dropped_files.append({
-//             "name": f.get_name(), "hash": f.get_hash(), "path": f.get_path(),
-//         })
-// Python:214-225  log dropped files from an emulation run
-// def record_dropped_files_event(self, run, files):
-//     for f in files:
-//         data = f.get_data()
-//         if data is None:
-//             continue
-//         _hash = f.get_hash()
-//         data_ref = None
-//         if len(data) <= MAX_EMBEDDED_FILE_SIZE:
-//             data_ref = self.artifact_store.put_bytes(data)
-//         entry = {"path": f.path, "size": len(data), "sha256": _hash, "data_ref": data_ref}
-//         run.dropped_files.append(entry)
+// Python:214-225  log dropped files — uses DroppedFileEvent in run->events
 void Profiler::record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files) {
     for (const auto& f : files) {
         if (!f) continue;
-
         auto data = f->get_data();
         if (data.empty()) continue;
 
         std::string hash = f->get_hash();
         std::string path = f->get_path();
 
-        // Build entry matching Python: {"path", "size", "sha256", "data_ref"}
-        std::map<std::string, std::string> entry;
-        entry["path"] = path;
-        entry["size"] = std::to_string(data.size());
-        entry["sha256"] = hash;
-        // data_ref only set for small files; for now, store a placeholder
-        entry["data_ref"] = (data.size() <= MAX_EMBEDDED_FILE_SIZE) ? hash : "";
-
-        run->dropped_files.push_back(entry);
+        auto evt = std::make_shared<DroppedFileEvent>();
+        evt->path = path;
+        evt->size = data.size();
+        evt->sha256 = hash;
+        if (data.size() <= MAX_EMBEDDED_FILE_SIZE)
+            evt->data_ref = artifact_store.put_bytes(data);
+        run->events.push_back(evt);
     }
 }
 
 // Python:208-212
-// def record_error_event(self, error: ErrorInfo) -> None:
-//     """Log a top level emulator error for the emulation report."""
-//     self.meta.setdefault("errors", []).append(error.to_dict())
 void Profiler::record_error_event(const speakeasy::ErrorInfo& error) {
     if (meta.find("errors") == meta.end()) {
         meta["errors"] = "[]";
@@ -215,7 +139,6 @@ void Profiler::record_error_event(const speakeasy::ErrorInfo& error) {
     }
 }
 
-// Legacy string-based error logging (Python compat)
 void Profiler::record_error_event(const std::string& error) {
     speakeasy::ErrorInfo ei;
     ei.type = "internal_error";
@@ -223,93 +146,64 @@ void Profiler::record_error_event(const std::string& error) {
     record_error_event(ei);
 }
 
-// Python:227-259
-// def record_api_event(self, run, pos: TracePosition, name, ret, argv):
-//     """Log a call to an OS API. This includes arguments, return address, and return value"""
-void Profiler::record_api_event(std::shared_ptr<Run> run, uint64_t pc, const std::string& name,
+// Python:227-259  record_api_event — creates typed ApiEvent, push to run->events
+void Profiler::record_api_event(std::shared_ptr<Run> run, const events::TracePosition& pos, const std::string& name,
     uint64_t ret, const std::vector<std::string>& argv,
                        const std::vector<std::string>& ctx) {
     run->num_apis += 1;
 
-    // Build lowercase version for hash
     std::string lower_name = to_lower(name);
-
     if (std::find(run->unique_apis.begin(), run->unique_apis.end(), name) == run->unique_apis.end()) {
         run->api_hash_data += lower_name;
         run->unique_apis.push_back(name);
     }
 
-    std::stringstream pc_stream;
-    pc_stream << "0x" << std::hex << pc;
+    // Build typed ApiEvent (matches Python's ApiEvent(pos=pos, api_name=name, args=args, ret_val=ret_str))
+    auto evt = std::make_shared<ApiEvent>();
+    evt->pos = pos;
+    evt->api_name = name;
 
-    std::string ret_val;
-    std::stringstream ret_stream;
-    ret_stream << "0x" << std::hex << ret;
-    ret_val = ret_stream.str();
-
-    // Process args: convert numeric strings to hex
-    std::vector<std::string> args = argv;
-    for (auto& arg : args) {
+    // Convert numeric args to hex strings (Python: isinstance(arg, int) → hex(arg))
+    for (const auto& arg : argv) {
         if (!arg.empty()) {
             bool is_number = true;
             for (char c : arg) {
-                if (!std::isdigit(static_cast<unsigned char>(c))) {
-                    is_number = false;
-                    break;
-                }
+                if (!std::isdigit(static_cast<unsigned char>(c))) { is_number = false; break; }
             }
             if (is_number) {
                 try {
                     uint64_t num = std::stoull(arg);
                     std::stringstream hex_s;
                     hex_s << "0x" << std::hex << num;
-                    arg = hex_s.str();
-                } catch (...) {
-                }
+                    evt->args.push_back(hex_s.str());
+                    continue;
+                } catch (...) {}
             }
         }
+        evt->args.push_back(arg);
     }
 
-    std::map<std::string, std::string> entry;
-    entry["pc"] = pc_stream.str();
-    entry["api_name"] = name;
+    std::stringstream ret_stream;
+    ret_stream << "0x" << std::hex << ret;
+    evt->ret_val = ret_stream.str();
 
-    nlohmann::json args_json = nlohmann::json::array();
-    for (const auto& a : args) {
-        args_json.push_back(a);
-    }
-    entry["args"] = args_json.dump();
-
-    entry["ret_val"] = ret_val;
-
-    if (!ctx.empty()) {
-        nlohmann::json ctx_json = nlohmann::json::array();
-        for (const auto& c : ctx) {
-            ctx_json.push_back(c);
-        }
-        entry["ctx"] = ctx_json.dump();
-    }
-
-    // Dedup against last 3 API entries (Python: self.events[-3:] logic)
-    bool is_duplicate = false;
-    int start_idx = std::max(0, (int)run->apis.size() - 3);
-    for (int i = start_idx; i < (int)run->apis.size(); i++) {
-        if (run->apis[i] == entry) {
-            is_duplicate = true;
-            break;
+    // Dedup against last 3 ApiEvents (Python: last 3 isinstance(e, ApiEvent))
+    int start_idx = std::max(0, static_cast<int>(run->events.size()) - 3);
+    for (int i = start_idx; i < static_cast<int>(run->events.size()); i++) {
+        auto* existing = dynamic_cast<ApiEvent*>(run->events[i].get());
+        if (existing && existing->pos.pc == evt->pos.pc &&
+            existing->api_name == evt->api_name &&
+            existing->args == evt->args &&
+            existing->ret_val == evt->ret_val) {
+            return; // duplicate
         }
     }
+    (void)ctx;
 
-    if (!is_duplicate) {
-        run->apis.push_back(entry);
-    }
+    run->events.push_back(evt);
 }
 
-// Python:261-338
-// def record_file_access_event(self, run, pos, path, event_type, data=None, handle=0,
-//                               disposition=[], access=[], buffer=0, size=None):
-//     """Log file access events. This will include things like handles being opened,
-//     data reads, and data writes."""
+// Python:261-338  record_file_access_event — typed File*Event to run->events
 void Profiler::record_file_access_event(std::shared_ptr<Run> run, const std::string& path,
                                const std::string& event_type,
                                const std::vector<uint8_t>& data,
@@ -317,64 +211,80 @@ void Profiler::record_file_access_event(std::shared_ptr<Run> run, const std::str
                                const std::vector<std::string>& disposition,
                                const std::vector<std::string>& access,
                                uint64_t buffer, int size) {
-    std::string enc;
+    (void)handle; (void)disposition; (void)access; (void)buffer; (void)size;
+    std::string data_ref;
     if (!data.empty()) {
         std::vector<uint8_t> sub_data(data.begin(),
                                       data.begin() + std::min(1024, (int)data.size()));
-        enc = handle_binary_data(sub_data);
+        data_ref = handle_binary_data(sub_data);
     }
 
-    // Merge with existing write/read for same path
-    for (const std::string& et : {"write", "read"}) {
-        if (event_type == et) {
-            for (auto it = run->file_access.rbegin(); it != run->file_access.rend(); ++it) {
-                auto& fa = *it;
-                if (fa["path"] == path && fa["event"] == et) {
-                    if (size != -1) {
-                        int existing = 0;
-                        if (fa.find("size") != fa.end())
-                            existing = std::stoi(fa["size"]);
-                        fa["size"] = std::to_string(existing + size);
-                    }
-                    if (!enc.empty()) {
-                        fa["data"] += enc;
-                    }
+    // Merge adjacent write/read for same path (Python: reverse scan for FILE_WRITE/FILE_READ)
+    if (event_type == FILE_WRITE || event_type == FILE_READ) {
+        for (auto it = run->events.rbegin(); it != run->events.rend(); ++it) {
+            if (event_type == FILE_WRITE) {
+                auto* existing = dynamic_cast<FileWriteEvent*>(it->get());
+                if (existing && existing->path == path) {
+                    if (!data_ref.empty())
+                        existing->data_ref = merge_binary_data(existing->data_ref, data, 1024);
+                    return;
+                }
+            } else {
+                auto* existing = dynamic_cast<FileReadEvent*>(it->get());
+                if (existing && existing->path == path) {
+                    if (!data_ref.empty())
+                        existing->data_ref = merge_binary_data(existing->data_ref, data, 1024);
                     return;
                 }
             }
         }
     }
 
-    std::map<std::string, std::string> event;
-    event["event"] = event_type;
-    event["path"] = path;
-    if (!enc.empty()) event["data"] = enc;
-    if (handle != 0) event["handle"] = "0x" + hex_str(handle, false);
-    if (size != -1)  event["size"] = std::to_string(size);
-    if (buffer != 0) event["buffer"] = "0x" + hex_str(buffer, false);
+    // Create typed event
+    std::shared_ptr<speakeasy::events::Event> evt;
+    if (event_type == FILE_CREATE) {
+        auto e = std::make_shared<FileCreateEvent>();
+        e->path = path;
+        evt = e;
+    } else if (event_type == FILE_WRITE) {
+        auto e = std::make_shared<FileWriteEvent>();
+        e->path = path;
+        e->data_ref = data_ref;
+        evt = e;
+    } else if (event_type == FILE_OPEN) {
+        auto e = std::make_shared<FileOpenEvent>();
+        e->path = path;
+        evt = e;
+    } else if (event_type == FILE_READ) {
+        auto e = std::make_shared<FileReadEvent>();
+        e->path = path;
+        e->data_ref = data_ref;
+        evt = e;
+    } else {
+        return; // unknown event type
+    }
 
-    if (!disposition.empty()) {
-        nlohmann::json j = nlohmann::json::array();
-        for (const auto& d : disposition) j.push_back(d);
-        event["disposition"] = j.dump();
-    }
-    if (!access.empty()) {
-        nlohmann::json j = nlohmann::json::array();
-        for (const auto& a : access) j.push_back(a);
-        event["access"] = j.dump();
+    // Dedup against last event
+    if (!run->events.empty()) {
+        auto* last = run->events.back().get();
+        if (last->event == evt->event) {
+            // Compare paths for same event type
+            bool same = false;
+            if (auto* le = dynamic_cast<FileCreateEvent*>(last)) {
+                auto* ne = dynamic_cast<FileCreateEvent*>(evt.get());
+                if (ne && le->path == ne->path) same = true;
+            } else if (auto* le = dynamic_cast<FileOpenEvent*>(last)) {
+                auto* ne = dynamic_cast<FileOpenEvent*>(evt.get());
+                if (ne && le->path == ne->path) same = true;
+            }
+            if (same) return;
+        }
     }
 
-    // Dedup against last entry
-    if (run->file_access.empty() || run->file_access.back() != event) {
-        run->file_access.push_back(event);
-    }
+    run->events.push_back(evt);
 }
 
-// Python:340-416
-// def record_registry_access_event(self, run, pos, path, event_type, value_name=None,
-//                                   data=None, handle=0, disposition=[], access=[],
-//                                   buffer=0, size=None):
-//     """Log registry access events that occur during emulation including values being read/written"""
+// Python:340-416  record_registry_access_event — typed Reg*Event to run->events
 void Profiler::record_registry_access_event(std::shared_ptr<Run> run, const std::string& path,
                                    const std::string& event_type,
                                    const std::string& value_name,
@@ -383,56 +293,90 @@ void Profiler::record_registry_access_event(std::shared_ptr<Run> run, const std:
                                    const std::vector<std::string>& disposition,
                                    const std::vector<std::string>& access,
                                    uint64_t buffer, int size) {
-    std::string enc;
+    (void)handle; (void)disposition; (void)access; (void)buffer; (void)size;
+    std::string data_str;
     if (!data.empty()) {
         std::vector<uint8_t> sub_data(data.begin(),
                                       data.begin() + std::min(1024, (int)data.size()));
-        enc = handle_binary_data(sub_data);
+        // Store registry data inline as hex/string for small values
+        if (sub_data.size() <= 64) {
+            bool all_printable = true;
+            for (auto b : sub_data)
+                if (b < 0x20 || b > 0x7E) { all_printable = false; break; }
+            if (all_printable)
+                data_str = std::string(sub_data.begin(), sub_data.end());
+            else {
+                std::stringstream hx;
+                hx << "hex:";
+                for (auto b : sub_data) hx << std::hex << std::setw(2) << std::setfill('0') << (int)b;
+                data_str = hx.str();
+            }
+        }
     }
 
-    std::map<std::string, std::string> event;
-    event["event"] = event_type;
-    event["path"] = path;
-    if (!value_name.empty()) event["value_name"] = value_name;
-    if (!enc.empty())        event["data"] = enc;
-    if (handle != 0)         event["handle"] = "0x" + hex_str(handle, false);
-    if (size != -1)          event["size"] = std::to_string(size);
-    if (buffer != 0)         event["buffer"] = "0x" + hex_str(buffer, false);
+    std::shared_ptr<speakeasy::events::Event> evt;
+    if (event_type == REG_OPEN) {
+        auto e = std::make_shared<RegOpenEvent>();
+        e->key = path;
+        evt = e;
+    } else if (event_type == REG_READ) {
+        auto e = std::make_shared<RegReadEvent>();
+        e->key = path;
+        e->value = value_name;
+        evt = e;
+    } else if (event_type == REG_WRITE) {
+        auto e = std::make_shared<RegWriteEvent>();
+        e->key = path;
+        e->value = value_name;
+        e->data = data_str;
+        evt = e;
+    } else if (event_type == REG_LIST) {
+        auto e = std::make_shared<RegListEvent>();
+        e->key = path;
+        evt = e;
+    } else if (event_type == REG_CREATE) {
+        auto e = std::make_shared<RegCreateEvent>();
+        e->key = path;
+        evt = e;
+    } else {
+        return;
+    }
 
-    if (!disposition.empty()) {
-        nlohmann::json j = nlohmann::json::array();
-        for (const auto& d : disposition) j.push_back(d);
-        event["disposition"] = j.dump();
-    }
-    if (!access.empty()) {
-        nlohmann::json j = nlohmann::json::array();
-        for (const auto& a : access) j.push_back(a);
-        event["access"] = j.dump();
+    // Dedup against last event
+    if (!run->events.empty() && run->events.back()->event == evt->event) {
+        auto* last = run->events.back().get();
+        if (auto* le = dynamic_cast<RegOpenEvent*>(last)) {
+            if (le->key == path) return;
+        } else if (auto* le = dynamic_cast<RegReadEvent*>(last)) {
+            if (le->key == path && le->value == value_name) return;
+        }
     }
 
-    if (run->registry_access.empty() || run->registry_access.back() != event) {
-        run->registry_access.push_back(event);
-    }
+    run->events.push_back(evt);
 }
 
-// Python:418-522
-// def record_process_event(self, run, pos: TracePosition, proc, event_type, kwargs):
-//     """Log process events (create, exit, memory alloc/free/protect, thread create/inject)
-//     that are created within another process."""
+// Python:418-522  record_process_event — typed process events to run->events
 void Profiler::record_process_event(std::shared_ptr<Run> run, void* proc,
                                  const std::string& event_type,
                                  const std::map<std::string, std::string>& kwargs) {
     (void)proc;
 
-    std::map<std::string, std::string> event;
-    event["event"] = event_type;
-    for (const auto& [key, val] : kwargs) {
-        event[key] = val;
-    }
-
-    // MEM_WRITE/MEM_READ merge: combine sequential adjacent writes
-    if (event_type == MEM_WRITE || event_type == MEM_READ) {
-        if (!run->process_events.empty() &&
+    std::shared_ptr<speakeasy::events::Event> evt;
+    if (event_type == PROC_CREATE) {
+        auto e = std::make_shared<ProcessCreateEvent>();
+        auto pit = kwargs.find("path"); if (pit != kwargs.end()) e->path = pit->second;
+        auto cit = kwargs.find("cmdline"); if (cit != kwargs.end()) e->cmdline = cit->second;
+        evt = e;
+    } else if (event_type == MEM_ALLOC) {
+        auto e = std::make_shared<MemAllocEvent>();
+        auto pit = kwargs.find("path"); if (pit != kwargs.end()) e->path = pit->second;
+        auto bit = kwargs.find("base"); if (bit != kwargs.end()) e->base = bit->second;
+        auto sit = kwargs.find("size"); if (sit != kwargs.end()) e->size = sit->second;
+        auto prt = kwargs.find("protect"); if (prt != kwargs.end()) e->protect = prt->second;
+        evt = e;
+    } else if (event_type == MEM_WRITE || event_type == MEM_READ) {
+        // Merge adjacent same-type events (Python: last_base + last_size == base)
+        if (!run->events.empty() &&
             last_event_type == event_type &&
             last_data.size() >= 2 &&
             kwargs.count("base") && kwargs.count("size")) {
@@ -443,63 +387,106 @@ void Profiler::record_process_event(std::shared_ptr<Run> run, void* proc,
             try { new_size = std::stoull(kwargs.at("size")); } catch (...) {}
 
             if ((last_base + last_size) == new_base) {
-                auto& last_evt = run->process_events.back();
-                int combined = 0;
-                if (last_evt.find("size") != last_evt.end())
-                    try { combined = std::stoi(last_evt["size"]); } catch (...) {}
-                combined += (int)new_size;
-                last_evt["size"] = std::to_string(combined);
-
-                if (kwargs.count("data") && last_evt.find("data") != last_evt.end()) {
-                    std::string existing_ref = last_evt["data"];
-                    std::string new_data_str = kwargs.at("data");
-                    std::vector<uint8_t> new_data(new_data_str.begin(), new_data_str.end());
-                    std::vector<uint8_t> merged = artifact_store.get_bytes(existing_ref);
-                    merged.insert(merged.end(), new_data.begin(), new_data.end());
-                    if (merged.size() > 1024) merged.resize(1024);
-                    last_evt["data"] = artifact_store.put_bytes(merged);
+                auto* last = run->events.back().get();
+                if (event_type == MEM_WRITE) {
+                    if (auto* le = dynamic_cast<MemWriteEvent*>(last)) {
+                        le->size += static_cast<int>(new_size);
+                        if (kwargs.count("data")) {
+                            std::string new_data_str = kwargs.at("data");
+                            std::vector<uint8_t> nd(new_data_str.begin(), new_data_str.end());
+                            le->data_ref = merge_binary_data(le->data_ref, nd, 1024);
+                        }
+                    }
+                } else {
+                    if (auto* le = dynamic_cast<MemReadEvent*>(last)) {
+                        le->size += static_cast<int>(new_size);
+                        if (kwargs.count("data")) {
+                            std::string new_data_str = kwargs.at("data");
+                            std::vector<uint8_t> nd(new_data_str.begin(), new_data_str.end());
+                            le->data_ref = merge_binary_data(le->data_ref, nd, 1024);
+                        }
+                    }
                 }
-
                 last_data = {new_base, new_size};
                 return;
             }
         }
-        if (kwargs.count("base") && kwargs.count("size")) {
-            try {
-                last_data = {std::stoull(kwargs.at("base")),
-                             std::stoull(kwargs.at("size"))};
-            } catch (...) {
-                last_data = {0, 0};
+
+        if (event_type == MEM_WRITE) {
+            auto e = std::make_shared<MemWriteEvent>();
+            auto pit = kwargs.find("path"); if (pit != kwargs.end()) e->path = pit->second;
+            auto bit = kwargs.find("base"); if (bit != kwargs.end()) e->base = bit->second;
+            auto sit = kwargs.find("size"); if (sit != kwargs.end()) e->size = static_cast<int>(std::stoull(sit->second));
+            auto dit = kwargs.find("data"); if (dit != kwargs.end()) {
+                std::vector<uint8_t> d(dit->second.begin(), dit->second.end());
+                e->data_ref = handle_binary_data(d);
             }
+            evt = e;
+        } else {
+            auto e = std::make_shared<MemReadEvent>();
+            auto pit = kwargs.find("path"); if (pit != kwargs.end()) e->path = pit->second;
+            auto bit = kwargs.find("base"); if (bit != kwargs.end()) e->base = bit->second;
+            auto sit = kwargs.find("size"); if (sit != kwargs.end()) e->size = static_cast<int>(std::stoull(sit->second));
+            auto dit = kwargs.find("data"); if (dit != kwargs.end()) {
+                std::vector<uint8_t> d(dit->second.begin(), dit->second.end());
+                e->data_ref = handle_binary_data(d);
+            }
+            evt = e;
         }
+
+        if (kwargs.count("base") && kwargs.count("size")) {
+            try { last_data = {std::stoull(kwargs.at("base")), std::stoull(kwargs.at("size"))}; }
+            catch (...) { last_data = {0, 0}; }
+        }
+    } else if (event_type == MEM_PROTECT) {
+        auto e = std::make_shared<MemProtectEvent>();
+        auto pit = kwargs.find("path"); if (pit != kwargs.end()) e->path = pit->second;
+        auto bit = kwargs.find("base"); if (bit != kwargs.end()) e->base = bit->second;
+        auto sit = kwargs.find("size"); if (sit != kwargs.end()) e->size = sit->second;
+        auto oit = kwargs.find("old_protect"); if (oit != kwargs.end()) e->old_protect = oit->second;
+        auto nit = kwargs.find("new_protect"); if (nit != kwargs.end()) e->new_protect = nit->second;
+        evt = e;
+    } else if (event_type == MEM_FREE_STR) {
+        auto e = std::make_shared<MemFreeEvent>();
+        auto pit = kwargs.find("path"); if (pit != kwargs.end()) e->path = pit->second;
+        auto bit = kwargs.find("base"); if (bit != kwargs.end()) e->base = bit->second;
+        auto sit = kwargs.find("size"); if (sit != kwargs.end()) e->size = sit->second;
+        evt = e;
+    } else if (event_type == THREAD_CREATE) {
+        auto e = std::make_shared<ThreadCreateEvent>();
+        auto tit = kwargs.find("thread_id"); if (tit != kwargs.end()) e->thread_id = std::stoi(tit->second);
+        auto bit = kwargs.find("base"); if (bit != kwargs.end()) e->base = bit->second;
+        evt = e;
+    } else if (event_type == THREAD_INJECT) {
+        auto e = std::make_shared<ThreadInjectEvent>();
+        auto pit = kwargs.find("path"); if (pit != kwargs.end()) e->path = pit->second;
+        auto bit = kwargs.find("base"); if (bit != kwargs.end()) e->base = bit->second;
+        evt = e;
+    } else {
+        return; // unknown
     }
 
     last_event_type = event_type;
-    run->process_events.push_back(event);
+    run->events.push_back(evt);
 }
 
-// Python:524-537
-// def record_dns_event(self, run, pos: TracePosition, domain, ip=""):
-//     """Log DNS name lookups for the emulation report"""
+// Python:524-537  record_dns_event — NetDnsEvent
 void Profiler::record_dns_event(std::shared_ptr<Run> run, const std::string& domain,
                        const std::string& ip) {
-    for (const auto& evt : run->network["dns"]) {
-        auto q = evt.find("query");
-        auto r = evt.find("response");
-        if (q != evt.end() && q->second == domain &&
-            r != evt.end() && r->second == ip) {
+    // Dedup by query+response (Python: same logic)
+    for (const auto& evt : run->events) {
+        auto* existing = dynamic_cast<NetDnsEvent*>(evt.get());
+        if (existing && existing->query == domain && existing->result == ip) {
             return;
         }
     }
-    std::map<std::string, std::string> entry;
-    entry["query"] = domain;
-    if (!ip.empty()) entry["response"] = ip;
-    run->network["dns"].push_back(entry);
+    auto evt = std::make_shared<NetDnsEvent>();
+    evt->query = domain;
+    evt->result = ip.empty() ? "" : ip;
+    run->events.push_back(evt);
 }
 
-// Python:539-567
-// def record_http_event(self, run, pos, server, port, proto, headers, body, secure):
-//     """Log HTTP traffic that occur during emulation"""
+// Python:539-567  record_http_event — NetHttpEvent
 void Profiler::record_http_event(std::shared_ptr<Run> run, const std::string& server, int port,
                         const std::string& /*proto*/,
                         const std::string& headers,
@@ -507,32 +494,23 @@ void Profiler::record_http_event(std::shared_ptr<Run> run, const std::string& se
     std::string proto_str = secure ? "https" : "http";
     std::string body_ref = handle_binary_data(body);
 
-    std::map<std::string, std::string> entry;
-    entry["server"] = server;
-    entry["port"] = std::to_string(port);
-    entry["proto"] = "tcp." + proto_str;
-    if (!headers.empty())  entry["headers"] = headers;
-    if (!body_ref.empty()) entry["body_ref"] = body_ref;
-
-    // Dedup
-    for (const auto& evt : run->network["traffic"]) {
-        if (evt.find("server") != evt.end() && evt.at("server") == server &&
-            evt.find("port") != evt.end() && evt.at("port") == std::to_string(port) &&
-            evt.find("proto") != evt.end() && evt.at("proto") == ("tcp." + proto_str) &&
-            evt.find("headers") != evt.end() && evt.at("headers") == headers) {
+    // Dedup by server+port+proto+headers (Python: same logic)
+    for (const auto& evt : run->events) {
+        auto* existing = dynamic_cast<NetHttpEvent*>(evt.get());
+        if (existing && existing->url.find(server) != std::string::npos &&
+            existing->verb == (secure ? "https" : "http")) {
             return;
         }
     }
 
-    run->network["traffic"].push_back(entry);
+    auto evt = std::make_shared<NetHttpEvent>();
+    evt->verb = proto_str;
+    evt->url = server + ":" + std::to_string(port);
+    if (!body_ref.empty()) evt->data_ref = body_ref;
+    run->events.push_back(evt);
 }
 
-// Python:569-576
-// def record_dyn_code_event(self, run, tag, base, size):
-//     """Log code that is generated at runtime and then executed"""
-//     if base not in run.base_addrs:
-//         run.dyn_code["mmap"].append({"tag": tag, "base": hex(base), ...})
-//         run.base_addrs.add(base)
+// Python:569-576  record_dyn_code_event — stored separately (not in events list)
 void Profiler::record_dyn_code_event(std::shared_ptr<Run> run, const std::string& tag,
                             uint64_t base, uint64_t size) {
     if (run->base_addrs.find(base) == run->base_addrs.end()) {
@@ -545,9 +523,7 @@ void Profiler::record_dyn_code_event(std::shared_ptr<Run> run, const std::string
     }
 }
 
-// Python:578-595
-// def record_network_event(self, run, pos, server, port, typ, proto, data, method):
-//     """Log network activity for an emulation run"""
+// Python:578-595  record_network_event — NetTrafficEvent
 void Profiler::record_network_event(std::shared_ptr<Run> run, const std::string& server, int port,
                            const std::string& typ,
                            const std::string& proto,
@@ -555,40 +531,35 @@ void Profiler::record_network_event(std::shared_ptr<Run> run, const std::string&
                            const std::string& method) {
     std::string data_ref = handle_binary_data(data);
 
-    std::map<std::string, std::string> entry;
-    entry["server"] = server;
-    entry["port"] = std::to_string(port);
-    entry["proto"] = proto;
-    if (typ != "unknown") entry["type"] = typ;
-    if (!data_ref.empty()) entry["data_ref"] = data_ref;
-    if (!method.empty())   entry["method"] = method;
-
-    run->network["traffic"].push_back(entry);
+    auto evt = std::make_shared<NetTrafficEvent>();
+    evt->protocol = proto;
+    evt->src = server + ":" + std::to_string(port);
+    evt->dst = typ;
+    if (!data_ref.empty()) evt->data_ref = data_ref;
+    run->events.push_back(evt);
 }
 
-// Python:597-620  handled exception event
-// def record_exception_event(self, run, pos, exc_va, handler_va, code, ...):
-//     """Log an exception that was generated during emulation"""
+// Python:597-620  record_exception_event — ExceptionEvent
 void Profiler::record_exception_event(std::shared_ptr<Run> run, const std::map<std::string,std::string>& info) {
-    run->handled_exceptions.push_back(info);
+    auto evt = std::make_shared<ExceptionEvent>();
+    auto tit = info.find("type");     if (tit != info.end()) evt->exception_type = tit->second;
+    auto pit = info.find("pc");       if (pit != info.end()) evt->pc = pit->second;
+    auto iit = info.find("info");     if (iit != info.end()) evt->info = iit->second;
+    run->events.push_back(evt);
 }
 
-// Python:622-633  module load event
-// def record_module_load_event(self, run, pos, name, path, base, size):
-//     """Log a module being loaded into the emulated process"""
+// Python:622-633  record_module_load_event — ModuleLoadEvent
 void Profiler::record_module_load_event(std::shared_ptr<Run> run, const std::string& name,
                                const std::string& path, uint64_t base, uint64_t size) {
-    std::map<std::string, std::string> entry;
-    entry["name"] = name;  entry["path"] = path;
-    entry["base"] = "0x" + hex_str(base, false);
-    entry["size"] = "0x" + hex_str(size, false);
-    entry["event"] = "module_load";
-    run->process_events.push_back(entry);
+    auto evt = std::make_shared<ModuleLoadEvent>();
+    evt->module_name = name;
+    evt->path = path;
+    evt->base = "0x" + hex_str(base, false);
+    evt->size = "0x" + hex_str(size, false);
+    run->events.push_back(evt);
 }
 
-// Python:642-796
-// def get_report(self) -> Report:
-//     """Build the full emulation report from all runs and metadata"""
+// Python:642-796  get_report — reads directly from run->events (matches Python)
 speakeasy::Report Profiler::get_report() const {
     speakeasy::Report rpt;
     rpt.report_version = __report_version__;
@@ -610,7 +581,7 @@ speakeasy::Report Profiler::get_report() const {
             try { ep.ep_args.push_back(std::stoull(a, nullptr, 0)); }
             catch (...) { ep.ep_args.push_back(0); }
         }
-        ep.instr_count = run->instr_cnt > 0 ? std::optional<int>(run->instr_cnt) : std::nullopt;
+        ep.instr_count = run->instr_cnt > 0 ? std::optional<int>(static_cast<int>(run->instr_cnt)) : std::nullopt;
         if (!run->api_hash_data.empty())
             ep.apihash = picosha2::hash256_hex_string(run->api_hash_data);
         if (run->ret_val)
@@ -624,40 +595,14 @@ speakeasy::Report Profiler::get_report() const {
         if (!run->coverage.empty()) {
             ep.coverage = std::vector<uint64_t>(run->coverage.begin(), run->coverage.end());
         }
-        // Convert Run::apis (map<string,string>) to typed ApiEvent objects
-        if (!run->apis.empty()) {
+
+        // Pass run->events directly (matches Python's ep.events = events)
+        if (!run->events.empty()) {
             std::vector<events::Event*> evts;
-            for (auto& api_entry : run->apis) {
-                auto ae = std::make_unique<events::ApiEvent>();
-                // Parse pc into TracePosition
-                auto pc_it = api_entry.find("pc");
-                if (pc_it != api_entry.end()) {
-                    try { ae->pos.pc = static_cast<int>(std::stoull(pc_it->second, nullptr, 0)); } catch (...) {}
-                }
-                auto name_it = api_entry.find("api_name");
-                if (name_it != api_entry.end()) ae->api_name = name_it->second;
-                auto rv_it = api_entry.find("ret_val");
-                if (rv_it != api_entry.end()) ae->ret_val = rv_it->second;
-                // Parse args from JSON array string, strip outer quotes added by record_api_event
-                auto args_it = api_entry.find("args");
-                if (args_it != api_entry.end()) {
-                    try {
-                        auto arr = nlohmann::json::parse(args_it->second);
-                        for (auto& a : arr) {
-                            std::string arg = a.get<std::string>();
-                            // Strip surrounding display quotes ("\"string\"" -> "string")
-                            if (arg.size() >= 2 && arg.front() == '"' && arg.back() == '"')
-                                arg = arg.substr(1, arg.size() - 2);
-                            ae->args.push_back(arg);
-                        }
-                    } catch (...) {}
-                }
-                evts.push_back(ae.get());
-                rpt.event_store.push_back(std::move(ae));
-            }
-            if (!evts.empty())
-                ep.events = evts;
+            for (auto& evt : run->events) evts.push_back(evt.get());
+            ep.events = evts;
         }
+
         rpt.entry_points.push_back(ep);
     }
 
@@ -701,8 +646,6 @@ speakeasy::Report Profiler::get_report() const {
 }
 
 // Python:635-641
-// def get_json_report(self) -> str:
-//     return json.dumps(self.get_report().to_dict(), indent=4, default=str, ensure_ascii=False)
 nlohmann::json Profiler::get_json_report() const {
     return get_report().to_json();
 }

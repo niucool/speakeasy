@@ -30,11 +30,12 @@
 #include <nlohmann/json.hpp>
 #include <exception>
 
-#include "const.h"
+//#include "const.h"
 #include "struct.h"
 #include "artifacts.h"
 #include "report.h"
 #include "windows/objman.h"
+#include "profiler_events.h"
 
 const std::string __report_version__ = "3.0.0";
 
@@ -81,10 +82,9 @@ class Run {
 public:
     uint64_t instr_cnt = 0;            // Python:99  self.instr_cnt: int = 0
     void* ret_val = nullptr;           // Python:100  self.ret_val: int | None = None
-    // TODO: migrate events to vector<events::Event*> for Python parity (Python:101)
-    std::vector<std::map<std::string,std::string>> apis;           // Python:101
+    std::vector<std::shared_ptr<speakeasy::events::Event>> events;  // Python:101  self.events: list[AnyEvent]
     std::map<std::string,MemAccess> sym_access;                    // Python:102
-    std::vector<std::map<std::string,std::string>> dropped_files;  // Python:103
+    // Python:103  self.dropped_files: list[dict] — stored as DroppedFileEvent in events
     std::map<std::string,MemAccess> mem_access;                    // Python:104
     // Python:105  self.section_access: dict[tuple[int, int], MemAccess] = {}  NOT PORTED
     std::map<std::string,std::vector<std::map<std::string,std::string>>> dyn_code; // Python:106
@@ -110,12 +110,6 @@ public:
     std::set<uint64_t> coverage;       // Python:122
     std::vector<std::map<std::string,std::string>> memory_regions;   // Python:123
     std::vector<std::map<std::string,std::string>> loaded_modules;   // Python:124
-    // C++ extended: per-category event storage (parallel to Python events list)
-    std::vector<std::map<std::string,std::string>> file_access;
-    std::vector<std::map<std::string,std::string>> registry_access;
-    std::vector<std::map<std::string,std::string>> process_events;
-    std::map<std::string,std::vector<std::map<std::string,std::string>>> network;
-    std::vector<std::map<std::string,std::string>> handled_exceptions;
     Run();
     // """Get the number of APIs that were called during the run"""  (Python:126-130)
     int get_api_count();
@@ -184,7 +178,7 @@ public:
     void record_dropped_files_event(std::shared_ptr<Run> run, const std::vector<std::shared_ptr<File>>& files);
     // Python:227-259
     // """Log a call to an OS API. This includes arguments, return address, and return value"""
-    void record_api_event(std::shared_ptr<Run> run, uint64_t pc, const std::string& name, uint64_t ret,
+    void record_api_event(std::shared_ptr<Run> run, const speakeasy::events::TracePosition& pos, const std::string& name, uint64_t ret,
                  const std::vector<std::string>& argv, const std::vector<std::string>& ctx = {});
     // Python:261-338
     // """Log file access events. This will include things like handles being opened,

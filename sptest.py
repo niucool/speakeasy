@@ -4,6 +4,7 @@ sptest.py  Speakeasy Python test runner for log comparison with C++ port.
 Usage:
   python sptest.py -v d:/path/to/sample.exe          # verbose to stderr
   python sptest.py -v -l py.log d:/path/to/sample.exe  # verbose to file
+  python sptest.py d:/path/to/sample.exe              # generates sptest_<basename>.json
 
 Compare with C++ logs:
   .\\build\\Debug\\speakeasy-cli.exe -v -t d:\\path\\to\\sample.exe 2> cpp.log
@@ -11,8 +12,10 @@ Compare with C++ logs:
 
 import sys
 import os
+import json
 import logging
 import argparse
+import datetime
 import speakeasy
 
 
@@ -21,7 +24,8 @@ def main():
     parser.add_argument("file", help="Path of PE file to emulate")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose (DEBUG) logging")
     parser.add_argument("-l", "--logfile", type=str, default=None, help="Write log to file instead of stderr")
-    parser.add_argument("-r", "--report", type=str, default=None, help="Write JSON report to file")
+    parser.add_argument("-r", "--report", type=str, default=None, help="Write JSON report to path (default: auto)")
+    parser.add_argument("--no-report", action="store_true", help="Skip JSON report generation")
     args = parser.parse_args()
 
     if not os.path.exists(args.file):
@@ -41,6 +45,8 @@ def main():
     for name in ["speakeasy", "speakeasy.windows", "speakeasy.binemu"]:
         logging.getLogger(name).setLevel(log_level)
 
+    t_start = datetime.datetime.now()
+
     print(f"[*] Initializing Speakeasy emulator (debug={args.verbose})...")
     se = speakeasy.Speakeasy(debug=args.verbose)
 
@@ -53,27 +59,60 @@ def main():
 
     print(f"[*] Running module entry point...")
     se.run_module(module)
-    print(f"[*] Emulation finished!")
 
-    # Print report summary
-    report = se.get_json_report()
-    if args.report:
-        with open(args.report, "w") as f:
-            f.write(report)
-        print(f"[*] Report saved to: {args.report}")
-    else:
+    t_end = datetime.datetime.now()
+    elapsed = (t_end - t_start).total_seconds()
+    print(f"[*] Emulation finished! ({elapsed:.2f}s)")
+
+    # Build structured JSON report
+    if not args.no_report:
+        raw_json = se.get_json_report()
         try:
-            import json
-            r = json.loads(report)
-            print(f"\n--- Report Summary ---")
-            print(f"  Entry points: {len(r.get('entry_points', []))}")
-            print(f"  API calls:    {len(r.get('api_events', r.get('api', [])))}")
-            err_info = r.get('error_info')
-            if err_info:
-                print(f"  Error:        {err_info}")
-            print(f"  Done.")
+            report_data = json.loads(raw_json)
         except Exception:
-            print(report[:2000] if len(report) > 2000 else report)
+            report_data = {"raw": raw_json[:10000] if len(raw_json) > 10000 else raw_json}
+
+        # Add metadata
+        report_data["_metadata"] = {
+            "tool": "sptest.py",
+            "file": os.path.abspath(args.file),
+            "filename": os.path.basename(args.file),
+            "emulated": True,
+            "elapsed_seconds": elapsed,
+            "timestamp": t_end.isoformat(),
+        }
+
+        # Add entry summary
+        entry_pts = report_data.get("entry_points", [])
+        api_events = report_data.get("api_events", report_data.get("api", []))
+        report_data["_summary"] = {
+            "entry_points": len(entry_pts),
+            "api_calls": len(api_events),
+            "error_info": report_data.get("error_info"),
+        }
+
+        # Determine report path
+        if args.report:
+            report_path = args.report
+        else:
+            base = os.path.splitext(os.path.basename(args.file))[0]
+            report_path = f"sptest_{base}.json"
+
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(report_data, f, indent=2, ensure_ascii=False)
+        print(f"[*] JSON report saved to: {report_path}")
+
+        # Print summary to stdout
+        summary = report_data["_summary"]
+        print(f"\n--- Report Summary ---")
+        print(f"  Entry points: {summary['entry_points']}")
+        print(f"  API calls:    {summary['api_calls']}")
+        err = summary.get("error_info")
+        if err:
+            print(f"  Error:        {err}")
+        print(f"  Report:       {report_path}")
+    else:
+        print(f"[*] (--no-report, skipping JSON output)")
 
 
 if __name__ == "__main__":
