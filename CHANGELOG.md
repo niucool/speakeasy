@@ -5,7 +5,39 @@
 
 ## [Unreleased]
 
-### 2026-06-14 — kernel32 & ntoskrnl API porting, SEH overhaul, struct fixes
+### 2026-06-19 — Profiler events overhaul, ntdll cleanup, struct de-hardcoding, kernel32 porting
+
+#### Changed
+- **Profiler: typed Event system (Python parity)** — `record_*_event` methods now create typed `Event` subclass instances (`ApiEvent`, `FileWriteEvent`, `NetDnsEvent`, etc.) and push to `run->events` directly, matching Python's `list[AnyEvent]` pattern. `get_report()` reads from `run->events` instead of converting from parallel `map<string,string>` vectors.
+  - Removed 6 parallel storage vectors from `Run` (`apis`, `file_access`, `registry_access`, `process_events`, `network`, `handled_exceptions`)
+  - `record_api_event` signature changed from `uint64_t pc` → `const TracePosition& pos` with `tick`/`pid`/`tid` context
+  - `record_api_event` argv parameter changed from `vector<string>&` → `const ArgList&` eliminating string conversion in `winemu.cpp`
+  - `record_dropped_files_event` now creates `DroppedFileEvent` in `run->events`
+  - Dedup logic preserved: API last-3, file write/read merge, DNS/HTTP dedup, MEM adjacent merge
+
+- **ntdll API cleanup**: Removed ~40 APIs from ntdll.h/.cpp that duplicate ntoskrnl (NtCreateFile, NtOpenFile, NtReadFile, NtWriteFile, NtAllocateVirtualMemory, NtCreateEvent, NtCreateSection, etc.). Kept exactly 21 APIs matching Python ntdll.py. `normalize_import_miss` in winemu.cpp handles ntdll→ntoskrnl fallback.
+
+- **kernel32 struct de-hardcoding** (8 APIs refactored):
+  - `GetSystemInfo` → `SYSTEM_INFO<4/8>` struct (was 22 lines of `write_le` offsets)
+  - `GetSystemTime` / `FileTimeToSystemTime` → `SYSTEMTIME` struct
+  - `GetVersionExW` → `OSVERSIONINFO` struct
+  - `CreateProcess_impl` → `PROCESS_INFORMATION<4/8>` struct
+  - `process32_impl` → `PROCESSENTRY32<4/8>` struct
+  - `thread32_impl` → `THREADENTRY32` struct
+  - `module32_impl` → `MODULEENTRY32<4/8>` struct
+  - `SizeofResource` → `mem_cast(IMAGE_RESOURCE_DATA_ENTRY)` struct
+
+- **GetStartupInfoA/W ported** from Python kernel32.py: fills `STARTUPINFO<4/8>` with desktop name, title, standard handles
+
+- **ntoskrnl struct de-hardcoding**: All `OBJECT_ATTRIBUTES` and `UNICODE_STRING`/`STRING` reads refactored from `mem_read(addr + hardcoded_offset)` to `mem_cast` + named field access. Affected: `ZwCreateFile`, `ZwOpenFile`, `ZwOpenEvent`, `ZwCreateEvent`, `ZwCreateSection`, `RtlFreeUnicodeString`, `RtlCopyUnicodeString`, `RtlAnsiStringToUnicodeString`, plus 3 helper functions.
+
+- **IMAGE_RESOURCE_DATA_ENTRY** struct added to `deffs/windows/kernel32.h`; used by `SizeofResource` (kernel32) and `LdrAccessResource` (ntdll).
+
+#### Fixed
+- **ZwCreateFile/ZwOpenFile ArgList indices**: name was stored at wrong index (`a[2]` ObjectAttributes → `a[3]` IoStatusBlock); added missing `a[7]` disposition string, `a[6]` data preview for ZwWriteFile, `a[0]`/`a[2]`/`a[6]` for ZwCreateSection/ZwMapViewOfSection
+- **ZwCreateSection file handle bug**: was passing `file_get()` result (real `File*` pointer) to `file_create_mapping()` which expects uint32 handle in `void*` disguise — now passes raw `FileHandle`
+- **KernelObject destructor**: base `~KernelObject()` now deletes `object_` via `static_cast<EmuStruct*>(object_)`, covering all 15 subclasses
+- **Tests**: `smoke_test.cpp` and `test_porting_winemu.cpp` updated for `record_api_event` signature changes
 
 #### Added
 - **ntoskrnl printf-family functions**: `DbgPrint`, `DbgPrintEx`, `_vsnprintf`, `vsprintf_s`, `sprintf`, `_snprintf`, `_snwprintf` now fully implemented with variadic format-arg counting, `do_str_format`-style formatting, and output-param writing matching Python behavior. Added `ntos_va_arg_count` + `ntos_do_str_format` static helpers.
