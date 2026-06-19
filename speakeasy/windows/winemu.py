@@ -41,6 +41,17 @@ def _normalize_mod_name(name: str) -> str:
     return os.path.splitext(name)[0].lower()
 
 
+def _module_type_from_path(path: str, default: str = "dll") -> str:
+    ext = ntpath.splitext(path)[1].lower()
+    if ext == ".exe":
+        return "exe"
+    if ext == ".sys":
+        return "driver"
+    if ext == ".dll":
+        return "dll"
+    return default
+
+
 class BootstrapPhase(IntEnum):
     INITIALIZED = 0
     ENGINE_API_READY = 1
@@ -2279,6 +2290,7 @@ class WindowsEmulator(BinaryEmulator):
 
         image = loader.make_image()
         image.name = name
+        image.module_type = _module_type_from_path(emu_path)
         return self.load_image(image)
 
     # This will create a module from a file inside Speakeasy's
@@ -2335,6 +2347,8 @@ class WindowsEmulator(BinaryEmulator):
             if not path:
                 path = native_path
 
+            module_type = _module_type_from_path(emu_path)
+
             loader: PeLoader | ApiModuleLoader | DecoyLoader
             if path:
                 loader = PeLoader(
@@ -2359,14 +2373,25 @@ class WindowsEmulator(BinaryEmulator):
                         emu_path=emu_path,
                     )
                 else:
-                    loader = DecoyLoader(
-                        name=modname,
-                        base=base_addr or 0,
-                        emu_path=emu_path,
-                        image_size=0,
-                    )
+                    fallback_name = "default_driver" if module_type == "driver" else "default_exe"
+                    fallback_path = self.get_native_module_path(mod_name=fallback_name)
+                    if fallback_path:
+                        loader = PeLoader(
+                            path=fallback_path,
+                            base_override=base_addr,
+                            emu_path=emu_path,
+                        )
+                    else:
+                        loader = DecoyLoader(
+                            name=modname,
+                            base=base_addr or 0,
+                            emu_path=emu_path,
+                            image_size=0x1000,
+                        )
 
             image = loader.make_image()
+            image.name = modname
+            image.module_type = module_type
             rtmod = self.load_image(image)
             rtmods.append(rtmod)
         return rtmods

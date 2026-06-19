@@ -56,6 +56,28 @@ def test_peb_modules_populated(config, load_test_bin):
     assert all(isinstance(mod, RuntimeModule) for mod in peb_mods)
 
 
+def test_win32_shellcode_peb_uses_mapped_user_modules(config):
+    config["max_instructions"] = 1
+    se = Speakeasy(config=config)
+    try:
+        sc_addr = se.load_shellcode(data=b"\x90\x90", arch="amd64")
+        se.run_shellcode(sc_addr)
+        peb_mods = se.emu.get_peb_modules()
+        peb_names = {mod.name.lower() for mod in peb_mods}
+        loaded_names = {mod.name.lower() for mod in se.emu.modules}
+        ordered_names = [mod.name.lower() for mod in se.emu._ordered_peb_modules()]
+        mapped_headers = [se.emu.mem_read(mod.base, 2) for mod in peb_mods]
+    finally:
+        se.shutdown()
+
+    system_names = {mod["name"].lower() for mod in config["modules"]["system_modules"]}
+    assert system_names <= loaded_names
+    assert system_names.isdisjoint(peb_names)
+    assert {"main", "ntdll", "kernel32", "kernelbase", "wininet"} <= peb_names
+    assert ordered_names[:4] == ["main", "ntdll", "kernel32", "kernelbase"]
+    assert all(header == b"MZ" for header in mapped_headers)
+
+
 def test_runtime_modules_have_loader_provenance(config, load_test_bin):
     se = Speakeasy(config=config)
     try:
