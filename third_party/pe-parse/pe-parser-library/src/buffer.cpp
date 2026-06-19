@@ -333,8 +333,11 @@ splitBuffer(bounded_buffer *b, std::uint32_t from, std::uint32_t to) {
   }
 
   // safety checks
-  if (to < from || to > b->bufLen) {
-    return nullptr;
+  if (to < from) {
+	  return nullptr;
+  }
+  if (to > b->bufLen) {
+      to = b->bufLen;
   }
 
   // make a new buffer
