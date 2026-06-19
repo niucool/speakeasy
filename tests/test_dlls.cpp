@@ -24,9 +24,9 @@ std::vector<const speakeasy::events::ApiEvent*> find_api_events(
 {
     std::vector<const speakeasy::events::ApiEvent*> result;
     if (!ep.events.has_value()) return result;
-    for (auto* evt : *ep.events) {
+    for (auto evt : *ep.events) {
         if (!evt || evt->event != "api") continue;
-        auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
+        auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
         if (api && api->api_name.find(pattern) != std::string::npos)
             result.push_back(api);
     }

@@ -490,28 +490,30 @@ void Profiler::record_dns_event(std::shared_ptr<Run> run, const std::string& dom
 
 // Python:539-567  record_http_event  NetHttpEvent
 void Profiler::record_http_event(std::shared_ptr<Run> run, const std::string& server, int port,
-                        const std::string& /*proto*/,
+                        const std::string& proto,
                         const std::string& headers,
                         const std::vector<uint8_t>& body, bool secure) {
     std::string proto_str = secure ? "https" : "http";
     std::string body_ref = handle_binary_data(body);
 
+    auto http_evt = std::make_shared<NetHttpEvent>();
+    http_evt->server = server;
+    http_evt->port = port;
+    http_evt->proto = proto;
+    http_evt->headers = headers;
+    http_evt->body_ref = body_ref;
+
     // Dedup by server+port+proto+headers (Python: same logic)
     for (const auto& evt : run->events) {
         if (evt->event == NET_HTTP) {
             auto* existing = dynamic_cast<NetHttpEvent*>(evt.get());
-            if (existing && existing->url.find(server) != std::string::npos &&
-                existing->verb == (secure ? "https" : "http")) {
+            if (existing && (http_evt == *existing)) {
                 return;
             }
         }
     }
 
-    auto evt = std::make_shared<NetHttpEvent>();
-    evt->verb = proto_str;
-    evt->url = server + ":" + std::to_string(port);
-    if (!body_ref.empty()) evt->data_ref = body_ref;
-    run->events.push_back(evt);
+    run->events.push_back(http_evt);
 }
 
 // Python:569-576  record_dyn_code_event  stored separately (not in events list)

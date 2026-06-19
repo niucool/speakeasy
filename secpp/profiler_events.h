@@ -430,18 +430,30 @@ struct NetTrafficEvent : Event {
 };
 
 struct NetHttpEvent : Event {
-    std::string verb;
-    std::string url;
-    std::string data_ref;
+    std::string server;
+    int port;
+    std::string proto;
+    std::string headers;
+    std::string body_ref;
 
     NetHttpEvent() { event = NET_HTTP; }
 
     nlohmann::json to_json() const override {
         nlohmann::json j = Event::to_json();
-        j["verb"] = verb;
-        j["url"]  = url;
-        if (!data_ref.empty()) j["data_ref"] = data_ref;
+        j["server"] = server;
+        j["port"] = port;
+        j["proto"]  = proto;
+        j["headers"] = headers;
+        if (!body_ref.empty()) 
+            j["body_ref"] = body_ref;
         return j;
+    }
+
+    bool operator==(const NetHttpEvent& other) const {
+        return server == other.server &&
+               port == other.port &&
+               proto == other.proto &&
+               headers == other.headers;
     }
 };
 

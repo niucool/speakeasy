@@ -180,12 +180,12 @@ inline ObservedBehavior collect_behavior(const speakeasy::Report& report) {
 
     for (auto& ep : report.entry_points) {
         if (!ep.events.has_value()) continue;
-        for (auto* evt : *ep.events) {
+        for (auto evt : *ep.events) {
             if (!evt) continue;
 
             // API events
             if (evt->event == "api") {
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
+                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
                 if (api && !api->api_name.empty()) {
                     ob.api_names.insert(normalize_value(api->api_name));
                 }
@@ -208,26 +208,26 @@ inline ObservedBehavior collect_behavior(const speakeasy::Report& report) {
             // File events
             if (evt->event == "file_create" || evt->event == "file_open" ||
                 evt->event == "file_read" || evt->event == "file_write") {
-                auto* fe = dynamic_cast<speakeasy::events::FileCreateEvent*>(evt);
+                auto* fe = dynamic_cast<speakeasy::events::FileCreateEvent*>(evt.get());
                 if (fe && !fe->path.empty()) ob.files.insert(normalize_value(fe->path));
             }
 
             // Registry events (RegOpenEvent has 'key', not 'path')
             if (evt->event == "reg_open_key" || evt->event == "reg_create_key" ||
                 evt->event == "reg_read_value" || evt->event == "reg_list_subkeys") {
-                auto* re = dynamic_cast<speakeasy::events::RegOpenEvent*>(evt);
+                auto* re = dynamic_cast<speakeasy::events::RegOpenEvent*>(evt.get());
                 if (re && !re->key.empty()) ob.registry_keys.insert(normalize_value(re->key));
             }
 
             // DNS events
             if (evt->event == "net_dns") {
-                auto* de = dynamic_cast<speakeasy::events::NetDnsEvent*>(evt);
+                auto* de = dynamic_cast<speakeasy::events::NetDnsEvent*>(evt.get());
                 if (de && !de->query.empty()) ob.domains.insert(normalize_value(de->query));
             }
 
             // HTTP events -- extract domain from URL
             if (evt->event == "net_http") {
-                auto* he = dynamic_cast<speakeasy::events::NetHttpEvent*>(evt);
+                auto* he = dynamic_cast<speakeasy::events::NetHttpEvent*>(evt.get());
                 if (he && !he->url.empty()) {
                     ob.domains.insert(normalize_value(extract_domain(he->url)));
                     // also capture full URL

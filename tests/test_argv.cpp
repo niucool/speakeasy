@@ -45,9 +45,9 @@ TEST(ArgvTest, ArgvPassedToExe) {
         // If events were captured, verify printf calls
         if (eps[0].events.has_value()) {
             int printf_count = 0;
-            for (auto* evt : *eps[0].events) {
+            for (auto evt : *eps[0].events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
+                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
                 if (api && api->api_name.find("printf") != std::string::npos)
                     printf_count++;
             }

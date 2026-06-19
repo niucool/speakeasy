@@ -47,9 +47,9 @@ TEST(SehTest, SehDispatchEnabled) {
 
         std::vector<std::string> fmt_strings;
         if (eps[0].events.has_value()) {
-            for (auto* evt : *eps[0].events) {
+            for (auto evt : *eps[0].events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
+                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
                 if (api && api->api_name.find("__stdio_common_vfprintf") != std::string::npos) {
                     if (api->args.size() > 2)
                         fmt_strings.push_back(api->args[2]);
@@ -88,9 +88,9 @@ TEST(SehTest, SehDispatchDisabled) {
         // Should only get 1 printf before error
         int printf_count = 0;
         if (eps[0].events.has_value()) {
-            for (auto* evt : *eps[0].events) {
+            for (auto evt : *eps[0].events) {
                 if (!evt || evt->event != "api") continue;
-                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt);
+                auto* api = dynamic_cast<speakeasy::events::ApiEvent*>(evt.get());
                 if (api && api->api_name.find("__stdio_common_vfprintf") != std::string::npos) {
                     printf_count++;
                     break;
