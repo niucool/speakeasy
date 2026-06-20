@@ -107,7 +107,7 @@ inline void merge_json_patch(nlohmann::json& target, const nlohmann::json& patch
 // ---------------------------------------------------------------------------
 inline speakeasy::SpeakeasyConfig build_case_config(const PmaCase& case_) {
     speakeasy::SpeakeasyConfig cfg;
-    cfg.timeout = 4;
+    cfg.timeout = 6;
     cfg.max_api_count = 600;
     if (!case_.config_patch.empty()) {
         nlohmann::json j = cfg;

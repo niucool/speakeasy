@@ -1582,7 +1582,7 @@ uint64_t Kernel32::ExitThread(void* emu, ArgList& argv, void* ctx) {
 uint64_t Kernel32::Sleep(void* emu, ArgList& argv, void* ctx) {
     if (!argv.empty()) {
         auto ms = std::chrono::milliseconds(argv[0]);
-        std::this_thread::sleep_for(ms);
+        // std::this_thread::sleep_for(ms);
     }
     return 0;
 }
@@ -1592,7 +1592,7 @@ uint64_t Kernel32::SleepEx(void* emu, ArgList& argv, void* ctx) {
     uint32_t alertable = static_cast<uint32_t>(argv[1]);
     (void)alertable;
     if (ms > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(ms));
     }
     return 0;
 }
