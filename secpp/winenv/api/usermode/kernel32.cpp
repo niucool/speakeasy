@@ -296,23 +296,115 @@ static std::unordered_map<uint64_t, std::unordered_map<uint32_t, SnapEntry>> g_s
 // static uint64_t g_next_handle = 0x1800; // unused
 static uint64_t g_next_snap_handle = 0x2000;
 
-//  Constructor 
+// Win32 macros expand many API names -> undefine before REG table
+#ifdef DeleteFile
+#undef DeleteFile
+#endif
+#ifdef CopyFile
+#undef CopyFile
+#endif
+#ifdef CreateDirectory
+#undef CreateDirectory
+#endif
+#ifdef RemoveDirectory
+#undef RemoveDirectory
+#endif
+#ifdef GetFileAttributes
+#undef GetFileAttributes
+#endif
+#ifdef FindFirstFile
+#undef FindFirstFile
+#endif
+#ifdef FindNextFile
+#undef FindNextFile
+#endif
+#ifdef CreateFileMapping
+#undef CreateFileMapping
+#endif
+#ifdef GetDriveType
+#undef GetDriveType
+#endif
+#ifdef GetDiskFreeSpaceEx
+#undef GetDiskFreeSpaceEx
+#endif
+#ifdef GetModuleHandle
+#undef GetModuleHandle
+#endif
+#ifdef GetModuleFileName
+#undef GetModuleFileName
+#endif
+#ifdef CreateEvent
+#undef CreateEvent
+#endif
+#ifdef CreateMutex
+#undef CreateMutex
+#endif
+#ifdef OpenMutex
+#undef OpenMutex
+#endif
+#ifdef CreateWaitableTimer
+#undef CreateWaitableTimer
+#endif
+#ifdef GetVersionEx
+#undef GetVersionEx
+#endif
+#ifdef GetComputerName
+#undef GetComputerName
+#endif
+#ifdef GetUserName
+#undef GetUserName
+#endif
+#ifdef lstrlen
+#undef lstrlen
+#endif
+#ifdef lstrcpy
+#undef lstrcpy
+#endif
+#ifdef lstrcat
+#undef lstrcat
+#endif
+#ifdef lstrcmp
+#undef lstrcmp
+#endif
+#ifdef GetCommandLine
+#undef GetCommandLine
+#endif
+#ifdef GetEnvironmentVariable
+#undef GetEnvironmentVariable
+#endif
+#ifdef SetEnvironmentVariable
+#undef SetEnvironmentVariable
+#endif
+#ifdef GetCurrentDirectory
+#undef GetCurrentDirectory
+#endif
+#ifdef SetCurrentDirectory
+#undef SetCurrentDirectory
+#endif
+#ifdef ExpandEnvironmentStrings
+#undef ExpandEnvironmentStrings
+#endif
+#ifdef OutputDebugString
+#undef OutputDebugString
+#endif
+
+//  Constructor
 Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Kernel32)
     REG(Kernel32, CreateFile, 7)
     REG(Kernel32, ReadFile, 5)       REG(Kernel32, WriteFile, 5)
-    REG(Kernel32, CloseHandle, 1)    REG(Kernel32, DeleteFileA, 1)     REG(Kernel32, DeleteFileW, 1)
-    REG(Kernel32, CopyFileA, 3)      REG(Kernel32, CopyFileW, 3)
-    REG(Kernel32, CreateDirectoryA, 2) REG(Kernel32, CreateDirectoryW, 2) REG(Kernel32, RemoveDirectoryA, 1)
-    REG(Kernel32, GetFileAttributesA, 1) REG(Kernel32, GetFileAttributesW, 1) REG(Kernel32, SetFilePointer, 4)
-    REG(Kernel32, GetFileSize, 2)    REG(Kernel32, FindFirstFileA, 2) REG(Kernel32, FindFirstFileW, 2)
-    REG(Kernel32, FindNextFileA, 2)  REG(Kernel32, FindNextFileW, 2) REG(Kernel32, FindClose, 1)
-    REG(Kernel32, CreateFileMappingA, 6) REG(Kernel32, CreateFileMappingW, 6) REG(Kernel32, MapViewOfFile, 5)
+    REG(Kernel32, CloseHandle, 1)    REG(Kernel32, DeleteFile, 1)
+    REG(Kernel32, CopyFile, 3)
+    REG(Kernel32, CreateDirectory, 2) REG(Kernel32, RemoveDirectory, 1)
+    REG(Kernel32, GetFileAttributes, 1) REG(Kernel32, SetFilePointer, 4)
+    REG(Kernel32, GetFileSize, 2)    REG(Kernel32, FindFirstFile, 2)
+    REG(Kernel32, FindNextFile, 2) REG(Kernel32, FindClose, 1)
+    REG(Kernel32, CreateFileMapping, 6) REG(Kernel32, MapViewOfFile, 5)
     REG(Kernel32, UnmapViewOfFile, 1) REG(Kernel32, FlushFileBuffers, 1)
     REG(Kernel32, SetEndOfFile, 1)   REG(Kernel32, GetFileTime, 4)
     REG(Kernel32, SetFileTime, 4)    REG(Kernel32, GetFileInformationByHandle, 2)
-    REG(Kernel32, DeviceIoControl, 8) REG(Kernel32, GetDriveTypeA, 1) REG(Kernel32, GetDriveTypeW, 1)
-    REG(Kernel32, GetDiskFreeSpaceExA, 4) REG(Kernel32, GetDiskFreeSpaceExW, 4)
+    REG(Kernel32, DeviceIoControl, 8) REG(Kernel32, GetDriveType, 1)
+    REG(Kernel32, GetDiskFreeSpaceEx, 4)
     REG(Kernel32, VirtualAlloc, 4)   REG(Kernel32, VirtualAllocEx, 5)
     REG(Kernel32, VirtualFree, 3)    REG(Kernel32, VirtualProtect, 4)
     REG(Kernel32, VirtualProtectEx, 5) REG(Kernel32, VirtualQuery, 3)
@@ -325,8 +417,8 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, RtlZeroMemory, 2)
     REG(Kernel32, LoadLibrary, 1)    REG(Kernel32, LoadLibraryEx, 3)
     REG(Kernel32, FreeLibrary, 1)
-    REG(Kernel32, GetProcAddress, 2) REG(Kernel32, GetModuleHandleA, 1)
-    REG(Kernel32, GetModuleHandleW, 1) REG(Kernel32, GetModuleFileNameA, 3) REG(Kernel32, GetModuleFileNameW, 3)
+    REG(Kernel32, GetProcAddress, 2) REG(Kernel32, GetModuleHandle, 1)
+    REG(Kernel32, GetModuleFileName, 3)
     REG(Kernel32, DisableThreadLibraryCalls, 1)
     REG(Kernel32, CreateProcess, 10)  REG(Kernel32, OpenProcess, 3)
     REG(Kernel32, TerminateProcess, 2) REG(Kernel32, GetCurrentProcess, 0)
@@ -340,40 +432,39 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, GetExitCodeProcess, 2) REG(Kernel32, GetExitCodeThread, 2)
     REG(Kernel32, QueueUserAPC, 3)   REG(Kernel32, WinExec, 2)
     REG(Kernel32, SetThreadPriority, 2) REG(Kernel32, GetThreadPriority, 1)
-    REG(Kernel32, CreateEventA, 4)   REG(Kernel32, CreateEventW, 4) REG(Kernel32, CreateMutexA, 3) REG(Kernel32, CreateMutexW, 3)
-    REG(Kernel32, OpenMutexA, 3)     REG(Kernel32, OpenMutexW, 3) REG(Kernel32, ReleaseMutex, 1)
+    REG(Kernel32, CreateEvent, 4)    REG(Kernel32, CreateMutex, 3)
+    REG(Kernel32, OpenMutex, 3) REG(Kernel32, ReleaseMutex, 1)
     REG(Kernel32, SetEvent, 1)       REG(Kernel32, ResetEvent, 1)
     REG(Kernel32, WaitForSingleObject, 2) REG(Kernel32, WaitForMultipleObjects, 4)
     REG(Kernel32, InitializeCriticalSection, 1) REG(Kernel32, DeleteCriticalSection, 1)
     REG(Kernel32, EnterCriticalSection, 1) REG(Kernel32, LeaveCriticalSection, 1)
-    REG(Kernel32, CreateWaitableTimerA, 3) REG(Kernel32, CreateWaitableTimerW, 3) REG(Kernel32, SetWaitableTimer, 6)
+    REG(Kernel32, CreateWaitableTimer, 3) REG(Kernel32, SetWaitableTimer, 6)
     REG(Kernel32, CancelWaitableTimer, 1)
     REG(Kernel32, GetTickCount, 0)   REG(Kernel32, GetSystemInfo, 1)
-    REG(Kernel32, GetVersion, 0)     REG(Kernel32, GetVersionExA, 1) REG(Kernel32, GetVersionExW, 1)
+    REG(Kernel32, GetVersion, 0)     REG(Kernel32, GetVersionEx, 1)
     REG(Kernel32, IsDebuggerPresent, 0) REG(Kernel32, SetErrorMode, 1)
     REG(Kernel32, GetSystemTime, 1)  REG(Kernel32, GetLocalTime, 1)
     REG(Kernel32, SystemTimeToFileTime, 2) REG(Kernel32, FileTimeToSystemTime, 2)
     REG(Kernel32, QueryPerformanceCounter, 1) REG(Kernel32, QueryPerformanceFrequency, 1)
-    REG(Kernel32, GetComputerNameA, 2) REG(Kernel32, GetComputerNameW, 2) REG(Kernel32, GetUserNameA, 2) REG(Kernel32, GetUserNameW, 2)
+    REG(Kernel32, GetComputerName, 2) REG(Kernel32, GetUserName, 2)
     REG(Kernel32, SetUnhandledExceptionFilter, 1)
     REG(Kernel32, GetLastError, 0)   REG(Kernel32, SetLastError, 1)
     REG(Kernel32, RaiseException, 4) REG(Kernel32, UnhandledExceptionFilter, 1)
-    REG(Kernel32, lstrlenA, 1)       REG(Kernel32, lstrlenW, 1) REG(Kernel32, lstrcpyA, 2) REG(Kernel32, lstrcpyW, 2)
-    REG(Kernel32, lstrcatA, 2)       REG(Kernel32, lstrcatW, 2) REG(Kernel32, lstrcmpA, 2) REG(Kernel32, lstrcmpW, 2)
+    REG(Kernel32, lstrlen, 1)        REG(Kernel32, lstrcpy, 2)
+    REG(Kernel32, lstrcat, 2)        REG(Kernel32, lstrcmp, 2)
     REG(Kernel32, MultiByteToWideChar, 6) REG(Kernel32, WideCharToMultiByte, 8)
-    REG(Kernel32, GetCommandLineA, 0) REG(Kernel32, GetCommandLineW, 0)
-    REG(Kernel32, GetEnvironmentVariableA, 3) REG(Kernel32, GetEnvironmentVariableW, 3) 
-    REG(Kernel32, SetEnvironmentVariableA, 2) REG(Kernel32, SetEnvironmentVariableW, 2)
-    REG(Kernel32, GetCurrentDirectoryA, 2) REG(Kernel32, GetCurrentDirectoryW, 2) REG(Kernel32, SetCurrentDirectoryA, 1)
-    REG(Kernel32, ExpandEnvironmentStringsA, 3) REG(Kernel32, ExpandEnvironmentStringsW, 3)
+    REG(Kernel32, GetCommandLine, 0)
+    REG(Kernel32, GetEnvironmentVariable, 3) 
+    REG(Kernel32, SetEnvironmentVariable, 2)
+    REG(Kernel32, GetCurrentDirectory, 2) REG(Kernel32, SetCurrentDirectory, 1)
+    REG(Kernel32, ExpandEnvironmentStrings, 3)
     REG(Kernel32, CreateToolhelp32Snapshot, 2)
     REG(Kernel32, Process32First, 2)   REG(Kernel32, Process32Next, 2)
-    REG(Kernel32, Process32FirstW, 2) REG(Kernel32, Process32NextW, 2)
     REG(Kernel32, Thread32First, 2)  REG(Kernel32, Thread32Next, 2)
-    REG(Kernel32, Module32FirstA, 2) REG(Kernel32, Module32FirstW, 2) REG(Kernel32, Module32NextA, 2) REG(Kernel32, Module32NextW, 2)
+    REG(Kernel32, Module32First, 2)  REG(Kernel32, Module32Next, 2)
     REG(Kernel32, AllocConsole, 0)   REG(Kernel32, FreeConsole, 0)
     REG(Kernel32, GetConsoleMode, 2) REG(Kernel32, SetConsoleMode, 2)
-    REG(Kernel32, OutputDebugStringA, 1) REG(Kernel32, OutputDebugStringW, 1) REG(Kernel32, GetACP, 0)
+    REG(Kernel32, OutputDebugString, 1) REG(Kernel32, GetACP, 0)
     REG(Kernel32, DecodePointer, 1)  REG(Kernel32, EncodePointer, 1)
     REG(Kernel32, IsProcessorFeaturePresent, 1)
 
@@ -400,24 +491,36 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, FindFirstVolume, 2)     REG(Kernel32, FindNextVolume, 3)
     REG(Kernel32, FindResource, 3)     REG(Kernel32, FindResourceEx, 4)
     REG(Kernel32, FindVolumeClose, 1)     REG(Kernel32, FlsGetValue2, 1)
-    REG(Kernel32, FreeEnvironmentStringsA, 1) REG(Kernel32, FreeEnvironmentStringsW, 1)     REG(Kernel32, FreeLibraryAndExitThread, 2)
+    REG(Kernel32, FreeEnvironmentStrings, 1)     REG(Kernel32, FreeLibraryAndExitThread, 2)
     REG(Kernel32, FreeResource, 1)     REG(Kernel32, GetAtomName, 3)
     REG(Kernel32, GetBinaryType, 2)     REG(Kernel32, GetCPInfo, 2)
     REG(Kernel32, GetCommProperties, 2)     REG(Kernel32, GetCommTimeouts, 2)
     REG(Kernel32, GetComputerNameEx, 3)     REG(Kernel32, GetConsoleTitle, 2)
     REG(Kernel32, GetConsoleWindow, 0)     REG(Kernel32, GetCurrentPackageId, 2)
-    REG(Kernel32, GetDateFormat, 6)     REG(Kernel32, GetEnvironmentStringsA, 0)  REG(Kernel32, GetEnvironmentStringsW, 0)
+    REG(Kernel32, GetDateFormat, 6)     REG(Kernel32, GetEnvironmentStrings, 0)
     REG(Kernel32, GetErrorMode, 0)     REG(Kernel32, GetFileAttributesEx, 3)
     REG(Kernel32, GetFileSizeEx, 2)     REG(Kernel32, GetFullPathName, 4)
     REG(Kernel32, GetHandleInformation, 2)     REG(Kernel32, GetLocaleInfo, 4)
     REG(Kernel32, GetLogicalDrives, 0)     REG(Kernel32, GetLongPathName, 3)
-    REG(Kernel32, GetMailslotInfo, 5)     REG(Kernel32, GetModuleFileNameExA, 4)
+#ifdef GetModuleFileNameEx
+#undef GetModuleFileNameEx
+#endif
+#ifdef GlobalAddAtom
+#undef GlobalAddAtom
+#endif
+#ifdef IsBadStringPtr
+#undef IsBadStringPtr
+#endif
+#ifdef GetStringType
+#undef GetStringType
+#endif
+    REG(Kernel32, GetMailslotInfo, 5)     REG(Kernel32, GetModuleFileNameEx, 4)
     REG(Kernel32, GetModuleHandleEx, 3)     REG(Kernel32, GetNativeSystemInfo, 1)
     REG(Kernel32, GetOEMCP, 0)     REG(Kernel32, GetPhysicallyInstalledSystemMemory, 1)
     REG(Kernel32, GetProcessAffinityMask, 3)     REG(Kernel32, GetProcessHandleCount, 1)
     REG(Kernel32, GetProcessVersion, 1)     REG(Kernel32, GetProfileInt, 3)
     REG(Kernel32, GetShortPathName, 3)     REG(Kernel32, GetStartupInfo, 1)
-    REG(Kernel32, GetStringTypeA, 5)     REG(Kernel32, GetStringTypeW, 4)
+    REG(Kernel32, GetStringType, 5)     REG(Kernel32, GetStringTypeW, 4)
     REG(Kernel32, GetSystemDefaultLCID, 0)     REG(Kernel32, GetSystemDefaultLangID, 0)
     REG(Kernel32, GetSystemDefaultUILanguage, 0)     REG(Kernel32, GetSystemDirectory, 2)
     REG(Kernel32, GetSystemFirmwareTable, 4)     REG(Kernel32, GetSystemTimePreciseAsFileTime, 1)
@@ -429,7 +532,7 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, GetTimeZoneInformation, 1)     REG(Kernel32, GetUserDefaultLCID, 0)
     REG(Kernel32, GetUserDefaultLangID, 0)     REG(Kernel32, GetUserDefaultUILanguage, 0)
     REG(Kernel32, GetVolumeInformation, 8)     REG(Kernel32, GetVolumePathNamesForVolumeName, 4)
-    REG(Kernel32, GetWindowsDirectory, 2)     REG(Kernel32, GlobalAddAtomA, 1)
+    REG(Kernel32, GetWindowsDirectory, 2)     REG(Kernel32, GlobalAddAtom, 1)
     REG(Kernel32, GlobalFlags, 1)     REG(Kernel32, GlobalHandle, 1)
     REG(Kernel32, GlobalLock, 1)     REG(Kernel32, GlobalMemoryStatus, 1)
     REG(Kernel32, GlobalMemoryStatusEx, 1)     REG(Kernel32, GlobalSize, 1)
@@ -438,7 +541,7 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, InitOnceBeginInitialize, 4)     REG(Kernel32, InitializeConditionVariable, 1)
     REG(Kernel32, InitializeCriticalSectionAndSpinCount, 2)     REG(Kernel32, InitializeCriticalSectionEx, 3)
     REG(Kernel32, InitializeSListHead, 1)     REG(Kernel32, InitializeSRWLock, 1)
-    REG(Kernel32, IsBadReadPtr, 2)     REG(Kernel32, IsBadStringPtrA, 2)     REG(Kernel32, IsBadStringPtrW, 2)
+    REG(Kernel32, IsBadReadPtr, 2)     REG(Kernel32, IsBadStringPtr, 2)
     REG(Kernel32, IsBadWritePtr, 2)     REG(Kernel32, IsDBCSLeadByte, 1)
     REG(Kernel32, IsValidCodePage, 1)     REG(Kernel32, IsValidLocale, 2)
     REG(Kernel32, IsWow64Process, 2)     REG(Kernel32, LCMapString, 6)
@@ -601,7 +704,7 @@ uint64_t Kernel32::CloseHandle(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::DeleteFileA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::DeleteFile(void* emu, ArgList& argv, void* ctx) {
     uint64_t fname_ptr = argv[0];
     if (!fname_ptr) {
         w32(emu)->set_last_error(K32_ERR_INVALID_PARAM);
@@ -623,20 +726,14 @@ static uint64_t CopyFile_impl(void* emu, const std::string& src, const std::stri
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
 }
-uint64_t Kernel32::CopyFileA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::CopyFile(void* emu, ArgList& argv, void* ctx) {
     if (!argv[0] || !argv[1]) return 0;
     return CopyFile_impl(emu, be(emu)->read_mem_string(argv[0], 1),
                          be(emu)->read_mem_string(argv[1], 1),
                          static_cast<uint32_t>(argv[2]));
 }
-uint64_t Kernel32::CopyFileW(void* emu, ArgList& argv, void* ctx) {
-    if (!argv[0] || !argv[1]) return 0;
-    return CopyFile_impl(emu, be(emu)->read_mem_string(argv[0], 2),
-                         be(emu)->read_mem_string(argv[1], 2),
-                         static_cast<uint32_t>(argv[2]));
-}
 
-uint64_t Kernel32::CreateDirectoryA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::CreateDirectory(void* emu, ArgList& argv, void* ctx) {
     uint64_t path_ptr = argv[0];
     uint64_t sec_attr = argv[1];
     (void)sec_attr;
@@ -647,7 +744,7 @@ uint64_t Kernel32::CreateDirectoryA(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::RemoveDirectoryA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::RemoveDirectory(void* emu, ArgList& argv, void* ctx) {
     uint64_t path_ptr = argv[0];
     if (!path_ptr) return 0;
     std::string path = be(emu)->read_mem_string(path_ptr, 1);
@@ -656,7 +753,7 @@ uint64_t Kernel32::RemoveDirectoryA(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::GetFileAttributesA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetFileAttributes(void* emu, ArgList& argv, void* ctx) {
     uint64_t fname_ptr = argv[0];
     if (!fname_ptr) return K32_INVALID_FILE_ATTR;
     std::string target = be(emu)->read_mem_string(fname_ptr, 1);
@@ -685,7 +782,7 @@ uint64_t Kernel32::GetFileSize(void* emu, ArgList& argv, void* ctx) {
     return 0;
 }
 
-uint64_t Kernel32::FindFirstFileA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::FindFirstFile(void* emu, ArgList& argv, void* ctx) {
     uint64_t fname_ptr = argv[0];
     uint64_t find_data_ptr = argv[1];
     (void)fname_ptr; (void)find_data_ptr;
@@ -693,7 +790,7 @@ uint64_t Kernel32::FindFirstFileA(void* emu, ArgList& argv, void* ctx) {
     return K32_INVALID_HANDLE;
 }
 
-uint64_t Kernel32::FindNextFileA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::FindNextFile(void* emu, ArgList& argv, void* ctx) {
     uint64_t find_handle = argv[0];
     uint64_t find_data_ptr = argv[1];
     (void)find_handle; (void)find_data_ptr;
@@ -708,7 +805,7 @@ uint64_t Kernel32::FindClose(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::CreateFileMappingA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::CreateFileMapping(void* emu, ArgList& argv, void* ctx) {
     (void)ctx;
     // Python kernel32.py: CreateFileMapping  read name, compute size, call file_create_mapping
     uint64_t hFile         = argv[0];
@@ -818,13 +915,22 @@ uint64_t Kernel32::DeviceIoControl(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::GetDriveTypeA(void* emu, ArgList& argv, void* ctx) {
-    uint64_t root_ptr = argv[0];
-    (void)root_ptr;
-    return 3; // DRIVE_FIXED
+uint64_t Kernel32::GetDriveType(void* emu, ArgList& a, void* c) {
+    // Python kernel32.py: GetDriveType  read name, delegate to drive manager
+    uint64_t root_ptr = a[0];
+    if (!root_ptr) return 1; // DRIVE_NO_ROOT_DIR
+    int cw = get_char_width(static_cast<ApiContext*>(c));
+    std::string name = be(emu)->read_mem_string(root_ptr, cw);
+    a[0] = name;
+    // Strip \\?\ prefix
+    if (name.find("\\\\?\\") == 0) name = name.substr(4);
+    if (name.size() == 1 && name[0] >= 'A' && name[0] <= 'Z') name += ":\\";
+    if (name.size() == 2 && name[1] == ':') name += "\\";
+    auto dm = we(emu)->get_drive_manager();
+    return dm ? dm->get_drive_type(name) : 3; // DRIVE_FIXED fallback
 }
 
-uint64_t Kernel32::GetDiskFreeSpaceExA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetDiskFreeSpaceEx(void* emu, ArgList& argv, void* ctx) {
     uint64_t dir_ptr = argv[0];
     uint64_t free_ptr = argv[1];
     uint64_t total_ptr = argv[2];
@@ -1215,7 +1321,7 @@ uint64_t Kernel32::GetProcAddress(void* emu, ArgList& argv, void* ctx) {
     return rv;
 }
 
-uint64_t Kernel32::GetModuleHandleA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetModuleHandle(void* emu, ArgList& argv, void* ctx) {
     uint64_t mod_name_ptr = argv[0];
     if (!mod_name_ptr) {
         auto p = we(emu)->get_current_process();
@@ -1241,34 +1347,8 @@ uint64_t Kernel32::GetModuleHandleA(void* emu, ArgList& argv, void* ctx) {
     return 0;
 }
 
-uint64_t Kernel32::GetModuleHandleW(void* emu, ArgList& argv, void* ctx) {
-    uint64_t mod_name_ptr = argv[0];
-    if (!mod_name_ptr) {
-        auto p = we(emu)->get_current_process();
-        if (p) {
-            return static_cast<uint64_t>(p->base);
-        }
-        return 0;
-    }
-    std::string name = be(emu)->read_mem_string(mod_name_ptr, 2);
-    if (name.empty()) return 0;
-    name = speakeasy::to_lower(name);
-    auto dot = name.rfind(".dll");
-    if (dot != std::string::npos) name = name.substr(0, dot);
-    auto mods = we(emu)->get_peb_modules();
-    for (auto m : mods) {
-        auto mod = m;
-        std::string mname = speakeasy::to_lower(mod->get_base_name());
-        auto mdot = mname.rfind(".dll");
-        if (mdot != std::string::npos) mname = mname.substr(0, mdot);
-        if (mname == name) {
-            return mod->base;
-        }
-    }
-    return 0;
-}
 
-uint64_t Kernel32::GetModuleFileNameA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetModuleFileName(void* emu, ArgList& argv, void* ctx) {
     uint64_t hMod = argv[0];
     uint64_t buf_ptr = argv[1];
     uint32_t buf_sz = static_cast<uint32_t>(argv[2]);
@@ -1300,37 +1380,6 @@ uint64_t Kernel32::GetModuleFileNameA(void* emu, ArgList& argv, void* ctx) {
     return static_cast<uint64_t>(filename.size() - 1);
 }
 
-uint64_t Kernel32::GetModuleFileNameW(void* emu, ArgList& argv, void* ctx) {
-    uint64_t hMod = argv[0];
-    uint64_t buf_ptr = argv[1];
-    uint32_t buf_sz = static_cast<uint32_t>(argv[2]);
-    if (!buf_ptr || buf_sz == 0) return 0;
-    std::string filename;
-    if (hMod == 0) {
-        auto p = we(emu)->get_current_process();
-        if (p) {
-            filename = p->path;
-        }
-    } else {
-        auto mods = we(emu)->get_peb_modules();
-        for (auto m : mods) {
-            auto mod = m;
-            if (mod->base == hMod) {
-                filename = mod->emu_path;
-                break;
-            }
-        }
-    }
-    if (filename.empty()) return 0;
-    // buf_sz is in characters (each wide char = 2 bytes)
-    if (buf_sz <= filename.size()) {
-        w32(emu)->set_last_error(K32_ERR_INSUFFICIENT_BUF);
-        filename = filename.substr(0, buf_sz - 1);
-    }
-    be(emu)->write_mem_string(filename, buf_ptr, 2);  // UTF-16LE
-    w32(emu)->set_last_error(K32_ERR_SUCCESS);
-    return static_cast<uint64_t>(filename.size());
-}
 
 uint64_t Kernel32::DisableThreadLibraryCalls(void* emu, ArgList& argv, void* ctx) {
     (void)argv[0];
@@ -1629,7 +1678,7 @@ uint64_t Kernel32::GetThreadPriority(void* emu, ArgList& argv, void* ctx) {
 //  SYNC APIs
 // 
 
-uint64_t Kernel32::CreateEventA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::CreateEvent(void* emu, ArgList& argv, void* ctx) {
     uint64_t attrs = argv[0];
     uint32_t manual_reset = static_cast<uint32_t>(argv[1]);
     uint32_t initial_state = static_cast<uint32_t>(argv[2]);
@@ -1647,7 +1696,7 @@ uint64_t Kernel32::CreateEventA(void* emu, ArgList& argv, void* ctx) {
     return static_cast<uint64_t>(h);
 }
 
-uint64_t Kernel32::CreateMutexA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::CreateMutex(void* emu, ArgList& argv, void* ctx) {
     uint64_t attrs = argv[0];
     uint32_t initial_owner = static_cast<uint32_t>(argv[1]);
     uint64_t name_ptr = argv[2];
@@ -1665,25 +1714,8 @@ uint64_t Kernel32::CreateMutexA(void* emu, ArgList& argv, void* ctx) {
     return static_cast<uint64_t>(h);
 }
 
-uint64_t Kernel32::CreateMutexW(void* emu, ArgList& argv, void* ctx) {
-    uint64_t attrs = argv[0];
-    uint32_t initial_owner = static_cast<uint32_t>(argv[1]);
-    uint64_t name_ptr = argv[2];
-    (void)attrs; (void)initial_owner;
-    std::string name;
-    if (name_ptr) name = be(emu)->read_mem_string(name_ptr, 2);
-    argv[2] = name;
 
-    auto [h, mut] = we(emu)->create_mutant(name);
-    if (h == 0) {
-        w32(emu)->set_last_error(K32_ERR_ALREADY_EXISTS);
-    } else {
-        w32(emu)->set_last_error(K32_ERR_SUCCESS);
-    }
-    return static_cast<uint64_t>(h);
-}
-
-uint64_t Kernel32::OpenMutexA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::OpenMutex(void* emu, ArgList& argv, void* ctx) {
     uint32_t access = static_cast<uint32_t>(argv[0]);
     uint32_t inherit = static_cast<uint32_t>(argv[1]);
     uint64_t name_ptr = argv[2];
@@ -1768,7 +1800,7 @@ uint64_t Kernel32::LeaveCriticalSection(void* emu, ArgList& argv, void* ctx) {
     return 0;
 }
 
-uint64_t Kernel32::CreateWaitableTimerA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::CreateWaitableTimer(void* emu, ArgList& argv, void* ctx) {
     uint64_t attrs = argv[0];
     uint32_t manual_reset = static_cast<uint32_t>(argv[1]);
     uint64_t name_ptr = argv[2];
@@ -1854,7 +1886,7 @@ uint64_t Kernel32::GetVersion(void* emu, ArgList& argv, void* ctx) {
                           static_cast<uint64_t>(ver.major));
 }
 
-uint64_t Kernel32::GetVersionExA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetVersionEx(void* emu, ArgList& argv, void* ctx) {
     uint64_t info_ptr = argv[0];
     if (!info_ptr) return 0;
     auto& os = be(emu)->get_config().os_ver;
@@ -1959,7 +1991,7 @@ uint64_t Kernel32::QueryPerformanceFrequency(void* emu, ArgList& argv, void* ctx
     return 1;
 }
 
-uint64_t Kernel32::GetComputerNameA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetComputerName(void* emu, ArgList& argv, void* ctx) {
     uint64_t buf_ptr = argv[0];
     uint64_t size_ptr = argv[1];
     if (!buf_ptr || !size_ptr) {
@@ -1980,7 +2012,7 @@ uint64_t Kernel32::GetComputerNameA(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::GetUserNameA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetUserName(void* emu, ArgList& argv, void* ctx) {
     uint64_t buf_ptr = argv[0];
     uint64_t size_ptr = argv[1];
     if (!buf_ptr || !size_ptr) {
@@ -2042,14 +2074,14 @@ uint64_t Kernel32::UnhandledExceptionFilter(void* emu, ArgList& argv, void* ctx)
 //  STRING APIs
 // 
 
-uint64_t Kernel32::lstrlenA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::lstrlen(void* emu, ArgList& argv, void* ctx) {
     uint64_t str_ptr = argv[0];
     if (!str_ptr) return 0;
     std::string s = be(emu)->read_mem_string(str_ptr, 1);
     return static_cast<uint64_t>(s.size());
 }
 
-uint64_t Kernel32::lstrcpyA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::lstrcpy(void* emu, ArgList& argv, void* ctx) {
     uint64_t dst = argv[0];
     uint64_t src = argv[1];
     if (!dst || !src) return dst;
@@ -2060,7 +2092,7 @@ uint64_t Kernel32::lstrcpyA(void* emu, ArgList& argv, void* ctx) {
     return dst;
 }
 
-uint64_t Kernel32::lstrcatA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::lstrcat(void* emu, ArgList& argv, void* ctx) {
     uint64_t dst = argv[0];
     uint64_t src = argv[1];
     if (!dst || !src) return dst;
@@ -2072,7 +2104,7 @@ uint64_t Kernel32::lstrcatA(void* emu, ArgList& argv, void* ctx) {
     return dst;
 }
 
-uint64_t Kernel32::lstrcmpA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::lstrcmp(void* emu, ArgList& argv, void* ctx) {
     uint64_t s1_ptr = argv[0];
     uint64_t s2_ptr = argv[1];
     if (!s1_ptr || !s2_ptr) return 1;
@@ -2154,7 +2186,7 @@ uint64_t Kernel32::WideCharToMultiByte(void* emu, ArgList& argv, void* ctx) {
     return static_cast<uint64_t>(mb_buf.size() - 1);
 }
 
-uint64_t Kernel32::GetCommandLineA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetCommandLine(void* emu, ArgList& argv, void* ctx) {
     (void)argv; (void)ctx;
     // Python kernel32.py: GetCommandLine  read from process cmdline, cache pointer
     auto proc = we(emu)->get_current_process();
@@ -2171,35 +2203,12 @@ uint64_t Kernel32::GetCommandLineA(void* emu, ArgList& argv, void* ctx) {
     return ptr;
 }
 
-uint64_t Kernel32::GetCommandLineW(void* emu, ArgList& argv, void* ctx) {
-    (void)argv; (void)ctx;
-    // Python kernel32.py: GetCommandLine  read from process cmdline, encode UTF-16LE
-    auto proc = we(emu)->get_current_process();
-    std::string cmdline = proc ? proc->get_command_line() : "emulated.exe";
-    if (cmdline.empty()) cmdline = "emulated.exe";
-
-    static thread_local std::map<int, uint64_t> cmdline_ptrs;
-    uint64_t& ptr = cmdline_ptrs[2]; // cw=2 (UTF-16LE)
-    if (!ptr) {
-        ptr = mm(emu)->mem_map((cmdline.size() + 1) * 2, 0, PERM_MEM_RW, "api.command_line");
-    }
-
-    // Encode as UTF-16LE (Python: cmdline.encode("utf-16le"))
-    std::vector<uint8_t> utf16;
-    for (char c : cmdline) {
-        utf16.push_back(static_cast<uint8_t>(c));
-        utf16.push_back(0);
-    }
-    utf16.push_back(0); utf16.push_back(0); // null terminator
-    mm(emu)->mem_write(ptr, utf16);
-    return ptr;
-}
 
 // 
 //  ENVIRONMENT APIs
 // 
 
-uint64_t Kernel32::GetEnvironmentVariableA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetEnvironmentVariable(void* emu, ArgList& argv, void* ctx) {
     uint64_t name_ptr = argv[0];
     uint64_t buf_ptr = argv[1];
     uint32_t buf_sz = static_cast<uint32_t>(argv[2]);
@@ -2223,7 +2232,7 @@ uint64_t Kernel32::GetEnvironmentVariableA(void* emu, ArgList& argv, void* ctx) 
     return static_cast<uint64_t>(val.size());
 }
 
-uint64_t Kernel32::SetEnvironmentVariableA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::SetEnvironmentVariable(void* emu, ArgList& argv, void* ctx) {
     uint64_t name_ptr = argv[0];
     uint64_t val_ptr = argv[1];
     if (!name_ptr) return 0;
@@ -2237,7 +2246,7 @@ uint64_t Kernel32::SetEnvironmentVariableA(void* emu, ArgList& argv, void* ctx) 
     return 1;
 }
 
-uint64_t Kernel32::GetCurrentDirectoryA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::GetCurrentDirectory(void* emu, ArgList& argv, void* ctx) {
     uint64_t buf_ptr = argv[0];
     uint32_t buf_sz = static_cast<uint32_t>(argv[1]);
     std::string cd = we(emu)->get_cd();
@@ -2253,7 +2262,7 @@ uint64_t Kernel32::GetCurrentDirectoryA(void* emu, ArgList& argv, void* ctx) {
     return static_cast<uint64_t>(cd.size());
 }
 
-uint64_t Kernel32::SetCurrentDirectoryA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::SetCurrentDirectory(void* emu, ArgList& argv, void* ctx) {
     uint64_t path_ptr = argv[0];
     if (!path_ptr) return 0;
     std::string path = be(emu)->read_mem_string(path_ptr, 1);
@@ -2261,7 +2270,7 @@ uint64_t Kernel32::SetCurrentDirectoryA(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::ExpandEnvironmentStringsA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::ExpandEnvironmentStrings(void* emu, ArgList& argv, void* ctx) {
     uint64_t src_ptr = argv[0];
     uint64_t dst_ptr = argv[1];
     uint32_t dst_sz = static_cast<uint32_t>(argv[2]);
@@ -2479,11 +2488,11 @@ static uint64_t module32_impl(void* emu, const ArgList& argv, bool first) {
     return 1;
 }
 
-uint64_t Kernel32::Module32FirstA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::Module32First(void* emu, ArgList& argv, void* ctx) {
     return module32_impl(emu, argv, true);
 }
 
-uint64_t Kernel32::Module32NextA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::Module32Next(void* emu, ArgList& argv, void* ctx) {
     return module32_impl(emu, argv, false);
 }
 
@@ -2518,7 +2527,7 @@ uint64_t Kernel32::SetConsoleMode(void* emu, ArgList& argv, void* ctx) {
     return 1;
 }
 
-uint64_t Kernel32::OutputDebugStringA(void* emu, ArgList& argv, void* ctx) {
+uint64_t Kernel32::OutputDebugString(void* emu, ArgList& argv, void* ctx) {
     uint64_t str_ptr = argv[0];
     if (str_ptr) {
         std::string msg = be(emu)->read_mem_string(str_ptr, 1);
@@ -2557,226 +2566,6 @@ uint64_t Kernel32::IsProcessorFeaturePresent(void* emu, ArgList& argv, void* ctx
 //  W function implementations (read UTF-16LE strings, delegate to A logic)
 // ==========================================
 
-uint64_t Kernel32::DeleteFileW(void* e, ArgList& a, void* c) {
-    uint64_t fname_ptr = a[0];
-    if (!fname_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
-    std::string target = be(e)->read_mem_string(fname_ptr, 2);
-    if (we(e)->does_file_exist(target)) { we(e)->file_delete(target); return 1; }
-    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0;
-}
-uint64_t Kernel32::CreateDirectoryW(void* e, ArgList& a, void* c) {
-    uint64_t path_ptr = a[0]; (void)a[1];
-    if (!path_ptr) return 0;
-    std::string path = be(e)->read_mem_string(path_ptr, 2); (void)path;
-    w32(e)->set_last_error(K32_ERR_SUCCESS); return 1;
-}
-uint64_t Kernel32::GetFileAttributesW(void* e, ArgList& a, void* c) {
-    uint64_t fname_ptr = a[0];
-    if (!fname_ptr) return K32_INVALID_FILE_ATTR;
-    std::string target = be(e)->read_mem_string(fname_ptr, 2);
-    if (we(e)->does_file_exist(target)) return K32_FILE_ATTR_NORMAL;
-    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_FILE_ATTR;
-}
-uint64_t Kernel32::FindFirstFileW(void* e, ArgList& a, void* c) {
-    (void)a[0]; (void)a[1];
-    w32(e)->set_last_error(K32_ERR_FILE_NOT_FOUND); return K32_INVALID_HANDLE;
-}
-uint64_t Kernel32::FindNextFileW(void* e, ArgList& a, void* c) {
-    (void)a[0]; (void)a[1];
-    w32(e)->set_last_error(K32_ERR_NO_MORE_FILES); return 0;
-}
-uint64_t Kernel32::CreateFileMappingW(void* e, ArgList& a, void* c) {
-    (void)c;
-    // Python kernel32.py: CreateFileMapping  read wide name, call file_create_mapping
-    uint64_t hFile         = a[0];
-    uint64_t map_attrs     = a[1];
-    uint32_t prot          = static_cast<uint32_t>(a[2]);
-    uint32_t max_sz_high   = static_cast<uint32_t>(a[3]);
-    uint32_t max_sz_low    = static_cast<uint32_t>(a[4]);
-    uint64_t map_name_ptr  = a[5];
-    (void)map_attrs;
-
-    uint64_t size = (static_cast<uint64_t>(max_sz_high) << 32) | max_sz_low;
-    std::string name;
-    if (map_name_ptr) {
-        name = be(e)->read_mem_string(map_name_ptr, 2);
-        a[5] = name;
-    }
-
-    void* file_obj = we(e)->file_get(static_cast<int>(hFile));
-    uint32_t handle = we(e)->file_create_mapping(file_obj, name, size, static_cast<int>(prot));
-    w32(e)->set_last_error(K32_ERR_SUCCESS);
-    return static_cast<uint64_t>(handle);
-}
-uint64_t Kernel32::GetDriveTypeW(void* e, ArgList& a, void* c) {
-    uint64_t root_ptr = a[0];
-    std::string root;
-    if (root_ptr) root = be(e)->read_mem_string(root_ptr, 2);
-    if (!root.empty() && root.find("C:") != std::string::npos) return 3; // DRIVE_FIXED
-    return 1; // DRIVE_NO_ROOT_DIR
-}
-uint64_t Kernel32::GetDiskFreeSpaceExW(void* e, ArgList& a, void* c) {
-    (void)a; (void)c;
-    // Python kernel32.py: GetDiskFreeSpaceExW  write dummy disk space values
-    uint64_t free_callable_ptr = a[1];
-    uint64_t total_ptr = a[2];
-    uint64_t free_total_ptr = a[3];
-    uint64_t dummy = 0x100000000ULL; // ~4 GB
-    auto write64 = [&](uint64_t ptr, uint64_t val) {
-        if (ptr) { std::vector<uint8_t> buf(8); write_le(buf, 0, val, 8); mm(e)->mem_write(ptr, buf); }
-    };
-    write64(free_callable_ptr, dummy / 2);
-    write64(total_ptr, dummy);
-    write64(free_total_ptr, dummy / 2);
-    w32(e)->set_last_error(K32_ERR_SUCCESS);
-    return 1;
-}
-uint64_t Kernel32::CreateEventW(void* e, ArgList& a, void* c) {
-    uint64_t name_ptr = a[2];
-    std::string name;
-    if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
-    auto result = we(e)->create_event(name);
-    return static_cast<uint64_t>(std::get<0>(result));
-}
-uint64_t Kernel32::OpenMutexW(void* e, ArgList& a, void* c) {
-    uint64_t name_ptr = a[2];
-    std::string name;
-    if (name_ptr) name = be(e)->read_mem_string(name_ptr, 2);
-    auto result = we(e)->create_mutant(name);
-    return static_cast<uint64_t>(std::get<0>(result));
-}
-uint64_t Kernel32::CreateWaitableTimerW(void* e, ArgList& a, void* c) {
-    (void)a; w32(e)->set_last_error(K32_ERR_SUCCESS);
-    static uint64_t next_timer = 0x5000;
-    return next_timer++;
-}
-uint64_t Kernel32::GetVersionExW(void* e, ArgList& a, void* c) {
-    uint64_t info_ptr = a[0];
-    if (!info_ptr) return 0;
-    auto& os = be(e)->get_config().os_ver;
-    speakeasy::deffs::windows::OSVERSIONINFO ver;
-    ver.dwOSVersionInfoSize = 276;  // Size of OSVERSIONINFOW
-    ver.dwMajorVersion = static_cast<uint32_t>(os.major);
-    ver.dwMinorVersion = static_cast<uint32_t>(os.minor);
-    ver.dwBuildNumber = static_cast<uint32_t>(os.build);
-    ver.dwPlatformId = 2; // VER_PLATFORM_WIN32_NT
-    mm(e)->mem_write(info_ptr, ver.get_bytes());
-    return 1;
-}
-uint64_t Kernel32::GetComputerNameW(void* e, ArgList& a, void* c) {
-    uint64_t buf_ptr = a[0]; uint64_t size_ptr = a[1];
-    if (!buf_ptr || !size_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
-    std::string name = be(e)->get_hostname();
-    uint32_t size = static_cast<uint32_t>(name.size() + 1);
-    auto sz_data = mm(e)->mem_read(size_ptr, 4);
-    uint32_t buf_size = sz_data.size() >= 4 ? *reinterpret_cast<const uint32_t*>(sz_data.data()) : 0;
-    if (buf_size < size) { w32(e)->set_last_error(K32_ERR_INSUFFICIENT_BUF); return 0; }
-    be(e)->write_mem_string(name, buf_ptr, 2);
-    mm(e)->mem_write(size_ptr, std::vector<uint8_t>{(uint8_t)(size&0xFF), (uint8_t)((size>>8)&0xFF), 0, 0});
-    return 1;
-}
-uint64_t Kernel32::GetUserNameW(void* e, ArgList& a, void* c) {
-    uint64_t buf_ptr = a[0]; uint64_t size_ptr = a[1];
-    if (!buf_ptr || !size_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
-    auto usermap = be(e)->get_user();
-    std::string user = usermap.count("name") ? usermap.at("name") : "speakeasy_user";
-    uint32_t size = static_cast<uint32_t>(user.size() + 1);
-    auto sz_data = mm(e)->mem_read(size_ptr, 4);
-    uint32_t buf_size = sz_data.size() >= 4 ? *reinterpret_cast<const uint32_t*>(sz_data.data()) : 0;
-    if (buf_size < size) { w32(e)->set_last_error(K32_ERR_INSUFFICIENT_BUF); return 0; }
-    be(e)->write_mem_string(user, buf_ptr, 2);
-    mm(e)->mem_write(size_ptr, std::vector<uint8_t>{(uint8_t)(size&0xFF), (uint8_t)((size>>8)&0xFF), 0, 0});
-    return 1;
-}
-uint64_t Kernel32::lstrlenW(void* e, ArgList& a, void* c) {
-    uint64_t str_ptr = a[0];
-    if (!str_ptr) return 0;
-    std::string s = be(e)->read_mem_string(str_ptr, 2);
-    return static_cast<uint64_t>(s.size());
-}
-uint64_t Kernel32::lstrcpyW(void* e, ArgList& a, void* c) {
-    uint64_t dst = a[0]; uint64_t src = a[1];
-    if (!dst || !src) return 0;
-    std::string s = be(e)->read_mem_string(src, 2);
-    be(e)->write_mem_string(s, dst, 2);
-    return dst;
-}
-uint64_t Kernel32::lstrcatW(void* e, ArgList& a, void* c) {
-    uint64_t dst = a[0]; uint64_t src = a[1];
-    if (!dst || !src) return 0;
-    std::string d = be(e)->read_mem_string(dst, 2);
-    std::string s = be(e)->read_mem_string(src, 2);
-    be(e)->write_mem_string(d + s, dst, 2);
-    return dst;
-}
-uint64_t Kernel32::lstrcmpW(void* e, ArgList& a, void* c) {
-    uint64_t s1 = a[0]; uint64_t s2 = a[1];
-    if (!s1 && !s2) return 0;
-    if (!s1) return static_cast<uint64_t>(-1);
-    if (!s2) return 1;
-    std::string str1 = be(e)->read_mem_string(s1, 2);
-    std::string str2 = be(e)->read_mem_string(s2, 2);
-    int cmp = str1.compare(str2);
-    if (cmp < 0) return static_cast<uint64_t>(-1);
-    if (cmp > 0) return 1;
-    return 0;
-}
-uint64_t Kernel32::GetEnvironmentVariableW(void* e, ArgList& a, void* c) {
-    uint64_t name_ptr = a[0]; uint64_t buf_ptr = a[1]; uint32_t buf_sz = static_cast<uint32_t>(a[2]);
-    if (!name_ptr) { 
-        w32(e)->set_last_error(K32_ERR_INVALID_PARAM); 
-        return 0; 
-    }
-    std::string name = be(e)->read_mem_string(name_ptr, 2);
-    auto& env = be(e)->get_config().env;
-    auto it = env.find(name);
-    if (it == env.end()) { 
-        w32(e)->set_last_error(203); 
-        return 0; 
-    }
-    std::string val = it->second;
-    if (buf_sz < val.size() + 1) { 
-        w32(e)->set_last_error(K32_ERR_INSUFFICIENT_BUF); 
-        return static_cast<uint64_t>(val.size() + 1); 
-    }
-    if (buf_ptr) 
-        be(e)->write_mem_string(val, buf_ptr, 2);
-
-    return static_cast<uint64_t>(val.size());
-}
-uint64_t Kernel32::SetEnvironmentVariableW(void* e, ArgList& a, void* c) {
-    (void)c;
-    uint64_t name_ptr = a[0]; uint64_t val_ptr = a[1];
-    if (!name_ptr) { w32(e)->set_last_error(K32_ERR_INVALID_PARAM); return 0; }
-    std::string name = be(e)->read_mem_string(name_ptr, 2);
-    if (val_ptr) {
-        std::string val = be(e)->read_mem_string(val_ptr, 2);
-        a[0] = name;
-        a[1] = val;
-        we(e)->set_env(name, val);
-    }
-    return 1;
-}
-uint64_t Kernel32::GetCurrentDirectoryW(void* e, ArgList& a, void* c) {
-    uint32_t buf_sz = static_cast<uint32_t>(a[0]); uint64_t buf_ptr = a[1];
-    std::string dir = be(e)->get_config().current_dir;
-    if (buf_ptr && buf_sz > dir.size()) {
-        be(e)->write_mem_string(dir, buf_ptr, 2);
-        return static_cast<uint64_t>(dir.size());
-    }
-    return static_cast<uint64_t>(dir.size() + 1);
-}
-uint64_t Kernel32::ExpandEnvironmentStringsW(void* e, ArgList& a, void* c) {
-    uint64_t src_ptr = a[0]; uint64_t dst_ptr = a[1]; uint32_t dst_sz = static_cast<uint32_t>(a[2]);
-    if (!src_ptr) return 0;
-    std::string src = be(e)->read_mem_string(src_ptr, 2);
-    // Simple variable expansion: %VAR% -> value
-    std::string result = src; // For now, return as-is (no expansion)
-    if (dst_ptr && dst_sz > result.size()) {
-        be(e)->write_mem_string(result, dst_ptr, 2);
-    }
-    return static_cast<uint64_t>(result.size() + 1);
-}
 uint64_t Kernel32::Process32FirstW(void* e, ArgList& a, void* c) {
     return process32_impl(e, a, true);
 }
@@ -2788,11 +2577,6 @@ uint64_t Kernel32::Module32FirstW(void* e, ArgList& a, void* c) {
 }
 uint64_t Kernel32::Module32NextW(void* e, ArgList& a, void* c) {
     return module32_impl(e, a, false);
-}
-uint64_t Kernel32::OutputDebugStringW(void* e, ArgList& a, void* c) {
-    uint64_t str_ptr = a[0];
-    if (str_ptr) { std::string s = be(e)->read_mem_string(str_ptr, 2); (void)s; }
-    return 0;
 }
 // ==========================================
 //  Synchronization primitives (no-ops in emulator)
@@ -3121,7 +2905,7 @@ uint64_t Kernel32::FlsGetValue2(void* e, ArgList& a, void* c) {
 */
     (void)a; return 0x1000;
 }
-uint64_t Kernel32::FreeEnvironmentStringsA(void* e, ArgList& a, void* c) {
+uint64_t Kernel32::FreeEnvironmentStrings(void* e, ArgList& a, void* c) {
     uint64_t penv = a[0];
     if (penv) {
         try { mm(e)->mem_free(penv); } catch (...) {}
@@ -3129,13 +2913,6 @@ uint64_t Kernel32::FreeEnvironmentStringsA(void* e, ArgList& a, void* c) {
     return 1;
 }
 
-uint64_t Kernel32::FreeEnvironmentStringsW(void* e, ArgList& a, void* c) {
-    uint64_t penv = a[0];
-    if (penv) {
-        try { mm(e)->mem_free(penv); } catch (...) {}
-    }
-    return 1;
-}
 uint64_t Kernel32::FreeLibraryAndExitThread(void* e, ArgList& a, void* c) {
     (void)a; we(e)->on_run_complete(); return 0;
 }
@@ -3210,7 +2987,7 @@ uint64_t Kernel32::GetDateFormat(void* e, ArgList& a, void* c) {
     if (buf_ptr) be(e)->write_mem_string("2026-06-09", buf_ptr, 2);
     return 11; // strlen("2026-06-09") + 1 (including null)
 }
-uint64_t Kernel32::GetEnvironmentStringsA(void* e, ArgList& a, void* c) {
+uint64_t Kernel32::GetEnvironmentStrings(void* e, ArgList& a, void* c) {
     (void)a; (void)c;
     std::string out;
     auto env = we(e)->get_env();
@@ -3230,35 +3007,6 @@ uint64_t Kernel32::GetEnvironmentStringsA(void* e, ArgList& a, void* c) {
     return env_ptr;
 }
 
-uint64_t Kernel32::GetEnvironmentStringsW(void* e, ArgList& a, void* c) {
-    (void)a; (void)c;
-    std::string out;
-    auto env = we(e)->get_env();
-    for (const auto& kv : env) {
-        if (!out.empty()) out.push_back(' ');
-        out += kv.first;
-        out.push_back(' ');
-        out += kv.second;
-    }
-
-    // Allocate (len+1)*2 bytes for UTF-16LE encoded block
-    uint64_t env_ptr = mm(e)->mem_map((out.size() + 1) * 2, std::nullopt, 3, "api.environment.GetEnvironmentStringsW");
-    if (!env_ptr) return 0;
-
-    // Convert to UTF-16LE
-    std::vector<uint8_t> data;
-    data.reserve((out.size() + 1) * 2);
-    for (char ch : out) {
-        uint16_t wc = static_cast<uint8_t>(ch); // ASCII char  UTF-16LE code unit
-        data.push_back(static_cast<uint8_t>(wc & 0xFF));
-        data.push_back(static_cast<uint8_t>((wc >> 8) & 0xFF));
-    }
-    // Null terminator (2 bytes for wide char)
-    data.push_back(0);
-    data.push_back(0);
-    mm(e)->mem_write(env_ptr, data);
-    return env_ptr;
-}
 uint64_t Kernel32::GetErrorMode(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0; // SEM_FAILCRITICALERRORS = 0
 }
@@ -3330,7 +3078,7 @@ uint64_t Kernel32::GetLongPathName(void* e, ArgList& a, void* c) {
 uint64_t Kernel32::GetMailslotInfo(void* e, ArgList& a, void* c) {
     (void)a; w32(e)->set_last_error(6); return 0; // ERROR_INVALID_HANDLE
 }
-uint64_t Kernel32::GetModuleFileNameExA(void* e, ArgList& a, void* c) {
+uint64_t Kernel32::GetModuleFileNameEx(void* e, ArgList& a, void* c) {
     (void)c;
     // Python kernel32.py: GetModuleFileNameExA  get module path
     uint64_t hProcess = a[0]; uint64_t hModule = a[1];
@@ -3489,11 +3237,78 @@ uint64_t Kernel32::GetStartupInfo(void* e, ArgList& a, void* c) {
     }
     return 0;
 }
-uint64_t Kernel32::GetStringTypeA(void* e, ArgList& a, void* c) {
-    (void)a; return 1; // all character types
+uint64_t Kernel32::GetStringType(void* emu, ArgList& a, void* c) {
+    // Python kernel32.py: GetStringTypeA  delegate to GetStringTypeW (first arg is Locale, shift)
+    ArgList shifted = {a[1], a[2], a[3], a[4]};
+    return Kernel32::GetStringTypeW(emu, shifted, c);
 }
-uint64_t Kernel32::GetStringTypeW(void* e, ArgList& a, void* c) {
-    (void)a; return 1;
+uint64_t Kernel32::GetStringTypeW(void* emu, ArgList& a, void* c) {
+    // Python kernel32.py: GetStringTypeW  classify chars, write CT_CTYPE1 flags
+    uint32_t dwInfoType = static_cast<uint32_t>(a[0]);
+    uint64_t lpSrcStr   = a[1];
+    int      cchSrc     = static_cast<int>(a[2]);
+    uint64_t lpCharType = a[3];
+
+    if (dwInfoType != 1) return 0; // only CT_CTYPE1 supported
+    if (!lpSrcStr || cchSrc <= 0 || !lpCharType) return 0;
+
+    int cw = get_char_width(static_cast<ApiContext*>(c));
+    if (cw == 0) cw = 2;
+
+    // Character type flags (prefix to avoid Windows SDK macro conflicts)
+    const uint16_t CT1_UPPER = 0x0001, CT1_LOWER = 0x0002, CT1_DIGIT = 0x0004, CT1_SPACE = 0x0008;
+    const uint16_t CT1_PUNCT = 0x0010, CT1_CNTRL = 0x0020, CT1_BLANK = 0x0040, CT1_XDIGIT = 0x0080;
+    const uint16_t CT1_ALPHA = 0x0100, CT1_DEFINED = 0x0200;
+
+    auto raw = mm(emu)->mem_read(lpSrcStr, static_cast<size_t>(cchSrc * cw));
+    std::vector<uint8_t> output;
+    output.reserve(static_cast<size_t>(cchSrc) * 2);
+
+    for (int i = 0; i + cw <= static_cast<int>(raw.size()); i += cw) {
+        uint64_t wc = (cw == 2) ? read_le(raw, static_cast<size_t>(i), 2)
+                                : static_cast<uint64_t>(raw[static_cast<size_t>(i)]);
+        uint16_t ctype = 0;
+        // Punct
+        if ((wc > 0x20 && wc < 0x30) || (wc >= 0x3A && wc <= 0x40) ||
+            (wc >= 0x5B && wc <= 0x60) || (wc >= 0x7B && wc <= 0x7E))
+            ctype |= CT1_PUNCT;
+        // Control
+        if (wc < 0x20 || wc == 0x7F)
+            ctype |= CT1_CNTRL;
+        // Space (tab, newline, etc.)
+        if (wc >= 0x9 && wc <= 0xD)
+            ctype |= CT1_SPACE;
+        if (wc == 0x20)
+            ctype |= CT1_BLANK | CT1_SPACE;
+        // Upper
+        if (wc >= 0x41 && wc <= 0x5A)
+            ctype |= CT1_UPPER;
+        // Lower
+        if (wc >= 0x61 && wc <= 0x7A)
+            ctype |= CT1_LOWER;
+        // Digit
+        if (wc >= 0x30 && wc <= 0x39)
+            ctype |= CT1_DIGIT;
+        // XDigit
+        if ((wc >= 0x30 && wc <= 0x39) || (wc >= 0x41 && wc <= 0x46) || (wc >= 0x61 && wc <= 0x66))
+            ctype |= CT1_XDIGIT;
+        // Alpha
+        if (ctype & (CT1_UPPER | CT1_LOWER))
+            ctype |= CT1_ALPHA;
+        // Defined
+        if (wc != 0)
+            ctype |= CT1_DEFINED;
+
+        std::vector<uint8_t> b(2);
+        write_le(b, 0, ctype, 2);
+        output.insert(output.end(), b.begin(), b.end());
+    }
+
+    if (!output.empty()) {
+        mm(emu)->mem_write(lpCharType, output);
+        return 1;
+    }
+    return 0;
 }
 uint64_t Kernel32::GetSystemDefaultLCID(void* e, ArgList& a, void* c) {
     (void)e; (void)a; (void)c; return 0x0409; // en-US
@@ -3638,7 +3453,7 @@ uint64_t Kernel32::GetWindowsDirectory(void* e, ArgList& a, void* c) {
     if (buf && sz > dir.size()) be(e)->write_mem_string(dir, buf, 1);
     return static_cast<uint64_t>(dir.size());
 }
-uint64_t Kernel32::GlobalAddAtomA(void* e, ArgList& a, void* c) {
+uint64_t Kernel32::GlobalAddAtom(void* e, ArgList& a, void* c) {
     uint64_t str_ptr = a[0]; if (!str_ptr) return 0;
     std::string s = be(e)->read_mem_string(str_ptr, 1);
     static std::map<std::string, uint16_t> atoms; static uint16_t next = 0xC100;
@@ -3753,22 +3568,12 @@ uint64_t Kernel32::IsBadReadPtr(void* e, ArgList& a, void* c) {
         return 0; // FALSE = valid
     return 1; // TRUE = bad pointer
 }
-uint64_t Kernel32::IsBadStringPtrA(void* e, ArgList& a, void* c) {
+uint64_t Kernel32::IsBadStringPtr(void* e, ArgList& a, void* c) {
     (void)c;
     // Python kernel32.py: IsBadStringPtrA  check address range with char_width=1
     uint64_t lp = a[0]; uint64_t ucchMax = a[1];
     if (!lp || !ucchMax) return 1; // TRUE = bad pointer
     int cw = 1;
-    if (we(e)->is_address_valid(lp) && we(e)->is_address_valid(lp + cw * ucchMax - cw))
-        return 0; // FALSE = valid
-    return 1; // TRUE = bad pointer
-}
-uint64_t Kernel32::IsBadStringPtrW(void* e, ArgList& a, void* c) {
-    (void)c;
-    // Python kernel32.py: IsBadStringPtrW  check address range with char_width=2
-    uint64_t lp = a[0]; uint64_t ucchMax = a[1];
-    if (!lp || !ucchMax) return 1; // TRUE = bad pointer
-    int cw = 2;
     if (we(e)->is_address_valid(lp) && we(e)->is_address_valid(lp + cw * ucchMax - cw))
         return 0; // FALSE = valid
     return 1; // TRUE = bad pointer

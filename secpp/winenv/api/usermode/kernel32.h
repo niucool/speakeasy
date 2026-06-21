@@ -162,6 +162,117 @@
 #ifdef CopyFile
 #undef CopyFile
 #endif
+#ifdef CreateDirectory
+#undef CreateDirectory
+#endif
+#ifdef RemoveDirectory
+#undef RemoveDirectory
+#endif
+#ifdef GetFileAttributes
+#undef GetFileAttributes
+#endif
+#ifdef FindFirstFile
+#undef FindFirstFile
+#endif
+#ifdef FindNextFile
+#undef FindNextFile
+#endif
+#ifdef CreateFileMapping
+#undef CreateFileMapping
+#endif
+#ifdef GetDriveType
+#undef GetDriveType
+#endif
+#ifdef GetDiskFreeSpaceEx
+#undef GetDiskFreeSpaceEx
+#endif
+#ifdef GetModuleHandle
+#undef GetModuleHandle
+#endif
+#ifdef GetModuleFileName
+#undef GetModuleFileName
+#endif
+#ifdef GetModuleFileNameEx
+#undef GetModuleFileNameEx
+#endif
+#ifdef CreateEvent
+#undef CreateEvent
+#endif
+#ifdef CreateMutex
+#undef CreateMutex
+#endif
+#ifdef OpenMutex
+#undef OpenMutex
+#endif
+#ifdef CreateWaitableTimer
+#undef CreateWaitableTimer
+#endif
+#ifdef GetVersionEx
+#undef GetVersionEx
+#endif
+#ifdef GetComputerName
+#undef GetComputerName
+#endif
+#ifdef GetUserName
+#undef GetUserName
+#endif
+#ifdef lstrlen
+#undef lstrlen
+#endif
+#ifdef lstrcpy
+#undef lstrcpy
+#endif
+#ifdef lstrcat
+#undef lstrcat
+#endif
+#ifdef lstrcmp
+#undef lstrcmp
+#endif
+#ifdef OutputDebugString
+#undef OutputDebugString
+#endif
+#ifdef GetCommandLine
+#undef GetCommandLine
+#endif
+#ifdef GetEnvironmentVariable
+#undef GetEnvironmentVariable
+#endif
+#ifdef SetEnvironmentVariable
+#undef SetEnvironmentVariable
+#endif
+#ifdef GetCurrentDirectory
+#undef GetCurrentDirectory
+#endif
+#ifdef SetCurrentDirectory
+#undef SetCurrentDirectory
+#endif
+#ifdef ExpandEnvironmentStrings
+#undef ExpandEnvironmentStrings
+#endif
+#ifdef FreeEnvironmentStrings
+#undef FreeEnvironmentStrings
+#endif
+#ifdef GetEnvironmentStrings
+#undef GetEnvironmentStrings
+#endif
+#ifdef GetStringType
+#undef GetStringType
+#endif
+#ifdef IsBadStringPtr
+#undef IsBadStringPtr
+#endif
+#ifdef GlobalAddAtom
+#undef GlobalAddAtom
+#endif
+#ifdef Module32First
+#undef Module32First
+#endif
+#ifdef Module32Next
+#undef Module32Next
+#endif
+#ifdef DeleteFile
+#undef DeleteFile
+#endif
 
 #include <string>
 #include <vector>
@@ -181,18 +292,18 @@ class Kernel32 : public ApiHandler {
     // File I/O
     API_ENTRY(CreateFile, 7)
     API_ENTRY(ReadFile, 5)          API_ENTRY(WriteFile, 5)
-    API_ENTRY(CloseHandle, 1)       API_ENTRY(DeleteFileA, 1)
-    API_ENTRY(CopyFileA, 3)         API_ENTRY(CopyFileW, 3)
-    API_ENTRY(CreateDirectoryA, 2)  API_ENTRY(RemoveDirectoryA, 1)
-    API_ENTRY(GetFileAttributesA, 1) API_ENTRY(SetFilePointer, 4)
-    API_ENTRY(GetFileSize, 2)       API_ENTRY(FindFirstFileA, 2)
-    API_ENTRY(FindNextFileA, 2)     API_ENTRY(FindClose, 1)
-    API_ENTRY(CreateFileMappingA, 6) API_ENTRY(MapViewOfFile, 5)
+    API_ENTRY(CloseHandle, 1)       API_ENTRY(DeleteFile, 1)
+    API_ENTRY(CopyFile, 3)
+    API_ENTRY(CreateDirectory, 2)   API_ENTRY(RemoveDirectory, 1)
+    API_ENTRY(GetFileAttributes, 1) API_ENTRY(SetFilePointer, 4)
+    API_ENTRY(GetFileSize, 2)       API_ENTRY(FindFirstFile, 2)
+    API_ENTRY(FindNextFile, 2)      API_ENTRY(FindClose, 1)
+    API_ENTRY(CreateFileMapping, 6) API_ENTRY(MapViewOfFile, 5)
     API_ENTRY(UnmapViewOfFile, 1)   API_ENTRY(FlushFileBuffers, 1)
     API_ENTRY(SetEndOfFile, 1)      API_ENTRY(GetFileTime, 4)
     API_ENTRY(SetFileTime, 4)       API_ENTRY(GetFileInformationByHandle, 2)
-    API_ENTRY(DeviceIoControl, 8)   API_ENTRY(GetDriveTypeA, 1)
-    API_ENTRY(GetDiskFreeSpaceExA, 4)
+    API_ENTRY(DeviceIoControl, 8)   API_ENTRY(GetDriveType, 1)
+    API_ENTRY(GetDiskFreeSpaceEx, 4)
     // Memory
     API_ENTRY(VirtualAlloc, 4)      API_ENTRY(VirtualAllocEx, 5)
     API_ENTRY(VirtualFree, 3)       API_ENTRY(VirtualProtect, 4)
@@ -207,8 +318,8 @@ class Kernel32 : public ApiHandler {
     // DLL / Module
     API_ENTRY(LoadLibrary, 1)       API_ENTRY(LoadLibraryEx, 3)
     API_ENTRY(FreeLibrary, 1)
-    API_ENTRY(GetProcAddress, 2)    API_ENTRY(GetModuleHandleA, 1)
-    API_ENTRY(GetModuleHandleW, 1)  API_ENTRY(GetModuleFileNameA, 3)  API_ENTRY(GetModuleFileNameW, 3)
+    API_ENTRY(GetProcAddress, 2)    API_ENTRY(GetModuleHandle, 1)
+    API_ENTRY(GetModuleFileName, 3)
     API_ENTRY(DisableThreadLibraryCalls, 1)
     // Process / Thread
     API_ENTRY(CreateProcess, 10)    API_ENTRY(OpenProcess, 3)
@@ -224,45 +335,44 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(QueueUserAPC, 3)      API_ENTRY(WinExec, 2)
     API_ENTRY(SetThreadPriority, 2) API_ENTRY(GetThreadPriority, 1)
     // Sync
-    API_ENTRY(CreateEventA, 4)      API_ENTRY(CreateMutexA, 3)      API_ENTRY(CreateMutexW, 3)
-    API_ENTRY(OpenMutexA, 3)        API_ENTRY(ReleaseMutex, 1)
+    API_ENTRY(CreateEvent, 4)       API_ENTRY(CreateMutex, 3)
+    API_ENTRY(OpenMutex, 3)         API_ENTRY(ReleaseMutex, 1)
     API_ENTRY(SetEvent, 1)          API_ENTRY(ResetEvent, 1)
     API_ENTRY(WaitForSingleObject, 2) API_ENTRY(WaitForMultipleObjects, 4)
     API_ENTRY(InitializeCriticalSection, 1) API_ENTRY(DeleteCriticalSection, 1)
     API_ENTRY(EnterCriticalSection, 1) API_ENTRY(LeaveCriticalSection, 1)
-    API_ENTRY(CreateWaitableTimerA, 3) API_ENTRY(SetWaitableTimer, 6)
+    API_ENTRY(CreateWaitableTimer, 3) API_ENTRY(SetWaitableTimer, 6)
     API_ENTRY(CancelWaitableTimer, 1)
     // System
     API_ENTRY(GetTickCount, 0)      API_ENTRY(GetSystemInfo, 1)
-    API_ENTRY(GetVersion, 0)        API_ENTRY(GetVersionExA, 1)
+    API_ENTRY(GetVersion, 0)        API_ENTRY(GetVersionEx, 1)
     API_ENTRY(IsDebuggerPresent, 0) API_ENTRY(SetErrorMode, 1)
     API_ENTRY(GetSystemTime, 1)     API_ENTRY(GetLocalTime, 1)
     API_ENTRY(SystemTimeToFileTime, 2) API_ENTRY(FileTimeToSystemTime, 2)
     API_ENTRY(QueryPerformanceCounter, 1) API_ENTRY(QueryPerformanceFrequency, 1)
-    API_ENTRY(GetComputerNameA, 2)  API_ENTRY(GetUserNameA, 2)
+    API_ENTRY(GetComputerName, 2)   API_ENTRY(GetUserName, 2)
     API_ENTRY(SetUnhandledExceptionFilter, 1)
     // Error
     API_ENTRY(GetLastError, 0)      API_ENTRY(SetLastError, 1)
     API_ENTRY(RaiseException, 4)    API_ENTRY(UnhandledExceptionFilter, 1)
     // String / Encoding
-    API_ENTRY(lstrlenA, 1)          API_ENTRY(lstrcpyA, 2)
-    API_ENTRY(lstrcatA, 2)          API_ENTRY(lstrcmpA, 2)
+    API_ENTRY(lstrlen, 1)           API_ENTRY(lstrcpy, 2)
+    API_ENTRY(lstrcat, 2)           API_ENTRY(lstrcmp, 2)
     API_ENTRY(MultiByteToWideChar, 6) API_ENTRY(WideCharToMultiByte, 8)
-    API_ENTRY(GetCommandLineA, 0)   API_ENTRY(GetCommandLineW, 0)
+    API_ENTRY(GetCommandLine, 0)
     // Environment
-    API_ENTRY(GetEnvironmentVariableA, 3) API_ENTRY(SetEnvironmentVariableA, 2)
-    API_ENTRY(GetEnvironmentVariableW, 3)  API_ENTRY(SetEnvironmentVariableW, 2)
-    API_ENTRY(GetCurrentDirectoryA, 2) API_ENTRY(SetCurrentDirectoryA, 1)
-    API_ENTRY(ExpandEnvironmentStringsA, 3)
+    API_ENTRY(GetEnvironmentVariable, 3) API_ENTRY(SetEnvironmentVariable, 2)
+    API_ENTRY(GetCurrentDirectory, 2) API_ENTRY(SetCurrentDirectory, 1)
+    API_ENTRY(ExpandEnvironmentStrings, 3)
     // Toolhelp / Snapshot
     API_ENTRY(CreateToolhelp32Snapshot, 2)
     API_ENTRY(Process32First, 2)   API_ENTRY(Process32Next, 2)
     API_ENTRY(Thread32First, 2)     API_ENTRY(Thread32Next, 2)
-    API_ENTRY(Module32FirstA, 2)    API_ENTRY(Module32NextA, 2)
+    API_ENTRY(Module32First, 2)     API_ENTRY(Module32Next, 2)
     // Misc
     API_ENTRY(AllocConsole, 0)      API_ENTRY(FreeConsole, 0)
     API_ENTRY(GetConsoleMode, 2)    API_ENTRY(SetConsoleMode, 2)
-    API_ENTRY(OutputDebugStringA, 1) API_ENTRY(GetACP, 0)
+    API_ENTRY(OutputDebugString, 1) API_ENTRY(GetACP, 0)
     API_ENTRY(DecodePointer, 1)     API_ENTRY(EncodePointer, 1)
     API_ENTRY(IsProcessorFeaturePresent, 1)
     
@@ -293,24 +403,24 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(FindFirstVolume, 2)     API_ENTRY(FindNextVolume, 3)
     API_ENTRY(FindResource, 3)     API_ENTRY(FindResourceEx, 4)
     API_ENTRY(FindVolumeClose, 1)     API_ENTRY(FlsGetValue2, 1)
-    API_ENTRY(FreeEnvironmentStringsA, 1) API_ENTRY(FreeEnvironmentStringsW, 1)     API_ENTRY(FreeLibraryAndExitThread, 2)
+    API_ENTRY(FreeEnvironmentStrings, 1)  API_ENTRY(FreeLibraryAndExitThread, 2)
     API_ENTRY(FreeResource, 1)     API_ENTRY(GetAtomName, 3)
     API_ENTRY(GetBinaryType, 2)     API_ENTRY(GetCPInfo, 2)
     API_ENTRY(GetCommProperties, 2)     API_ENTRY(GetCommTimeouts, 2)
     API_ENTRY(GetComputerNameEx, 3)     API_ENTRY(GetConsoleTitle, 2)
     API_ENTRY(GetConsoleWindow, 0)     API_ENTRY(GetCurrentPackageId, 2)
-    API_ENTRY(GetDateFormat, 6)     API_ENTRY(GetEnvironmentStringsA, 0)  API_ENTRY(GetEnvironmentStringsW, 0)
+    API_ENTRY(GetDateFormat, 6)     API_ENTRY(GetEnvironmentStrings, 0)
     API_ENTRY(GetErrorMode, 0)     API_ENTRY(GetFileAttributesEx, 3)
     API_ENTRY(GetFileSizeEx, 2)     API_ENTRY(GetFullPathName, 4)
     API_ENTRY(GetHandleInformation, 2)     API_ENTRY(GetLocaleInfo, 4)
     API_ENTRY(GetLogicalDrives, 0)     API_ENTRY(GetLongPathName, 3)
-    API_ENTRY(GetMailslotInfo, 5)     API_ENTRY(GetModuleFileNameExA, 4)
+    API_ENTRY(GetMailslotInfo, 5)     API_ENTRY(GetModuleFileNameEx, 4)
     API_ENTRY(GetModuleHandleEx, 3)     API_ENTRY(GetNativeSystemInfo, 1)
     API_ENTRY(GetOEMCP, 0)     API_ENTRY(GetPhysicallyInstalledSystemMemory, 1)
     API_ENTRY(GetProcessAffinityMask, 3)     API_ENTRY(GetProcessHandleCount, 1)
     API_ENTRY(GetProcessVersion, 1)     API_ENTRY(GetProfileInt, 3)
     API_ENTRY(GetShortPathName, 3)     API_ENTRY(GetStartupInfo, 1)
-    API_ENTRY(GetStringTypeA, 5)     API_ENTRY(GetStringTypeW, 4)
+    API_ENTRY(GetStringType, 5)      API_ENTRY(GetStringTypeW, 4)
     API_ENTRY(GetSystemDefaultLCID, 0)     API_ENTRY(GetSystemDefaultLangID, 0)
     API_ENTRY(GetSystemDefaultUILanguage, 0)     API_ENTRY(GetSystemDirectory, 2)
     API_ENTRY(GetSystemFirmwareTable, 4)     API_ENTRY(GetSystemTimePreciseAsFileTime, 1)
@@ -322,7 +432,7 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(GetTimeZoneInformation, 1)     API_ENTRY(GetUserDefaultLCID, 0)
     API_ENTRY(GetUserDefaultLangID, 0)     API_ENTRY(GetUserDefaultUILanguage, 0)
     API_ENTRY(GetVolumeInformation, 8)     API_ENTRY(GetVolumePathNamesForVolumeName, 4)
-    API_ENTRY(GetWindowsDirectory, 2)     API_ENTRY(GlobalAddAtomA, 1)
+    API_ENTRY(GetWindowsDirectory, 2)     API_ENTRY(GlobalAddAtom, 1)
     API_ENTRY(GlobalFlags, 1)     API_ENTRY(GlobalHandle, 1)
     API_ENTRY(GlobalLock, 1)     API_ENTRY(GlobalMemoryStatus, 1)
     API_ENTRY(GlobalMemoryStatusEx, 1)     API_ENTRY(GlobalSize, 1)
@@ -331,7 +441,7 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(InitOnceBeginInitialize, 4)     API_ENTRY(InitializeConditionVariable, 1)
     API_ENTRY(InitializeCriticalSectionAndSpinCount, 2)     API_ENTRY(InitializeCriticalSectionEx, 3)
     API_ENTRY(InitializeSListHead, 1)     API_ENTRY(InitializeSRWLock, 1)
-    API_ENTRY(IsBadReadPtr, 2)     API_ENTRY(IsBadStringPtrA, 2)    API_ENTRY(IsBadStringPtrW, 2)
+    API_ENTRY(IsBadReadPtr, 2)     API_ENTRY(IsBadStringPtr, 2)
     API_ENTRY(IsBadWritePtr, 2)     API_ENTRY(IsDBCSLeadByte, 1)
     API_ENTRY(IsValidCodePage, 1)     API_ENTRY(IsValidLocale, 2)
     API_ENTRY(IsWow64Process, 2)     API_ENTRY(LCMapString, 6)
