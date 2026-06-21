@@ -965,6 +965,8 @@ std::vector<std::shared_ptr<File>> WindowsEmulator::get_dropped_files() {
 //  Process / thread 
 // Python winemu.py:635
 std::vector<std::shared_ptr<Process>>& WindowsEmulator::get_processes() {
+    if(processes_.size() <= 1)
+        init_processes(config_.processes);
     return processes_;
 }
 

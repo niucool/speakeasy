@@ -115,17 +115,12 @@ void Win32Emulator::remove_vectored_exception_handler(uint64_t handler) {
 
 // Python win32.py:135
 // def get_processes(self):
-std::vector<void*> Win32Emulator::get_processes() {
-    if (processes_.size() <= 1) {
-        init_processes(config_.processes);
-    }
-    std::vector<void*> result;
-    result.reserve(processes_.size());
-    for (const auto& proc : processes_) {
-        result.push_back(proc.get());
-    }
-    return result;
-}
+//std::vector<std::shared_ptr<Process>>& Win32Emulator::get_processes() {
+//    if (processes_.size() <= 1) {
+//        init_processes(config_.processes);
+//    }
+//    return processes_;
+//}
 
 // Python win32.py:140
 // def init_processes(self, processes_):

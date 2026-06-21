@@ -32,21 +32,29 @@ static std::vector<uint64_t> get_process_module_bases(void* e, std::shared_ptr<P
     auto module = proc->pe;
     if (module) {
         bases.push_back(module->base);
-    } else {
-        std::string p = proc->path;
-        if (!p.empty()) {
-            size_t slash = p.rfind('\\');
-            std::string mod_name;
-            if (slash != std::string::npos) mod_name = p.substr(slash + 1);
-            else mod_name = p;
-            size_t dot = mod_name.rfind('.');
-            if (dot != std::string::npos) mod_name = mod_name.substr(0, dot);
-            auto mod = we(e)->get_mod_by_name(mod_name);
-            if (mod) {
-                bases.push_back(mod->base);
-            }
+        return bases;
+    } 
+
+    std::string p = proc->path;
+    if (!p.empty()) {
+        size_t slash = p.rfind('\\');
+        std::string mod_name;
+        if (slash != std::string::npos) mod_name = p.substr(slash + 1);
+        else mod_name = p;
+        size_t dot = mod_name.rfind('.');
+        if (dot != std::string::npos) mod_name = mod_name.substr(0, dot);
+        auto mod = we(e)->get_mod_by_name(mod_name);
+        if (mod) {
+            bases.push_back(mod->base);
+            return bases;
         }
     }
+
+    uint64_t process_base = proc->base;
+    if (process_base) {
+        bases.push_back(process_base);
+    }
+
     return bases;
 }
 
@@ -84,7 +92,7 @@ uint64_t Psapi::EnumProcesses(void* e, ArgList& a, void* ctx) {
     uint64_t cb = a[1];
     uint64_t lpcbNeeded = a[2];
 
-    auto processes = we(e)->get_processes();
+    auto& processes = we(e)->get_processes();
     uint32_t count = static_cast<uint32_t>(processes.size());
 
     // Write needed size

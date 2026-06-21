@@ -225,7 +225,7 @@ public:
     // @abstractmethod
     // def init_processes(self, processes: list[Any]) -> None:
     //     """Initialize configured processes. Subclasses must implement."""
-    virtual void init_processes(const std::vector<void*>& lprocesses) {}
+    virtual void init_processes(const std::vector<speakeasy::ProcessEntry>& processes) = 0;
 
     //  Bootstrap 
     // Python winemu.py:155

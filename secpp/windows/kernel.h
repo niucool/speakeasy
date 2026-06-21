@@ -46,14 +46,6 @@ public:
     //  System 
     uint64_t get_system_time() const { return system_time_; }
     std::shared_ptr<Process> get_system_process();
-    std::vector<void*> get_processes() {
-        std::vector<void*> result;
-        result.reserve(processes_.size());
-        for (const auto& proc : processes_) {
-            result.push_back(proc.get());
-        }
-        return result;
-    }
     int get_current_irql() const { return irql_; }
     void set_current_irql(int irql) { irql_ = irql; }
 

@@ -124,14 +124,14 @@ public:
     
     // Python win32.py:135
     // def get_processes(self):
-    std::vector<void*> get_processes();
+//    std::vector<std::shared_ptr<Process>>& get_processes();
     
     // Python win32.py:140
     // def init_processes(self, processes):
     //     """
     //     Initialize configured processes set in the emulator config
     //     """
-    void init_processes(const std::vector<speakeasy::ProcessEntry>& processes);
+    virtual void init_processes(const std::vector<speakeasy::ProcessEntry>& processes) override;
     
     // Python win32.py:162
     // def load_module(self, path=None, data=None, filename=None):

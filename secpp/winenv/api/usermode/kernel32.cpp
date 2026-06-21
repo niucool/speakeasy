@@ -2343,7 +2343,7 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, ArgList& argv, void* ctx)
     uint64_t hnd = g_next_snap_handle++;
     std::unordered_map<uint32_t, SnapEntry> entries;
     if (flags & K32_TH32CS_SNAPPROCESS) {
-        auto procs = we(emu)->get_processes();
+        auto& procs = we(emu)->get_processes();
         SnapEntry se;
         se.index = 0;
         se.pid = 0;
@@ -2354,7 +2354,7 @@ uint64_t Kernel32::CreateToolhelp32Snapshot(void* emu, ArgList& argv, void* ctx)
     }
     if (flags & K32_TH32CS_SNAPTHREAD) {
         std::shared_ptr<Process> proc_obj = nullptr;
-        auto procs = we(emu)->get_processes();
+        auto& procs = we(emu)->get_processes();
         for (auto proc : procs) {
             if (proc && (pid == 0 || proc->get_pid() == static_cast<int>(pid))) {
                 proc_obj = proc;
@@ -3078,7 +3078,7 @@ uint64_t Kernel32::DuplicateHandle(void* e, ArgList& a, void* c) {
 }
 uint64_t Kernel32::EnumProcesses(void* e, ArgList& a, void* c) {
     uint64_t buf_ptr = a[0]; uint32_t buf_sz = static_cast<uint32_t>(a[1]); uint64_t ret_ptr = a[2];
-    auto procs = we(e)->get_processes();
+    auto& procs = we(e)->get_processes();
     uint32_t count = 0;
     for (size_t i = 0; i < procs.size() && (i + 1) * 4 <= buf_sz; i++) {
         uint32_t pid = static_cast<uint32_t>(procs[i]->get_pid());
