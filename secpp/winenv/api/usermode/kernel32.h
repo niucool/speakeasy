@@ -147,6 +147,21 @@
 #ifdef GlobalAddAtom
 #undef GlobalAddAtom
 #endif
+#ifdef LoadLibrary
+#undef LoadLibrary
+#endif
+#ifdef LoadLibraryEx
+#undef LoadLibraryEx
+#endif
+#ifdef CreateFile
+#undef CreateFile
+#endif
+#ifdef CreateProcess
+#undef CreateProcess
+#endif
+#ifdef CopyFile
+#undef CopyFile
+#endif
 
 #include <string>
 #include <vector>
@@ -164,7 +179,7 @@ namespace speakeasy { namespace api {
 class Kernel32 : public ApiHandler {
     API_LIST_BEGIN
     // File I/O
-    API_ENTRY(CreateFileA, 7)       API_ENTRY(CreateFileW, 7)
+    API_ENTRY(CreateFile, 7)
     API_ENTRY(ReadFile, 5)          API_ENTRY(WriteFile, 5)
     API_ENTRY(CloseHandle, 1)       API_ENTRY(DeleteFileA, 1)
     API_ENTRY(CopyFileA, 3)         API_ENTRY(CopyFileW, 3)
@@ -190,14 +205,13 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(LocalFree, 1)             API_ENTRY(RtlMoveMemory, 3)
         API_ENTRY(RtlZeroMemory, 2)
     // DLL / Module
-    API_ENTRY(LoadLibraryA, 1)      API_ENTRY(LoadLibraryW, 1)
-    API_ENTRY(LoadLibraryExA, 3)    API_ENTRY(LoadLibraryExW, 3)
+    API_ENTRY(LoadLibrary, 1)       API_ENTRY(LoadLibraryEx, 3)
     API_ENTRY(FreeLibrary, 1)
     API_ENTRY(GetProcAddress, 2)    API_ENTRY(GetModuleHandleA, 1)
     API_ENTRY(GetModuleHandleW, 1)  API_ENTRY(GetModuleFileNameA, 3)  API_ENTRY(GetModuleFileNameW, 3)
     API_ENTRY(DisableThreadLibraryCalls, 1)
     // Process / Thread
-    API_ENTRY(CreateProcessA, 10)   API_ENTRY(OpenProcess, 3)
+    API_ENTRY(CreateProcess, 10)    API_ENTRY(OpenProcess, 3)
     API_ENTRY(TerminateProcess, 2)  API_ENTRY(GetCurrentProcess, 0)
     API_ENTRY(GetCurrentProcessId, 0) API_ENTRY(ExitProcess, 1)
     API_ENTRY(CreateThread, 6)      API_ENTRY(CreateRemoteThread, 7)
@@ -361,7 +375,7 @@ class Kernel32 : public ApiHandler {
     API_ENTRY(GetCurrentDirectoryW, 2)  API_ENTRY(ExpandEnvironmentStringsW, 3)
     API_ENTRY(Process32FirstW, 2)  API_ENTRY(Process32NextW, 2)
     API_ENTRY(Module32FirstW, 2)  API_ENTRY(Module32NextW, 2)
-    API_ENTRY(OutputDebugStringW, 1)  API_ENTRY(CreateProcessW, 10)
+    API_ENTRY(OutputDebugStringW, 1)
     API_LIST_END
 
 public:

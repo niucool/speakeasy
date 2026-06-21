@@ -108,6 +108,21 @@ static inline int ptr_sz(void* e) {
 #ifdef InterlockedDecrement
 #undef InterlockedDecrement
 #endif
+#ifdef LoadLibrary
+#undef LoadLibrary
+#endif
+#ifdef LoadLibraryEx
+#undef LoadLibraryEx
+#endif
+#ifdef CreateFile
+#undef CreateFile
+#endif
+#ifdef CreateProcess
+#undef CreateProcess
+#endif
+#ifdef CopyFile
+#undef CopyFile
+#endif
 #ifdef InterlockedExchange
 #undef InterlockedExchange
 #endif
@@ -284,7 +299,7 @@ static uint64_t g_next_snap_handle = 0x2000;
 //  Constructor 
 Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Kernel32)
-    REG(Kernel32, CreateFileA, 7)    REG(Kernel32, CreateFileW, 7)
+    REG(Kernel32, CreateFile, 7)
     REG(Kernel32, ReadFile, 5)       REG(Kernel32, WriteFile, 5)
     REG(Kernel32, CloseHandle, 1)    REG(Kernel32, DeleteFileA, 1)     REG(Kernel32, DeleteFileW, 1)
     REG(Kernel32, CopyFileA, 3)      REG(Kernel32, CopyFileW, 3)
@@ -308,13 +323,12 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, GlobalFree, 1)     REG(Kernel32, LocalAlloc, 2)
     REG(Kernel32, LocalFree, 1)      REG(Kernel32, RtlMoveMemory, 3)
     REG(Kernel32, RtlZeroMemory, 2)
-    REG(Kernel32, LoadLibraryA, 1)   REG(Kernel32, LoadLibraryW, 1)
-    REG(Kernel32, LoadLibraryExA, 3) REG(Kernel32, LoadLibraryExW, 3)
+    REG(Kernel32, LoadLibrary, 1)    REG(Kernel32, LoadLibraryEx, 3)
     REG(Kernel32, FreeLibrary, 1)
     REG(Kernel32, GetProcAddress, 2) REG(Kernel32, GetModuleHandleA, 1)
     REG(Kernel32, GetModuleHandleW, 1) REG(Kernel32, GetModuleFileNameA, 3) REG(Kernel32, GetModuleFileNameW, 3)
     REG(Kernel32, DisableThreadLibraryCalls, 1)
-    REG(Kernel32, CreateProcessA, 10) REG(Kernel32, CreateProcessW, 10) REG(Kernel32, OpenProcess, 3)
+    REG(Kernel32, CreateProcess, 10)  REG(Kernel32, OpenProcess, 3)
     REG(Kernel32, TerminateProcess, 2) REG(Kernel32, GetCurrentProcess, 0)
     REG(Kernel32, GetCurrentProcessId, 0) REG(Kernel32, ExitProcess, 1)
     REG(Kernel32, CreateThread, 6)   REG(Kernel32, CreateRemoteThread, 7)
@@ -452,9 +466,7 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
     REG(Kernel32, Wow64DisableWow64FsRedirection, 1)     REG(Kernel32, Wow64RevertWow64FsRedirection, 1)
     REG(Kernel32, _lclose, 1)     REG(Kernel32, _llseek, 3)
     REG(Kernel32, _lopen, 2)     REG(Kernel32, lstrcmpi, 2)
-    REG(Kernel32, lstrcmpiA, 2)     REG(Kernel32, lstrcmpiW, 2)
     REG(Kernel32, lstrcpyn, 3)
-    REG(Kernel32, lstrcpynA, 3)     REG(Kernel32, lstrcpynW, 3)
     REG(Kernel32, InterlockedExchangeAdd, 2)
     END_API_TABLE
 }
@@ -463,17 +475,21 @@ Kernel32::Kernel32(void* emu) : ApiHandler(emu) {
 //  FILE I/O APIs
 // 
 
-//  Common implementation for CreateFileA / CreateFileW.
-//  The only difference between A and W is how the filename string is decoded.
-static uint64_t CreateFile_impl(void* emu, const std::string& target,
-                                 uint32_t access, uint32_t share, uint64_t sec_attr,
-                                 uint32_t disp, uint32_t flags, uint64_t template_file) {
-    (void)access; (void)share; (void)sec_attr; (void)flags; (void)template_file;
+uint64_t Kernel32::CreateFile(void* emu, ArgList& a, void* c) {
+    // Python kernel32.py: CreateFile  get_char_width, read name, open/create
+    uint64_t fname_ptr = a[0];
+    if (!fname_ptr) return K32_INVALID_HANDLE;
+    int cw = get_char_width(static_cast<ApiContext*>(c));
+    std::string target = be(emu)->read_mem_string(fname_ptr, cw);
+    a[0] = target;
+    uint32_t access = static_cast<uint32_t>(a[1]);
+    uint32_t share  = static_cast<uint32_t>(a[2]);
+    uint32_t disp   = static_cast<uint32_t>(a[4]);
+    (void)access; (void)share; (void)a[3]; (void)a[5]; (void)a[6];
 
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     void* fobj = nullptr;
     bool exists = we(emu)->does_file_exist(target);
-
     if (exists) {
         if (disp == K32_CREATE_ALWAYS) {
             w32(emu)->set_last_error(K32_ERR_ALREADY_EXISTS);
@@ -501,24 +517,6 @@ static uint64_t CreateFile_impl(void* emu, const std::string& target,
         }
     }
     return reinterpret_cast<uint64_t>(fobj);
-}
-
-uint64_t Kernel32::CreateFileA(void* emu, ArgList& argv, void* ctx) {
-    if (!argv[0]) return K32_INVALID_HANDLE;
-    return CreateFile_impl(emu,
-        be(emu)->read_mem_string(argv[0], 1),               // filename (ANSI)
-        static_cast<uint32_t>(argv[1]), static_cast<uint32_t>(argv[2]),
-        argv[3], static_cast<uint32_t>(argv[4]),
-        static_cast<uint32_t>(argv[5]), argv[6]);
-}
-
-uint64_t Kernel32::CreateFileW(void* emu, ArgList& argv, void* ctx) {
-    if (!argv[0]) return K32_INVALID_HANDLE;
-    return CreateFile_impl(emu,
-        be(emu)->read_mem_string(argv[0], 2),               // filename (UTF-16LE)
-        static_cast<uint32_t>(argv[1]), static_cast<uint32_t>(argv[2]),
-        argv[3], static_cast<uint32_t>(argv[4]),
-        static_cast<uint32_t>(argv[5]), argv[6]);
 }
 
 uint64_t Kernel32::ReadFile(void* emu, ArgList& argv, void* ctx) {
@@ -1119,40 +1117,39 @@ uint64_t Kernel32::RtlZeroMemory(void* emu, ArgList& argv, void* ctx) {
 //  DLL / MODULE APIs
 // 
 
-static uint64_t do_load_library(void* emu, uint64_t name_ptr, int cw) {
+uint64_t Kernel32::LoadLibrary(void* emu, ArgList& a, void* c) {
+    // Python kernel32.py: LoadLibrary  get_char_width, update argv[0]
+    int cw = get_char_width(static_cast<ApiContext*>(c));
+    uint64_t name_ptr = a[0];
     if (!name_ptr) return 0;
     std::string lib = be(emu)->read_mem_string(name_ptr, cw);
+    a[0] = lib;
     if (lib.empty()) return 0;
     lib = speakeasy::to_lower(lib);
     auto dot = lib.rfind(".dll");
-    if (dot != std::string::npos) 
-        lib = lib.substr(0, dot);
+    if (dot != std::string::npos) lib = lib.substr(0, dot);
     lib = normalize_dll_name(lib);
     void* mod = we(emu)->load_library(lib);
-    if (!mod) {
-        w32(emu)->set_last_error(K32_ERR_MOD_NOT_FOUND);
-        return 0;
-    }
+    if (!mod) { w32(emu)->set_last_error(K32_ERR_MOD_NOT_FOUND); return 0; }
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return reinterpret_cast<uint64_t>(mod);
 }
 
-uint64_t Kernel32::LoadLibraryA(void* emu, ArgList& argv, void* ctx) {
-    return do_load_library(emu, argv[0], 1);
-}
-
-uint64_t Kernel32::LoadLibraryW(void* emu, ArgList& argv, void* ctx) {
-    return do_load_library(emu, argv[0], 2);
-}
-
-uint64_t Kernel32::LoadLibraryExA(void* emu, ArgList& argv, void* ctx) {
-    uint64_t lib_name = argv[0];
-    return do_load_library(emu, lib_name, 1);
-}
-
-uint64_t Kernel32::LoadLibraryExW(void* emu, ArgList& argv, void* ctx) {
-    uint64_t lib_name = argv[0];
-    return do_load_library(emu, lib_name, 2);
+uint64_t Kernel32::LoadLibraryEx(void* emu, ArgList& a, void* c) {
+    int cw = get_char_width(static_cast<ApiContext*>(c));
+    uint64_t name_ptr = a[0];
+    if (!name_ptr) return 0;
+    std::string lib = be(emu)->read_mem_string(name_ptr, cw);
+    a[0] = lib;
+    if (lib.empty()) return 0;
+    lib = speakeasy::to_lower(lib);
+    auto dot = lib.rfind(".dll");
+    if (dot != std::string::npos) lib = lib.substr(0, dot);
+    lib = normalize_dll_name(lib);
+    void* mod = we(emu)->load_library(lib);
+    if (!mod) { w32(emu)->set_last_error(K32_ERR_MOD_NOT_FOUND); return 0; }
+    w32(emu)->set_last_error(K32_ERR_SUCCESS);
+    return reinterpret_cast<uint64_t>(mod);
 }
 
 uint64_t Kernel32::FreeLibrary(void* emu, ArgList& argv, void* ctx) {
@@ -1344,33 +1341,22 @@ uint64_t Kernel32::DisableThreadLibraryCalls(void* emu, ArgList& argv, void* ctx
 //  PROCESS / THREAD APIs
 // 
 
-// Shared implementation for CreateProcessA and CreateProcessW.
-// The caller has already read the app/cmd strings (with the correct char width)
-// and optionally resolved the creation flags string for logging.
-static uint64_t CreateProcess_impl(void* emu,
-                                    const std::string& app_str,
-                                    const std::string& cmd_str,
-                                    uint32_t flags,
-                                    uint64_t pi_ptr) {
+uint64_t Kernel32::CreateProcess(void* emu, ArgList& a, void* c) {
+    // Python kernel32.py: CreateProcess  get_char_width, update argv[0]/argv[1]
+    int cw = get_char_width(static_cast<ApiContext*>(c));
+    uint32_t flags = static_cast<uint32_t>(a[5]);
+    uint64_t pi_ptr = a[9];
+    std::string app_str, cmd_str;
+    if (a[0]) { app_str = be(emu)->read_mem_string(a[0], cw); a[0] = app_str; }
+    if (a[1]) { cmd_str = be(emu)->read_mem_string(a[1], cw); a[1] = cmd_str; }
+    (void)a[2]; (void)a[3]; (void)a[4]; (void)a[6]; (void)a[7]; (void)a[8];
+
     std::shared_ptr<Process> proc = we(emu)->create_process(app_str, cmd_str, nullptr, true);
-    if (!proc) {
-        w32(emu)->set_last_error(K32_ERR_FILE_NOT_FOUND);
-        return 0;
-    }
-
-    // Handle CREATE_SUSPENDED (0x00000004)
+    if (!proc) { w32(emu)->set_last_error(K32_ERR_FILE_NOT_FOUND); return 0; }
     auto& threads = proc->threads;
-    if ((flags & 0x00000004) && !threads.empty()) {
-        threads[0]->set_suspend_count(1);
-    }
-
+    if ((flags & 0x00000004) && !threads.empty()) threads[0]->set_suspend_count(1);
     int proc_handle = we(emu)->get_object_handle(proc);
-    int thread_handle = 0;
-    if (!threads.empty()) {
-        thread_handle = we(emu)->get_object_handle(threads[0]);
-    }
-
-    // Write PROCESS_INFORMATION back to guest memory
+    int thread_handle = (!threads.empty()) ? we(emu)->get_object_handle(threads[0]) : 0;
     if (pi_ptr) {
         int ps = ptr_sz(emu);
         int tid = (!threads.empty()) ? threads[0]->get_id() : 0;
@@ -1390,30 +1376,8 @@ static uint64_t CreateProcess_impl(void* emu,
             mm(emu)->mem_write(pi_ptr, pi.get_bytes());
         }
     }
-
     w32(emu)->set_last_error(K32_ERR_SUCCESS);
     return 1;
-}
-
-uint64_t Kernel32::CreateProcessA(void* emu, ArgList& argv, void* ctx) {
-    uint64_t app_ptr = argv[0];
-    uint64_t cmd_ptr = argv[1];
-    uint64_t proc_attrs = argv[2];
-    uint64_t thread_attrs = argv[3];
-    uint32_t inherit = static_cast<uint32_t>(argv[4]);
-    uint32_t flags = static_cast<uint32_t>(argv[5]);
-    uint64_t env_ptr = argv[6];
-    uint64_t cd_ptr = argv[7];
-    uint64_t si_ptr = argv[8];
-    uint64_t pi_ptr = argv[9];
-    (void)proc_attrs; (void)thread_attrs; (void)inherit; (void)env_ptr; (void)cd_ptr; (void)si_ptr;
-
-    std::string app_str;
-    std::string cmd_str;
-    if (app_ptr) app_str = be(emu)->read_mem_string(app_ptr, 1);
-    if (cmd_ptr) cmd_str = be(emu)->read_mem_string(cmd_ptr, 1);
-
-    return CreateProcess_impl(emu, app_str, cmd_str, flags, pi_ptr);
 }
 
 uint64_t Kernel32::OpenProcess(void* emu, ArgList& argv, void* ctx) {
@@ -2830,27 +2794,6 @@ uint64_t Kernel32::OutputDebugStringW(void* e, ArgList& a, void* c) {
     if (str_ptr) { std::string s = be(e)->read_mem_string(str_ptr, 2); (void)s; }
     return 0;
 }
-uint64_t Kernel32::CreateProcessW(void* e, ArgList& a, void* c) {
-    uint64_t app_ptr = a[0];
-    uint64_t cmd_ptr = a[1];
-    uint64_t proc_attrs = a[2];
-    uint64_t thread_attrs = a[3];
-    uint32_t inherit = static_cast<uint32_t>(a[4]);
-    uint32_t flags = static_cast<uint32_t>(a[5]);
-    uint64_t env_ptr = a[6];
-    uint64_t cd_ptr = a[7];
-    uint64_t si_ptr = a[8];
-    uint64_t pi_ptr = a[9];
-    (void)proc_attrs; (void)thread_attrs; (void)inherit; (void)env_ptr; (void)cd_ptr; (void)si_ptr;
-
-    std::string app_str;
-    std::string cmd_str;
-    if (app_ptr) app_str = be(e)->read_mem_string(app_ptr, 2);
-    if (cmd_ptr) cmd_str = be(e)->read_mem_string(cmd_ptr, 2);
-
-    return CreateProcess_impl(e, app_str, cmd_str, flags, pi_ptr);
-}
-
 // ==========================================
 //  Synchronization primitives (no-ops in emulator)
 // ==========================================
@@ -2997,26 +2940,9 @@ uint64_t Kernel32::CreatePipe(void* e, ArgList& a, void* c) {
     return 1;
 }
 uint64_t Kernel32::CreateProcessInternal(void* e, ArgList& a, void* c) {
-    // CreateProcessInternal has 12 args with Reserved1/Reserved2 bookending
-    // the 10 standard CreateProcess params. Delegate to the shared impl.
-    uint64_t app_ptr = a[1];      // lpApplicationName
-    uint64_t cmd_ptr = a[2];      // lpCommandLine
-    uint64_t proc_attrs = a[3];   // lpProcessAttributes
-    uint64_t thread_attrs = a[4]; // lpThreadAttributes
-    uint32_t inherit = static_cast<uint32_t>(a[5]);
-    uint32_t flags = static_cast<uint32_t>(a[6]);
-    uint64_t env_ptr = a[7];
-    uint64_t cd_ptr = a[8];
-    uint64_t si_ptr = a[9];
-    uint64_t pi_ptr = a[10];      // lpProcessInformation
-    (void)proc_attrs; (void)thread_attrs; (void)inherit; (void)env_ptr; (void)cd_ptr; (void)si_ptr;
-
-    std::string app_str;
-    std::string cmd_str;
-    if (app_ptr) app_str = be(e)->read_mem_string(app_ptr, 1);
-    if (cmd_ptr) cmd_str = be(e)->read_mem_string(cmd_ptr, 1);
-
-    return CreateProcess_impl(e, app_str, cmd_str, flags, pi_ptr);
+    // Python kernel32.py: CreateProcessInternal  delegate to CreateProcess (args shifted by 1)
+    ArgList shifted = {a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10]};
+    return Kernel32::CreateProcess(e, shifted, c);
 }
 uint64_t Kernel32::CreateSemaphoreW(void* e, ArgList& a, void* c) {
     // Python kernel32.py:3999-4046  CreateSemaphoreW
@@ -4430,60 +4356,33 @@ uint64_t Kernel32::InterlockedCompareExchange(void* emu, ArgList& argv, void* ct
 //  STRING UTILITIES
 // 
 
-static uint64_t lstrcmpi_impl(void* emu, const ArgList& argv, bool is_wide) {
-    uint64_t str1_ptr = argv[0];
-    uint64_t str2_ptr = argv[1];
-    if (!str1_ptr || !str2_ptr) return 1;
-    int cw = is_wide ? 2 : 1;
-    std::string s1 = be(emu)->read_mem_string(str1_ptr, cw);
-    std::string s2 = be(emu)->read_mem_string(str2_ptr, cw);
-    std::string s1_lower = s1;
-    std::string s2_lower = s2;
-    std::transform(s1_lower.begin(), s1_lower.end(), s1_lower.begin(), ::tolower);
-    std::transform(s2_lower.begin(), s2_lower.end(), s2_lower.begin(), ::tolower);
-    if (s1_lower == s2_lower) {
-        return 0;
-    }
-    return (s1_lower < s2_lower) ? -1 : 1;
+uint64_t Kernel32::lstrcmpi(void* emu, ArgList& a, void* c) {
+    // Python kernel32.py: lstrcmpi  get_char_width, update argv
+    int cw = get_char_width(static_cast<ApiContext*>(c));
+    uint64_t s1_ptr = a[0], s2_ptr = a[1];
+    if (!s1_ptr || !s2_ptr) return 1;
+    std::string s1 = be(emu)->read_mem_string(s1_ptr, cw);
+    std::string s2 = be(emu)->read_mem_string(s2_ptr, cw);
+    a[0] = s1; a[1] = s2;
+    std::string s1l = s1, s2l = s2;
+    std::transform(s1l.begin(), s1l.end(), s1l.begin(), ::tolower);
+    std::transform(s2l.begin(), s2l.end(), s2l.begin(), ::tolower);
+    if (s1l == s2l) return 0;
+    return (s1l < s2l) ? -1 : 1;
 }
 
-uint64_t Kernel32::lstrcmpi(void* emu, ArgList& argv, void* ctx) {
-    return lstrcmpi_impl(emu, argv, false);
-}
-
-uint64_t Kernel32::lstrcmpiA(void* emu, ArgList& argv, void* ctx) {
-    return lstrcmpi_impl(emu, argv, false);
-}
-
-uint64_t Kernel32::lstrcmpiW(void* emu, ArgList& argv, void* ctx) {
-    return lstrcmpi_impl(emu, argv, true);
-}
-
-static uint64_t lstrcpyn_impl(void* emu, const ArgList& argv, bool is_wide) {
-    uint64_t dst = argv[0];
-    uint64_t src = argv[1];
-    int max_len = static_cast<int>(argv[2]);
-    if (!dst || !src || max_len <= 0) return dst;
-    int cw = is_wide ? 2 : 1;
-    std::string s = be(emu)->read_mem_string(src, cw);
-    if (static_cast<int>(s.size()) >= max_len) {
-        s = s.substr(0, max_len - 1);
-    }
+uint64_t Kernel32::lstrcpyn(void* emu, ArgList& a, void* c) {
+    // Python kernel32.py: lstrcpyn  get_char_width, update argv
+    int cw = get_char_width(static_cast<ApiContext*>(c));
+    uint64_t dst = a[0], src_ptr = a[1];
+    int max_len = static_cast<int>(a[2]);
+    if (!dst || !src_ptr || max_len <= 0) return dst;
+    std::string s = be(emu)->read_mem_string(src_ptr, cw);
+    a[1] = s;
+    if (static_cast<int>(s.size()) >= max_len) s = s.substr(0, max_len - 1);
     s.push_back('\0');
     be(emu)->write_mem_string(s, dst, cw);
     return dst;
-}
-
-uint64_t Kernel32::lstrcpyn(void* emu, ArgList& argv, void* ctx) {
-    return lstrcpyn_impl(emu, argv, false);
-}
-
-uint64_t Kernel32::lstrcpynA(void* emu, ArgList& argv, void* ctx) {
-    return lstrcpyn_impl(emu, argv, false);
-}
-
-uint64_t Kernel32::lstrcpynW(void* emu, ArgList& argv, void* ctx) {
-    return lstrcpyn_impl(emu, argv, true);
 }
 
 }} // namespaces
