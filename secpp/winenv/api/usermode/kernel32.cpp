@@ -1275,6 +1275,9 @@ uint64_t Kernel32::GetProcAddress(void* emu, ArgList& argv, void* ctx) {
     if (proc_name_ptr) {
         try {
             proc = be(emu)->read_mem_string(proc_name_ptr, 1);
+            if ((proc_name_ptr < 0xFFFF) && (be(emu)->get_uc_errno() != 0)) {
+                proc = "ordinal_" + std::to_string(proc_name_ptr);
+            }
         } catch (...) {
             if (proc_name_ptr < 0xFFFF) {
                 proc = "ordinal_" + std::to_string(proc_name_ptr);

@@ -153,6 +153,9 @@ void EmuEngine::init_engine(int eng_arch, int mode) {
     }
 }
 
+uc_err EmuEngine::get_uc_errno() {
+    return uc_errno(emu);
+}
 /**
  * Allocate memory in the cpu engine
  */

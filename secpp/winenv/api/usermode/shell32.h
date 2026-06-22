@@ -4,6 +4,36 @@
 #include <string>
 #include <vector>
 #include "../api.h"
+
+// Undef Windows SDK A/W macros
+#ifdef ShellExecute
+#undef ShellExecute
+#endif
+#ifdef ShellExecuteEx
+#undef ShellExecuteEx
+#endif
+#ifdef SHGetFolderPath
+#undef SHGetFolderPath
+#endif
+#ifdef SHGetSpecialFolderPath
+#undef SHGetSpecialFolderPath
+#endif
+#ifdef SHCreateDirectoryEx
+#undef SHCreateDirectoryEx
+#endif
+#ifdef SHFileOperation
+#undef SHFileOperation
+#endif
+#ifdef SHGetFileInfo
+#undef SHGetFileInfo
+#endif
+#ifdef ExtractIcon
+#undef ExtractIcon
+#endif
+#ifdef CommandLineToArgv
+#undef CommandLineToArgv
+#endif
+
 namespace speakeasy { namespace api {
 class Shell32 : public ApiHandler {
 public:
@@ -12,18 +42,21 @@ public:
     const std::vector<ApiEntry>& get_apis() const override {return apis_;}
 private:
     std::vector<ApiEntry> apis_;
-    static uint64_t ShellExecuteA(void*, ArgList&, void* ctx);
-    static uint64_t ShellExecuteW(void*, ArgList&, void* ctx);
-    static uint64_t ShellExecuteExA(void*, ArgList&, void* ctx);
-    static uint64_t SHGetFolderPathA(void*, ArgList&, void* ctx);
-    static uint64_t SHGetFolderPathW(void*, ArgList&, void* ctx);
-    static uint64_t SHGetSpecialFolderPathA(void*, ArgList&, void* ctx);
-    static uint64_t SHFileOperationA(void*, ArgList&, void* ctx);
-    static uint64_t ExtractIconExW(void*, ArgList&, void* ctx);
-    static uint64_t SHGetFileInfoA(void*, ArgList&, void* ctx);
-    static uint64_t SHGetFileInfoW(void*, ArgList&, void* ctx);
-    static uint64_t SHCreateDirectoryExA(void*, ArgList&, void* ctx);
-    static uint64_t stub(void*, ArgList&, void* ctx);
+    // A/W merged — use get_char_width(ctx)
+    static uint64_t ShellExecute(void*, ArgList&, void* ctx);
+    static uint64_t ShellExecuteEx(void*, ArgList&, void* ctx);
+    static uint64_t SHGetFolderPath(void*, ArgList&, void* ctx);
+    static uint64_t SHGetSpecialFolderPath(void*, ArgList&, void* ctx);
+    static uint64_t SHCreateDirectoryEx(void*, ArgList&, void* ctx);
+    static uint64_t SHFileOperation(void*, ArgList&, void* ctx);
+    static uint64_t ExtractIconEx(void*, ArgList&, void* ctx);
+    static uint64_t ExtractIcon(void*, ArgList&, void* ctx);
+    static uint64_t SHGetFileInfo(void*, ArgList&, void* ctx);
+    // Python functions previously missing
+    static uint64_t SHChangeNotify(void*, ArgList&, void* ctx);
+    static uint64_t IsUserAnAdmin(void*, ArgList&, void* ctx);
+    static uint64_t SHGetMalloc(void*, ArgList&, void* ctx);
+    static uint64_t CommandLineToArgv(void*, ArgList&, void* ctx);
 };
 }}
 #endif

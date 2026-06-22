@@ -18,7 +18,7 @@ MemMap::MemMap(uint64_t base, uint64_t size, const std::string& tag, uint32_t pr
 
     std::string base_addr_tag = std::format(".0x{:x}", base);
     std::string new_tag = tag;
-    
+
     if (!tag.empty() && tag.find(base_addr_tag) == std::string::npos) {
         new_tag += base_addr_tag;
     }
@@ -139,7 +139,7 @@ bool MemMap::operator!=(const MemMap& other) const {
  * Constructor for MemoryManager
  */
 MemoryManager::MemoryManager() 
-    : block_base_(0), block_size_(0), block_offset_(0), page_size_(0x1000), 
+    : block_base_(0), block_size_(0), block_offset_(0), page_size_(0x1000), uc_err_code_(UC_ERR_OK),
       keep_memory_on_free_(false), emu_eng_(nullptr), curr_process_(nullptr) {
 }
 
@@ -333,6 +333,14 @@ void MemoryManager::mem_unmap(uint64_t base, uint64_t size) {
     }
 }
 
+uc_err MemoryManager::get_uc_errno() {
+    //if (this->emu_eng_) {
+    //    return this->emu_eng_->get_uc_errno();
+    //}
+    //return UC_ERR_OK;
+    return uc_err_code_;
+}
+
 /**
  * Write bytes into the emulated address space
  */
@@ -357,7 +365,7 @@ std::vector<uint8_t> MemoryManager::mem_read(uint64_t addr, uint64_t size) {
 
 void MemoryManager::mem_read(uint64_t addr, void* out_data, size_t size) {
     if (this->emu_eng_) {
-        this->emu_eng_->mem_read(addr, out_data, size);
+        uc_err_code_ = this->emu_eng_->mem_read(addr, out_data, size);
     }
 }
 

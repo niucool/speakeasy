@@ -346,8 +346,10 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
         } else {
             for (const auto& f : new_funcs) {
                 std::string fn = f.second;
-                expanded.push_back({0, fn + "A"});
-                expanded.push_back({0, fn + "W"});
+                if (!fn.starts_with("ordinal_")) {
+                    expanded.push_back({ 0, fn + "A" });
+                    expanded.push_back({ 0, fn + "W" });
+                }
             }
         }
         

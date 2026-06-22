@@ -1971,7 +1971,7 @@ class Kernel32(api.ApiHandler):
             try:
                 proc = self.read_mem_string(proc_name, 1)
                 argv[1] = proc
-            except Exception:
+            except Exception as e:
                 if isinstance(proc_name, int) and proc_name < 0xFFFF:
                     # Import is most likely an ordinal
                     proc = f"ordinal_{proc_name}"

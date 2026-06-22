@@ -123,6 +123,7 @@ protected:
     uint64_t block_offset_;
     uint64_t page_size_;
     bool keep_memory_on_free_;
+    uc_err uc_err_code_;
 
     // Assuming these would be defined elsewhere
     std::shared_ptr<EmuEngine> emu_eng_;
@@ -156,6 +157,7 @@ public:
     MemoryManager();
     virtual ~MemoryManager();
 
+    uc_err get_uc_errno();
     /**
      * Map a block of memory with specified permissions and a tag
      */

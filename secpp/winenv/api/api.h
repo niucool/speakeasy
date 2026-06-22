@@ -305,6 +305,9 @@ private: \
 #define REG2(klass, name, argc) \
     {#name, argc, speakeasy::arch::CALL_CONV_CDECL, klass::name},
 
+#define REG_ORD(klass, name, argc, ordinal) \
+    {"ordinal_"#ordinal, argc, speakeasy::arch::CALL_CONV_STDCALL, klass::name},
+
 /// End the API table initialization.
 #define END_API_TABLE \
     };

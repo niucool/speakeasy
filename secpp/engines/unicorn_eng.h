@@ -157,6 +157,8 @@ public:
      */
     uc_engine* get_engine() const { return emu; }
 
+    uc_err get_uc_errno();
+
 private:
     /**
      * Convert seconds to microseconds
