@@ -5,9 +5,31 @@
 
 ## [Unreleased]
 
-### 2026-06-19 — Profiler events overhaul, ntdll cleanup, struct de-hardcoding, kernel32 porting
+### 2026-06-20 — kernel32 A/W collapse, advapi32 full port, get_char_width integration
+
+#### Added
+- **advapi32 missing functions ported** (4 functions): `RegOpenKey`, `RegEnumKey`, `RegEnumKeyEx`, `RegGetValue`, `RegQueryInfoKey` — registry enumeration, value retrieval, and key info query fully functional with `get_char_width` and proper `cw` string encoding
+- **advapi32 stubs rewritten** (4 functions): `LookupAccountName` (SID struct write, domain/peUse output), `LookupAccountSid` (name/domain write with `cw`), `EnumServicesStatus` (service type/state enum resolution, argv updates), `QueryServiceConfig` (QUERY_SERVICE_CONFIG struct write)
+- **advapi32 crypto argv updates**: `CryptCreateHash` (alg name resolution: SHA1/SHA256/SHA384/SHA512/MD5), `CryptGetHashParam` (param name: HP_ALGID/HP_HASHVAL/HP_HASHSIZE/HP_HMAC_INFO)
+- **kernel32 A/W function collapse** (38 functions): All `xxxA`/`xxxW` pairs merged into single `xxx` functions using `get_char_width(ctx)` — `DeleteFile`, `CopyFile`, `CreateDirectory`, `RemoveDirectory`, `GetFileAttributes`, `FindFirstFile`, `FindNextFile`, `CreateFileMapping`, `GetDriveType`, `GetDiskFreeSpaceEx`, `LoadLibrary`, `LoadLibraryEx`, `GetModuleHandle`, `GetModuleFileName`, `CreateProcess`, `CreateEvent`, `CreateMutex`, `OpenMutex`, `CreateWaitableTimer`, `GetVersionEx`, `GetComputerName`, `GetUserName`, `lstrlen`, `lstrcpy`, `lstrcat`, `lstrcmp`, `OutputDebugString`, `GetCommandLine`, `GetEnvironmentVariable`, `SetEnvironmentVariable`, `GetCurrentDirectory`, `SetCurrentDirectory`, `ExpandEnvironmentStrings`, `FreeEnvironmentStrings`, `GetEnvironmentStrings`, `GetStringType`, `IsBadStringPtr`, `lstrcmpi`, `lstrcpyn`
+- **kernel32 _impl helpers eliminated** (5 functions): `do_load_library`, `CreateFile_impl`, `CreateProcess_impl`, `lstrcmpi_impl`, `lstrcpyn_impl` — logic inlined into merged functions
+- **kernel32 GetDriveType ported**: reads root path with `cw`, strips `\\?\` prefix, delegates to `DriveManager::get_drive_type()`
+- **kernel32 GetStringTypeA/W full port**: `GetStringTypeA` delegates to `GetStringTypeW`; `GetStringTypeW` implements CT_CTYPE1 character classification (punct/control/space/blank/upper/lower/digit/xdigit/alpha/defined flags) with proper `cw`-aware wide char walking
 
 #### Changed
+- **advapi32 `get_char_width` integration**: All A/W-collapsed functions now use dynamic `cw` instead of hardcoded `1` — `RegOpenKeyEx`, `RegQueryValueEx`, `RegSetValueEx`, `RegCreateKey`, `RegCreateKeyEx`, `RegDeleteValue`, `CryptAcquireContext`, `LookupPrivilegeValue`, `CreateProcessAsUser`, `GetCurrentHwProfile`, `ChangeServiceConfig`, `OpenService`, `CreateService`
+- **advapi32 argv updates**: Added `a[N] = string_value` logging updates matching Python — `RegOpenKeyEx` (a[0]=hkey_name), `RegQueryValueEx` (a[1]=valueName), `RegSetValueEx` (a[1]=valueName), `CryptAcquireContext` (a[1]=cont_str, a[2]=prov_str), `LookupPrivilegeValue` (a[0]=sysname, a[1]=name), `GetUserName` (a[0]=name), `RegDeleteValue` (a[1]=vn)
+- **advapi32 REG arg counts corrected** (5 fixes): `CryptGetHashParam` 6→5, `CryptHashData` 5→4, `CryptDeriveKey` 3→5, `EnumServicesStatus` 5→8, `LookupAccountName` 4→7
+- **advapi32 A/W merge**: All A/W pairs collapsed to base names in header API_ENTRY and REG table; `#undef` directives added for all Windows SDK macro conflicts (25+ undefs in .cpp)
+- **`record_api_event` signature**: Changed from `const vector<string>&` → `const ArgList&`, profiler converts ApiArg variants directly to display strings, eliminating string conversion layer in `winemu.cpp`
+- **`record_api_event` TracePosition**: Second argument changed from bare `uint64_t pc` → `const TracePosition&` carrying `tick`/`pid`/`tid` context
+
+#### Fixed
+- **advapi32 GetCurrentHwProfile**: Full rewrite with proper `cw` encoding — writes `dwSize` + GUID + profile name correctly for both ANSI (UTF-8) and Unicode (UTF-16) variants
+- **kernel32 W-stub deletion**: ~25 dead W-suffix function bodies removed after A/W merge
+- **Windows SDK macro conflicts**: `#undef` directives added for 40+ API names in kernel32.cpp/.h to prevent macro expansion of base names
+
+
 - **Profiler: typed Event system (Python parity)** — `record_*_event` methods now create typed `Event` subclass instances (`ApiEvent`, `FileWriteEvent`, `NetDnsEvent`, etc.) and push to `run->events` directly, matching Python's `list[AnyEvent]` pattern. `get_report()` reads from `run->events` instead of converting from parallel `map<string,string>` vectors.
   - Removed 6 parallel storage vectors from `Run` (`apis`, `file_access`, `registry_access`, `process_events`, `network`, `handled_exceptions`)
   - `record_api_event` signature changed from `uint64_t pc` → `const TracePosition& pos` with `tick`/`pid`/`tid` context
