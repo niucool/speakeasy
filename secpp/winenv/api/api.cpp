@@ -91,9 +91,9 @@ void ApiHandler::set_emu(void* e) {
 }
 
 void ApiHandler::add_hook(const std::string& name, ApiFunc func, int argc, int conv, int ordinal) {
-    ApiHookInfo info;
+    ApiEntry info;
     info.name = name;
-    info.func = func;
+    info.handler = func;
     info.argc = argc;
     info.conv = conv;
     info.ordinal = ordinal;
@@ -145,7 +145,7 @@ DataHookInfo& ApiHandler::get_data_handler(const std::string& exp_name) {
     return InvalidDataInfo;
 }
 
-ApiHookInfo& ApiHandler::get_func_handler(const std::string& exp_name) {
+ApiEntry& ApiHandler::get_func_handler(const std::string& exp_name) {
     // Support ordinal lookup: "ordinal_5"  look up by ordinal number
     if (exp_name.compare(0, 8, "ordinal_") == 0) {
         int ord_num = 0;

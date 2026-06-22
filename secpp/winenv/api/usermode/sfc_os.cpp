@@ -16,9 +16,8 @@ static constexpr uint32_t SFC_ERROR = 0;
 
 Sfc_os::Sfc_os(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Sfc_os)
-        REG_ORD(Sfc_os, SfcTerminateWatcherThread, 0, 2)
-        REG(Sfc_os, SfcIsFileProtected, 2)  
-        REG(Sfc_os, SfcTerminateWatcherThread, 0)
+        REGX(Sfc_os, SfcTerminateWatcherThread, 0, 2)
+        REG(Sfc_os, SfcIsFileProtected, 2)
     END_API_TABLE
 }
 

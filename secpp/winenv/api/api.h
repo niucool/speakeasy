@@ -83,29 +83,22 @@ using ApiFunc = std::function<uint64_t(void* emu, ArgList& argv, void* ctx)>;
 
 using DataFunc = std::function<uint64_t(uint64_t ptr)>;
 
-// Structure to hold function hook information
-struct ApiHookInfo {
-    std::string name;
-    ApiFunc func = nullptr;
-    int argc = 0;
-    int conv = 0;
-    int ordinal = 0;
-};
-
 // Structure to hold data hook information
 struct DataHookInfo {
     std::string name;
     DataFunc func = nullptr;
 };
 
+// Structure to hold function hook information
 struct ApiEntry {
     std::string name;
     int argc = 0;
     int conv = 0;
+    int ordinal = 0;
     ApiFunc handler;
 };
 
-static ApiHookInfo InvalidApiInfo;
+static ApiEntry InvalidApiInfo;
 static DataHookInfo InvalidDataInfo;
 
 int get_char_width(ApiContext* ctx);
@@ -113,7 +106,7 @@ int get_char_width(ApiContext* ctx);
 // Base class for handling exported functions
 class ApiHandler {
 protected:
-    std::map<std::string, ApiHookInfo> funcs_;
+    std::map<std::string, ApiEntry> funcs_;
     std::map<std::string, DataHookInfo> data_;
     std::string mod_name_;
     void* emu_; // Kept as void* to avoid circular dependency with WindowsEmulator/BinaryEmulator includes
@@ -121,7 +114,7 @@ protected:
     std::shared_ptr<ApiHandler> _nt_handler = nullptr;
 
 public:
-    const std::map<std::string, ApiHookInfo>& get_hook_funcs() const { return funcs_; }
+    const std::map<std::string, ApiEntry>& get_hook_funcs() const { return funcs_; }
     const std::map<std::string, DataHookInfo>& get_hook_data() const { return data_; }
 
     std::shared_ptr<ApiHandler> get_nt_handler() const { return _nt_handler; }
@@ -161,7 +154,7 @@ public:
     // Helper methods
     void __get_hook_attrs__(ApiHandler* obj);
     DataHookInfo& get_data_handler(const std::string& exp_name);
-    ApiHookInfo& get_func_handler(const std::string& exp_name);
+    ApiEntry& get_func_handler(const std::string& exp_name);
     int get_pointer_size();
     
     // Memory management methods
@@ -299,14 +292,17 @@ private: \
 /// Register one API entry. Usage: REG(klass, CreateFileA, 7)
 // REG for stdcall. Note: Windows APIs are typically stdcall, but some may be cdecl.
 #define REG(klass, name, argc) \
-    {#name, argc, speakeasy::arch::CALL_CONV_STDCALL, klass::name},
+    {#name, argc, speakeasy::arch::CALL_CONV_STDCALL, 0, klass::name},
 
 // REG2 for cdecl. Usage: REG2(klass, printf, 2)
 #define REG2(klass, name, argc) \
-    {#name, argc, speakeasy::arch::CALL_CONV_CDECL, klass::name},
+    {#name, argc, speakeasy::arch::CALL_CONV_CDECL, 0, klass::name},
 
-#define REG_ORD(klass, name, argc, ordinal) \
-    {"ordinal_"#ordinal, argc, speakeasy::arch::CALL_CONV_STDCALL, klass::name},
+#define REGX(klass, name, argc, ordinal) \
+    {#name, argc, speakeasy::arch::CALL_CONV_STDCALL, ordinal, klass::name},
+
+//#define REG_ORD(klass, name, argc, ordinal) \
+//    {"ordinal_"#ordinal, argc, speakeasy::arch::CALL_CONV_STDCALL, ordinal, klass::name},
 
 /// End the API table initialization.
 #define END_API_TABLE \

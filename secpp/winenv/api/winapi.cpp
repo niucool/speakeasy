@@ -44,7 +44,7 @@ std::shared_ptr<ApiHandler> WindowsApi::load_api_handler(const std::string& mod_
     std::shared_ptr<ApiHandler> handler = ApiHandlerRegistry::create_handler(lower_name, emu_);
     if (handler) {
         for (const auto& entry : handler->get_apis()) {
-            handler->add_hook(entry.name, entry.handler, entry.argc, entry.conv);
+            handler->add_hook(entry.name, entry.handler, entry.argc, entry.conv, entry.ordinal);
         }
         mods_[lower_name] = handler;
         return handler;
@@ -96,7 +96,7 @@ std::tuple<std::shared_ptr<ApiHandler>, DataHookInfo> WindowsApi::get_data_expor
     return std::tuple<std::shared_ptr<ApiHandler>, DataHookInfo>(mod, handler);
 }
 
-std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo> WindowsApi::get_export_func_handler(const std::string& mod_name,
+std::tuple<std::shared_ptr<ApiHandler>, ApiEntry> WindowsApi::get_export_func_handler(const std::string& mod_name,
                                                                    const std::string& exp_name) {
     // Find the module handler
     std::string key = speakeasy::to_lower(mod_name);
@@ -109,20 +109,20 @@ std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo> WindowsApi::get_export_func
     }
 
     if (!mod) {
-        return std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo>(nullptr, InvalidApiInfo);
+        return std::tuple<std::shared_ptr<ApiHandler>, ApiEntry>(nullptr, InvalidApiInfo);
     }
 
     // Delegate to the handler's get_func_handler method
     auto& info = mod->get_func_handler(exp_name);
 
-    if (!info.func) {
-        return std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo>(mod, InvalidApiInfo);
+    if (!info.handler) {
+        return std::tuple<std::shared_ptr<ApiHandler>, ApiEntry>(mod, InvalidApiInfo);
     }
 
     // Cache the function and return a void* pointer to it
     std::string cache_key = key + ":" + exp_name + ":func";
-    func_cache_[cache_key] = info.func;
-    return std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo>(mod, info);
+    func_cache_[cache_key] = info.handler;
+    return std::tuple<std::shared_ptr<ApiHandler>, ApiEntry>(mod, info);
 }
 
 void* WindowsApi::call_api_func(std::shared_ptr<ApiHandler> mod, ApiFunc func, ArgList& argv, void* ctx) {

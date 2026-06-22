@@ -1451,18 +1451,18 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
     bool has_api_exports = false;
     if (api) {
         std::shared_ptr<ApiHandler> handler = nullptr;
-        ApiHookInfo func_info = InvalidApiInfo;
+        ApiEntry func_info = InvalidApiInfo;
 
         for (auto& exp : img->exports) {
             if (exp.name.empty()) continue;
             // Use normalized name first, then try raw name (Python 1093-1095)
             std::tie(handler, func_info) = api->get_export_func_handler(mod_base_name_no_ext, exp.name);
             // normalize_import_miss for API handler resolution (Python:1094-1095)
-            if (!func_info.func) {
+            if (!func_info.handler) {
                 std::tie(handler, func_info) = normalize_import_miss(mod_base_name_no_ext, exp.name);
             }
             // C++ uses different return types; the first lookup via get_export_func_handler is sufficient
-            if (func_info.func) {
+            if (func_info.handler) {
                 symbols[exp.address] = {mod_base_name_no_ext, exp.name};
                 has_api_exports = true;
             }
@@ -2504,7 +2504,7 @@ void* WindowsEmulator::get_proc(const std::string& mod_name, const std::string& 
 // Python winemu.py:1561
 // def normalize_import_miss(self, dll, name):
 //     """This function attempts to fold as many function handlers together as possible."""
-std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo> WindowsEmulator::normalize_import_miss(
+std::tuple<std::shared_ptr<ApiHandler>, ApiEntry> WindowsEmulator::normalize_import_miss(
     const std::string& dll, const std::string& name) {
     if (!api) {
         return {nullptr, InvalidApiInfo};
@@ -2538,7 +2538,7 @@ std::tuple<std::shared_ptr<ApiHandler>, ApiHookInfo> WindowsEmulator::normalize_
     if (dll_lower.find("ntdll") == 0) {
         alt_imp_dll = "ntoskrnl";
         auto res = api->get_export_func_handler(alt_imp_dll, name);
-        if (!std::get<1>(res).func) {
+        if (!std::get<1>(res).handler) {
             if (name.find("Zw") == 0 && name.size() > 2) {
                 alt_imp_api = "Nt" + name.substr(2);
             } else if (name.find("Nt") == 0 && name.size() > 2) {
@@ -2581,25 +2581,25 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
 
     //  Primary handler lookup 
     std::shared_ptr<ApiHandler> handler_mod = nullptr;
-    ApiHookInfo func_info = InvalidApiInfo;
+    ApiEntry func_info = InvalidApiInfo;
 
     if (api) {
         std::tie(handler_mod, func_info) = api->get_export_func_handler(dll_norm, name);
     }
 
     //  Normalization fallback 
-    if (!func_info.func) {
+    if (!func_info.handler) {
         std::tie(handler_mod, func_info) = normalize_import_miss(dll, name);
     }
 
     std::vector<std::shared_ptr<ApiHook>> hooks = get_api_hooks(dll, name);
 
-    if (func_info.func && handler_mod) {
+    if (func_info.handler && handler_mod) {
         int conv = speakeasy::arch::CALL_CONV_STDCALL;
         int argc = 4;
 
         // Re-query handler metadata for argc/conv
-        //const ApiHookInfo info = handler_mod->get_func_handler(name);
+        //const ApiEntry info = handler_mod->get_func_handler(name);
         argc = func_info.argc;
         conv = func_info.conv;
         if (!name.empty() && name.find("ordinal_") == 0 && !func_info.name.empty())
@@ -2618,7 +2618,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         ApiContext api_ctx;
         api_ctx["func_name"] = name;
 
-        auto func_ptr_func = func_info.func;
+        auto func_ptr_func = func_info.handler;
         // Gap B: Invoke User API Hooks
         if (!hooks.empty()) {
             // User hooks use raw uint64_t args (public ApiCallback API).
@@ -2796,7 +2796,7 @@ uint64_t WindowsEmulator::handle_import_data(const std::string& mod, const std::
     }
     // Fallback: try func export handler (returns a procedure address)
     auto [func_mod, func_ptr] = api->get_export_func_handler(mod, sym);
-    if (func_ptr.func) {
+    if (func_ptr.handler) {
         // Get procedure address (sentinel) for this module+function
         get_proc(mod, sym);
     }

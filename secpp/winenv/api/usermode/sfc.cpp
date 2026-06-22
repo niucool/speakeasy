@@ -31,8 +31,7 @@ uint64_t Sfc::SfcTerminateWatcherThread(void* e, ArgList& a, void* ctx) {
 Sfc::Sfc(void* emu) : ApiHandler(emu) {
     INIT_API_TABLE(Sfc)
     REG(Sfc, SfcIsFileProtected, 2)
-    REG(Sfc, SfcTerminateWatcherThread, 0)
-    REG_ORD(Sfc, SfcTerminateWatcherThread, 0, 2)
+    REGX(Sfc, SfcTerminateWatcherThread, 0, 2)
     END_API_TABLE
 }
 

@@ -372,7 +372,7 @@ std::shared_ptr<LoadedImage> ApiModuleLoader::make_image() {
             int num_exports = max_ord + 1;
             all_exports.resize(num_exports);
             for (int i = 0; i < num_exports; ++i) {
-                all_exports[i] = "ordinal_" + std::to_string(i + 1);
+                all_exports[i] = "ordinal_" + std::to_string(i);
             }
             for (const auto& f : new_funcs) {
                 if (f.first > 0) {

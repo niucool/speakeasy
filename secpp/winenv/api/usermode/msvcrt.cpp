@@ -642,18 +642,33 @@ uint64_t Msvcrt::sprintf(void* e, ArgList& a, void* ctx) {
 
 uint64_t Msvcrt::_snprintf(void* e, ArgList& a, void* ctx) {
     // argv[0] = buffer, argv[1] = count, argv[2] = format, argv[3+] = varargs
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3);
     if (a.size() < 3) return 0;
     uint64_t buf   = a[0];
     size_t   count = static_cast<size_t>(a[1]);
     uint64_t fmt_addr = a[2];
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 1);
+    int fmt_cnt = msvc_va_arg_count(fmt_str);
+
+    if (!fmt_cnt) {
+        be(e)->write_mem_string(fmt_str, buf);
+        a.clear();
+        a[0] = fmt_str;
+		return static_cast<uint64_t>(fmt_str.size());
+    }
+
     std::vector<uint64_t> vargs;
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3 + fmt_cnt);
     for (size_t n = 3; n < a.size(); ++n) vargs.push_back(a[n]);
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
     if (count > 0) {
         if (result.size() >= count) result = result.substr(0, count - 1);
         be(e)->write_mem_string(result, buf, 1);
     }
+
+    a.clear();
+    a.push_back(result);
+
     return static_cast<uint64_t>(result.size());
 }
 
