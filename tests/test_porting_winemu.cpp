@@ -418,7 +418,7 @@ TEST(WindowsEmulatorTest, ModuleAccessHookSymbolResolution) {
 
     // 4. Verify _module_access_hook successfully splits and dispatches composite symbols
     // It should return true since the symbol was successfully resolved and routed
-    bool resolved = emu._module_access_hook(nullptr, 0x2000, 4, nullptr);
+    bool resolved = emu._module_access_hook(nullptr, 0x2000, 4);
     EXPECT_TRUE(resolved);
 }
 
