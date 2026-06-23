@@ -20,7 +20,7 @@ static constexpr const char DEFAULT_CONFIG_DATA[] = R"CFG({
   "max_instructions": -1,
   "stack_size": 0,
   "system": "windows",
-  "analysis": {"memory_tracing": false, "strings": true, "coverage": false},
+  "analysis": {"memory_tracing": true, "strings": true, "coverage": false},
   "keep_memory_on_free": false,
   "exceptions": {"dispatch_handlers": true},
   "os_ver": {"name": "windows", "major": 6, "minor": 1, "build": 7601},

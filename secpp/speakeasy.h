@@ -33,13 +33,13 @@ private:
     Win32Emulator* emu_;
 
     std::vector<std::tuple<ApiCallback, std::string, std::string, int, std::string>> api_hooks;
-    std::vector<std::tuple<CodeCallback, uint64_t, uint64_t, std::map<std::string, std::string>>> code_hooks;
-    std::vector<std::tuple<DynCodeCallback, std::map<std::string, std::string>>> dyn_code_hooks;
+    std::vector<std::tuple<CodeCallback, uint64_t, uint64_t, void*>> code_hooks;
+    std::vector<std::tuple<DynCodeCallback, void*>> dyn_code_hooks;
     std::vector<std::tuple<InsnCallback, std::vector<void*>>> invalid_insn_hooks;
     std::vector<std::tuple<MemAccessCallback, uint64_t, uint64_t>> mem_read_hooks;
     std::vector<std::tuple<MemAccessCallback, uint64_t, uint64_t>> mem_write_hooks;
     std::vector<std::tuple<MemAccessCallback>> mem_invalid_hooks;
-    std::vector<std::tuple<IntrCallback, std::map<std::string, std::string>>> interrupt_hooks;
+    std::vector<std::tuple<IntrCallback, void*>> interrupt_hooks;
     std::vector<std::tuple<MapMemCallback, uint64_t, uint64_t>> mem_map_hooks;
     std::vector<std::tuple<InsnCallback, uint64_t, uint64_t, void*>> instruction_hooks;
 
@@ -157,13 +157,12 @@ public:
      * Set a callback to fire for every CPU instruction that is emulated
      */
     std::shared_ptr<CodeHook> add_code_hook(CodeCallback cb, uint64_t begin = 1, uint64_t end = 0,
-                        const std::map<std::string, std::string>& ctx = {});
+                        void* ctx = nullptr);
     
     /**
      * Set a callback to fire when dynamically generated/copied code is executed
      */
-    std::shared_ptr<DynCodeHook> add_dyn_code_hook(DynCodeCallback cb,
-                           const std::map<std::string, std::string>& ctx = {});
+    std::shared_ptr<DynCodeHook> add_dyn_code_hook(DynCodeCallback cb, void* ctx = nullptr);
     
     /**
      * Set a callback to fire when a memory address is read from
@@ -199,7 +198,7 @@ public:
      * Get a callback for software interrupts
      */
     std::shared_ptr<InterruptHook> add_interrupt_hook(IntrCallback cb,
-                            const std::map<std::string, std::string>& ctx = {});
+                            void* ctx = nullptr);
     
     /**
      * Get registry key by path or handle

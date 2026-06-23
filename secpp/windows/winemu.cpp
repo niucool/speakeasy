@@ -106,28 +106,33 @@ std::map<std::string, std::string> WindowsEmulator::get_registry_config() {
 
 namespace {
 
-void code_hook_trampoline(uc_engine* uc, uint64_t address, uint32_t size, void* user_data) {
+bool code_hook_trampoline(void* uc, uint64_t address, uint32_t size, void* user_data) {
     auto* emu = static_cast<WindowsEmulator*>(user_data);
     PLOG_DEBUG << "[tramp] code_hook fired at 0x" << std::hex << address << std::dec;
-    emu->_hook_code_core(static_cast<void*>(uc), address, static_cast<size_t>(size));
+    return emu->_hook_code_core(static_cast<void*>(uc), address, static_cast<size_t>(size));
 }
 
-void code_trace_trampoline(uc_engine* uc, uint64_t address, uint32_t size, void* user_data) {
+bool code_trace_trampoline(void* uc, uint64_t address, uint32_t size, void* user_data) {
     auto* emu = static_cast<WindowsEmulator*>(user_data);
-    emu->_hook_code_tracing(static_cast<void*>(uc), address, static_cast<size_t>(size));
+    return emu->_hook_code_tracing(static_cast<void*>(uc), address, static_cast<size_t>(size));
 }
 
-void code_coverage_trampoline(uc_engine* uc, uint64_t address, uint32_t size, void* user_data) {
+bool module_access_trampoline(void* uc, uint64_t address, uint32_t size, void* user_data) {
     auto* emu = static_cast<WindowsEmulator*>(user_data);
-    emu->_hook_code_coverage(static_cast<void*>(uc), address, static_cast<size_t>(size));
+    return emu->_module_access_hook(static_cast<void*>(uc), address, static_cast<size_t>(size));
 }
 
-void code_debug_trampoline(uc_engine* uc, uint64_t address, uint32_t size, void* user_data) {
+bool code_coverage_trampoline(void* uc, uint64_t address, uint32_t size, void* user_data) {
     auto* emu = static_cast<WindowsEmulator*>(user_data);
-    emu->_hook_code_debug(static_cast<void*>(uc), address, static_cast<size_t>(size));
+    return emu->_hook_code_coverage(static_cast<void*>(uc), address, static_cast<size_t>(size));
 }
 
-bool mem_read_trampoline(uc_engine* uc, uc_mem_type type, uint64_t address,
+bool code_debug_trampoline(void* uc, uint64_t address, uint32_t size, void* user_data) {
+    auto* emu = static_cast<WindowsEmulator*>(user_data);
+    return emu->_hook_code_debug(static_cast<void*>(uc), address, static_cast<size_t>(size));
+}
+
+bool mem_read_trampoline(void* uc, int type, uint64_t address,
                           int size, int64_t value, void* user_data) {
     auto* emu = static_cast<WindowsEmulator*>(user_data);
     return emu->_hook_mem_read(static_cast<void*>(uc), static_cast<int>(type),
@@ -135,25 +140,12 @@ bool mem_read_trampoline(uc_engine* uc, uc_mem_type type, uint64_t address,
                                 static_cast<uint64_t>(value));
 }
 
-bool mem_write_trampoline(uc_engine* uc, uc_mem_type type, uint64_t address,
+bool mem_write_trampoline(void* uc, int type, uint64_t address,
                            int size, int64_t value, void* user_data) {
     auto* emu = static_cast<WindowsEmulator*>(user_data);
     return emu->_hook_mem_write(static_cast<void*>(uc), static_cast<int>(type),
                                  address, static_cast<size_t>(size),
                                  static_cast<uint64_t>(value));
-}
-
-bool mem_unmapped_trampoline(uc_engine* uc, uc_mem_type type, uint64_t address,
-                              int size, int64_t value, void* user_data) {
-    auto* emu = static_cast<WindowsEmulator*>(user_data);
-    return emu->_hook_mem_unmapped(static_cast<void*>(uc), static_cast<int>(type),
-                                    address, static_cast<size_t>(size),
-                                    static_cast<uint64_t>(value));
-}
-
-bool intr_trampoline(uc_engine* uc, uint32_t intno, void* user_data) {
-    auto* emu = static_cast<WindowsEmulator*>(user_data);
-    return emu->_hook_interrupt(static_cast<void*>(uc), static_cast<int>(intno));
 }
 
 } // anonymous namespace
@@ -168,44 +160,34 @@ bool intr_trampoline(uc_engine* uc, uint32_t intno, void* user_data) {
 void WindowsEmulator::enable_code_hook() {
     PLOG_DEBUG << "[hook] enable_code_hook: tmp_code_hook=" << (tmp_code_hook != nullptr)
                 << " mem_tracing_enabled=" << mem_tracing_enabled;
-    if (!tmp_code_hook && !mem_tracing_enabled) {
-        uc_hook hh = 0;
-        uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_CODE,
-                                  reinterpret_cast<void*>(code_hook_trampoline),
-                                  static_cast<void*>(this), 1, 0);
-        if (err == UC_ERR_OK) {
-            tmp_code_hook_handle = hh;
-            tmp_code_hook = reinterpret_cast<void*>(1);  // mark as registered
-            PLOG_DEBUG << "[hook] enable_code_hook: registered handle=0x" << std::hex << hh;
-        } else {
-            PLOG_DEBUG << "[hook] enable_code_hook: FAILED err=" << static_cast<int>(err);
-        }
+    if (!tmp_code_hook) {
+        tmp_code_hook = add_code_hook(code_hook_trampoline);
     }
+    if (tmp_code_hook) {
+        tmp_code_hook->enable();
+    }
+    //if (!tmp_code_hook && !mem_tracing_enabled) {
+    //    uc_hook hh = 0;
+    //    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_CODE,
+    //                              reinterpret_cast<void*>(code_hook_trampoline),
+    //                              static_cast<void*>(this), 1, 0);
+    //    if (err == UC_ERR_OK) {
+    //        tmp_code_hook_handle = hh;
+    //        tmp_code_hook = reinterpret_cast<void*>(1);  // mark as registered
+    //        PLOG_DEBUG << "[hook] enable_code_hook: registered handle=0x" << std::hex << hh;
+    //    } else {
+    //        PLOG_DEBUG << "[hook] enable_code_hook: FAILED err=" << static_cast<int>(err);
+    //    }
+    //}
 }
 
 // Python winemu.py:206
 // def disable_code_hook(self):
 //     """Remove the transient code hook (ONLY the temporary hook, not all hooks)."""
 void WindowsEmulator::disable_code_hook() {
-    if (tmp_code_hook && emu_eng_ && tmp_code_hook_handle != 0) {
-        uc_hook_del(emu_eng_->get_engine(), tmp_code_hook_handle);
-        tmp_code_hook_handle = 0;
-        tmp_code_hook = nullptr;
+    if (tmp_code_hook) {
+        tmp_code_hook->disable();
     }
-}
-
-void WindowsEmulator::set_hooks() {
-    BinaryEmulator::set_hooks();
-
-    if (!builtin_hooks_set_) {
-        _register_mem_hook(UC_HOOK_MEM_UNMAPPED, reinterpret_cast<void*>(mem_unmapped_trampoline));
-        _register_interrupt_hook(reinterpret_cast<void*>(intr_trampoline));
-        builtin_hooks_set_ = true;
-    }
-
-    set_mem_tracing_hooks();
-    set_coverage_hooks();
-    set_debug_hooks();
 }
 
 // Python winemu.py:377
@@ -250,21 +232,27 @@ void WindowsEmulator::_unset_emu_hooks() {
 // def set_mem_tracing_hooks(self):
 //     """Install memory tracing hooks for analysis."""
 void WindowsEmulator::set_mem_tracing_hooks() {
+    if (!config_.analysis.memory_tracing) {
+        return;
+    }
+
     if (mem_trace_hooks.empty()) {
-        _register_code_hook(reinterpret_cast<void*>(code_trace_trampoline), 1, 0);
-        _register_mem_hook(UC_HOOK_MEM_READ, reinterpret_cast<void*>(mem_read_trampoline));
-        _register_mem_hook(UC_HOOK_MEM_WRITE, reinterpret_cast<void*>(mem_write_trampoline));
-        _register_mem_hook(UC_HOOK_MEM_UNMAPPED, reinterpret_cast<void*>(mem_unmapped_trampoline));
-        mem_trace_hooks.push_back(reinterpret_cast<void*>(1));
+        //_register_code_hook(reinterpret_cast<void*>(code_trace_trampoline), 1, 0);
+        //_register_mem_hook(UC_HOOK_MEM_READ, reinterpret_cast<void*>(mem_read_trampoline));
+        //_register_mem_hook(UC_HOOK_MEM_WRITE, reinterpret_cast<void*>(mem_write_trampoline));
+        //mem_trace_hooks.push_back(reinterpret_cast<void*>(1));
+        mem_trace_hooks.push_back(add_code_hook(code_trace_trampoline));
+        mem_trace_hooks.push_back(add_mem_read_hook(mem_read_trampoline));
+        mem_trace_hooks.push_back(add_mem_write_hook(mem_write_trampoline));
+
     }
 }
 
 // Python winemu.py:210
 // def _module_access_hook(self, emu, addr, size):
 //     """Code hook fired for access to module API addresses; resolves symbol and dispatches handler."""
-bool WindowsEmulator::_module_access_hook(void* emu, uint64_t addr,
-                                           size_t size, void* ctx) {
-    (void)emu; (void)size; (void)ctx;
+bool WindowsEmulator::_module_access_hook(void* emu, uint64_t addr, size_t size) {
+    (void)emu; (void)size; 
     std::string sym = get_symbol_from_address(addr);
     if (!sym.empty()) {
         size_t dot = sym.find('.');
@@ -1470,12 +1458,8 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
             if (!is_primary) {
                 auto [data_mod, data_hndlr] = api->get_data_export_handler(mod_base_name_no_ext, exp.name);
                 if (data_hndlr.func && !config_.analysis.memory_tracing) {
-                    add_mem_read_hook([this](void* em, int acc, uint64_t a, uint32_t s, uint64_t v) -> bool {
-                        return this->_hook_mem_read(em, acc, a, s, v);
-                    }, exp.address, exp.address);
-                    add_mem_write_hook([this](void* em, int acc, uint64_t a, uint32_t s, uint64_t v) -> bool {
-                        return this->_hook_mem_write(em, acc, a, s, v);
-                    }, exp.address, exp.address);
+                    add_mem_read_hook(mem_read_trampoline, exp.address, exp.address);
+                    add_mem_write_hook(mem_write_trampoline, exp.address, exp.address);
                 }
             }
         }
@@ -1485,9 +1469,7 @@ std::shared_ptr<speakeasy::RuntimeModule> WindowsEmulator::load_image(std::share
             auto& first_region = img->regions[0];
             uint64_t mod_start = first_region.base ? first_region.base : img->base;
             uint64_t mod_end = mod_start + first_region.data.size();
-            add_code_hook([this](void* em, uint64_t addr, uint32_t size) -> bool {
-                return this->_module_access_hook(em, addr, static_cast<size_t>(size), nullptr);
-            }, mod_start, mod_end);
+            add_code_hook(module_access_trampoline, mod_start, mod_end);
         }
 
         // Process data imports (Python 1111-1118)
@@ -3214,8 +3196,9 @@ bool WindowsEmulator::_hook_mem_unmapped(void* emu, int access, uint64_t addr,
 
         // Ensure code hook is active for deferred work
         if (!tmp_code_hook) {
-            enable_code_hook();
+            tmp_code_hook = add_code_hook(code_hook_trampoline);
         }
+        enable_code_hook();
 
         PLOG_DEBUG << "mem_unmapped: mapped_access=" << access << " ("
                     << (access == INVALID_MEM_EXEC ? "FETCH" :
@@ -3504,7 +3487,9 @@ bool WindowsEmulator::_hook_code_debug(void* emu, uint64_t addr, size_t size) {
 //     """Install coverage tracking code hook if enabled in config."""
 void WindowsEmulator::set_coverage_hooks() {
     if (!config_.analysis.coverage) return;
-    _register_code_hook(reinterpret_cast<void*>(code_coverage_trampoline), 1, 0);
+
+    PLOG_DEBUG << "Installing code coverage hook";
+    coverage_hook = add_code_hook(code_coverage_trampoline);
 }
 
 
@@ -3512,7 +3497,10 @@ void WindowsEmulator::set_coverage_hooks() {
 // def set_debug_hooks(self):
 //     """Install debug code hook if enabled."""
 void WindowsEmulator::set_debug_hooks() {
-    _register_code_hook(reinterpret_cast<void*>(code_debug_trampoline), 1, 0);
+    if (!debug) return;
+
+    PLOG_DEBUG << "Installing code debug hook";
+    debug_hook = add_code_hook(code_debug_trampoline);
 }
 
 
@@ -3852,40 +3840,6 @@ std::vector<std::string> WindowsEmulator::reg_get_subkeys(std::shared_ptr<RegKey
 std::pair<uint32_t, std::vector<uint8_t>> WindowsEmulator::dev_ioctl(int arch, Device* dev, uint32_t ioctl_code, const std::vector<uint8_t>& inbuf) {
     // Dispatch to kernel-mode IRP handler via IoManager
     return ioman->dev_ioctl(arch, dev, ioctl_code, inbuf);
-}
-
-
-// Python winemu.py: (Unicorn engine binding)
-void WindowsEmulator::_register_code_hook(void* callback, uint64_t begin, uint64_t end) {
-    if (!emu_eng_) return;
-    uc_hook hh = 0;
-    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_CODE,
-                              callback, static_cast<void*>(this), begin, end);
-    if (err == UC_ERR_OK) {
-        uc_hooks_.push_back(hh);
-    }
-}
-
-
-// Python winemu.py: (Unicorn engine binding)
-void WindowsEmulator::_register_mem_hook(int hook_type, void* callback) {
-    if (!emu_eng_) return;
-    uc_hook hh = 0;
-    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, hook_type,
-                              callback, static_cast<void*>(this), 1, 0);
-    if (err == UC_ERR_OK) {
-        uc_hooks_.push_back(hh);
-    }
-}
-
-void WindowsEmulator::_register_interrupt_hook(void* callback) {
-    if (!emu_eng_) return;
-    uc_hook hh = 0;
-    uc_err err = uc_hook_add(emu_eng_->get_engine(), &hh, UC_HOOK_INTR,
-                              callback, static_cast<void*>(this), 1, 0);
-    if (err == UC_ERR_OK) {
-        uc_hooks_.push_back(hh);
-    }
 }
 
 // _get_exception_list was accidentally removed  re-adding

@@ -131,11 +131,13 @@ protected:
     //int ptr_size = 0;
     uint64_t virtual_mem_base = 0x50000;
     std::vector<void*> veh_handlers;
-    std::vector<void*> mem_trace_hooks;
+    std::vector<std::shared_ptr<Hook>> mem_trace_hooks;
     bool mem_tracing_enabled = false;
-    bool emu_hooks_set = false;
+    bool emu_hooks_set = true;
     // builtin_hooks_set_ inherited from BinaryEmulator
-    void* tmp_code_hook = nullptr;
+    std::shared_ptr<CodeHook> coverage_hook = nullptr;
+    std::shared_ptr<CodeHook> debug_hook = nullptr;
+    std::shared_ptr<CodeHook> tmp_code_hook = nullptr;
     uc_hook tmp_code_hook_handle = 0;  // Unicorn handle for the temporary code hook
     uint64_t prev_pc = 0;
 
@@ -269,7 +271,7 @@ public:
     // Python winemu.py:628
     // def set_hooks(self):
     //     """Reserves memory that will be used to handle events that occur during emulation."""
-    void set_hooks();
+    //void set_hooks();
     // Python winemu.py:377
     // def _set_emu_hooks(self):
     //     """Unmap reserved memory space so we can handle events (e.g. import APIs, entry point returns, etc.)"""
@@ -285,7 +287,7 @@ public:
     // Python winemu.py:210
     // def _module_access_hook(self, emu, addr, size):
     //     """Code hook fired for access to module API addresses; resolves symbol and dispatches handler."""
-    bool _module_access_hook(void* emu, uint64_t addr, size_t size, void* ctx);
+    bool _module_access_hook(void* emu, uint64_t addr, size_t size);
     // Python winemu.py:2031
     // def _hook_code_core(self, emu, addr, size):
     //     """Transient code hook for deferred work: SEH dispatch, run lifecycle,
@@ -684,14 +686,6 @@ public:
     // def restart_run(self, run):
     //     """Restart the current run"""
     void restart_run(void* run);
-
-    //  Unicorn hook bridge 
-    // Python winemu.py: (Unicorn engine binding)
-    void _register_code_hook(void* callback, uint64_t begin, uint64_t end);
-    // Python winemu.py: (Unicorn engine binding)
-    void _register_mem_hook(int hook_type, void* callback);
-    void _register_interrupt_hook(void* callback);
-    std::vector<uc_hook> uc_hooks_;
 
     //  Memory hooks (additional) 
     // Python winemu.py:1831

@@ -30,7 +30,7 @@ std::string normalize_package_path(const std::string& path) {
  * Constructor for Hook
  */
 Hook::Hook(void* container, std::shared_ptr<EmuEngine> emu_eng,
-           const std::vector<void*>& ctx,
+           void* ctx,
            bool native_hook)
     : handle(0), enabled(false), added(false),
       native_hook(native_hook), emu_eng(emu_eng), container(container), ctx(ctx) {
@@ -115,7 +115,7 @@ ApiHook::ApiHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
  */
 DynCodeHook::DynCodeHook(void* container, std::shared_ptr<EmuEngine> emu_eng, 
                          DynCodeCallback cbl, 
-                         const std::vector<void*>& ctx)
+                         void* ctx)
     : Hook(container, emu_eng, ctx), cb(cbl) {
 }
 
@@ -133,7 +133,7 @@ CodeHook::CodeHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                    CodeCallback cbl, 
                    uint64_t beginl, 
                    uint64_t endl, 
-                   const std::vector<void*>& ctx,
+                   void* ctx,
                    bool native_hook)
     : Hook(container, emu_eng, ctx, native_hook), begin(beginl), end(endl), cb(cbl) {
 }
@@ -163,7 +163,7 @@ void CodeHook::add() {
 
 bool CodeHook::invoke(void* emu, uint64_t addr, uint32_t size) {
     if (cb) {
-        return cb(emu, addr, size);
+        return cb(emu, addr, size, ctx);
     }
     return true;
 }
@@ -175,8 +175,9 @@ MemHook::MemHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
     MemAccessCallback cbl,
     uint64_t beginl,
     uint64_t endl,
+    void* ctx,
     bool native_hookl)
-    : Hook(container, emu_eng, {}, native_hookl), begin(beginl), end(endl), cb(cbl) {
+    : Hook(container, emu_eng, ctx, native_hookl), begin(beginl), end(endl), cb(cbl) {
 }
 
 /**
@@ -203,7 +204,7 @@ void MemHook::add() {
 
 bool MemHook::invoke(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value) {
     if (cb) {
-        return cb(emu, access, addr, size, value);
+        return cb(emu, access, addr, size, value, ctx);
     }
     return true;
 }
@@ -215,8 +216,9 @@ ReadMemHook::ReadMemHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                          MemAccessCallback cb, 
                          uint64_t begin, 
                          uint64_t end, 
+                         void* ctx,
                          bool native_hook)
-    : MemHook(container, emu_eng, cb, begin, end, native_hook) {
+    : MemHook(container, emu_eng, cb, begin, end, ctx, native_hook) {
     access_type = HOOK_MEM_READ;
 }
 
@@ -227,8 +229,9 @@ WriteMemHook::WriteMemHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                            MemAccessCallback cb, 
                            uint64_t begin, 
                            uint64_t end, 
+                           void* ctx,
                            bool native_hook)
-    : MemHook(container, emu_eng, cb, begin, end, native_hook) {
+    : MemHook(container, emu_eng, cb, begin, end, ctx, native_hook) {
     access_type = HOOK_MEM_WRITE;
 }
 
@@ -238,8 +241,8 @@ WriteMemHook::WriteMemHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
 MapMemHook::MapMemHook(void* container, std::shared_ptr<EmuEngine> emu_eng, 
                        MapMemCallback cbl, 
                        uint64_t beginl, 
-                       uint64_t endl)
-    : Hook(container, emu_eng), begin(beginl), end(endl), cb(cbl) {
+                       uint64_t endl, void* ctx)
+    : Hook(container, emu_eng, ctx), begin(beginl), end(endl), cb(cbl) {
 }
 
 /**
@@ -261,9 +264,9 @@ bool MapMemHook::invoke(void* emu, uint64_t addr, uint32_t size, const std::stri
  * Constructor for InvalidMemHook
  */
 InvalidMemHook::InvalidMemHook(void* container, std::shared_ptr<EmuEngine> emu_eng, 
-                               MemAccessCallback cb, 
+                               MemAccessCallback cb, void* ctx,
                                bool native_hook)
-    : MemHook(container, emu_eng, cb, 1, 0, native_hook) {
+    : MemHook(container, emu_eng, cb, 1, 0, ctx, native_hook) {
     access_type = HOOK_MEM_INVALID;
 }
 
@@ -272,7 +275,7 @@ InvalidMemHook::InvalidMemHook(void* container, std::shared_ptr<EmuEngine> emu_e
  */
 InterruptHook::InterruptHook(void* container, std::shared_ptr<EmuEngine> emu_eng, 
                              IntrCallback cb, 
-                             const std::vector<void*>& ctx,
+                             void* ctx,
                              bool native_hook)
     : Hook(container, emu_eng, ctx, native_hook), cb(cb) {
 }
@@ -290,7 +293,7 @@ bool InterruptHook::_wrap_intr_cb(void* emu, int num, void* ctx) {
 
 bool InterruptHook::invoke(void* emu, int num) {
     if (cb) {
-        return cb(emu, num);
+        return cb(emu, num, ctx);
     }
     return true;
 }
@@ -312,7 +315,7 @@ void InterruptHook::add() {
  */
 InstructionHook::InstructionHook(void* container, std::shared_ptr<EmuEngine> emu_eng, 
                                  InsnCallback cb, 
-                                 const std::vector<void*>& ctx,
+                                 void* ctx,
                                  bool native_hook,
                                  void* insn)
     : Hook(container, emu_eng, ctx, native_hook), insn(insn), cb(cb) {
@@ -354,7 +357,7 @@ bool InstructionHook::invoke(void* emu) {
  */
 InvalidInstructionHook::InvalidInstructionHook(void* container, std::shared_ptr<EmuEngine> emu_eng, 
                                                InsnCallback cb, 
-                                               const std::vector<void*>& ctx,
+                                               void* ctx,
                                                bool native_hook)
     : Hook(container, emu_eng, ctx, native_hook), cb(cb) {
 }

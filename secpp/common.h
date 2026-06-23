@@ -45,10 +45,10 @@ class MemMap;
 
 using ApiCallback = std::function<bool(void* emu, const std::string& api, void* orig, std::vector<uint64_t> argv)>;
 using DynCodeCallback = std::function<bool(std::shared_ptr<MemMap> mm)>;
-using CodeCallback = std::function<bool(void* emu, uint64_t addr, uint32_t size)>;
-using MemAccessCallback = std::function<bool(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value)>;
+using CodeCallback = std::function<bool(void* emu, uint64_t addr, uint32_t size, void* ctx)>;
+using MemAccessCallback = std::function<bool(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx)>;
 using MemCallback = std::function<bool(void* emu, int access, uint64_t addr, uint32_t size, int64_t value)>;
-using IntrCallback = std::function<bool(void* emu, int num)>;
+using IntrCallback = std::function<bool(void* emu, int num, void* ctx)>;
 using InsnCallback = std::function<bool(void* emu)>;
 using MapMemCallback = std::function<bool(void* emu, uint64_t addr, uint32_t size, const std::string& tag, int64_t prot, int64_t flags)>;
 
@@ -71,11 +71,11 @@ protected:
     bool native_hook;
     std::shared_ptr<EmuEngine> emu_eng;
     void* container;  // opaque context for _wrap_*_cb
-    std::vector<void*> ctx;
+    void* ctx;
 
 public:
     Hook(void* container, std::shared_ptr<EmuEngine> emu_eng,
-         const std::vector<void*>& ctx = {},
+         void* ctx = nullptr,
          bool native_hook = false);
 
     virtual ~Hook() = default;
@@ -137,7 +137,7 @@ private:
 public:
     DynCodeHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                 DynCodeCallback cb,
-                const std::vector<void*>& ctx = {});
+                void* ctx = nullptr);
     bool invoke(std::shared_ptr<MemMap> mm);
 };
 
@@ -153,7 +153,7 @@ public:
              CodeCallback cb,
              uint64_t begin = 1,
              uint64_t end = 0,
-             const std::vector<void*>& ctx = {},
+             void* ctx = nullptr,
              bool native_hook = true);
     void add();
 
@@ -174,6 +174,7 @@ public:
         MemAccessCallback cb,
         uint64_t begin = 1,
         uint64_t end = 0,
+        void* ctx = nullptr,
         bool native_hook = true);
 
     static bool _wrap_memory_access_cb(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx);
@@ -191,6 +192,7 @@ public:
                 MemAccessCallback cb,
                 uint64_t begin = 1,
                 uint64_t end = 0,
+                void* ctx = nullptr,
                 bool native_hook = true);
 };
 
@@ -202,6 +204,7 @@ public:
                  MemAccessCallback cb,
                  uint64_t begin = 1,
                  uint64_t end = 0,
+                 void* ctx = nullptr,
                  bool native_hook = true);
 };
 
@@ -216,7 +219,9 @@ public:
     MapMemHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                MapMemCallback cb,
                uint64_t begin = 1,
-               uint64_t end = 0);
+               uint64_t end = 0,
+               void* ctx = nullptr
+        );
     void add() override;
     bool invoke(void* emu, uint64_t addr, uint32_t size, const std::string& tag, int64_t prot, int64_t flags);
 };
@@ -227,7 +232,8 @@ class InvalidMemHook : public MemHook {
 public:
     InvalidMemHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                    MemAccessCallback cb,
-                   bool native_hook = false);
+                    void* ctx = nullptr,
+                    bool native_hook = false);
 };
 
 /** Hook that fires each time a software interrupt is triggered */
@@ -238,7 +244,7 @@ private:
 public:
     InterruptHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                   IntrCallback cb,
-                  const std::vector<void*>& ctx = {},
+                  void* ctx = nullptr,
                   bool native_hook = true);
 
     static bool _wrap_intr_cb(void* emu, int num, void* ctx);
@@ -256,7 +262,7 @@ private:
 public:
     InstructionHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                     InsnCallback cb,
-                    const std::vector<void*>& ctx = {},
+                    void* ctx = nullptr,
                     bool native_hook = true,
                     void* insn = nullptr);
 
@@ -274,7 +280,7 @@ private:
 public:
     InvalidInstructionHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
                            InsnCallback cb,
-                           const std::vector<void*>& ctx = {},
+                           void* ctx = nullptr,
                            bool native_hook = true);
 
     static bool _wrap_invalid_insn_cb(void* emu, void* ctx);

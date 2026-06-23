@@ -294,7 +294,7 @@ uint64_t EmuEngine::hook_add(void* addr, void* cb, uint32_t htype,
         return 0;
     }
     
-    // Store the hook in our callback map
+    // TODO: Store the hook in our callback map
     auto toggle_hook = std::make_shared<ToggleableHook>([](){}); // Placeholder
     uint64_t hid = (uint64_t)(uintptr_t)(hook);
     callbacks[hid] = toggle_hook;

@@ -10,6 +10,18 @@
 #include "../config.h"
 #include "../winenv/deffs/nt/ntoskrnl.h"
 
+bool mem_unmapped_trampoline(void* uc, int type, uint64_t address,
+    int size, uint64_t value, void* user_data) {
+    auto* emu = static_cast<WindowsEmulator*>(user_data);
+    return emu->_hook_mem_unmapped(static_cast<void*>(uc), static_cast<int>(type),
+        address, static_cast<size_t>(size),
+        static_cast<uint64_t>(value));
+}
+
+bool intr_trampoline(void* uc, uint32_t intno, void* user_data) {
+    auto* emu = static_cast<WindowsEmulator*>(user_data);
+    return emu->_hook_interrupt(static_cast<void*>(uc), static_cast<int>(intno));
+}
 
 // Python win32.py:34
 // def __init__(self, config, argv=None, debug=False, exit_event=None, gdb_port=None):
@@ -701,8 +713,17 @@ bool Win32Emulator::_hook_mem_unmapped(void* emu, int access, uint64_t address,
 // def set_hooks(self):
 //     """Set the emulator callbacks"""
 void Win32Emulator::set_hooks() {
-    WindowsEmulator::set_hooks();
+    BinaryEmulator::set_hooks();
+
+    if (!builtin_hooks_set_) {
+        add_mem_invalid_hook(mem_unmapped_trampoline);
+        add_interrupt_hook(intr_trampoline);
+        builtin_hooks_set_ = true;
+    }
+
     set_mem_tracing_hooks();
+    set_coverage_hooks();
+    set_debug_hooks();
 }
 
 

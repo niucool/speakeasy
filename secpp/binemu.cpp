@@ -529,7 +529,7 @@ void BinaryEmulator::_fire_dyn_code_hooks(uint64_t addr) {
     }
 }
 
-void BinaryEmulator::_set_dyn_code_hook(uint64_t addr, size_t size, std::map<std::string, std::string> ctx) {
+void BinaryEmulator::_set_dyn_code_hook(uint64_t addr, size_t size, void* ctx) {
     (void)ctx;
     static const size_t MAX_HOOK_SIZE = 0x10;
     if (size > MAX_HOOK_SIZE) size = MAX_HOOK_SIZE;
@@ -539,7 +539,7 @@ void BinaryEmulator::_set_dyn_code_hook(uint64_t addr, size_t size, std::map<std
     };
     auto hook_ref = std::make_shared<HookRef>();
 
-    auto cb = [this, hook_ref](void* emu, uint64_t a, uint32_t s) -> bool {
+    auto cb = [this, hook_ref](void* emu, uint64_t a, uint32_t s, void* ctx) -> bool {
         (void)emu;
         (void)s;
         this->_fire_dyn_code_hooks(a);
@@ -549,7 +549,8 @@ void BinaryEmulator::_set_dyn_code_hook(uint64_t addr, size_t size, std::map<std
         return true;
     };
 
-    auto h = std::make_shared<CodeHook>(this, emu_eng_, cb, addr, addr + size);
+    add_code_hook(cb, addr, addr + size, ctx, this);
+    auto h = std::make_shared<CodeHook>(this, emu_eng_, cb, addr, addr + size, this);
     hook_ref->hook = h;
     hooks_[HOOK_CODE].push_back(h);
     if (emu_eng_) {
@@ -641,20 +642,20 @@ std::shared_ptr<ApiHook> BinaryEmulator::add_api_hook(ApiCallback cb, const std:
 }
 
 std::shared_ptr<CodeHook> BinaryEmulator::add_code_hook(CodeCallback cb, uint64_t begin, uint64_t end,
-                                        std::map<std::string, std::string> ctx, BinaryEmulator* emu) {
+                                        void* ctx, BinaryEmulator* emu) {
     // Python binemu.py:897-919 doc: "Add a hook that will fire for every CPU instruction"
     if (!emu) emu = this;
-    auto h = std::make_shared<CodeHook>(emu, emu_eng_, cb, begin, end);
+    auto h = std::make_shared<CodeHook>(emu, emu_eng_, cb, begin, end, emu);
     hooks_[HOOK_CODE].push_back(h);
     if (emu_eng_) h->add();
     return h;
 }
 
 std::shared_ptr<DynCodeHook> BinaryEmulator::add_dyn_code_hook(DynCodeCallback cb,
-                                               std::vector<std::string> ctx, BinaryEmulator* emu) {
+                                               void* ctx, BinaryEmulator* emu) {
     // Python binemu.py:948-968 doc: "Add a hook that will fire when dynamically generated/copied code is executed"
     if (!emu) emu = this;
-    auto h = std::make_shared<DynCodeHook>(emu, emu_eng_, cb);
+    auto h = std::make_shared<DynCodeHook>(emu, emu_eng_, cb, emu);
     hooks_[HOOK_DYN_CODE].push_back(h);
     return h;
 }
@@ -663,7 +664,7 @@ std::shared_ptr<ReadMemHook> BinaryEmulator::add_mem_read_hook(MemAccessCallback
                                                BinaryEmulator* emu) {
     // Python binemu.py:970-992 doc: "Add a hook that will fire for memory reads"
     if (!emu) emu = this;
-    auto h = std::make_shared<ReadMemHook>(emu, emu_eng_, cb, begin, end);
+    auto h = std::make_shared<ReadMemHook>(emu, emu_eng_, cb, begin, end, emu);
     hooks_[HOOK_MEM_READ].push_back(h);
     if (emu_eng_) h->add();
     return h;
@@ -673,7 +674,7 @@ std::shared_ptr<WriteMemHook> BinaryEmulator::add_mem_write_hook(MemAccessCallba
                                                   BinaryEmulator* emu) {
     // Python binemu.py:994-1016 doc: "Add a hook that will fire for memory writes"
     if (!emu) emu = this;
-    auto h = std::make_shared<WriteMemHook>(emu, emu_eng_, cb, begin, end);
+    auto h = std::make_shared<WriteMemHook>(emu, emu_eng_, cb, begin, end, emu);
     hooks_[HOOK_MEM_WRITE].push_back(h);
     if (emu_eng_) h->add();
     return h;
@@ -683,7 +684,7 @@ std::shared_ptr<MapMemHook> BinaryEmulator::add_mem_map_hook(MapMemCallback cb, 
                                              BinaryEmulator* emu) {
     // Python binemu.py:1018-1040 doc: "Add a hook that will fire for memory maps"
     if (!emu) emu = this;
-    auto h = std::make_shared<MapMemHook>(emu, emu_eng_, cb, begin, end);
+    auto h = std::make_shared<MapMemHook>(emu, emu_eng_, cb, begin, end, emu);
     hooks_[HOOK_MEM_MAP].push_back(h);
     if (emu_eng_) h->add();
     return h;
@@ -710,15 +711,18 @@ bool BinaryEmulator::_hook_mem_invalid_dispatch(void* emu, int access, uint64_t 
     return rv;
 }
 
+bool invalid_mem_hook_trampoline(void* uc, int access, uint64_t address, uint32_t size, uint64_t value, void* user_data) {
+    auto* emu = static_cast<BinaryEmulator*>(user_data);
+    PLOG_DEBUG << "[tramp] code_hook fired at 0x" << std::hex << address << std::dec;
+    return emu->_hook_mem_invalid_dispatch(uc, access, address, size, value);
+}
+
 std::shared_ptr<InvalidMemHook> BinaryEmulator::add_mem_invalid_hook(MemAccessCallback cb, BinaryEmulator* emu) {
     if (!emu) emu = this;
-    auto hook = std::make_shared<InvalidMemHook>(emu, emu_eng_, cb, false);
+    auto hook = std::make_shared<InvalidMemHook>(emu, emu_eng_, cb, emu, false);
     auto& hl = hooks_[HOOK_MEM_INVALID];
     if (hl.empty()) {
-        auto dispatch_hook = std::make_shared<InvalidMemHook>(emu, emu_eng_,
-            [this](void* emu_p, int access, uint64_t address, uint32_t size, uint64_t value) -> bool {
-                return this->_hook_mem_invalid_dispatch(emu_p, access, address, size, value);
-            }, true);
+        auto dispatch_hook = std::make_shared<InvalidMemHook>(emu, emu_eng_, invalid_mem_hook_trampoline, emu, true);
         if (emu_eng_) {
             dispatch_hook->add();
         }
@@ -734,10 +738,10 @@ std::shared_ptr<InvalidMemHook> BinaryEmulator::add_mem_invalid_hook(MemAccessCa
 }
 
 std::shared_ptr<InterruptHook> BinaryEmulator::add_interrupt_hook(IntrCallback cb,
-                                                  std::vector<std::string> ctx, BinaryEmulator* emu) {
+                                                  void* ctx, BinaryEmulator* emu) {
     // Python binemu.py:1078-1100 doc: "Add a hook that will fire for software interrupts"
     if (!emu) emu = this;
-    auto h = std::make_shared<InterruptHook>(emu, emu_eng_, cb);
+    auto h = std::make_shared<InterruptHook>(emu, emu_eng_, cb, emu);
     hooks_[HOOK_INTERRUPT].push_back(h);
     if (emu_eng_) h->add();
     return h;
@@ -787,18 +791,18 @@ void BinaryEmulator::set_func_args(uint64_t stack_addr, uint64_t ret_addr,
 }
 
 std::shared_ptr<InstructionHook> BinaryEmulator::add_instruction_hook(InsnCallback cb, uint64_t begin, uint64_t end,
-                          std::vector<std::string> ctx, BinaryEmulator* emu, void* insn) {
+                          void* ctx, BinaryEmulator* emu, void* insn) {
     // Python binemu.py:1102-1124 doc: "Add a hook that will fire for IN, SYSCALL, or SYSENTER instructions"
     if (!emu) emu = this;
     auto h = std::make_shared<InstructionHook>(
-        emu, emu_eng_, cb, std::vector<void*>{}, true, insn);
+        emu, emu_eng_, cb, nullptr, true, insn);
     hooks_[HOOK_INSN].push_back(h);
     if (emu_eng_) h->add();
     return h;
 }
 
 std::shared_ptr<InvalidInstructionHook> BinaryEmulator::add_invalid_instruction_hook(InsnCallback cb,
-                                         std::vector<std::string> ctx, BinaryEmulator* emu) {
+                                         void* ctx, BinaryEmulator* emu) {
     // Python binemu.py:1126-1147 doc: "Add a hook that will fire for invalid instruction attempts"
     if (!emu) emu = this;
     auto h = std::make_shared<InvalidInstructionHook>(

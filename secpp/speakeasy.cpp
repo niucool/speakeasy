@@ -365,7 +365,7 @@ void Speakeasy::shutdown() { if (emu_) { delete emu_; emu_ = nullptr; } }
 
 void Speakeasy::call(uint64_t addr, const std::vector<void*>& params) { (void)addr; (void)params; }
 
-std::shared_ptr<CodeHook> Speakeasy::add_code_hook(CodeCallback cb, uint64_t begin, uint64_t end, const std::map<std::string, std::string>& ctx) {
+std::shared_ptr<CodeHook> Speakeasy::add_code_hook(CodeCallback cb, uint64_t begin, uint64_t end, void* ctx) {
     if (!emu_) { 
         code_hooks.emplace_back(cb, begin, end, ctx); 
         return nullptr; 
@@ -373,7 +373,7 @@ std::shared_ptr<CodeHook> Speakeasy::add_code_hook(CodeCallback cb, uint64_t beg
     return emu_->add_code_hook(cb, begin, end, ctx, emu_);
 }
 
-std::shared_ptr<DynCodeHook> Speakeasy::add_dyn_code_hook(DynCodeCallback cb, const std::map<std::string, std::string>& ctx) {
+std::shared_ptr<DynCodeHook> Speakeasy::add_dyn_code_hook(DynCodeCallback cb, void* ctx) {
     if (!emu_) { 
         dyn_code_hooks.emplace_back(cb, ctx); 
         return nullptr; 
@@ -402,7 +402,7 @@ std::shared_ptr<InstructionHook> Speakeasy::add_IN_instruction_hook(InsnCallback
         instruction_hooks.emplace_back(cb, begin, end, (void*)(uintptr_t)218); 
         return nullptr; 
     }
-    return emu_->add_instruction_hook(cb, begin, end, {}, emu_, (void*)(uintptr_t)218);
+    return emu_->add_instruction_hook(cb, begin, end, nullptr, emu_, (void*)(uintptr_t)218);
 }
 
 std::shared_ptr<InstructionHook> Speakeasy::add_SYSCALL_instruction_hook(InsnCallback cb, uint64_t begin, uint64_t end) {
@@ -410,7 +410,7 @@ std::shared_ptr<InstructionHook> Speakeasy::add_SYSCALL_instruction_hook(InsnCal
         instruction_hooks.emplace_back(cb, begin, end, (void*)(uintptr_t)700); 
         return nullptr; 
     }
-    return emu_->add_instruction_hook(cb, begin, end, {}, emu_, (void*)(uintptr_t)700);
+    return emu_->add_instruction_hook(cb, begin, end, nullptr, emu_, (void*)(uintptr_t)700);
 }
 
 std::shared_ptr<InvalidInstructionHook> Speakeasy::add_invalid_instruction_hook(InsnCallback cb, const std::vector<void*>& ctx) {
@@ -429,12 +429,13 @@ std::shared_ptr<InvalidMemHook> Speakeasy::add_mem_invalid_hook(MemAccessCallbac
     return emu_->add_mem_invalid_hook(cb, (BinaryEmulator*)this);
 }
 
-std::shared_ptr<InterruptHook> Speakeasy::add_interrupt_hook(IntrCallback cb, const std::map<std::string, std::string>& ctx) {
+std::shared_ptr<InterruptHook> Speakeasy::add_interrupt_hook(IntrCallback cb, void* ctx) {
     if (!emu_) { 
         interrupt_hooks.emplace_back(cb, ctx); 
         return nullptr; 
     }
-    return emu_->add_interrupt_hook(cb, {}, (BinaryEmulator*)this);
+    //TODO
+    return emu_->add_interrupt_hook(cb, ctx, (BinaryEmulator*)this);
 }
 
 std::shared_ptr<MapMemHook> Speakeasy::add_mem_map_hook(MapMemCallback cb, uint64_t begin, uint64_t end) {
@@ -442,6 +443,7 @@ std::shared_ptr<MapMemHook> Speakeasy::add_mem_map_hook(MapMemCallback cb, uint6
         mem_map_hooks.emplace_back(cb, begin, end); 
         return nullptr; 
     }
+    //TODO
     return emu_->add_mem_map_hook(cb, begin, end, (BinaryEmulator*)this);
 }
 
@@ -468,15 +470,21 @@ uint64_t Speakeasy::mem_alloc(size_t size, uint64_t base, const std::string& tag
     return emu_->mem_map(size, base, PERM_MEM_READ | PERM_MEM_WRITE, tag);
 }
 
-void Speakeasy::mem_free(uint64_t base) { emu_->mem_free(base); }
+void Speakeasy::mem_free(uint64_t base) { 
+    emu_->mem_free(base); 
+}
 
 std::vector<uint8_t> Speakeasy::mem_read(uint64_t addr, size_t size) {
     return emu_->mem_read(addr, size);
 }
 
-void Speakeasy::mem_write(uint64_t addr, const std::vector<uint8_t>& data) { emu_->mem_write(addr, data); }
+void Speakeasy::mem_write(uint64_t addr, const std::vector<uint8_t>& data) { 
+    emu_->mem_write(addr, data); 
+}
 
-void* Speakeasy::mem_cast(void* obj, uint64_t addr) { (void)obj; (void)addr; return nullptr; }
+void* Speakeasy::mem_cast(void* obj, uint64_t addr) { 
+    (void)obj; (void)addr; return nullptr; 
+}
 
 uint64_t Speakeasy::reg_read(const std::string& reg) {
     // reg name translation needed

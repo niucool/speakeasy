@@ -181,7 +181,7 @@ public:
     uint64_t reg_read(int reg);
     
     // Python binemu.py:200-213 doc: "Set instruction level hooks"
-    void set_hooks();
+    virtual void set_hooks();
     // Python binemu.py:215-230 doc: "Disassemble bytes using capstone"
     std::tuple<std::string, std::string, std::string> _cs_disasm(const std::vector<uint8_t>& mem, 
                                                                  uint64_t addr, bool fast = true);
@@ -280,14 +280,13 @@ public:
                           int call_conv = speakeasy::arch::CALL_CONV_STDCALL, BinaryEmulator* emu = nullptr);
     // Python binemu.py:897-919 doc: "Add a hook that will fire for every CPU instruction"
     std::shared_ptr<CodeHook> add_code_hook(CodeCallback cb, uint64_t begin = 1, uint64_t end = 0,
-                           std::map<std::string, std::string> ctx = {}, BinaryEmulator* emu = nullptr);
+                           void* ctx = nullptr, BinaryEmulator* emu = nullptr);
     // Python binemu.py:1042-1054 doc: "This handler will dispatch other invalid memory hooks"
-    void _dynamic_code_cb(BinaryEmulator* emu, uint64_t addr, size_t size, 
-                          std::map<std::string, std::string> ctx = {});
+    void _dynamic_code_cb(BinaryEmulator* emu, uint64_t addr, size_t size, void* ctx = nullptr);
     // Python binemu.py:931-946 doc: "Set the top level dispatch hook for dynamic code execution"
-    void _set_dyn_code_hook(uint64_t addr, size_t size, std::map<std::string, std::string> ctx = {});
+    void _set_dyn_code_hook(uint64_t addr, size_t size, void* ctx = nullptr);
     // Python binemu.py:948-968 doc: "Add a hook that will fire when dynamically generated/copied code is executed"
-    std::shared_ptr<DynCodeHook> add_dyn_code_hook(DynCodeCallback cb, std::vector<std::string> ctx = {},
+    std::shared_ptr<DynCodeHook> add_dyn_code_hook(DynCodeCallback cb, void* ctx = nullptr,
                                   BinaryEmulator* emu = nullptr);
     // Python binemu.py:970-992 doc: "Add a hook that will fire for memory reads"
     std::shared_ptr<ReadMemHook> add_mem_read_hook(MemAccessCallback cb, uint64_t begin = 1, uint64_t end = 0,
@@ -303,15 +302,15 @@ public:
     // Python binemu.py:1056-1076 doc: "Add a hook that will fire for invalid memory access"
     std::shared_ptr<InvalidMemHook> add_mem_invalid_hook(MemAccessCallback cb, BinaryEmulator* emu = nullptr);
     // Python binemu.py:1078-1100 doc: "Add a hook that will fire for software interrupts"
-    std::shared_ptr<InterruptHook> add_interrupt_hook(IntrCallback cb, std::vector<std::string> ctx = {},
+    std::shared_ptr<InterruptHook> add_interrupt_hook(IntrCallback cb, void* ctx = nullptr,
                                      BinaryEmulator* emu = nullptr);
     // Python binemu.py:1102-1124 doc: "Add a hook that will fire for IN, SYSCALL, or SYSENTER instructions"
     std::shared_ptr<InstructionHook> add_instruction_hook(InsnCallback cb, uint64_t begin = 1, uint64_t end = 0,
-                                        std::vector<std::string> ctx = {}, BinaryEmulator* emu = nullptr,
+                                        void* ctx = nullptr, BinaryEmulator* emu = nullptr,
                                          void* insn = nullptr);
     // Python binemu.py:1126-1147 doc: "Add a hook that will fire for invalid instruction attempts"
     std::shared_ptr<InvalidInstructionHook> add_invalid_instruction_hook(InsnCallback cb,
-                                                        std::vector<std::string> ctx = {}, 
+                                                        void* ctx = nullptr, 
                                                         BinaryEmulator* emu = nullptr);
     
     void _fire_dyn_code_hooks(uint64_t addr);
