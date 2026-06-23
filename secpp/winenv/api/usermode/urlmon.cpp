@@ -50,8 +50,10 @@ uint64_t Urlmon::URLDownloadToFile(void* e, ArgList& a, void* ctx) {
     uint64_t lpfnCB = a[4];
     (void)pCaller; (void)dwReserved; (void)lpfnCB;
 
+    int cw = get_char_width(static_cast<ApiContext*>(ctx));
+ 
     if (szURL) {
-        std::string url = be(e)->read_mem_string(szURL, 1);
+        std::string url = be(e)->read_mem_string(szURL, cw);
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
@@ -61,7 +63,7 @@ uint64_t Urlmon::URLDownloadToFile(void* e, ArgList& a, void* ctx) {
     }
 
     if (szFileName) {
-        std::string name = be(e)->read_mem_string(szFileName, 1);
+        std::string name = be(e)->read_mem_string(szFileName, cw);
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
@@ -95,11 +97,13 @@ uint64_t Urlmon::URLDownloadToCacheFile(void* e, ArgList& a, void* ctx) {
 
     uint32_t rv = URLMON_ERROR_SUCCESS;
 
+    int cw = get_char_width(static_cast<ApiContext*>(ctx));
+
     // Default cache path
     std::string cache_name = "C:\\Windows\\Temp\\urlcache.bin";
 
     if (szURL) {
-        std::string url = be(e)->read_mem_string(szURL, 1);
+        std::string url = be(e)->read_mem_string(szURL, cw);
         auto prof = be(e)->get_profiler();
         if (prof) {
             auto run = std::static_pointer_cast<Run>(we(e)->get_current_run());
@@ -119,7 +123,7 @@ uint64_t Urlmon::URLDownloadToCacheFile(void* e, ArgList& a, void* ctx) {
     if (szFileName) {
         uint32_t required = static_cast<uint32_t>(cache_name.size() + 1);
         if (cchFileName >= required) {
-            be(e)->write_mem_string(cache_name, szFileName, 1);
+            be(e)->write_mem_string(cache_name, szFileName, cw);
         } else {
             rv = URLMON_ERROR_INSUFFICIENT_BUFFER;
         }

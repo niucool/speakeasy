@@ -9,7 +9,8 @@ namespace speakeasy { namespace api {
 
 class Urlmon : public ApiHandler {
     API_LIST_BEGIN
-    API_ENTRY(URLDownloadToFile, 5)       API_ENTRY(URLDownloadToCacheFile, 6)
+    API_ENTRY(URLDownloadToFile, 5)       
+    API_ENTRY(URLDownloadToCacheFile, 6)
     API_LIST_END
 
 public:
