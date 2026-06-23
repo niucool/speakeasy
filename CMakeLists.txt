@@ -122,6 +122,7 @@ endif()
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(plog CONFIG REQUIRED)
 find_package(cxxopts CONFIG REQUIRED)
+find_package(qjs CONFIG REQUIRED)
 
 
 
@@ -163,6 +164,7 @@ target_link_libraries(speakeasy PUBLIC
     pe-parse::pe-parse
     miniz::miniz
     utf8cpp
+    qjs
 )
 
 if(TARGET capstone::capstone)
