@@ -1,10 +1,69 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-13
+> Last Updated: 2026-06-22
 > Build Status: ✅ **0 compiler errors, 0 warnings** (/W4 clean)
-> Emulation Status: ✅ **GetProcAddress.exe runs to ExitProcess** (207 APIs, clean exit)
+> Emulation Status: ✅ **GetProcAddress.exe runs to ExitProcess** (207+ APIs, clean exit)
 > Remaining TODOs: **0**
+> Test Status: ✅ **antidbg.exe exits cleanly** | ✅ **GetProcAddress.exe exits cleanly**
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
+
+---
+
+## 2026-06-22: msvcrt printf deep audit + wininet ApiContext rewrite + profiler rename
+
+### msvcrt printf-family deep audit
+
+All printf-family functions now match Python logic exactly using `get_func_argv` for proper varargs extraction:
+
+| Function | Bug | Fix |
+|----------|-----|------|
+| `sprintf` | Didn't use `get_func_argv` for VAR_ARGS; no empty-format handling; didn't update `argv` | Uses `get_func_argv(CALL_CONV_CDECL, 2)` + `2 + fmt_cnt` for varargs; handles `!fmt_cnt`; updates `argv` with result |
+| `printf` | Same issues | Uses `get_func_argv(CALL_CONV_CDECL, 1)` + `1 + fmt_cnt`; handles empty format; updates `argv` |
+| `fprintf` | Same issues | Uses `get_func_argv(CALL_CONV_CDECL, 2)` + `2 + fmt_cnt`; handles empty format; updates `argv` with `[stream, result]` |
+| `_snprintf` | Same issues | Uses `get_func_argv(CALL_CONV_CDECL, 3)` + `3 + fmt_cnt`; handles empty format; handles truncation |
+| `_snwprintf` | Same as `_snprintf` but missing fmt_cnt logic | Mirrors `_snprintf`: uses `get_func_argv`, handles empty format, truncation |
+| `_vsnprintf` | Not using proper varargs extraction | Uses `get_func_argv` matching Python's vararg count logic |
+| `__stdio_common_vfprintf` | Complex varargs extraction | Uses `get_func_argv(CALL_CONV_CDECL, 5)` or `6` based on platform |
+| `do_str_format` | Broken `%ls` detection; missing `%ll` modifiers; missing `%f` | Fixed wide-string via `fmt_mods.find('l')`; added `ll` prefix for 64-bit; added `%f`/`%F` float handling |
+| `fopen`/`_wfopen` | `static_cast<int*>(file_open(...))` — UB treating `File*` as `int*` | Use `reinterpret_cast<uint64_t>(hfile)` directly as stream handle |
+
+### wininet.cpp ApiContext rewrite
+
+All 16 wininet functions rewritten to use `ApiContext* actx = (ApiContext*)ctx; int cw = get_char_width(actx)` pattern for A/W character width detection:
+
+| Function group | Functions |
+|---------------|-----------|
+| InternetOpen | `InternetOpenA`, `InternetOpenW` → unified `InternetOpen` |
+| InternetOpenUrl | `InternetOpenUrlA`, `InternetOpenUrlW` → unified `InternetOpenUrl` (reference implementation) |
+| InternetConnect | `InternetConnectA`, `InternetConnectW` → unified `InternetConnect` |
+| HTTP | `HttpOpenRequestA`, `HttpOpenRequestW`, `HttpSendRequestA`, `HttpSendRequestW` |
+| I/O | `InternetReadFile`, `InternetWriteFile` |
+| Query | `InternetQueryDataAvailable`, `InternetQueryOptionA`, `InternetQueryOptionW`, `HttpQueryInfoA`, `HttpQueryInfoW` |
+| Cleanup | `InternetCloseHandle` |
+
+Delegates to `NetworkManager` (`get_network_manager()`) for instance/session/request tracking via `WininetInstance`/`WininetSession`/`WininetRequest` objects. All functions update `argv` with resolved string values for profiler logging.
+
+### advapi32 RegCreateKey ApiContext pattern
+
+Implemented `RegCreateKeyA/W` using `ApiContext* actx = (ApiContext*)ctx; int cw = get_char_width(actx)` to detect A vs W calling convention. Reads key name with correct char width. Writes `hkey` output parameter and `disposition` DWORD. Follows `InternetOpenUrl` as reference implementation.
+
+### profiler log_* → record_*_event rename
+
+All profiler logging functions renamed to match Python naming convention:
+- `log_api` → `record_api_event`
+- `log_dns` → `record_dns_event`
+- `log_http` → `record_http_event`
+- `log_file_access` → `record_file_access_event`
+- `log_registry_access` → `record_registry_event`
+- `log_process_event` → `record_process_event`
+- `log_exception` → `record_exception_event`
+- `log_mem` → `record_mem_event`
+- `log_dropped_files` → `record_dropped_files_event`
+- `log_decoded_string` → `record_decoded_string_event`
+- `log_network` → `record_network_event`
+- `log_dyn_code` → `record_dyn_code_event`
+- `log_section_access` → `record_section_access_event`
+- Removed duplicate `record_dropped_files_event` wrapper
 
 ---
 

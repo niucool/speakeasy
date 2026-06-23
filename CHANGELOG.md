@@ -5,6 +5,41 @@
 
 ## [Unreleased]
 
+### 2026-06-22 — msvcrt printf deep audit, wininet ApiContext rewrite, profiler rename
+
+#### Added
+- **wininet.cpp complete ApiContext rewrite**: All 16 functions rewritten to use `ApiContext* actx = (ApiContext*)ctx; int cw = get_char_width(actx)` pattern for A/W character width detection — `InternetOpenA/W`, `InternetOpenUrlA/W`, `InternetConnectA/W`, `InternetReadFile`, `InternetWriteFile`, `InternetCloseHandle`, `HttpOpenRequestA/W`, `HttpSendRequestA/W`, `InternetQueryDataAvailable`, `InternetQueryOptionA/W`, `HttpQueryInfoA/W`. Delegates to `NetworkManager` (`get_network_manager()`) for instance/session/request tracking via `WininetInstance`/`WininetSession`/`WininetRequest` objects. All functions update `argv` with resolved string values for profiler logging. `InternetOpenUrlA/W` serves as the reference implementation.
+- **advapi32 RegCreateKeyA/W ApiContext pattern**: Implemented `RegCreateKey` using `ApiContext* actx = (ApiContext*)ctx; int cw = get_char_width(actx)` to detect A vs W calling convention, reading key name with correct char width. Writes `hkey` output parameter and `disposition` DWORD.
+
+#### Changed
+- **profiler log_* → record_*_event rename**: All profiler logging functions renamed to match Python naming convention:
+  - `log_api` → `record_api_event`
+  - `log_dns` → `record_dns_event`
+  - `log_http` → `record_http_event`
+  - `log_file_access` → `record_file_access_event`
+  - `log_registry_access` → `record_registry_event`
+  - `log_process_event` → `record_process_event`
+  - `log_exception` → `record_exception_event`
+  - `log_mem` → `record_mem_event`
+  - `log_dropped_files` → `record_dropped_files_event`
+  - `log_decoded_string` → `record_decoded_string_event`
+  - `log_network` → `record_network_event`
+  - `log_dyn_code` → `record_dyn_code_event`
+  - `log_section_access` → `record_section_access_event`
+  - Removed duplicate `record_dropped_files_event` wrapper
+
+#### Fixed
+- **msvcrt printf-family deep audit**: All printf-family functions now match Python logic exactly:
+  - **`sprintf`**: Uses `get_func_argv(CALL_CONV_CDECL, 2)` for varargs extraction; handles empty format strings (writes format directly to result); updates `argv` with formatted result for profiler logging
+  - **`printf`**: Uses `get_func_argv(CALL_CONV_CDECL, 1)` for varargs extraction + `1 + fmt_cnt` for full arg list; handles empty format; updates `argv` with formatted result
+  - **`fprintf`**: Uses `get_func_argv(CALL_CONV_CDECL, 2)` for varargs extraction + `2 + fmt_cnt`; handles empty format; updates `argv` with `[stream, result]`
+  - **`_snprintf`**: Uses `get_func_argv(CALL_CONV_CDECL, 3)` for buf/size/fmt + `3 + fmt_cnt` for full args; handles empty format; handles truncation with size limit
+  - **`_snwprintf`**: Uses `get_func_argv(CALL_CONV_CDECL, 3)` for buf/size/fmt + `3 + fmt_cnt` for full args; handles empty format; handles truncation matching `_snprintf` logic
+  - **`do_str_format`**: Added `%f`/`%F` float/double handling; Added proper `%ll` prefix modifier for 64-bit integers; Fixed `%ls` wide string detection using `fmt_mods.find('l')` instead of broken `next_char` check
+  - **`fopen`/`_wfopen`**: Fixed undefined behavior — `static_cast<int*>(file_open(...))` treating `File*` as `int*` replaced with `reinterpret_cast<uint64_t>(hfile)` as stream handle
+  - **`_vsnprintf`**: Uses `get_func_argv` for proper varargs extraction matching Python's vararg count logic
+  - **Exit handlers**: `exit`/`_exit`/`_cexit`/`_c_exit`/`terminate` call `we(e)->exit_process()` (sets `run_complete=true`) instead of just `we(e)->stop()`, fixing speakeasy-cli never exiting
+
 ### 2026-06-20 — kernel32 A/W collapse, advapi32 full port, get_char_width integration
 
 #### Added

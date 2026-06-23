@@ -623,20 +623,28 @@ static std::vector<uint64_t> msvc_read_va_args(void* e, uint64_t va_list, int nu
     return args;
 }
 
+// Python msvcrt.py: sprintf — vararg, reads format, formats args, writes to buffer
 uint64_t Msvcrt::sprintf(void* e, ArgList& a, void* ctx) {
-    // This is called as a vararg function; the actual args are fetched from the stack
-    // For the static handler, we receive them in the argv vector already.
-    // But vararg functions have their args in argv already because the dispatcher
-    // pushes them all. Let's use them directly.
-    // argv[0] = buffer, argv[1] = format, argv[2+] = varargs
+    // Python: buf, fmt = emu.get_func_argv(CALL_CONV_CDECL, 2)
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 2);
     if (a.size() < 2) return 0;
     uint64_t buf = a[0];
     uint64_t fmt_addr = a[1];
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 1);
+    int fmt_cnt = msvc_va_arg_count(fmt_str);
+    if (!fmt_cnt) {
+        // Python: self.write_string(fmt_str, buf); return len(fmt_str)
+        be(e)->write_mem_string(fmt_str, buf, 1);
+        a.clear(); a.push_back(fmt_str);
+        return static_cast<uint64_t>(fmt_str.size());
+    }
+    // Python: _argv = emu.get_func_argv(CALL_CONV_CDECL, 2 + fmt_cnt)[2:]
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 2 + fmt_cnt);
     std::vector<uint64_t> vargs;
     for (size_t n = 2; n < a.size(); ++n) vargs.push_back(a[n]);
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
     be(e)->write_mem_string(result, buf, 1);
+    a.clear(); a.push_back(result);
     return static_cast<uint64_t>(result.size());
 }
 
@@ -672,28 +680,32 @@ uint64_t Msvcrt::_snprintf(void* e, ArgList& a, void* ctx) {
     return static_cast<uint64_t>(result.size());
 }
 
+// Python: same logic as _snprintf but with wide char format (char_width=2)
 uint64_t Msvcrt::_snwprintf(void* e, ArgList& a, void* ctx) {
-    (void)ctx;
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3);
     if (a.size() < 3) return 0;
     uint64_t buf   = a[0];
-    size_t   cnt   = static_cast<size_t>(a[1]);
+    size_t   count = static_cast<size_t>(a[1]);
     uint64_t fmt_addr = a[2];
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 2);
-    // Replace %s with %S for wide string format
-    {
-        size_t pos = 0;
-        while ((pos = fmt_str.find("%s", pos)) != std::string::npos) {
-            fmt_str.replace(pos, 2, "%S");
-            pos += 2;
-        }
+    // Replace %s with %S so do_str_format reads wide strings
+    for (size_t p = 0; (p = fmt_str.find("%s", p)) != std::string::npos; p += 2)
+        fmt_str.replace(p, 2, "%S");
+    int fmt_cnt = msvc_va_arg_count(fmt_str);
+    if (!fmt_cnt) {
+        be(e)->write_mem_string(fmt_str, buf, 2);
+        a.clear(); a.push_back(fmt_str);
+        return static_cast<uint64_t>(fmt_str.size());
     }
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 3 + fmt_cnt);
     std::vector<uint64_t> vargs;
-    for (size_t n = 3; n < a.size(); ++n) vargs.push_back(static_cast<uint64_t>(a[n]));
+    for (size_t n = 3; n < a.size(); ++n) vargs.push_back(a[n]);
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
-    if (cnt > 0 && result.size() >= cnt) {
-        result = result.substr(0, cnt - 1);
+    if (count > 0) {
+        if (result.size() >= count) result = result.substr(0, count - 1);
+        be(e)->write_mem_string(result, buf, 2);
     }
-    be(e)->write_mem_string(result, buf, 2);
+    a.clear(); a.push_back(result);
     return static_cast<uint64_t>(result.size());
 }
 
@@ -715,26 +727,45 @@ uint64_t Msvcrt::_vsnprintf(void* e, ArgList& a, void* ctx) {
     return static_cast<uint64_t>(result.size());
 }
 
+// Python msvcrt.py: printf — vararg, reads format via get_func_argv, returns length
 uint64_t Msvcrt::printf(void* e, ArgList& a, void* ctx) {
-    // argv[0] = format, argv[1+] = varargs
+    // Python: (fmt,) = emu.get_func_argv(CALL_CONV_CDECL, 1)
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 1);
     if (a.empty()) return 0;
     uint64_t fmt_addr = a[0];
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 1);
+    int fmt_cnt = msvc_va_arg_count(fmt_str);
+    if (!fmt_cnt) {
+        a.clear(); a.push_back(fmt_str);
+        return static_cast<uint64_t>(fmt_str.size());
+    }
+    // Python: fmt_argv = emu.get_func_argv(CALL_CONV_CDECL, 1 + fmt_cnt)[1:]
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 1 + fmt_cnt);
     std::vector<uint64_t> vargs;
     for (size_t n = 1; n < a.size(); ++n) vargs.push_back(a[n]);
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
-    // Output to console (just return length; actual output logged by emu)
+    a.clear(); a.push_back(result);
     return static_cast<uint64_t>(result.size());
 }
 
+// Python msvcrt.py: fprintf — vararg, reads format via get_func_argv
 uint64_t Msvcrt::fprintf(void* e, ArgList& a, void* ctx) {
-    // argv[0] = stream, argv[1] = format, argv[2+] = varargs
+    // Python: stream, fmt = emu.get_func_argv(CALL_CONV_CDECL, 2)
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 2);
     if (a.size() < 2) return 0;
+    uint64_t stream = a[0];
     uint64_t fmt_addr = a[1];
     std::string fmt_str = be(e)->read_mem_string(fmt_addr, 1);
+    int fmt_cnt = msvc_va_arg_count(fmt_str);
+    if (!fmt_cnt) {
+        a.clear(); a.push_back(stream); a.push_back(fmt_str);
+        return static_cast<uint64_t>(fmt_str.size());
+    }
+    a = be(e)->get_func_argv(speakeasy::arch::CALL_CONV_CDECL, 2 + fmt_cnt);
     std::vector<uint64_t> vargs;
     for (size_t n = 2; n < a.size(); ++n) vargs.push_back(a[n]);
     std::string result = msvc_do_str_format(e, fmt_str, vargs);
+    a.clear(); a.push_back(stream); a.push_back(result);
     return static_cast<uint64_t>(result.size());
 }
 
