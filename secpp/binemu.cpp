@@ -713,7 +713,7 @@ bool BinaryEmulator::_hook_mem_invalid_dispatch(void* emu, int access, uint64_t 
 
 bool invalid_mem_hook_trampoline(void* uc, int access, uint64_t address, uint32_t size, uint64_t value, void* user_data) {
     auto* emu = static_cast<BinaryEmulator*>(user_data);
-    PLOG_DEBUG << "[tramp] code_hook fired at 0x" << std::hex << address << std::dec;
+    PLOG_DEBUG << "[tramp] invalid_mem_hook fired at 0x" << std::hex << address << std::dec;
     return emu->_hook_mem_invalid_dispatch(uc, access, address, size, value);
 }
 

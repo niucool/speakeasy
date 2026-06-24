@@ -2390,7 +2390,7 @@ void WindowsEmulator::_continue_seh_x86() {
         seh.handler_ret_val_ = reinterpret_cast<void*>(static_cast<uintptr_t>(ret_val));
     }
 
-    std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx = std::make_shared<speakeasy::deffs::windows::CONTEXT>();
+    std::shared_ptr<speakeasy::deffs::windows::CONTEXT> ctx = std::dynamic_pointer_cast<speakeasy::deffs::windows::CONTEXT>(seh.context_);
     if (seh.context_address_ != 0) {
         mem_cast(ctx.get(), seh.context_address_);
     }
@@ -3718,13 +3718,63 @@ std::string WindowsEmulator::_build_context_summary(const std::string& desc, uin
 bool WindowsEmulator::_hook_interrupt(void* emu, int intnum) {
     (void)emu;
     uint64_t exception_list = _get_exception_list();
+
+    PLOG_DEBUG << "interrupt: intnum=0x" << std::hex << intnum;
+    // Dispatch SEH for recognized interrupt codes
     if (exception_list != 0 && config_.exceptions.dispatch_handlers) {
+        // Catch software breakpoint interrupts
         if (intnum == 3 || intnum == 0x2D) {
             curr_exception_code = 0x80000003; // STATUS_BREAKPOINT
-            enable_code_hook(); // Make sure SEH core hook catches it
+            prev_pc = get_pc();
+            enable_code_hook();
+            return true;
+        }
+        // Catch divide-by-zero exceptions
+        if (intnum == 0) {
+            PLOG_DEBUG << "interrupt: div zero";
+            curr_exception_code = 0xC0000094; // STATUS_INTEGER_DIVIDE_BY_ZERO
+            prev_pc = get_pc();
+            enable_code_hook();
+            return true;
+        }
+        // Catch single step exceptions
+        if (intnum == 1) {
+            curr_exception_code = 0x80000004; // STATUS_SINGLE_STEP
+            prev_pc = get_pc();
+            enable_code_hook();
+            uint64_t eflags = reg_read(speakeasy::arch::REG_EFLAGS);
+            eflags &= 0xFFFFFEFF; // Remove the trap flag (TF)
+            reg_write(speakeasy::arch::REG_EFLAGS, eflags);
             return true;
         }
     }
+
+    // Handle __fastfail interrupt introduced in Windows 8
+    if (intnum == 0x29) {
+        uint64_t ecx = reg_read(speakeasy::arch::REG_ECX);
+        if (ecx == 6) { // Cookie security init failed — resume at return address
+            auto hook_ptr = std::make_shared<std::shared_ptr<CodeHook>>();
+            *hook_ptr = add_code_hook([this, hook_ptr](void*, uint64_t, uint32_t, void*) -> bool {
+                uint64_t ret = pop_stack();
+                set_pc(ret);
+                (*hook_ptr)->disable();
+                return true;
+            });
+            return true;
+        }
+    }
+
+    // Unhandled interrupt — log error and restart run
+    uint64_t pc = get_pc();
+    //PLOG_DEBUG << "interrupt: intnum=0x" << std::hex << intnum;
+    PLOG_ERROR << "0x" << std::hex << pc << ": Unhandled interrupt: intnum=0x" << intnum;
+    if (curr_run) {
+        curr_run->error["type"] = "unhandled_interrupt";
+        curr_run->error["pc"] = hex_str(pc, false);
+        curr_run->error["interrupt_num"] = std::to_string(intnum);
+    }
+    restart_curr_run = true;
+    on_run_complete();
     return false;
 }
 

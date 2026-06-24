@@ -144,7 +144,7 @@ CodeHook::CodeHook(void* container, std::shared_ptr<EmuEngine> emu_eng,
 bool CodeHook::_wrap_code_cb(void* emu, uint64_t addr, uint32_t size, void* ctx) {
     if (!ctx) return true;
     auto* hook = static_cast<CodeHook*>(ctx);
-    if (hook) return hook->invoke(emu, addr, size);
+    if (hook && hook->is_enabled()) return hook->invoke(emu, addr, size);
     return true;
 }
 
