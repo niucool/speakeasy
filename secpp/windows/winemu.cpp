@@ -376,7 +376,9 @@ void WindowsEmulator::mem_purge() {
 //     """Setup the shared user data section that is often used to share data
 //     between user mode and kernel mode"""
 // Python winemu.py:1139  default setup (overridden in subclasses)
-void WindowsEmulator::setup(size_t stack_commit, bool first_time_setup) { /* default: no-op, overridden by Win32Emulator */ (void)stack_commit; (void)first_time_setup; }
+void WindowsEmulator::setup() {
+    /* default: no-op, overridden by Win32Emulator */ 
+}
 
 // Python winemu.py:548  base class on_run_complete (Python has this on WindowsEmulator)
 void WindowsEmulator::on_run_complete() {

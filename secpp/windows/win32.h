@@ -191,7 +191,7 @@ public:
     
     // Python win32.py:535
     // def setup(self):
-    void setup(size_t stack_commit = 0, bool first_time_setup = true) override;
+    void setup() override;
     
     // Python win32.py:556
     // def init_sys_modules(self, modules_config):

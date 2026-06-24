@@ -83,7 +83,7 @@ public:
     //  Object services
     void bootstrap_object_services();
     bool _hook_interrupt(void* emu, int intnum);
-    void setup();
+    void setup() override;
 
     //  Driver / IRP dispatch
     void add_symlink(const std::string& symlink, const std::string& devname);
