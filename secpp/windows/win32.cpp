@@ -627,8 +627,11 @@ std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Win32Emulator::init_sys_m
         for (auto& dev_info : sysmod->driver.devices) {
             auto name_it = dev_info.find("name");
             std::string dev_name = (name_it != dev_info.end()) ? name_it->second : "";
-            auto* dobj = new Device(reinterpret_cast<void*>(this));
+            auto dobj = std::make_shared<Device>(reinterpret_cast<void*>(this));
             dobj->init_device(dev_name, 0, 0, nullptr);
+            if (om) {
+                om->add_object(dobj);
+            }
         }
     }
 

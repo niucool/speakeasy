@@ -90,15 +90,15 @@ private:
     std::vector<std::string> flags;
     uint32_t ctx;
     std::shared_ptr<std::stringstream> response;
-    std::shared_ptr<WininetSession> session;
+    std::weak_ptr<WininetSession> session;  // weak_ptr to break cycle with WininetSession::requests
 
 public:
     // Constructor
-    WininetRequest(std::shared_ptr<WininetSession> session, const std::string& verb, 
-                   const std::string& objname, const std::string& ver, const std::string& ref, 
-                   const std::vector<std::string>& accepts, const std::vector<std::string>& flags, 
+    WininetRequest(std::shared_ptr<WininetSession> session, const std::string& verb,
+                   const std::string& objname, const std::string& ver, const std::string& ref,
+                   const std::vector<std::string>& accepts, const std::vector<std::string>& flags,
                    uint32_t ctx);
-    
+
     // Methods
     std::shared_ptr<WininetSession> get_session();
     std::string get_server();
@@ -122,15 +122,15 @@ private:
     std::vector<std::string> flags;
     uint32_t ctx;
     std::map<uint32_t, std::shared_ptr<WininetRequest>> requests;
-    std::shared_ptr<WininetInstance> instance;
+    std::weak_ptr<WininetInstance> instance;  // weak_ptr to break cycle with WininetInstance::sessions
 
 public:
     friend class NetworkManager;
     // Constructor
-    WininetSession(std::shared_ptr<WininetInstance> instance, const std::string& server, 
-                   int port, const std::string& user, const std::string& password, 
+    WininetSession(std::shared_ptr<WininetInstance> instance, const std::string& server,
+                   int port, const std::string& user, const std::string& password,
                    int service, const std::vector<std::string>& flags, uint32_t ctx);
-    
+
     // Methods
     std::shared_ptr<WininetInstance> get_instance();
     std::vector<std::string> get_flags();

@@ -135,7 +135,7 @@ WininetRequest::WininetRequest(std::shared_ptr<WininetSession> session, const st
 }
 
 std::shared_ptr<WininetSession> WininetRequest::get_session() {
-    return session;
+    return session.lock();
 }
 
 std::string WininetRequest::get_server() {
@@ -329,7 +329,7 @@ WininetSession::WininetSession(std::shared_ptr<WininetInstance> instance, const 
 }
 
 std::shared_ptr<WininetInstance> WininetSession::get_instance() {
-    return instance;
+    return instance.lock();
 }
 
 std::vector<std::string> WininetSession::get_flags() {

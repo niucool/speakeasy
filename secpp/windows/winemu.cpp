@@ -1765,7 +1765,7 @@ std::shared_ptr<Thread> WindowsEmulator::create_thread(uint64_t addr, void* ctx,
     run->type = thread_type;
     run->start_addr = addr;
     run->instr_cnt = 0;
-    run->args = {reinterpret_cast<const char*>(&ctx), reinterpret_cast<const char*>(&ctx) + sizeof(ctx)};
+    run->args = {std::string(reinterpret_cast<const char*>(&ctx), sizeof(ctx))};
     run->process_context = proc_obj;
     run->thread = thread;
 
