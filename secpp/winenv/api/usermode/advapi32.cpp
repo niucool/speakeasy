@@ -621,11 +621,14 @@ uint64_t Advapi32::GetUserName(void* e, ArgList& a, void* ctx) {
     int cw = get_char_width(static_cast<ApiContext*>(ctx));
     auto user=be(e)->get_user();
     std::string name=user.count("name")?user.at("name"):"user";
-    uint32_t sz=static_cast<uint32_t>(a[1]);
+    uint32_t sz = 0;
+    we(e)->mem_read(a[1], &sz, sizeof(sz));
+
     uint32_t need=static_cast<uint32_t>(name.size()+1);
     if (sz<need) return 0; // ERROR_INSUFFICIENT_BUFFER
-    a[0] = name; // Python: argv[0] = user_name
     be(e)->write_mem_string(name,a[0],cw);
+    be(e)->mem_write(a[1], &need, 4); // write size
+    a[0] = name; // Python: argv[0] = user_name
     return 1;
 }
 

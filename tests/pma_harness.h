@@ -206,28 +206,54 @@ inline ObservedBehavior collect_behavior(const speakeasy::Report& report) {
             }
 
             // File events
-            if (evt->event == "file_create" || evt->event == "file_open" ||
-                evt->event == "file_read" || evt->event == "file_write") {
-                auto* fe = dynamic_cast<speakeasy::events::FileCreateEvent*>(evt.get());
+            if (evt->event == "file_create") {
+                auto fe = std::dynamic_pointer_cast<speakeasy::events::FileCreateEvent>(evt);
+                if (fe && !fe->path.empty()) ob.files.insert(normalize_value(fe->path));
+            }
+            if (evt->event == "file_open") {
+                auto fe = std::dynamic_pointer_cast<speakeasy::events::FileOpenEvent>(evt);
+                if (fe && !fe->path.empty()) ob.files.insert(normalize_value(fe->path));
+            }
+            if (evt->event == "file_read") {
+                auto fe = std::dynamic_pointer_cast<speakeasy::events::FileReadEvent>(evt);
+                if (fe && !fe->path.empty()) ob.files.insert(normalize_value(fe->path));
+            }
+            if (evt->event == "file_write") {
+                auto fe = std::dynamic_pointer_cast<speakeasy::events::FileWriteEvent>(evt);
                 if (fe && !fe->path.empty()) ob.files.insert(normalize_value(fe->path));
             }
 
             // Registry events (RegOpenEvent has 'key', not 'path')
-            if (evt->event == "reg_open_key" || evt->event == "reg_create_key" ||
-                evt->event == "reg_read_value" || evt->event == "reg_list_subkeys") {
-                auto* re = dynamic_cast<speakeasy::events::RegOpenEvent*>(evt.get());
+            if (evt->event == "reg_open_key") {
+                auto re = std::dynamic_pointer_cast<speakeasy::events::RegOpenEvent>(evt);
+                if (re && !re->key.empty()) ob.registry_keys.insert(normalize_value(re->key));
+            }
+            if (evt->event == "reg_create_key") {
+                auto re = std::dynamic_pointer_cast<speakeasy::events::RegCreateEvent>(evt);
+                if (re && !re->key.empty()) ob.registry_keys.insert(normalize_value(re->key));
+            }
+            if (evt->event == "reg_read_value") {
+                auto re = std::dynamic_pointer_cast<speakeasy::events::RegReadEvent>(evt);
+                if (re && !re->key.empty()) ob.registry_keys.insert(normalize_value(re->key));
+            }
+            if (evt->event == "reg_write_value") {
+                auto re = std::dynamic_pointer_cast<speakeasy::events::RegWriteEvent>(evt);
+                if (re && !re->key.empty()) ob.registry_keys.insert(normalize_value(re->key));
+            }
+            if (evt->event == "reg_list_subkeys") {
+                auto re = std::dynamic_pointer_cast<speakeasy::events::RegListEvent>(evt);
                 if (re && !re->key.empty()) ob.registry_keys.insert(normalize_value(re->key));
             }
 
             // DNS events
             if (evt->event == "net_dns") {
-                auto* de = dynamic_cast<speakeasy::events::NetDnsEvent*>(evt.get());
+                auto de = std::dynamic_pointer_cast<speakeasy::events::NetDnsEvent>(evt);
                 if (de && !de->query.empty()) ob.domains.insert(normalize_value(de->query));
             }
 
             // HTTP events -- extract domain from URL
             if (evt->event == "net_http") {
-                auto* he = dynamic_cast<speakeasy::events::NetHttpEvent*>(evt.get());
+                auto he = std::dynamic_pointer_cast<speakeasy::events::NetHttpEvent>(evt);
                 if (he && !he->server.empty()) {
                     ob.domains.insert(he->server);
                 }
