@@ -22,7 +22,7 @@
 // Forward declarations
 class PeFile;
 class Win32Emulator;
-//class Emulator;
+namespace speakeasy { class JsPluginEngine; }
 
 /**
  * Wrapper class for invoking the speakeasy emulators
@@ -47,6 +47,7 @@ private:
     std::vector<std::string> argv_;
     void* exit_event_;
     bool debug_;
+    std::unique_ptr<speakeasy::JsPluginEngine> js_engine_;
 
     /**
      * Init the emulator config
@@ -259,6 +260,77 @@ public:
      * Write value to a register
      */
     void reg_write(const std::string& reg, uint64_t val);
+
+    /**
+     * Read value from a register by numeric Unicorn register ID
+     */
+    uint64_t reg_read(int reg_id);
+
+    /**
+     * Write value to a register by numeric Unicorn register ID
+     */
+    void reg_write(int reg_id, uint64_t val);
+
+    /**
+     * Load a DLL library by name (delegates to WindowsEmulator::load_library)
+     */
+    uint64_t load_library(const std::string& name);
+
+    /**
+     * Get procedure address from a module
+     */
+    uint64_t get_proc_address(uint64_t mod_base, const std::string& proc_name);
+
+    /**
+     * Get module base address by name
+     */
+    uint64_t get_module_handle_by_name(const std::string& name);
+
+    /**
+     * Get module name from a base address handle
+     */
+    std::string get_module_name_from_handle(uint64_t handle);
+
+    /**
+     * Get PEB address of the current process
+     */
+    uint64_t get_peb_address();
+
+    /**
+     * Get TEB address of the current thread
+     */
+    uint64_t get_teb_address();
+
+    /**
+     * Get the current process ID
+     */
+    uint32_t get_current_pid();
+
+    /**
+     * Get the current image base address
+     */
+    uint64_t get_image_base();
+
+    /**
+     * Get the raw emulator pointer (for advanced use)
+     */
+    void* get_raw_emu() const { return emu_; }
+
+    /**
+     * Initialize the JavaScript plugin engine (optional).
+     * Must be called AFTER modules are loaded.
+     */
+    bool init_js_engine();
+
+    /**
+     * Load a JavaScript plugin script.
+     */
+    bool load_js_script(const std::string& filename);
+
+    /**
+     * Get the JavaScript plugin engine (nullptr if not initialized).
+     */
+    speakeasy::JsPluginEngine* js_engine() { return js_engine_.get(); }
     
     /**
      * Get files that were written to disk during emulation

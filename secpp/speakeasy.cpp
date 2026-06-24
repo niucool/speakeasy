@@ -1,5 +1,6 @@
 // speakeasy.cpp
 #include "speakeasy.h"
+#include "jsengine.h"
 #include "windows/kernel.h"
 #include <fstream>
 #include <sstream>
@@ -531,9 +532,113 @@ void Speakeasy::set_pc(uint64_t addr) { emu_->set_pc(addr); }
 std::tuple<uint64_t, uint64_t> Speakeasy::reset_stack(uint64_t base) { return emu_->reset_stack(base); }
 uint64_t Speakeasy::get_stack_base() { return 0; }
 int Speakeasy::get_arch() { return emu_->get_arch(); }
-int Speakeasy::get_ptr_size() { return emu_->get_ptr_size(); }
+int Speakeasy::get_ptr_size() {
+    if (!emu_) return sizeof(void*);  // fallback to host pointer size
+    return emu_->get_ptr_size();
+}
 std::map<std::string, uint64_t> Speakeasy::get_all_registers() {
     return {}; // all_registers access deferred
+}
+
+uint64_t Speakeasy::reg_read(int reg_id) {
+    if (!emu_) return 0;
+    return emu_->reg_read(reg_id);
+}
+
+void Speakeasy::reg_write(int reg_id, uint64_t val) {
+    if (!emu_) return;
+    emu_->reg_write(reg_id, val);
+}
+
+uint64_t Speakeasy::load_library(const std::string& name) {
+    if (!emu_) return 0;
+    auto mod = emu_->load_library(name);
+    return reinterpret_cast<uint64_t>(mod);
+}
+
+uint64_t Speakeasy::get_proc_address(uint64_t mod_base, const std::string& proc_name) {
+    if (!emu_) return 0;
+    // Find module by base address
+    auto modules = emu_->get_user_modules();
+    for (auto& mod : modules) {
+        if (mod && mod->base == mod_base) {
+            auto proc_addr = emu_->get_proc(mod->name, proc_name);
+            return reinterpret_cast<uint64_t>(proc_addr);
+        }
+    }
+    return 0;
+}
+
+uint64_t Speakeasy::get_module_handle_by_name(const std::string& name) {
+    if (!emu_) return 0;
+    auto mod = emu_->get_mod_by_name(name);
+    if (mod) {
+        return mod->base;
+    }
+    // Try load_library if not already loaded
+    auto result = emu_->load_library(name);
+    return reinterpret_cast<uint64_t>(result);
+}
+
+std::string Speakeasy::get_module_name_from_handle(uint64_t handle) {
+    if (!emu_) return "";
+    auto mods = emu_->get_user_modules();
+    for (auto& mod : mods) {
+        if (mod && mod->base == handle) {
+            return mod->name;
+        }
+    }
+    return "";
+}
+
+uint64_t Speakeasy::get_peb_address() {
+    if (!emu_) return 0;
+    auto proc = emu_->get_current_process();
+    if (proc && proc->peb) {
+        return proc->peb->get_address();
+    }
+    return 0;
+}
+
+uint64_t Speakeasy::get_teb_address() {
+    if (!emu_) return 0;
+    auto thread = emu_->get_current_thread();
+    if (thread) {
+        auto teb = thread->get_teb();
+        if (teb) {
+            return teb->get_address();
+        }
+    }
+    return 0;
+}
+
+uint32_t Speakeasy::get_current_pid() {
+    if (!emu_) return 0;
+    auto proc = emu_->get_current_process();
+    if (proc) {
+        return static_cast<uint32_t>(proc->get_pid());
+    }
+    return 0;
+}
+
+uint64_t Speakeasy::get_image_base() {
+    if (!emu_) return 0;
+    auto mod = emu_->get_current_module();
+    if (mod) {
+        return mod->base;
+    }
+    return 0;
+}
+
+bool Speakeasy::init_js_engine() {
+    if (js_engine_) return true;  // already initialized
+    js_engine_ = std::make_unique<speakeasy::JsPluginEngine>(*this);
+    return js_engine_->init();
+}
+
+bool Speakeasy::load_js_script(const std::string& filename) {
+    if (!js_engine_) return false;
+    return js_engine_->load_script(filename);
 }
 
 std::string Speakeasy::get_symbol_from_address(uint64_t address) { (void)address;return ""; }

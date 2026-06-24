@@ -5,6 +5,42 @@
 
 ## [Unreleased]
 
+### 2026-06-24 — JavaScript plugin engine ported from Pascal (quickjs-ng integration)
+
+#### Added
+- **quickjs-ng v0.14.0 linked as static library**: Added `quickjs-ng` to `vcpkg.json`; `find_package(qjs CONFIG REQUIRED)` + `target_link_libraries(speakeasy PUBLIC qjs)` in `CMakeLists.txt`. Single header `<quickjs.h>` replaces the 1483-line `quickjs.pas` Pascal binding.
+- **`secpp/jsengine.h/.cpp` — `JsPluginEngine` class** (ported from `jsplugins_engine.pas`):
+  - `init()` — creates `JSRuntime` + `JSContext`, sets up ES6 module loader (`JS_SetModuleLoaderFunc`), registers `ApiHook` native JS class, creates `Emu` global object with all emulator functions, registers `console.log`/`print`/`info`/`warn`/`error` global functions, registers `importScripts` global
+  - `eval_buf(code, filename, flags)` / `eval_file(filename, flags)` — execute JavaScript with error dumping
+  - `load_script(filename)` — load main JS plugin script
+  - `js_logme(magic)` — unified logging callback (magic: 0=print, 1=log, 2=info, 3=warn, 4=error), matches Pascal `logme` with magic-based coloring
+  - `js_install()` — `ApiHook.install()` implementation: parses args (1 arg=address, 2 args=lib+name or lib+ordinal), validates `OnCallBack`/`OnExit`, delegates to `JsApiHookRegistry`
+  - `js_constructor()` — `ApiHook` constructor, creates `args` array property on each instance
+  - `register_native_class()` — creates `JSClassID`, `JSClassDef` ("ApiHook"), prototype with `install()`, global constructor
+  - Module loader callbacks (`module_normalize_cb`/`module_loader_cb`) — file-based ES6 import support
+  - `dump_error()` — replacement for `js_std_dump_error`: reads `stack` property, falls back to exception string
+  - `load_file_content()` — host file → QuickJS malloc'd buffer
+  - Global `std`/`os` module bridge evaluated at init (matching Pascal's `std_helper`)
+- **`secpp/jsemuobj.h/.cpp` — `JsEmuObject` static callbacks** (ported from `jsemuobj.pas`, 25 functions):
+  - **Registers**: `ReadReg(reg_id)`, `SetReg(reg_id, value)` — accepts numeric Unicorn register constants, delegates to `Speakeasy::reg_read(int)`/`reg_write(int, uint64_t)`
+  - **Strings**: `ReadStringA(addr, len?)`, `ReadStringW(addr, len?)`, `WriteStringA(addr, str)`, `WriteStringW(addr, str)` — delegates to `Speakeasy::read_mem_string`/`mem_write` with proper width and null termination
+  - **Modules**: `LoadLibrary(name)` — normalizes path (basename, lowercase, `.dll` extension), delegates to `Speakeasy::load_library`; `GetModuleName(handle?)` — returns module name by base address; `GetModuleHandle(name?)` — returns module base by name; `GetProcAddr(handle, name)` — delegates to `Speakeasy::get_proc_address`
+  - **Memory**: `ReadByte/Word/Dword/Qword(addr)` — reads with little-endian decoding; `WriteByte/Word/Dword/Qword(addr, val)` — writes with LE encoding; `ReadMem(addr, len)` → `ArrayBuffer` via `JS_NewArrayBufferCopy`; `WriteMem(addr, [bytes])` — iterates JS array, writes bytes
+  - **Stack**: `push(val)`, `pop()` — delegates to `Speakeasy::push_stack`/`pop_stack`
+  - **Control**: `Stop()` — calls `Speakeasy::stop()`; `LastError()` — returns error string
+  - **Debug**: `HexDump(addr, len, cols?)` — reads memory, formats hex dump via `PLOG_INFO`; `StackDump(addr, len)` — reads stack, formats pointer-sized values
+- **`secpp/jsapihook.h/.cpp` — `JsApiHookRegistry` + `JsHookEntry`** (bridges JS `install()` to C++ `add_api_hook()`):
+  - `JsHookEntry` — stores `JSContext*`, `OnCallBack`/`OnExit`/`this_val` JS values with `JS_DupValue` refcounting; `fire_on_call_back(api, argv)` builds JS array from `vector<uint64_t>`, calls `JS_Call(ctx, on_call_back, this_val, 2, [api_str, args_array])`; `fire_on_exit(api, argv, retval)` calls `JS_Call(ctx, on_exit, this_val, 3, [api_str, args, retval])`
+  - `JsApiHookRegistry::install()` — parses by name/ordinal/address, creates `ApiCallback` lambda that calls `entry->fire_on_call_back()`, registers via `Speakeasy::add_api_hook()`
+  - `remove_all()` — frees all `JS_DupValue`'d callbacks, clears hook map
+  - Bridge lambda returns `true` to let built-in handler execute after JS observation (matches Pascal behavior)
+- **Speakeasy facade extended** (19 new methods in `speakeasy.h/.cpp`):
+  - JS engine integration: `init_js_engine()`, `load_js_script(filename)`, `js_engine()`, `js_engine_` unique_ptr member
+  - Register access by numeric ID: `reg_read(int)`, `reg_write(int, uint64_t)` — delegates to `emu_->reg_read/write(int)`
+  - Module operations: `load_library(name)`, `get_proc_address(mod_base, proc_name)`, `get_module_handle_by_name(name)`, `get_module_name_from_handle(handle)`
+  - Process introspection: `get_peb_address()`, `get_teb_address()`, `get_current_pid()`, `get_image_base()`
+  - Raw emulator access: `get_raw_emu()` returns `void*`
+
 ### 2026-06-22 — msvcrt printf deep audit, wininet ApiContext rewrite, profiler rename
 
 #### Added

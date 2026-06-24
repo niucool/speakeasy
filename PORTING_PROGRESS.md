@@ -1,11 +1,93 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-22
+> Last Updated: 2026-06-24
 > Build Status: ✅ **0 compiler errors, 0 warnings** (/W4 clean)
 > Emulation Status: ✅ **GetProcAddress.exe runs to ExitProcess** (207+ APIs, clean exit)
+> JS Engine: ✅ **quickjs-ng v0.14.0 static linked** | ✅ **JsPluginEngine + ApiHook + Emu global**
 > Remaining TODOs: **0**
-> Test Status: ✅ **antidbg.exe exits cleanly** | ✅ **GetProcAddress.exe exits cleanly**
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
+
+---
+
+## 2026-06-24: JavaScript plugin engine ported from Pascal (quickjs-ng)
+
+### Pascal → C++ conversion summary
+
+Three Pascal source files (`secpp/*.pas`) from a companion project were converted to C++ and integrated with Speakeasy's emulator:
+
+| Pascal File | Lines | C++ Outcome | C++ Files |
+|---|---|---|---|
+| `quickjs.pas` | 1483 | **Skipped** — `<quickjs.h>` from vcpkg quickjs-ng replaces all Pascal bindings | 0 new |
+| `jsplugins_engine.pas` | 407 | `JsPluginEngine` class — JS runtime lifecycle, ApiHook class, Emu global | `jsengine.h/.cpp` |
+| `jsemuobj.pas` | 775 | `JsEmuObject` — 25 static JS callbacks for emulator functions | `jsemuobj.h/.cpp` |
+| (hook bridge) | — | `JsApiHookRegistry` + `JsHookEntry` — JS-to-C++ hook bridging | `jsapihook.h/.cpp` |
+
+### Architecture
+
+```
+Speakeasy (modified: +19 methods, +js_engine_ unique_ptr)
+  ├── Win32Emulator* emu_              [unchanged — no JS awareness added]
+  └── JsPluginEngine js_engine_        [new, optional]
+        ├── JSRuntime* rt_             (created by JS_NewRuntime)
+        ├── JSContext* ctx_            (created by JS_NewContext)
+        ├── JSValue emu_obj_           ("Emu" global — 25 functions + 6 static properties)
+        └── JsApiHookRegistry hooks_   (bridges install() → add_api_hook())
+```
+
+### Key design decisions
+
+1. **`quickjs.pas` not converted** — We already have `<quickjs.h>` from vcpkg quickjs-ng providing all 267 C API functions. No Pascal bindings needed.
+
+2. **Emulator core untouched** — `BinaryEmulator`, `WindowsEmulator`, `Win32Emulator` have zero changes. The JS engine uses only public `Speakeasy` methods. Emulation works without JS.
+
+3. **Missing quickjs-libc handled** — vcpkg quickjs-ng doesn't include `quickjs-libc` (std/os modules, `js_std_*` helpers). We provide our own module loader callback for file-based ES6 imports, a `dump_error()` replacement, and `load_file_content()` instead of `js_load_file()`.
+
+4. **JS callbacks properly refcounted** — `JsHookEntry` stores JS callbacks with `JS_DupValue` on install and `JS_FreeValue` on removal. The bridge lambda captures a raw `JsHookEntry*` (safe because the registry outlives the hook).
+
+5. **`install()` by address partially stubbed** — Pascal's `Emulator.Hooks.ByAddr` has no direct Speakeasy equivalent. Address-based hooks log a warning; name/ordinal hooks work fully via `add_api_hook`.
+
+### `Emu` global object API
+
+| Category | Functions | Speakeasy delegate |
+|---|---|---|
+| Registers | `ReadReg(id)`, `SetReg(id, val)` | `reg_read(int)`, `reg_write(int, uint64_t)` |
+| Strings | `ReadStringA/W(addr, len?)`, `WriteStringA/W(addr, str)` | `read_mem_string`, `mem_write` |
+| Modules | `LoadLibrary`, `GetModuleName`, `GetModuleHandle`, `GetProcAddr` | `load_library`, `get_module_handle_by_name`, etc. |
+| Memory | `ReadByte/Word/Dword/Qword`, `WriteByte/Word/Dword/Qword`, `ReadMem`, `WriteMem` | `mem_read`, `mem_write` |
+| Stack | `push`, `pop` | `push_stack`, `pop_stack` |
+| Control | `Stop`, `LastError` | `stop` |
+| Debug | `HexDump`, `StackDump` | `mem_read` + formatting |
+| Static props | `TEB`, `PEB`, `PID`, `isx64`, `ImageBase`, `Filename` | `get_teb_address`, `get_peb_address`, etc. |
+
+### JS-callable globals
+
+| Global | Magic | Behavior |
+|---|---|---|
+| `console.log(...)` | 1 | PLOG_INFO |
+| `print(...)` | 0 | PLOG_INFO |
+| `log(...)` | 1 | PLOG_INFO |
+| `info(...)` | 2 | PLOG_INFO |
+| `warn(...)` | 3 | PLOG_WARNING |
+| `error(...)` | 4 | PLOG_ERROR |
+| `importScripts(...)` | — | Loads JS files at runtime |
+| `ApiHook` | — | Constructor class with `.install()` method |
+| `Emu` | — | Emulator object (see table above) |
+
+### Files changed summary
+
+| File | Status | Lines |
+|---|---|---|
+| `secpp/jsengine.h` | **New** | ~142 |
+| `secpp/jsengine.cpp` | **New** | ~590 |
+| `secpp/jsemuobj.h` | **New** | ~95 |
+| `secpp/jsemuobj.cpp` | **New** | ~420 |
+| `secpp/jsapihook.h` | **New** | ~90 |
+| `secpp/jsapihook.cpp` | **New** | ~162 |
+| `secpp/speakeasy.h` | Modified | +19 method declarations, +1 member, +1 forward decl |
+| `secpp/speakeasy.cpp` | Modified | +~85 lines (19 method implementations) |
+| `vcpkg.json` | Modified | +1 dependency (`quickjs-ng`) |
+| `CMakeLists.txt` | Modified | +2 lines (`find_package` + `target_link_libraries`) |
+| `secpp/quickjs.pas` | **Deleted** (can be removed) | -1483 (not needed) |
 
 ---
 
