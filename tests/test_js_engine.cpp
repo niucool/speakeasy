@@ -367,7 +367,7 @@ protected:
     }
 };
 
-TEST_F(JsEngineTest, DISABLED_InitJsEngine) {
+TEST_F(JsEngineTest, InitJsEngine) {
     // Before loading a PE, the emulator is null; init should still work
     // (Emu properties will be 0, but the runtime/context are created)
     bool ok = speakeasy_->init_js_engine();
@@ -421,7 +421,7 @@ protected:
     }
 };
 
-TEST_F(JsEngineIntegrationTest, DISABLED_InitWithLoadedModule) {
+TEST_F(JsEngineIntegrationTest, InitWithLoadedModule) {
     ASSERT_TRUE(init_engine());
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);

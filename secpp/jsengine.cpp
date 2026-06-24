@@ -43,12 +43,13 @@ JsPluginEngine::~JsPluginEngine() {
     if (hook_registry_) {
         hook_registry_->remove_all();
     }
+    // IMPORTANT: emu_obj_ and api_class_proto_ were passed to
+    // JS_SetPropertyStr / JS_SetClassProto which use set_value()
+    // internally. set_value() takes ownership WITHOUT calling
+    // JS_DupValue, so the property/class now owns the only reference.
+    // We must NOT call JS_FreeValue on them — that would double-free
+    // when the context is destroyed.
     if (ctx_) {
-        // Free our references to globals before destroying the context.
-        // The global object and class proto also hold references, so these
-        // just drop our refcounts, not free the objects.
-        JS_FreeValue(ctx_, emu_obj_);
-        JS_FreeValue(ctx_, api_class_proto_);
         JS_FreeContext(ctx_);
         ctx_ = nullptr;
     }
@@ -90,12 +91,11 @@ bool JsPluginEngine::init() {
     // 6. Register global logging functions (console.log, print, info, warn, error)
     register_log_functions(ctx_);
 
-    // 7. Register importScripts global
+    // 7. Register importScripts global — JS_SetPropertyStr takes ownership
     JSValue global = JS_GetGlobalObject(ctx_);
-    JSValue import_fn = JS_NewCFunction2(ctx_, js_native_import_scripts, "importScripts", 1,
-                                          JS_CFUNC_generic, 0);
-    JS_SetPropertyStr(ctx_, global, "importScripts", import_fn);
-    JS_FreeValue(ctx_, import_fn);
+    JS_SetPropertyStr(ctx_, global, "importScripts",
+        JS_NewCFunction2(ctx_, js_native_import_scripts, "importScripts", 1,
+                         JS_CFUNC_generic, 0));
     JS_FreeValue(ctx_, global);
 
     // 8. Initialize hook registry
@@ -396,23 +396,19 @@ void JsPluginEngine::register_native_class(JSContext* ctx) {
     api_class_proto_ = JS_NewObject(ctx);
 
     // Add install() method to prototype
-    JSValue install_fn = JS_NewCFunction2(ctx, js_install, "install", 2,
-                                           JS_CFUNC_generic, 0);
-    JS_SetPropertyStr(ctx, api_class_proto_, "install", install_fn);
-    JS_FreeValue(ctx, install_fn);
+    // JS_SetPropertyStr takes ownership, do NOT FreeValue the function
+    JS_SetPropertyStr(ctx, api_class_proto_, "install",
+        JS_NewCFunction2(ctx, js_install, "install", 2, JS_CFUNC_generic, 0));
 
     // Set the prototype on the class
     JS_SetClassProto(ctx, api_class_id_, api_class_proto_);
 
     // Create constructor function
-    JSValue ctor = JS_NewCFunction2(ctx, js_constructor, "ApiHook", 1,
-                                     JS_CFUNC_constructor, 0);
-
-    // Add to global object
+    // Add to global object — JS_SetPropertyStr takes ownership of ctor
     JSValue global = JS_GetGlobalObject(ctx);
-    JS_SetPropertyStr(ctx, global, "ApiHook", ctor);
+    JS_SetPropertyStr(ctx, global, "ApiHook",
+        JS_NewCFunction2(ctx, js_constructor, "ApiHook", 1, JS_CFUNC_constructor, 0));
     JS_FreeValue(ctx, global);
-    JS_FreeValue(ctx, ctor);
 }
 
 // ============================================================================
@@ -426,10 +422,10 @@ void JsPluginEngine::init_emu_object(JSContext* ctx) {
 
     // === Static properties (read at init time, matching Pascal InitJSEmu) ===
 
-    // Helper: define a property and free the value reference
+    // Helper: define a property. JS_DefinePropertyValueStr takes ownership
+    // of the value, so we must NOT call JS_FreeValue on it.
     auto define_prop = [ctx](JSValue obj, const char* name, JSValue val, int flags) {
         JS_DefinePropertyValueStr(ctx, obj, name, val, flags);
-        JS_FreeValue(ctx, val);
     };
 
     // isx64
@@ -526,38 +522,23 @@ void JsPluginEngine::register_log_functions(JSContext* ctx) {
 
     // Override console object with our own
     JSValue console = JS_NewObject(ctx);
-    JSValue console_log = JS_NewCFunctionMagic(ctx, js_logme, "log", 1,
-                                                JS_CFUNC_generic_magic, 1);
-    JS_SetPropertyStr(ctx, console, "log", console_log);
-    JS_FreeValue(ctx, console_log);
+    JS_SetPropertyStr(ctx, console, "log",
+        JS_NewCFunctionMagic(ctx, js_logme, "log", 1, JS_CFUNC_generic_magic, 1));
     JS_SetPropertyStr(ctx, global, "console", console);
     JS_FreeValue(ctx, console);
 
-    // Global logging functions with magic numbers for level control
-    JSValue fn_print = JS_NewCFunctionMagic(ctx, js_logme, "print", 1,
-                                             JS_CFUNC_generic_magic, 0);
-    JS_SetPropertyStr(ctx, global, "print", fn_print);
-    JS_FreeValue(ctx, fn_print);
-
-    JSValue fn_log = JS_NewCFunctionMagic(ctx, js_logme, "log", 1,
-                                           JS_CFUNC_generic_magic, 1);
-    JS_SetPropertyStr(ctx, global, "log", fn_log);
-    JS_FreeValue(ctx, fn_log);
-
-    JSValue fn_info = JS_NewCFunctionMagic(ctx, js_logme, "info", 1,
-                                            JS_CFUNC_generic_magic, 2);
-    JS_SetPropertyStr(ctx, global, "info", fn_info);
-    JS_FreeValue(ctx, fn_info);
-
-    JSValue fn_warn = JS_NewCFunctionMagic(ctx, js_logme, "warn", 1,
-                                            JS_CFUNC_generic_magic, 3);
-    JS_SetPropertyStr(ctx, global, "warn", fn_warn);
-    JS_FreeValue(ctx, fn_warn);
-
-    JSValue fn_error = JS_NewCFunctionMagic(ctx, js_logme, "error", 1,
-                                             JS_CFUNC_generic_magic, 4);
-    JS_SetPropertyStr(ctx, global, "error", fn_error);
-    JS_FreeValue(ctx, fn_error);
+    // Global logging functions with magic numbers for level control.
+    // NOTE: JS_SetPropertyStr takes OWNERSHIP of the value — do NOT FreeValue it.
+    JS_SetPropertyStr(ctx, global, "print",
+        JS_NewCFunctionMagic(ctx, js_logme, "print", 1, JS_CFUNC_generic_magic, 0));
+    JS_SetPropertyStr(ctx, global, "log",
+        JS_NewCFunctionMagic(ctx, js_logme, "log", 1, JS_CFUNC_generic_magic, 1));
+    JS_SetPropertyStr(ctx, global, "info",
+        JS_NewCFunctionMagic(ctx, js_logme, "info", 1, JS_CFUNC_generic_magic, 2));
+    JS_SetPropertyStr(ctx, global, "warn",
+        JS_NewCFunctionMagic(ctx, js_logme, "warn", 1, JS_CFUNC_generic_magic, 3));
+    JS_SetPropertyStr(ctx, global, "error",
+        JS_NewCFunctionMagic(ctx, js_logme, "error", 1, JS_CFUNC_generic_magic, 4));
 
     JS_FreeValue(ctx, global);
 }
