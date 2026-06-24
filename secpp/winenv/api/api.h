@@ -301,9 +301,6 @@ private: \
 #define REGX(klass, name, argc, ordinal) \
     {#name, argc, speakeasy::arch::CALL_CONV_STDCALL, ordinal, klass::name},
 
-//#define REG_ORD(klass, name, argc, ordinal) \
-//    {"ordinal_"#ordinal, argc, speakeasy::arch::CALL_CONV_STDCALL, ordinal, klass::name},
-
 /// End the API table initialization.
 #define END_API_TABLE \
     };
