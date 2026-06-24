@@ -604,7 +604,7 @@ speakeasy::Report Profiler::get_report() const {
             ep.ret_val = reinterpret_cast<uint64_t>(run->ret_val);
         if (!run->error.empty()) {
             speakeasy::ErrorInfo ei;
-            ei.type = run->error.count("type") ? run->error.at("type") : "error";
+            ei.type = run->error.count("error") ? run->error.at("error") : "error";
             ei.context_summary = run->error.count("message") ? run->error.at("message") : "";
             ep.error = ei;
         }

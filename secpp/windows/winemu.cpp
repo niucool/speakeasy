@@ -2670,7 +2670,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
             _fire_dyn_code_hooks(ret);
         }
 
-        record_api_event(call_pc, imp_api, rv, argv);
+        log_api(call_pc, imp_api, rv, argv);
 
         PLOG_DEBUG << "[api-dispatch] post-call: run_complete=" << run_complete
                     << " ret=0x" << std::hex << ret << " oret=0x" << oret
@@ -2727,7 +2727,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         uint64_t rv = cb ? cb(this, imp_api, nullptr, raw_hook_argv) : 0;
 
         uint64_t ret = get_ret_address();
-        record_api_event(call_pc, imp_api, rv, argv);
+        log_api(call_pc, imp_api, rv, argv);
         do_call_return(hook_argc, ret, rv, hook_conv);
         if (!run_complete) {
             enable_code_hook();
@@ -2740,7 +2740,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         auto argv = get_func_argv(conv, argc);
         uint64_t rv = 1;
         uint64_t ret = get_ret_address();
-        record_api_event(call_pc, imp_api, rv, argv);
+        log_api(call_pc, imp_api, rv, argv);
         do_call_return(argc, ret, rv, conv);
         if (!run_complete) {
             enable_code_hook();
@@ -2885,9 +2885,9 @@ std::optional<std::string> WindowsEmulator::read_string_heuristic(uint64_t addr)
 }
 
 // Python winemu.py:1614
-// def record_api_event(self, pc, imp_api, rv, argv):
+// def log_api(self, pc, imp_api, rv, argv):
 //     """Log an API call with its arguments and return value."""
-void WindowsEmulator::record_api_event(uint64_t pc, const std::string& api,
+void WindowsEmulator::log_api(uint64_t pc, const std::string& api,
                                uint64_t rv, const ArgList& argv) {
     std::string call_str = api + "(";
 
