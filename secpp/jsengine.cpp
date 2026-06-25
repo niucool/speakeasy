@@ -50,6 +50,8 @@ JsPluginEngine::~JsPluginEngine() {
     // We must NOT call JS_FreeValue on them — that would double-free
     // when the context is destroyed.
     if (ctx_) {
+        //emu_obj_ = JS_UNDEFINED;
+        //api_class_proto_ = JS_UNDEFINED;
         JS_FreeContext(ctx_);
         ctx_ = nullptr;
     }

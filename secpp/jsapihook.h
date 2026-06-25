@@ -22,7 +22,6 @@ struct JsHookEntry {
     JSContext* js_ctx = nullptr;          // JSContext for calling JS functions
     JSValue on_call_back = JS_UNDEFINED;  // JS function, called when API is invoked
     JSValue on_exit = JS_UNDEFINED;       // JS function, called after API returns
-    JSValue this_val = JS_UNDEFINED;      // The ApiHook JS object instance
     std::string module;
     std::string api_name;
     uint32_t ordinal = 0;

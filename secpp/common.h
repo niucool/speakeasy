@@ -43,7 +43,7 @@ const int INVAL_PERM_MEM_READ = 2005;
 class EmuEngine;
 class MemMap;
 
-using ApiCallback = std::function<bool(void* emu, const std::string& api, void* orig, std::vector<uint64_t> argv)>;
+using ApiCallback = std::function<uint64_t(void* emu, const std::string& api, void* orig, std::vector<uint64_t> argv)>;
 using DynCodeCallback = std::function<bool(std::shared_ptr<MemMap> mm)>;
 using CodeCallback = std::function<bool(void* emu, uint64_t addr, uint32_t size, void* ctx)>;
 using MemAccessCallback = std::function<bool(void* emu, int access, uint64_t addr, uint32_t size, uint64_t value, void* ctx)>;

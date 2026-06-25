@@ -36,7 +36,7 @@ void JsHookEntry::fire_on_call_back(const std::string& api,
     call_args[0] = JS_NewString(js_ctx, api.c_str());
     call_args[1] = args;
 
-    JSValue ret = JS_Call(js_ctx, on_call_back, this_val, 2, call_args);
+    JSValue ret = JS_Call(js_ctx, on_call_back, JS_UNDEFINED, 2, call_args);
 
     if (JS_IsException(ret)) {
         JsPluginEngine::dump_error(js_ctx);
@@ -66,7 +66,7 @@ void JsHookEntry::fire_on_exit(const std::string& api,
     call_args[1] = args;
     call_args[2] = JS_NewInt64(js_ctx, static_cast<int64_t>(retval));
 
-    JSValue ret = JS_Call(js_ctx, on_exit, this_val, 3, call_args);
+    JSValue ret = JS_Call(js_ctx, on_exit, JS_UNDEFINED, 3, call_args);
 
     if (JS_IsException(ret)) {
         JsPluginEngine::dump_error(js_ctx);
@@ -120,7 +120,6 @@ bool JsApiHookRegistry::install(JSValueConst this_val,
     entry->js_ctx = ctx_;
     entry->on_call_back = JS_DupValue(ctx_, on_call_back);
     entry->on_exit = JS_DupValue(ctx_, on_exit);
-    entry->this_val = JS_DupValue(ctx_, this_val);
     entry->module = lib;
     entry->api_name = name;
     entry->ordinal = ordinal;
@@ -144,16 +143,22 @@ bool JsApiHookRegistry::install(JSValueConst this_val,
     // Build the bridge lambda. entry_ptr is captured by value (raw pointer).
     // The registry (this) outlives the hook, so the pointer stays valid.
     auto bridge = [entry_ptr](void* emu, const std::string& api_called,
-                               void* orig, std::vector<uint64_t> argv) -> bool {
-        (void)emu;
-        (void)orig;
-
-        // Call the JS OnCallBack
+                               void* orig, std::vector<uint64_t> argv) -> uint64_t {
+        // Fire JS OnCallBack BEFORE the handler
         entry_ptr->fire_on_call_back(api_called, argv);
 
-        // Return true to let the built-in handler execute after our hook
-        // (matches Pascal behavior where the hook observes but doesn't replace)
-        return true;
+#if 1
+        // Call the original handler (must call this or the API won't execute!)
+        ApiCallback* orig_cb = reinterpret_cast<ApiCallback*>(orig);
+        uint64_t retval = 0;
+        if (orig_cb) {
+            retval = (*orig_cb)(emu, api_called, nullptr, argv);
+        }
+
+        // Fire JS OnExit AFTER the handler
+        entry_ptr->fire_on_exit(api_called, argv, retval);
+#endif
+        return retval;
     };
 
     // Determine API name for the hook registration
@@ -178,7 +183,6 @@ void JsApiHookRegistry::remove_all() {
             if (entry->js_ctx) {
                 JS_FreeValue(entry->js_ctx, entry->on_call_back);
                 JS_FreeValue(entry->js_ctx, entry->on_exit);
-                JS_FreeValue(entry->js_ctx, entry->this_val);
             }
         }
     }

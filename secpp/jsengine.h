@@ -81,12 +81,12 @@ public:
 
 private:
     Speakeasy& speakeasy_;
+    std::unique_ptr<JsApiHookRegistry> hook_registry_;  // MUST be before rt_ — destroyed before runtime
     JSRuntime* rt_ = nullptr;
     JSContext* ctx_ = nullptr;
     JSValue emu_obj_ = JS_UNDEFINED;
     JSValue api_class_proto_ = JS_UNDEFINED;
     JSClassID api_class_id_ = 0;
-    std::unique_ptr<JsApiHookRegistry> hook_registry_;
 
     // ========== JS native function callbacks ==========
     // These are called by QuickJS when JS code invokes global functions.

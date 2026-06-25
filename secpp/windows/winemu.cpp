@@ -2576,7 +2576,7 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
         std::tie(handler_mod, func_info) = normalize_import_miss(dll, name);
     }
 
-    std::vector<std::shared_ptr<ApiHook>> hooks = get_api_hooks(dll, name);
+    std::vector<std::shared_ptr<ApiHook>> hooks = get_api_hooks(dll_norm, name);
 
     if (func_info.handler && handler_mod) {
         int conv = speakeasy::arch::CALL_CONV_STDCALL;
@@ -2613,15 +2613,15 @@ void WindowsEmulator::handle_import_func(const std::string& dll, const std::stri
                 raw_argv.push_back(static_cast<uint64_t>(arg));
 
             // Original handler wrapped as callback
-            ApiCallback orig = [this, handler_mod, func_ptr_func, api_ctx](void* emu, const std::string& api_name, void* orig_ptr, std::vector<uint64_t> args) -> bool {
+            ApiCallback orig = [this, handler_mod, func_ptr_func, api_ctx](void* emu, const std::string& api_name, void* orig_ptr, std::vector<uint64_t> args) -> uint64_t {
                 (void)emu; (void)api_name; (void)orig_ptr;
                 // Convert back to ArgList for internal dispatch
                 ArgList inner_argv;
                 inner_argv.reserve(args.size());
                 for (auto v : args) inner_argv.push_back(v);
                 void* rv_ptr = api->call_api_func(handler_mod, func_ptr_func, inner_argv, (void *)(&api_ctx));
-                uint64_t sub_rv = reinterpret_cast<uintptr_t>(rv_ptr);
-                return sub_rv != 0;
+                uint64_t sub_rv = reinterpret_cast<uint64_t>(rv_ptr);
+                return sub_rv;
             };
 
             for (auto& hook : hooks) {
