@@ -6,7 +6,7 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
-#include <quickjs.h>
+#include <quickjspp.hpp>
 
 // Forward declarations
 class Speakeasy;
@@ -17,8 +17,8 @@ namespace speakeasy {
 class JsApiHookRegistry;
 
 /**
- * JavaScript plugin engine that wraps QuickJS for emulator scripting.
- * Owns the JSRuntime and JSContext, registers the ApiHook class and
+ * JavaScript plugin engine that wraps QuickJS (via quickjspp) for emulator scripting.
+ * Owns the qjs::Runtime and qjs::Context, registers the ApiHook class and
  * Emu global object, and provides eval/script-loading methods.
  *
  * Usage:
@@ -43,33 +43,30 @@ public:
 
     /**
      * Evaluate JavaScript from a buffer.
-     * @param code     JavaScript source code (null-terminated or len-specified)
+     * @param code     JavaScript source code (null-terminated)
      * @param filename Source filename for error messages
-     * @param eval_flags JS_EVAL_TYPE_* flags
+     * @param flags    JS_EVAL_TYPE_* flags
      * @return true on success, false on exception
      */
     bool eval_buf(const std::string& code, const std::string& filename,
-                  int eval_flags = JS_EVAL_TYPE_GLOBAL);
+                  int flags = JS_EVAL_TYPE_GLOBAL);
 
     /**
      * Evaluate JavaScript from a file on the host filesystem.
-     * @param filename  Path to .js file
-     * @param eval_flags JS_EVAL_TYPE_* flags
-     * @return true on success, false on exception
      */
     bool eval_file(const std::string& filename,
-                   int eval_flags = JS_EVAL_TYPE_GLOBAL);
+                   int flags = JS_EVAL_TYPE_GLOBAL);
 
     /**
      * Load a main JS plugin script (matches Pascal LoadScript).
-     * @param filename Path to .js file
-     * @return true on success
      */
     bool load_script(const std::string& filename);
 
     // Accessors
-    JSRuntime* runtime() const { return rt_; }
-    JSContext* context() const { return ctx_; }
+    JSRuntime* runtime() const { return rt_ ? rt_->rt : nullptr; }
+    JSContext* context() const { return ctx_ ? ctx_->ctx : nullptr; }
+    qjs::Runtime* rt() { return rt_.get(); }
+    qjs::Context* ctx() { return ctx_.get(); }
     Speakeasy& speakeasy() { return speakeasy_; }
     JsApiHookRegistry& hook_registry() { return *hook_registry_; }
 
@@ -81,46 +78,20 @@ public:
 
 private:
     Speakeasy& speakeasy_;
-    std::unique_ptr<JsApiHookRegistry> hook_registry_;  // MUST be before rt_ — destroyed before runtime
-    JSRuntime* rt_ = nullptr;
-    JSContext* ctx_ = nullptr;
-    JSValue emu_obj_ = JS_UNDEFINED;
-    JSValue api_class_proto_ = JS_UNDEFINED;
+    std::unique_ptr<qjs::Runtime> rt_;
+    std::unique_ptr<qjs::Context> ctx_;
+    std::unique_ptr<JsApiHookRegistry> hook_registry_;  // destroyed before ctx_
+
+    // These are RAII qjs::Value — auto-freed when destroyed
+    qjs::Value emu_obj_ = qjs::Value{JS_UNDEFINED};
+    qjs::Value api_class_proto_ = qjs::Value{JS_UNDEFINED};
     JSClassID api_class_id_ = 0;
-
-    // ========== JS native function callbacks ==========
-    // These are called by QuickJS when JS code invokes global functions.
-
-    /**
-     * console.log / print / info / warn / error implementation.
-     * The 'magic' parameter controls log level: 0=print, 1=log, 2=info, 3=warn, 4=error
-     */
-    static JSValue js_logme(JSContext* ctx, JSValueConst this_val,
-                            int argc, JSValueConst* argv, int magic);
-
-    /**
-     * importScripts() - load JS files at runtime (browser-compat).
-     */
-    static JSValue js_native_import_scripts(JSContext* ctx, JSValueConst this_val,
-                                            int argc, JSValueConst* argv);
-
-    /**
-     * ApiHook constructor - creates a new ApiHook instance with 'args' array.
-     */
-    static JSValue js_constructor(JSContext* ctx, JSValueConst new_target,
-                                  int argc, JSValueConst* argv);
-
-    /**
-     * ApiHook.install() - register an API hook.
-     */
-    static JSValue js_install(JSContext* ctx, JSValueConst this_val,
-                              int argc, JSValueConst* argv);
 
     // ========== Internal helpers ==========
 
-    void register_native_class(JSContext* ctx);
-    void init_emu_object(JSContext* ctx);
-    void register_log_functions(JSContext* ctx);
+    void register_native_class();
+    void init_emu_object();
+    void register_log_functions();
 
     /**
      * Module loader callback registered via JS_SetModuleLoaderFunc.
@@ -132,9 +103,9 @@ private:
                                          void* opaque);
 
     /**
-     * Helper: read a file's contents into a malloc'd string (QuickJS-owned).
+     * Helper: read a file's contents into a string.
      */
-    static char* load_file_content(JSContext* ctx, const char* filename, size_t* out_len);
+    static std::string load_file_content(const std::string& filename);
 };
 
 } // namespace speakeasy

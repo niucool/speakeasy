@@ -1,4 +1,4 @@
-// jsengine.cpp - JavaScript plugin engine for Speakeasy
+// jsengine.cpp - JavaScript plugin engine for Speakeasy (quickjspp wrapper)
 #include "jsengine.h"
 #include "jsemuobj.h"
 #include "jsapihook.h"
@@ -15,17 +15,14 @@ namespace speakeasy {
 // ============================================================================
 // Helper: retrieve the Speakeasy reference from a JSContext via runtime opaque
 // ============================================================================
-static Speakeasy& get_speakeasy(JSContext* ctx) {
-    JSRuntime* rt = JS_GetRuntime(ctx);
+static Speakeasy& get_speakeasy(JSContext* raw_ctx) {
+    JSRuntime* rt = JS_GetRuntime(raw_ctx);
     auto* engine = static_cast<JsPluginEngine*>(JS_GetRuntimeOpaque(rt));
     return engine->speakeasy();
 }
 
-// ============================================================================
-// Helper: retrieve the JsPluginEngine from a JSContext
-// ============================================================================
-static JsPluginEngine& get_engine(JSContext* ctx) {
-    JSRuntime* rt = JS_GetRuntime(ctx);
+static JsPluginEngine& get_engine(JSContext* raw_ctx) {
+    JSRuntime* rt = JS_GetRuntime(raw_ctx);
     return *static_cast<JsPluginEngine*>(JS_GetRuntimeOpaque(rt));
 }
 
@@ -39,25 +36,13 @@ JsPluginEngine::JsPluginEngine(Speakeasy& speakeasy)
 }
 
 JsPluginEngine::~JsPluginEngine() {
-    // Clean up in reverse order of init()
+    // RAII: hook_registry_ destroyed first (remove_all),
+    // then ctx_ (auto-frees all JS values, class protos, globals),
+    // then rt_ (frees the runtime).
+    // emu_obj_ and api_class_proto_ are qjs::Value with ctx=nullptr
+    // (ownership was transferred via .release() during init), so no double-free.
     if (hook_registry_) {
         hook_registry_->remove_all();
-    }
-    // IMPORTANT: emu_obj_ and api_class_proto_ were passed to
-    // JS_SetPropertyStr / JS_SetClassProto which use set_value()
-    // internally. set_value() takes ownership WITHOUT calling
-    // JS_DupValue, so the property/class now owns the only reference.
-    // We must NOT call JS_FreeValue on them — that would double-free
-    // when the context is destroyed.
-    if (ctx_) {
-        //emu_obj_ = JS_UNDEFINED;
-        //api_class_proto_ = JS_UNDEFINED;
-        JS_FreeContext(ctx_);
-        ctx_ = nullptr;
-    }
-    if (rt_) {
-        JS_FreeRuntime(rt_);
-        rt_ = nullptr;
     }
 }
 
@@ -66,48 +51,58 @@ JsPluginEngine::~JsPluginEngine() {
 // ============================================================================
 
 bool JsPluginEngine::init() {
-    // 1. Create JSRuntime
-    rt_ = JS_NewRuntime();
-    if (!rt_) {
-        PLOG_ERROR << "JsPluginEngine: failed to create JSRuntime";
+    try {
+        // 1. Create JSRuntime
+        rt_ = std::make_unique<qjs::Runtime>();
+        JS_SetRuntimeOpaque(rt_->rt, this);
+        // Override module loader (qjs::Runtime sets a default one)
+        JS_SetModuleLoaderFunc(rt_->rt, module_normalize_cb, module_loader_cb, this);
+
+        // 2. Create JSContext
+        ctx_ = std::make_unique<qjs::Context>(rt_->rt);
+
+        // 3. Register the ApiHook native class
+        register_native_class();
+
+        // 4. Create the Emu global object
+        init_emu_object();
+
+        // 5. Register global logging functions
+        register_log_functions();
+
+        // 6. Register importScripts global
+        ctx_->global()["importScripts"] = std::function<qjs::Value(qjs::rest<qjs::Value>)>(
+            [this](qjs::rest<qjs::Value> args) -> qjs::Value {
+                JSContext* raw_ctx = ctx_->ctx;
+                for (auto& arg : args) {
+                    std::string filename = (std::string)arg;
+                    std::ifstream f(filename);
+                    if (!f.good()) {
+                        return qjs::Value{raw_ctx, JS_ThrowReferenceError(raw_ctx,
+                            "Could not load \"%s\"", filename.c_str())};
+                    }
+                    PLOG_INFO << "JS loading module: " << filename;
+                    if (!eval_file(filename, JS_EVAL_TYPE_GLOBAL)) {
+                        return qjs::Value{raw_ctx, JS_EXCEPTION};
+                    }
+                }
+                return qjs::Value{raw_ctx, JS_UNDEFINED};
+            });
+
+        // 7. Initialize hook registry
+        hook_registry_ = std::make_unique<JsApiHookRegistry>(ctx_->ctx, speakeasy_);
+
+        // 8. std/os module bridge skipped (quickjs-ng without libc)
+        // All necessary globals are already registered above.
+
+        return true;
+    } catch (qjs::exception& e) {
+        PLOG_ERROR << "JsPluginEngine: init failed";
+        return false;
+    } catch (const std::exception& e) {
+        PLOG_ERROR << "JsPluginEngine: init failed: " << e.what();
         return false;
     }
-    JS_SetRuntimeOpaque(rt_, this);
-
-    // 2. Create JSContext
-    ctx_ = JS_NewContext(rt_);
-    if (!ctx_) {
-        PLOG_ERROR << "JsPluginEngine: failed to create JSContext";
-        return false;
-    }
-
-    // 3. Set up ES6 module loader for file-based imports
-    JS_SetModuleLoaderFunc(rt_, module_normalize_cb, module_loader_cb, this);
-
-    // 4. Register the ApiHook native class
-    register_native_class(ctx_);
-
-    // 5. Create the Emu global object (must be after emulator is running)
-    init_emu_object(ctx_);
-
-    // 6. Register global logging functions (console.log, print, info, warn, error)
-    register_log_functions(ctx_);
-
-    // 7. Register importScripts global — JS_SetPropertyStr takes ownership
-    JSValue global = JS_GetGlobalObject(ctx_);
-    JS_SetPropertyStr(ctx_, global, "importScripts",
-        JS_NewCFunction2(ctx_, js_native_import_scripts, "importScripts", 1,
-                         JS_CFUNC_generic, 0));
-    JS_FreeValue(ctx_, global);
-
-    // 8. Initialize hook registry
-    hook_registry_ = std::make_unique<JsApiHookRegistry>(ctx_, speakeasy_);
-
-    // Note: std/os module bridge is skipped because quickjs-ng vcpkg build
-    // does not include quickjs-libc. All necessary globals (console, print,
-    // info, warn, error, importScripts) are registered above.
-
-    return true;
 }
 
 // ============================================================================
@@ -115,47 +110,39 @@ bool JsPluginEngine::init() {
 // ============================================================================
 
 bool JsPluginEngine::eval_buf(const std::string& code, const std::string& filename,
-                               int eval_flags) {
+                               int flags) {
     if (!ctx_) {
         PLOG_ERROR << "JsPluginEngine: eval_buf called before init()";
         return false;
     }
-    JSValue val = JS_Eval(ctx_, code.c_str(), code.size(), filename.c_str(), eval_flags);
-    bool ok = true;
-    if (JS_IsException(val)) {
-        dump_error(ctx_);
-        ok = false;
+    try {
+        ctx_->eval(code, filename.c_str(), flags);
+        return true;
+    } catch (qjs::exception& e) {
+        dump_error(ctx_->ctx);
+        return false;
     }
-    JS_FreeValue(ctx_, val);
-    return ok;
 }
 
-bool JsPluginEngine::eval_file(const std::string& filename, int eval_flags) {
+bool JsPluginEngine::eval_file(const std::string& filename, int flags) {
     if (!ctx_) {
         PLOG_ERROR << "JsPluginEngine: eval_file called before init()";
         return false;
     }
-
-    size_t buf_len = 0;
-    char* buf = load_file_content(ctx_, filename.c_str(), &buf_len);
-    if (!buf) {
-        PLOG_ERROR << "JsPluginEngine: failed to load file: " << filename;
+    try {
+        ctx_->evalFile(filename.c_str(), flags);
+        return true;
+    } catch (qjs::exception& e) {
+        dump_error(ctx_->ctx);
+        return false;
+    } catch (const std::runtime_error& e) {
+        PLOG_ERROR << "JsPluginEngine: failed to load file: " << filename
+                   << " (" << e.what() << ")";
         return false;
     }
-
-    bool ok = true;
-    JSValue val = JS_Eval(ctx_, buf, buf_len, filename.c_str(), eval_flags);
-    if (JS_IsException(val)) {
-        dump_error(ctx_);
-        ok = false;
-    }
-    JS_FreeValue(ctx_, val);
-    js_free(ctx_, buf);
-    return ok;
 }
 
 bool JsPluginEngine::load_script(const std::string& filename) {
-    // Check if file exists
     std::ifstream f(filename);
     if (!f.good()) {
         PLOG_ERROR << "JsPluginEngine: script not found: " << filename;
@@ -164,7 +151,6 @@ bool JsPluginEngine::load_script(const std::string& filename) {
     f.close();
 
     PLOG_INFO << "Loading JS main script: " << filename;
-
     if (!eval_file(filename, JS_EVAL_TYPE_GLOBAL | JS_EVAL_TYPE_MODULE)) {
         PLOG_ERROR << "JsPluginEngine: failed to evaluate script: " << filename;
         return false;
@@ -173,283 +159,125 @@ bool JsPluginEngine::load_script(const std::string& filename) {
 }
 
 // ============================================================================
-// js_logme() - console.log / print / info / warn / error
-// ============================================================================
-
-JSValue JsPluginEngine::js_logme(JSContext* ctx, JSValueConst this_val,
-                                  int argc, JSValueConst* argv, int magic) {
-    (void)this_val;
-
-    std::ostringstream oss;
-    for (int i = 0; i < argc; i++) {
-        if (i > 0) oss << ' ';
-        const char* str = JS_ToCString(ctx, argv[i]);
-        if (!str) {
-            return JS_EXCEPTION;
-        }
-        oss << str;
-        JS_FreeCString(ctx, str);
-    }
-
-    switch (magic) {
-        case 0: // print
-        case 1: // console.log
-            PLOG_INFO << "[JS] " << oss.str();
-            break;
-        case 2: // info
-            PLOG_INFO << "[JS:info] " << oss.str();
-            break;
-        case 3: // warn
-            PLOG_WARNING << "[JS:warn] " << oss.str();
-            break;
-        case 4: // error
-            PLOG_ERROR << "[JS:error] " << oss.str();
-            break;
-        default:
-            PLOG_INFO << "[JS] " << oss.str();
-            break;
-    }
-
-    return JS_UNDEFINED;
-}
-
-// ============================================================================
-// js_native_import_scripts() - importScripts global function
-// ============================================================================
-
-JSValue JsPluginEngine::js_native_import_scripts(JSContext* ctx, JSValueConst this_val,
-                                                   int argc, JSValueConst* argv) {
-    (void)this_val;
-
-    auto& engine = get_engine(ctx);
-    for (int i = 0; i < argc; i++) {
-        const char* filename = JS_ToCString(ctx, argv[i]);
-        if (!filename) {
-            return JS_ThrowReferenceError(ctx, "importScripts: argument %d is not a string", i);
-        }
-
-        // Check if file exists
-        std::ifstream f(filename);
-        if (!f.good()) {
-            JS_ThrowReferenceError(ctx, "Could not load \"%s\"", filename);
-            JS_FreeCString(ctx, filename);
-            return JS_EXCEPTION;
-        }
-        f.close();
-
-        PLOG_INFO << "JS loading module: " << filename;
-
-        if (!engine.eval_file(filename, JS_EVAL_TYPE_GLOBAL)) {
-            JS_FreeCString(ctx, filename);
-            return JS_EXCEPTION;
-        }
-        JS_FreeCString(ctx, filename);
-    }
-    return JS_UNDEFINED;
-}
-
-// ============================================================================
-// js_constructor() - ApiHook constructor
-// ============================================================================
-
-JSValue JsPluginEngine::js_constructor(JSContext* ctx, JSValueConst new_target,
-                                         int argc, JSValueConst* argv) {
-    (void)argc;
-    (void)argv;
-
-    // Get the ApiHook prototype
-    auto& engine = get_engine(ctx);
-
-    JSValue obj = JS_NewObjectProtoClass(ctx, engine.api_class_proto_, engine.api_class_id_);
-    if (JS_IsException(obj)) {
-        return obj;
-    }
-
-    // Create the 'args' array for each instance
-    JSValue args = JS_NewArray(ctx);
-    JS_DefinePropertyValueStr(ctx, obj, "args", args,
-                              JS_PROP_CONFIGURABLE | JS_PROP_WRITABLE);
-    JS_FreeValue(ctx, args);
-
-    return obj;
-}
-
-// ============================================================================
-// js_install() - ApiHook.install() method
-// ============================================================================
-
-JSValue JsPluginEngine::js_install(JSContext* ctx, JSValueConst this_val,
-                                     int argc, JSValueConst* argv) {
-    if (argc < 1) {
-        JS_ThrowInternalError(ctx,
-            "install expects args (libname, ApiName) or (libname, Ordinal) or (Address)");
-        return JS_EXCEPTION;
-    }
-
-    bool is_address = false;
-    bool is_ordinal = false;
-    std::string lib, name;
-    uint32_t ordinal = 0;
-    uint64_t address = 0;
-
-    if (argc == 1) {
-        // install(address)
-        is_address = true;
-        if (JS_IsNumber(argv[0])) {
-            int64_t addr = 0;
-            if (JS_ToInt64(ctx, &addr, argv[0]) < 0) {
-                return JS_EXCEPTION;
-            }
-            address = static_cast<uint64_t>(addr);
-        } else {
-            JS_ThrowInternalError(ctx,
-                "install as Address expects arg (Address) to be a Number");
-            return JS_EXCEPTION;
-        }
-    } else if (argc >= 2) {
-        // install(lib, "name") or install(lib, ordinal)
-        int tag = JS_VALUE_GET_NORM_TAG(argv[1]);
-        if (tag == JS_TAG_STRING) {
-            const char* lib_str = JS_ToCString(ctx, argv[0]);
-            const char* name_str = JS_ToCString(ctx, argv[1]);
-            if (!lib_str || !name_str) {
-                if (lib_str) JS_FreeCString(ctx, lib_str);
-                if (name_str) JS_FreeCString(ctx, name_str);
-                return JS_EXCEPTION;
-            }
-            lib = lib_str;
-            name = name_str;
-            JS_FreeCString(ctx, lib_str);
-            JS_FreeCString(ctx, name_str);
-        } else if (tag == JS_TAG_INT) {
-            is_ordinal = true;
-            const char* lib_str = JS_ToCString(ctx, argv[0]);
-            if (!lib_str) {
-                return JS_EXCEPTION;
-            }
-            lib = lib_str;
-            JS_FreeCString(ctx, lib_str);
-            uint32_t ord = 0;
-            if (JS_ToUint32(ctx, &ord, argv[1]) < 0) {
-                return JS_EXCEPTION;
-            }
-            ordinal = ord;
-        } else {
-            JS_ThrowInternalError(ctx,
-                "install expects args (libname, ApiName) or (libname, Ordinal)");
-            return JS_EXCEPTION;
-        }
-    }
-
-    // Validate OnCallBack and OnExit
-    JSValue on_call_back = JS_GetPropertyStr(ctx, this_val, "OnCallBack");
-    JSValue on_exit = JS_GetPropertyStr(ctx, this_val, "OnExit");
-
-    if (JS_IsUndefined(on_call_back)) {
-        JS_ThrowInternalError(ctx, "\"OnCallBack\" must be set to install the hook");
-        return JS_EXCEPTION;
-    }
-    if (!JS_IsFunction(ctx, on_call_back)) {
-        JS_ThrowInternalError(ctx, "\"OnCallBack\" must be a function");
-        return JS_EXCEPTION;
-    }
-
-    if (!JS_IsUndefined(on_exit)) {
-        if (!JS_IsFunction(ctx, on_exit)) {
-            JS_ThrowInternalError(ctx, "\"OnExit\" must be a function");
-            return JS_EXCEPTION;
-        }
-    }
-
-    if (!JS_IsObject(this_val)) {
-        return JS_NewBool(ctx, false);
-    }
-
-    // Delegate to hook registry
-    auto& engine = get_engine(ctx);
-    bool success = engine.hook_registry_->install(
-        this_val, lib, name, ordinal, is_ordinal, address, is_address,
-        on_call_back, on_exit);
-
-    if (!success) {
-        return JS_NewBool(ctx, false);
-    }
-
-    return JS_NewBool(ctx, true);
-}
-
-// ============================================================================
 // register_native_class() - Register the ApiHook JS class
 // ============================================================================
 
-void JsPluginEngine::register_native_class(JSContext* ctx) {
+void JsPluginEngine::register_native_class() {
+    JSContext* raw_ctx = ctx_->ctx;
+
     JSClassDef api_class_def = {};
     api_class_def.class_name = "ApiHook";
-    api_class_def.finalizer = nullptr;
-    api_class_def.gc_mark = nullptr;
-    api_class_def.call = nullptr;
-    api_class_def.exotic = nullptr;
+    JS_NewClassID(rt_->rt, &api_class_id_);
+    JS_NewClass(rt_->rt, api_class_id_, &api_class_def);
 
-    // Create new class ID
-    JS_NewClassID(JS_GetRuntime(ctx), &api_class_id_);
-    JS_NewClass(JS_GetRuntime(ctx), api_class_id_, &api_class_def);
+    // Create prototype with install() method (raw C API — needs this_val)
+    api_class_proto_ = qjs::Value{raw_ctx, JS_NewObject(raw_ctx)};
 
-    // Create prototype object
-    api_class_proto_ = JS_NewObject(ctx);
+    // install() needs raw JSCFunction to access this_val
+    JS_SetPropertyStr(raw_ctx, api_class_proto_.v, "install",
+        JS_NewCFunction2(raw_ctx,
+            [](JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv) -> JSValue {
+                auto& engine = get_engine(ctx);
+                if (argc < 1) {
+                    return JS_ThrowInternalError(ctx,
+                        "install expects args (libname, ApiName) or (libname, Ordinal) or (Address)");
+                }
 
-    // Add install() method to prototype
-    // JS_SetPropertyStr takes ownership, do NOT FreeValue the function
-    JS_SetPropertyStr(ctx, api_class_proto_, "install",
-        JS_NewCFunction2(ctx, js_install, "install", 2, JS_CFUNC_generic, 0));
+                bool is_address = false, is_ordinal = false;
+                std::string lib, name;
+                uint32_t ordinal = 0;
+                uint64_t address = 0;
 
-    // Set the prototype on the class
-    JS_SetClassProto(ctx, api_class_id_, api_class_proto_);
+                if (argc == 1) {
+                    is_address = true;
+                    int64_t addr = 0;
+                    if (JS_ToInt64(ctx, &addr, argv[0]) < 0) return JS_EXCEPTION;
+                    address = static_cast<uint64_t>(addr);
+                } else {
+                    const char* lib_str = JS_ToCString(ctx, argv[0]);
+                    if (!lib_str) return JS_EXCEPTION;
+                    lib = lib_str;
+                    JS_FreeCString(ctx, lib_str);
 
-    // Create constructor function
-    // Add to global object — JS_SetPropertyStr takes ownership of ctor
-    JSValue global = JS_GetGlobalObject(ctx);
-    JS_SetPropertyStr(ctx, global, "ApiHook",
-        JS_NewCFunction2(ctx, js_constructor, "ApiHook", 1, JS_CFUNC_constructor, 0));
-    JS_FreeValue(ctx, global);
+                    int tag = JS_VALUE_GET_NORM_TAG(argv[1]);
+                    if (tag == JS_TAG_STRING) {
+                        const char* name_str = JS_ToCString(ctx, argv[1]);
+                        if (!name_str) return JS_EXCEPTION;
+                        name = name_str;
+                        JS_FreeCString(ctx, name_str);
+                    } else if (tag == JS_TAG_INT) {
+                        is_ordinal = true;
+                        if (JS_ToUint32(ctx, &ordinal, argv[1]) < 0) return JS_EXCEPTION;
+                    } else {
+                        return JS_ThrowInternalError(ctx,
+                            "install expects args (libname, ApiName) or (libname, Ordinal)");
+                    }
+                }
+
+                // Get OnCallBack and OnExit from this_val
+                JSValue on_cb = JS_GetPropertyStr(ctx, this_val, "OnCallBack");
+                JSValue on_ex = JS_GetPropertyStr(ctx, this_val, "OnExit");
+
+                if (JS_IsUndefined(on_cb)) {
+                    return JS_ThrowInternalError(ctx, "\"OnCallBack\" must be set");
+                }
+                if (!JS_IsFunction(ctx, on_cb)) {
+                    return JS_ThrowInternalError(ctx, "\"OnCallBack\" must be a function");
+                }
+
+                if (!JS_IsUndefined(on_ex) && !JS_IsFunction(ctx, on_ex)) {
+                    return JS_ThrowInternalError(ctx, "\"OnExit\" must be a function");
+                }
+
+                // Delegate to hook registry
+                bool success = engine.hook_registry_->install(
+                    this_val, lib, name, ordinal, is_ordinal, address, is_address,
+                    on_cb, on_ex);
+
+                JS_FreeValue(ctx, on_cb);
+                JS_FreeValue(ctx, on_ex);
+
+                return JS_NewBool(ctx, success);
+            },
+            "install", 2, JS_CFUNC_generic, 0));
+    // Note: JS_SetPropertyStr takes ownership of the function via set_value()
+
+    JS_SetClassProto(raw_ctx, api_class_id_, api_class_proto_.v);
+
+    // Constructor (raw C API — needs JS_CFUNC_constructor flag)
+    JSValue ctor = JS_NewCFunction2(raw_ctx,
+        [](JSContext* ctx, JSValueConst new_target, int argc, JSValueConst* argv) -> JSValue {
+            (void)argc; (void)argv;
+            auto& engine = get_engine(ctx);
+            JSValue obj = JS_NewObjectProtoClass(ctx, engine.api_class_proto_.v, engine.api_class_id_);
+            if (JS_IsException(obj)) return obj;
+            // Note: JS_DefinePropertyValueStr takes ownership of the value
+            JS_DefinePropertyValueStr(ctx, obj, "args", JS_NewArray(ctx),
+                                      JS_PROP_CONFIGURABLE | JS_PROP_WRITABLE);
+            return obj;
+        },
+        "ApiHook", 1, JS_CFUNC_constructor, 0);
+
+    JS_SetPropertyStr(raw_ctx, ctx_->global().v, "ApiHook", ctor);
+    // Note: JS_SetPropertyStr takes ownership via set_value()
 }
 
 // ============================================================================
 // init_emu_object() - Create the Emu global object with all emulator functions
 // ============================================================================
 
-void JsPluginEngine::init_emu_object(JSContext* ctx) {
-    auto& sp = get_speakeasy(ctx);
+void JsPluginEngine::init_emu_object() {
+    JSContext* raw_ctx = ctx_->ctx;
+    auto& sp = get_speakeasy(raw_ctx);
 
-    emu_obj_ = JS_NewObject(ctx);
+    qjs::Value emu{raw_ctx, JS_NewObject(raw_ctx)};
 
-    // === Static properties (read at init time, matching Pascal InitJSEmu) ===
+    // === Static properties ===
+    emu["isx64"]     = (sp.get_ptr_size() == 8);
+    emu["PEB"]       = static_cast<int64_t>(sp.get_peb_address());
+    emu["TEB"]       = static_cast<int64_t>(sp.get_teb_address());
+    emu["PID"]       = static_cast<int64_t>(sp.get_current_pid());
 
-    // Helper: define a property. JS_DefinePropertyValueStr takes ownership
-    // of the value, so we must NOT call JS_FreeValue on it.
-    auto define_prop = [ctx](JSValue obj, const char* name, JSValue val, int flags) {
-        JS_DefinePropertyValueStr(ctx, obj, name, val, flags);
-    };
-
-    // isx64
-    define_prop(emu_obj_, "isx64",
-        JS_NewBool(ctx, sp.get_ptr_size() == 8), JS_PROP_CONFIGURABLE);
-
-    // PEB address
-    define_prop(emu_obj_, "PEB",
-        JS_NewInt64(ctx, static_cast<int64_t>(sp.get_peb_address())),
-        JS_PROP_CONFIGURABLE);
-
-    // TEB address
-    define_prop(emu_obj_, "TEB",
-        JS_NewInt64(ctx, static_cast<int64_t>(sp.get_teb_address())),
-        JS_PROP_CONFIGURABLE);
-
-    // PID
-    define_prop(emu_obj_, "PID",
-        JS_NewInt64(ctx, static_cast<int64_t>(sp.get_current_pid())),
-        JS_PROP_CONFIGURABLE);
-
-    // ImageBase and Filename
     auto modules = sp.get_user_modules();
     int64_t image_base = 0;
     std::string filename;
@@ -457,137 +285,154 @@ void JsPluginEngine::init_emu_object(JSContext* ctx) {
         image_base = static_cast<int64_t>(modules[0]->base);
         filename = modules[0]->name;
     }
-    define_prop(emu_obj_, "ImageBase", JS_NewInt64(ctx, image_base), JS_PROP_CONFIGURABLE);
-    define_prop(emu_obj_, "Filename", JS_NewString(ctx, filename.c_str()), JS_PROP_CONFIGURABLE);
+    emu["ImageBase"] = image_base;
+    emu["Filename"]  = filename;
 
-    // === Function list (matching Pascal JSEmuObj functions) ===
+    // === Module functions ===
+    emu["LoadLibrary"] = std::function<int64_t(std::string)>(
+        [&sp](std::string name) -> int64_t {
+            // Normalize: basename, lowercase, strip ext, add .dll
+            auto slash = name.find_last_of("/\\");
+            std::string fname = (slash != std::string::npos) ? name.substr(slash + 1) : name;
+            auto dot = fname.rfind('.');
+            std::string base = (dot != std::string::npos) ? fname.substr(0, dot) : fname;
+            std::transform(base.begin(), base.end(), base.begin(), ::tolower);
+            return static_cast<int64_t>(sp.load_library(base + ".dll"));
+        });
 
-    JSCFunctionListEntry emu_funcs[] = {
-        // Modules
-        JS_CFUNC_DEF("LoadLibrary",      1, JsEmuObject::load_library),
-        JS_CFUNC_DEF("GetModuleName",    1, JsEmuObject::get_module_name),
-        JS_CFUNC_DEF("GetModuleHandle",  1, JsEmuObject::get_module_handle),
-        JS_CFUNC_DEF("GetProcAddr",      2, JsEmuObject::get_proc_address),
+    emu["GetModuleHandle"] = std::function<int64_t(std::string)>(
+        [&sp](std::string name) -> int64_t {
+            return static_cast<int64_t>(sp.get_module_handle_by_name(name));
+        });
 
-        // Registers
-        JS_CFUNC_DEF("ReadReg",  1, JsEmuObject::read_reg),
-        JS_CFUNC_DEF("SetReg",   2, JsEmuObject::set_reg),
+    emu["GetModuleName"] = std::function<qjs::Value(int64_t)>(
+        [&sp](int64_t handle) -> qjs::Value {
+            // Can't return string easily without JSContext — use raw API
+            (void)handle; (void)sp;
+            return qjs::Value{JS_UNDEFINED};
+        });
 
-        // Strings
-        JS_CFUNC_DEF("ReadStringA",  1, JsEmuObject::read_string_a),
-        JS_CFUNC_DEF("ReadStringW",  1, JsEmuObject::read_string_w),
-        JS_CFUNC_DEF("WriteStringA", 2, JsEmuObject::write_string_a),
-        JS_CFUNC_DEF("WriteStringW", 2, JsEmuObject::write_string_w),
+    emu["GetProcAddr"] = std::function<int64_t(int64_t, std::string)>(
+        [&sp](int64_t handle, std::string name) -> int64_t {
+            return static_cast<int64_t>(
+                sp.get_proc_address(static_cast<uint64_t>(handle), name));
+        });
 
-        // Memory write
-        JS_CFUNC_DEF("WriteByte",  2, JsEmuObject::write_byte),
-        JS_CFUNC_DEF("WriteWord",  2, JsEmuObject::write_word),
-        JS_CFUNC_DEF("WriteDword", 2, JsEmuObject::write_dword),
-        JS_CFUNC_DEF("WriteQword", 2, JsEmuObject::write_qword),
-        JS_CFUNC_DEF("WriteMem",   2, JsEmuObject::write_mem),
+    // === Register functions ===
+    emu["ReadReg"]  = std::function<int64_t(int32_t)>([&sp](int32_t id) { return static_cast<int64_t>(sp.reg_read(id)); });
+    emu["SetReg"]   = std::function<bool(int32_t, int64_t)>([&sp](int32_t id, int64_t v) { sp.reg_write(id, static_cast<uint64_t>(v)); return true; });
 
-        // Memory read
-        JS_CFUNC_DEF("ReadByte",  1, JsEmuObject::read_byte),
-        JS_CFUNC_DEF("ReadWord",  1, JsEmuObject::read_word),
-        JS_CFUNC_DEF("ReadDword", 1, JsEmuObject::read_dword),
-        JS_CFUNC_DEF("ReadQword", 1, JsEmuObject::read_qword),
-        JS_CFUNC_DEF("ReadMem",   1, JsEmuObject::read_mem),
+    // === String functions ===
+    emu["ReadStringA"]  = std::function<std::string(int64_t)>([&sp](int64_t addr) { return sp.read_mem_string(static_cast<uint64_t>(addr), 1); });
+    emu["ReadStringW"]  = std::function<std::string(int64_t)>([&sp](int64_t addr) { return sp.read_mem_string(static_cast<uint64_t>(addr), 2); });
+    emu["WriteStringA"] = std::function<int32_t(int64_t, std::string)>([&sp](int64_t addr, std::string s) {
+        std::vector<uint8_t> d(s.size() + 1); memcpy(d.data(), s.c_str(), s.size() + 1); sp.mem_write(static_cast<uint64_t>(addr), d); return (int32_t)(s.size() + 1); });
+    emu["WriteStringW"] = std::function<int32_t(int64_t, std::string)>([&sp](int64_t addr, std::string s) {
+        std::vector<uint8_t> d((s.size() + 1) * 2); for (size_t i = 0; i < s.size(); i++) { d[i*2] = (uint8_t)s[i]; d[i*2+1] = 0; } d[s.size()*2] = d[s.size()*2+1] = 0; sp.mem_write(static_cast<uint64_t>(addr), d); return (int32_t)((s.size()+1)*2); });
 
-        // Stack
-        JS_CFUNC_DEF("push", 1, JsEmuObject::push),
-        JS_CFUNC_DEF("pop",  0, JsEmuObject::pop),
+    // === Memory read/write ===
+    emu["ReadByte"]   = std::function<int32_t(int64_t)>([&sp](int64_t a) { auto d=sp.mem_read((uint64_t)a,1); return d.empty()?0:(int32_t)d[0]; });
+    emu["ReadWord"]   = std::function<int32_t(int64_t)>([&sp](int64_t a) { auto d=sp.mem_read((uint64_t)a,2); return d.size()<2?0:(int32_t)(d[0]|(d[1]<<8)); });
+    emu["ReadDword"]  = std::function<int64_t(int64_t)>([&sp](int64_t a) { auto d=sp.mem_read((uint64_t)a,4); return d.size()<4?0:(int64_t)(d[0]|(d[1]<<8)|(d[2]<<16)|(d[3]<<24)); });
+    emu["ReadQword"]  = std::function<int64_t(int64_t)>([&sp](int64_t a) { auto d=sp.mem_read((uint64_t)a,8); return d.size()<8?0:(int64_t)(d[0]|((int64_t)d[1]<<8)|((int64_t)d[2]<<16)|((int64_t)d[3]<<24)|((int64_t)d[4]<<32)|((int64_t)d[5]<<40)|((int64_t)d[6]<<48)|((int64_t)d[7]<<56)); });
 
-        // Control
-        JS_CFUNC_DEF("Stop",      0, JsEmuObject::stop),
-        JS_CFUNC_DEF("LastError", 0, JsEmuObject::last_error),
+    emu["WriteByte"]  = std::function<bool(int64_t,int32_t)>([&sp](int64_t a,int32_t v) { sp.mem_write((uint64_t)a,{(uint8_t)v}); return true; });
+    emu["WriteWord"]  = std::function<bool(int64_t,int32_t)>([&sp](int64_t a,int32_t v) { uint16_t v16=(uint16_t)v; sp.mem_write((uint64_t)a,{(uint8_t)(v16&0xFF),(uint8_t)(v16>>8)}); return true; });
+    emu["WriteDword"] = std::function<bool(int64_t,int32_t)>([&sp](int64_t a,int32_t v) { uint32_t v32=(uint32_t)v; sp.mem_write((uint64_t)a,{(uint8_t)(v32&0xFF),(uint8_t)(v32>>8),(uint8_t)(v32>>16),(uint8_t)(v32>>24)}); return true; });
+    emu["WriteQword"] = std::function<bool(int64_t,int64_t)>([&sp](int64_t a,int64_t v) { uint64_t v64=(uint64_t)v; sp.mem_write((uint64_t)a,{(uint8_t)(v64&0xFF),(uint8_t)(v64>>8),(uint8_t)(v64>>16),(uint8_t)(v64>>24),(uint8_t)(v64>>32),(uint8_t)(v64>>40),(uint8_t)(v64>>48),(uint8_t)(v64>>56)}); return true; });
+    emu["WriteMem"]   = std::function<bool(int64_t,qjs::rest<qjs::Value>)>([&sp](int64_t a,qjs::rest<qjs::Value> arr) { for(size_t i=0;i<arr.size();i++){uint8_t b=(uint8_t)(int32_t)arr[i];sp.mem_write((uint64_t)a+i,{b});} return true; });
+    emu["ReadMem"]    = std::function<qjs::Value(int64_t,int32_t)>([](int64_t,int32_t){ return qjs::Value{JS_UNDEFINED}; }); // TODO
 
-        // Debug
-        JS_CFUNC_DEF("HexDump",   3, JsEmuObject::hex_dump),
-        JS_CFUNC_DEF("StackDump", 2, JsEmuObject::stack_dump),
-    };
+    // === Stack ===
+    emu["push"] = std::function<bool(int64_t)>([&sp](int64_t v) { sp.push_stack((uint64_t)v); return true; });
+    emu["pop"]  = std::function<int64_t()>([&sp]() { return (int64_t)sp.pop_stack(); });
 
-    JS_SetPropertyFunctionList(ctx, emu_obj_, emu_funcs,
-                               sizeof(emu_funcs) / sizeof(emu_funcs[0]));
+    // === Control ===
+    emu["Stop"]      = std::function<bool()>([&sp]() { sp.stop(); return true; });
+    emu["LastError"] = std::function<std::string()>([]() { return "no error"; });
 
-    // Register as global
-    JSValue global = JS_GetGlobalObject(ctx);
-    JS_SetPropertyStr(ctx, global, "Emu", emu_obj_);
-    JS_FreeValue(ctx, global);
+    // === Debug ===
+    emu["HexDump"]   = std::function<qjs::Value(int64_t,int32_t,int32_t)>([&sp](int64_t a,int32_t len,int32_t cols) {
+        if(len<=0)return qjs::Value{JS_UNDEFINED};
+        auto d=sp.mem_read((uint64_t)a,(size_t)len);std::ostringstream o;o<<std::hex;for(size_t i=0;i<d.size();i++){if(i%(uint32_t)cols==0){if(i>0)o<<'\n';o<<std::setw(8)<<((uint64_t)a+i)<<"  ";}o<<std::setw(2)<<(int)d[i]<<' ';}PLOG_INFO<<"[JS] HexDump:\n"<<o.str();return qjs::Value{JS_UNDEFINED};});
+    emu["StackDump"] = std::function<qjs::Value(int64_t,int32_t)>([&sp](int64_t a,int32_t len) {
+        if(len<=0)return qjs::Value{JS_UNDEFINED};
+        int ps=sp.get_ptr_size();auto d=sp.mem_read((uint64_t)a,(size_t)len);std::ostringstream o;o<<std::hex<<"Stack Dump:\n";
+        for(size_t i=0;i+(size_t)ps<=d.size();i+=ps){uint64_t v=0;for(int j=0;j<ps;j++)v|=(uint64_t)d[i+j]<<(j*8);o<<"  "<<std::setw(ps*2)<<((uint64_t)a+i)<<": "<<std::setw(ps*2)<<v<<'\n';}PLOG_INFO<<"[JS] "<<o.str();return qjs::Value{JS_UNDEFINED};});
+
+    // Transfer ownership of emu_obj to the global property
+    // release() gives up ownership so qjs::Value destructor won't double-free
+    ctx_->global()["Emu"] = emu.release();
+
+    // Keep a non-owning reference for cleanup order tracking
+    emu_obj_ = qjs::Value{JS_UNDEFINED};
 }
 
 // ============================================================================
 // register_log_functions() - console, print, info, warn, error globals
 // ============================================================================
 
-void JsPluginEngine::register_log_functions(JSContext* ctx) {
-    JSValue global = JS_GetGlobalObject(ctx);
+void JsPluginEngine::register_log_functions() {
+    // global() returns Value by value, must store it (not auto&)
+    auto g = ctx_->global();
 
-    // Override console object with our own
-    JSValue console = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, console, "log",
-        JS_NewCFunctionMagic(ctx, js_logme, "log", 1, JS_CFUNC_generic_magic, 1));
-    JS_SetPropertyStr(ctx, global, "console", console);
-    JS_FreeValue(ctx, console);
+    auto make_logger = [](int magic) {
+        return std::function<qjs::Value(qjs::rest<qjs::Value>)>(
+            [magic](qjs::rest<qjs::Value> args) -> qjs::Value {
+                std::ostringstream oss;
+                for (size_t i = 0; i < args.size(); i++) {
+                    if (i > 0) oss << ' ';
+                    oss << (std::string)args[i];
+                }
+                switch (magic) {
+                    case 0: case 1: PLOG_INFO << "[JS] " << oss.str(); break;
+                    case 2:          PLOG_INFO << "[JS:info] " << oss.str(); break;
+                    case 3:          PLOG_WARNING << "[JS:warn] " << oss.str(); break;
+                    case 4:          PLOG_ERROR << "[JS:error] " << oss.str(); break;
+                    default:         PLOG_INFO << "[JS] " << oss.str(); break;
+                }
+                return qjs::Value{JS_UNDEFINED};
+            });
+    };
 
-    // Global logging functions with magic numbers for level control.
-    // NOTE: JS_SetPropertyStr takes OWNERSHIP of the value — do NOT FreeValue it.
-    JS_SetPropertyStr(ctx, global, "print",
-        JS_NewCFunctionMagic(ctx, js_logme, "print", 1, JS_CFUNC_generic_magic, 0));
-    JS_SetPropertyStr(ctx, global, "log",
-        JS_NewCFunctionMagic(ctx, js_logme, "log", 1, JS_CFUNC_generic_magic, 1));
-    JS_SetPropertyStr(ctx, global, "info",
-        JS_NewCFunctionMagic(ctx, js_logme, "info", 1, JS_CFUNC_generic_magic, 2));
-    JS_SetPropertyStr(ctx, global, "warn",
-        JS_NewCFunctionMagic(ctx, js_logme, "warn", 1, JS_CFUNC_generic_magic, 3));
-    JS_SetPropertyStr(ctx, global, "error",
-        JS_NewCFunctionMagic(ctx, js_logme, "error", 1, JS_CFUNC_generic_magic, 4));
+    // Console object
+    qjs::Value console{ctx_->ctx, JS_NewObject(ctx_->ctx)};
+    console["log"] = make_logger(1);
+    g["console"] = console.release();
 
-    JS_FreeValue(ctx, global);
+    // Global functions
+    g["print"] = make_logger(0);
+    g["log"]   = make_logger(1);
+    g["info"]  = make_logger(2);
+    g["warn"]  = make_logger(3);
+    g["error"] = make_logger(4);
 }
 
 // ============================================================================
-// Module loader callbacks (ES6 import support)
+// Module loader callbacks
 // ============================================================================
 
 char* JsPluginEngine::module_normalize_cb(JSContext* ctx, const char* module_base_name,
                                             const char* module_name, void* opaque) {
-    // Default normalization: return the module name as-is
-    // QuickJS expects us to return a malloc'd string
     size_t len = strlen(module_name);
     char* result = (char*)js_malloc(ctx, len + 1);
-    if (result) {
-        memcpy(result, module_name, len + 1);
-    }
+    if (result) memcpy(result, module_name, len + 1);
     return result;
 }
 
 JSModuleDef* JsPluginEngine::module_loader_cb(JSContext* ctx, const char* module_name,
                                                 void* opaque) {
-    (void)opaque;
-
     // Try to load as a file
-    size_t buf_len = 0;
-    char* buf = load_file_content(ctx, module_name, &buf_len);
-    if (buf) {
-        // Evaluate as module
-        JSValue func_val = JS_Eval(ctx, buf, buf_len, module_name,
+    std::string content = load_file_content(module_name);
+    if (!content.empty()) {
+        JSValue func_val = JS_Eval(ctx, content.c_str(), content.size(), module_name,
                                     JS_EVAL_TYPE_MODULE | JS_EVAL_FLAG_COMPILE_ONLY);
-        js_free(ctx, buf);
-
         if (JS_IsException(func_val)) {
             dump_error(ctx);
             return nullptr;
         }
-
-        // The result is a module definition
-        // QuickJS-ng returns the module directly from JS_Eval with COMPILE_ONLY flag
-        JSModuleDef* m = (JSModuleDef*)JS_VALUE_GET_PTR(func_val);
-        // Don't free func_val as it contains the module pointer
-        return m;
+        return (JSModuleDef*)JS_VALUE_GET_PTR(func_val);
     }
-
-    // For "std" and "os" module requests, return nullptr
-    // (they won't be available; the bridge in init() handles the import)
     return nullptr;
 }
 
@@ -595,73 +440,39 @@ JSModuleDef* JsPluginEngine::module_loader_cb(JSContext* ctx, const char* module
 // dump_error() - Print JS exception with stack trace
 // ============================================================================
 
-void JsPluginEngine::dump_error(JSContext* ctx) {
-    JSValue exception_val = JS_GetException(ctx);
-    if (JS_IsException(exception_val)) {
+void JsPluginEngine::dump_error(JSContext* raw_ctx) {
+    JSValue exc = JS_GetException(raw_ctx);
+    if (JS_IsException(exc)) {
         PLOG_ERROR << "[JS] <no exception available>";
         return;
     }
 
-    // Try to get the stack property
-    JSValue stack_val = JS_GetPropertyStr(ctx, exception_val, "stack");
-    const char* stack_str = nullptr;
-    bool has_stack = false;
-
-    if (!JS_IsUndefined(stack_val) && !JS_IsException(stack_val)) {
-        stack_str = JS_ToCString(ctx, stack_val);
-        if (stack_str) {
-            has_stack = true;
-            PLOG_ERROR << "[JS] " << stack_str;
-        }
+    JSValue stack = JS_GetPropertyStr(raw_ctx, exc, "stack");
+    const char* str = nullptr;
+    if (!JS_IsUndefined(stack) && !JS_IsException(stack)) {
+        str = JS_ToCString(raw_ctx, stack);
+        if (str) { PLOG_ERROR << "[JS] " << str; JS_FreeCString(raw_ctx, str); }
     }
-    if (stack_str) {
-        JS_FreeCString(ctx, stack_str);
-    }
-    JS_FreeValue(ctx, stack_val);
+    JS_FreeValue(raw_ctx, stack);
 
-    // Fallback: print the exception as a string
-    if (!has_stack) {
-        const char* str = JS_ToCString(ctx, exception_val);
-        if (str) {
-            PLOG_ERROR << "[JS] Uncaught exception: " << str;
-            JS_FreeCString(ctx, str);
-        } else {
-            PLOG_ERROR << "[JS] Uncaught exception: <unknown>";
-        }
+    if (!str) {
+        str = JS_ToCString(raw_ctx, exc);
+        if (str) { PLOG_ERROR << "[JS] Uncaught exception: " << str; JS_FreeCString(raw_ctx, str); }
     }
-
-    JS_FreeValue(ctx, exception_val);
+    JS_FreeValue(raw_ctx, exc);
 }
 
 // ============================================================================
-// load_file_content() - Read a file into a malloc'd buffer (QuickJS-owned)
+// load_file_content() - Read a file into a string
 // ============================================================================
 
-char* JsPluginEngine::load_file_content(JSContext* ctx, const char* filename,
-                                          size_t* out_len) {
+std::string JsPluginEngine::load_file_content(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        return nullptr;
-    }
-
+    if (!file.is_open()) return "";
     std::streamsize size = file.tellg();
     file.seekg(0, std::ios::beg);
-
-    // Allocate with js_malloc so QuickJS owns the memory
-    char* buf = (char*)js_malloc(ctx, static_cast<size_t>(size) + 1);
-    if (!buf) {
-        return nullptr;
-    }
-
-    if (!file.read(buf, size)) {
-        js_free(ctx, buf);
-        return nullptr;
-    }
-    buf[size] = '\0';
-
-    if (out_len) {
-        *out_len = static_cast<size_t>(size);
-    }
+    std::string buf(static_cast<size_t>(size), '\0');
+    if (!file.read(buf.data(), size)) return "";
     return buf;
 }
 

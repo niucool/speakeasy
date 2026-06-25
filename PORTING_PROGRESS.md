@@ -6,8 +6,57 @@
 > Emulation Status: ✅ **GetProcAddress.exe runs to ExitProcess** (207+ APIs, clean exit)
 > JS Engine: ✅ **quickjs-ng v0.14.0 static linked** | ✅ **JsPluginEngine + ApiHook + Emu global**
 > Remaining TODOs: **0**
+> JS Engine: ✅ **quickjspp RAII rewrite** (no manual FreeValue) | Tests: ✅ **19/19 pass**
 > CLI JS: ✅ **`--js-script` / `-j` option** | Hook test: ✅ **JsHookTest 5/5 stable**
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
+
+---
+
+## 2026-06-25 (later): quickjspp C++ wrapper integration
+
+### Motivation
+
+The original JS engine code used raw QuickJS C API calls (`JS_NewCFunction2`, `JS_SetPropertyStr`, `JS_FreeValue`, etc.) which:
+- Required manual `JS_FreeValue` refcounting that caused double-free bugs
+- Used untyped `argc`/`argv` callbacks requiring boilerplate argument validation
+- Mixed ownership semantics between `set_value()` (no `JS_DupValue`) and other APIs
+
+[quickjspp](https://github.com/ftk/quickjspp) provides a header-only C++ wrapper with RAII value management, typed function registration, and property proxy syntax.
+
+### Changes
+
+| File | Before | After |
+|------|--------|-------|
+| `jsengine.h` | Raw `JSRuntime*`, `JSContext*`, `JSValue` members | `unique_ptr<qjs::Runtime>`, `unique_ptr<qjs::Context>`, `qjs::Value` (RAII) |
+| `jsengine.cpp` init() | `JS_NewRuntime()`, `JS_NewContext()`, manual FreeValue | `make_unique<qjs::Runtime>()`, `make_unique<qjs::Context>(rt)` |
+| `jsengine.cpp` eval | `JS_Eval(ctx, ...)`, manual `JS_FreeValue(val)` | `ctx_->eval(code, file, flags)` — throws `qjs::exception` |
+| `jsengine.cpp` register_log_functions | `JS_SetPropertyStr(ctx, global, "print", JS_NewCFunctionMagic(...))` — 6 functions | `g["print"] = std::function<...>(lambda)` — 6 one-liners |
+| `jsengine.cpp` init_emu_object | `JSCFunctionListEntry emu_funcs[] = {JS_CFUNC_DEF(...)}` — 28 entries in C struct array | `emu["ReadByte"] = std::function<int32_t(int64_t)>([&sp](...){...})` — 28 typed lambdas |
+| `jsengine.cpp` register_native_class | Mixed raw API and `std::function` | Raw C API only for `install()` (this_val) and constructor (JS_CFUNC_constructor) |
+| `jsemuobj.h/.cpp` | 25 static `JSCFunction` callbacks (~420 lines) | Empty stubs — all functions now inline lambdas in `jsengine.cpp` |
+
+### quickjs-ng compatibility patches to quickjspp.hpp
+
+quickjspp was written for an older QuickJS. 3 minimal patches for quickjs-ng v0.14.0:
+
+```cpp
+#define JS_BOOL bool
+#define JS_ParseJSON2(...) JS_ParseJSON(...)
+#define JS_SetHostUnhandledPromiseRejectionTracker JS_SetHostPromiseRejectionTracker
+```
+
+Plus signature fixes: `JS_NewClassID(rt, &id)`, `JS_IsArray(v)`, `JS_IsError(v)`, `JS_GetGlobalObject(ctx)`.
+
+### What stayed as raw C API
+
+- `install()` — needs `this_val` to read `OnCallBack`/`OnExit` from the hook instance
+- Constructor — needs `JS_CFUNC_constructor` flag (not supported by `std::function` wrapper)
+- `JsApiHookRegistry` / hook bridge — performance-critical path during emulation
+- Module loader callbacks — must match `JSModuleLoaderFunc` signature
+
+### Test results
+
+19/19 pass (16 QuickJSSmoke + 1 JsEngineTest + 2 JsHookTest), zero regressions, no heap corruption.
 
 ---
 

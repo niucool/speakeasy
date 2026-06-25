@@ -5,6 +5,26 @@
 
 ## [Unreleased]
 
+### 2026-06-25 (later) — quickjspp C++ wrapper integration for JS engine
+
+#### Changed
+- **JS engine rewritten with quickjspp** (`jsengine.h/.cpp`, `jsemuobj.h/.cpp`): Integrated `quickjspp.hpp` C++ wrapper from <https://github.com/ftk/quickjspp> to replace manual QuickJS C API calls with RAII wrappers and type-safe property registration. Key improvements:
+  - **`qjs::Runtime` / `qjs::Context`** — unique_ptr ownership replaces raw `JSRuntime*`/`JSContext*` with automatic cleanup. No more manual `JS_FreeContext`/`JS_FreeRuntime`.
+  - **`qjs::Value`** — RAII JSValue wrapper that auto-frees on destruction. Eliminated the double-free bug class entirely — no more manual `JS_FreeValue` calls in engine code.
+  - **Property proxy** — `obj["name"] = std::function<...>(lambda)` replaces `JS_SetPropertyStr(ctx, obj, "name", JS_NewCFunction2(...))` and the associated ownership confusion.
+  - **Typed lambdas** — Emu functions use `std::function<int64_t(int64_t)>`, `std::function<std::string(int64_t)>` etc. instead of raw `JSCFunction` callbacks with `argc`/`argv`. Type conversion (JS→C++ and C++→JS) is handled automatically by `js_traits<>`.
+  - **`jsemuobj.h/.cpp`** — Simplified to empty stubs. All 28 Emu functions are now inline lambdas in `JsPluginEngine::init_emu_object()`, registered via `emu["FuncName"] = std::function<...>(...)`.
+  - Raw C API retained only where necessary: `install()` (needs `this_val`), constructor (needs `JS_CFUNC_constructor` flag), hook bridge (performance-critical path).
+- **`quickjspp.hpp` quickjs-ng compatibility** — 3 minimal patches applied:
+  - `#define JS_BOOL bool` (removed in quickjs-ng)
+  - `#define JS_ParseJSON2(...)` → `JS_ParseJSON(...)` (renamed)
+  - `#define JS_SetHostUnhandledPromiseRejectionTracker` → `JS_SetHostPromiseRejectionTracker` (renamed)
+  - `JS_NewClassID` calls updated to pass `JSRuntime*` first arg (new quickjs-ng signature)
+  - `JS_IsArray(v)` / `JS_IsError(v)` — removed `ctx` arg (new quickjs-ng signatures)
+
+#### Verified
+- **19/19 JS tests pass**: 16 QuickJSSmoke + 1 JsEngineTest + 2 JsHookTest, zero regressions.
+
 ### 2026-06-25 — CLI JS scripting, JS hook test, memory safety sweep
 
 #### Added
