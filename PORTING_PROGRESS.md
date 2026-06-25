@@ -1,11 +1,91 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-24
+> Last Updated: 2026-06-25
 > Build Status: ✅ **0 compiler errors, 0 warnings** (/W4 clean)
+> Valgrind: ✅ **39/39 user-mode CLEAN** (0 leaks, 0 errors) | ASAN: ✅ **0 leaks** (PmaSampleTest)
 > Emulation Status: ✅ **GetProcAddress.exe runs to ExitProcess** (207+ APIs, clean exit)
 > JS Engine: ✅ **quickjs-ng v0.14.0 static linked** | ✅ **JsPluginEngine + ApiHook + Emu global**
 > Remaining TODOs: **0**
+> CLI JS: ✅ **`--js-script` / `-j` option** | Hook test: ✅ **JsHookTest 5/5 stable**
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
+
+---
+
+## 2026-06-25 (later): CLI JS scripting + hook integration test
+
+### CLI `--js-script` / `-j` option
+
+Added to `cli.h` / `cli.cpp`:
+
+```
+speakeasy-cli -t <target> -j <script.js>   # Load JS plugin before emulation
+```
+
+`emulate_binary()` calls `se.init_js_engine()` + `se.load_js_script(js_script)` after `load_module()` and before `run_module()`. Errors are non-fatal (warned in verbose mode).
+
+### JavaScript hook script: `tests/js/hook_gpa.js`
+
+Proof-of-concept JS hook that captures `kernel32.GetProcAddress`:
+- Creates `new ApiHook()` with `OnCallBack` and `OnExit`
+- `OnCallBack` stores `{api, hModule, procName}` in `globalThis.__gpaResults[]`
+- `OnExit` appends `retval` to the last captured entry
+- Calls `hook.install("kernel32", "GetProcAddress")`
+
+### Integration test: `tests/test_js_hook.cpp`
+
+`JsHookTest.HookGetProcAddressWithScript`:
+1. Loads `GetProcAddress.exe`
+2. Calls `init_js_engine()` + `load_js_script("tests/js/hook_gpa.js")`
+3. Runs emulation
+4. Post-emulation: `JS_Eval("globalThis.__gpaResults.length")` → expects > 0
+5. Verifies `kernel32.GetProcAddress` events in emulation report
+
+Result: **5/5 stable passes**.
+
+### Files changed
+
+| File | Status |
+|------|--------|
+| `secpp/cli.h` | Modified — `emulate_binary()` +`js_script` param |
+| `secpp/cli.cpp` | Modified — `-j,js-script` option, JS init/load in emulate flow |
+| `tests/js/hook_gpa.js` | **New** — JS hook script |
+| `tests/test_js_hook.cpp` | **New** — integration test |
+
+---
+
+## 2026-06-25: Memory safety sweep — valgrind, ASAN, leak fixes
+
+### Bugs found and fixed
+
+| # | Bug | File | Symptom | Fix |
+|---|-----|------|---------|-----|
+| 1 | `std::regex` catastrophic backtracking | `binemu.cpp` | Stack overflow on large binary blobs (6 files segfaulted) | Linear scan replacing `std::regex` in `get_ansi_strings`/`get_unicode_strings` |
+| 2 | QuickJS double-free | `jsengine.cpp` | Intermittent heap corruption in `JS_FreeRuntime` GC | `JS_SetPropertyStr`/`JS_DefinePropertyValueStr` take ownership — removed bogus `JS_FreeValue` calls (18 sites) |
+| 3 | Stack-buffer-overflow | `winemu.cpp:1768` | ASAN: read past 8-byte `void*` looking for null | `std::string(ptr, sizeof(ctx))` bounded-length constructor |
+| 4 | Device leak | `win32.cpp:630` | Raw `new Device` never stored/freed | `std::make_shared<Device>` + `om->add_object()` |
+| 5 | shared_ptr cycles | `netman.h/.cpp` | 194 objects (~141KB) leaked via `WininetSession`↔`WininetRequest` | Back-refs changed to `weak_ptr`, getters use `.lock()` |
+
+### Valgrind sweep results
+
+| Source | Count | Result |
+|--------|-------|--------|
+| `tests/bins/*.exe` | 7 | **7/7 CLEAN** |
+| `tests/bins/*.dll` | 2 | **2/2 CLEAN** |
+| `tests/bins/*.sys` (WDM) | 2 | 2/2 LEAK — QEMU-internal only |
+| `tests/capa-testfiles/*.exe_` (sample) | 22 | **22/22 CLEAN** |
+| `tests/capa-testfiles/*.dll_` (sample) | 8 | **8/8 CLEAN** |
+| Previously-segfaulting files | 6 | **6/6 FIXED**, 1 confirmed CLEAN |
+| **TOTAL user-mode** | **39** | **39/39 CLEAN** ✅ |
+
+### WDM kernel-mode leaks (investigated, not fixed)
+
+All leaks in `wdm_test_x64.sys` / `wdm_test_x86.sys` originate from Unicorn's QEMU layer:
+- `flatview_new` → `flatviews_reset` — memory region topology
+- `qht_map_create` → `qemu_memalign` — TCG translation block hash table  
+- `memory_region_transaction_commit` — MMU bookkeeping
+- `tb_gen_code` → `g_tree_insert_internal` — translation block cache
+
+These are **known QEMU limitations** — internal data structures not fully freed by `uc_close`. The existing `test_leak_detector.cpp` tolerates up to 200KB for this. WDM tests exceed the tolerance (~1.6MB) because kernel emulation maps more memory. Zero leaks from our C++ code.
 
 ---
 

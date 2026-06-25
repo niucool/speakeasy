@@ -24,7 +24,8 @@ std::string emulate_binary(const std::string& target_path,
                            size_t raw_offset = 0,
                            bool emulate_children = false,
                            bool verbose = false,
-                           size_t entry_point = 0);
+                           size_t entry_point = 0,
+                           const std::string& js_script = "");
 
 } // namespace speakeasy
 

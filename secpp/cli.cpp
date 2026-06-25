@@ -35,6 +35,8 @@ int run_cli(int argc, const char* argv[]) {
                             cxxopts::value<std::string>()->default_value("0"), "RVA")
         ("arch",        "Architecture for shellcode (x86/amd64)", cxxopts::value<std::string>(), "ARCH")
         ("emulate-children", "Emulate child processes", cxxopts::value<bool>()->default_value("false"))
+        ("j,js-script", "JavaScript plugin script to load after module init",
+                        cxxopts::value<std::string>()->default_value(""), "PATH")
         ("v,verbose",   "Verbose output", cxxopts::value<bool>()->default_value("false"))
         ("h,help",      "Print usage");
 
@@ -71,6 +73,7 @@ int run_cli(int argc, const char* argv[]) {
         std::string arch = args.count("arch") ? args["arch"].as<std::string>() : "";
         bool emulate_children = args["emulate-children"].as<bool>();
         bool verbose = args["verbose"].as<bool>();
+        std::string js_script = args["js-script"].as<std::string>();
 
         // Parse argv for guest process
         std::vector<std::string> extra_argv;
@@ -106,7 +109,7 @@ int run_cli(int argc, const char* argv[]) {
         // Run emulation
         std::string report = emulate_binary(target, config_path, extra_argv, volumes,
                                             is_raw, arch, raw_offset, emulate_children,
-                                            verbose, entry_point);
+                                            verbose, entry_point, js_script);
 
         // Write output
         if (!output.empty()) {
@@ -140,9 +143,10 @@ std::string emulate_binary(const std::string& target_path,
                            const std::vector<std::string>& volumes,
                            bool is_raw, const std::string& arch,
                            size_t raw_offset, bool emulate_children,
-                           bool verbose, size_t entry_point) {
+                           bool verbose, size_t entry_point,
+                           const std::string& js_script) {
     try {
-        //  1. Build config (Python: get_default_config_dict + merge + apply volumes) 
+        //  1. Build config (Python: get_default_config_dict + merge + apply volumes)
         speakeasy::SpeakeasyConfig config;
 
         // Merge user config file if provided (Python: load + merge_config_dicts)
@@ -156,15 +160,30 @@ std::string emulate_binary(const std::string& target_path,
         std::string report;
 
         if (is_raw) {
-            //  Shellcode mode (Python: load_shellcode + run_shellcode) 
+            //  Shellcode mode (Python: load_shellcode + run_shellcode)
             std::string resolved_arch = arch.empty() ? "x86" : to_lower(arch);
             if (resolved_arch == "amd64") resolved_arch = "x64";
 
             uint64_t sc_addr = se.load_shellcode(target_path, resolved_arch);
             se.run_shellcode(sc_addr, 0x4000, raw_offset);
         } else {
-            //  PE module mode (Python: load_module + run_module) 
+            //  PE module mode (Python: load_module + run_module)
             auto module = se.load_module(target_path);
+
+            // Initialize JS engine and load plugin script if provided
+            if (!js_script.empty()) {
+                if (se.init_js_engine()) {
+                    if (!se.load_js_script(js_script)) {
+                        if (verbose) {
+                            std::cerr << "Warning: failed to load JS script: "
+                                      << js_script << std::endl;
+                        }
+                    }
+                } else if (verbose) {
+                    std::cerr << "Warning: failed to initialize JS engine" << std::endl;
+                }
+            }
+
             se.run_module(module, false, emulate_children);
         }
 

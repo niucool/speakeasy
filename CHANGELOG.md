@@ -5,6 +5,29 @@
 
 ## [Unreleased]
 
+### 2026-06-25 — CLI JS scripting, JS hook test, memory safety sweep
+
+#### Added
+- **CLI `--js-script` / `-j` option** (`cli.h`, `cli.cpp`): `-j,js-script PATH` loads a JavaScript plugin script before emulation. `emulate_binary()` calls `init_js_engine()` + `load_js_script(js_script)` between `load_module()` and `run_module()`. Usage: `speakeasy-cli -t sample.exe -j hooks.js`.
+- **JavaScript hook script** (`tests/js/hook_gpa.js`): Hooks `kernel32.GetProcAddress` — creates `ApiHook` with `OnCallBack`/`OnExit`, captures calls in `globalThis.__gpaResults` array, logs each invocation. Validates end-to-end JS hook pipeline.
+- **JS hook integration test** (`tests/test_js_hook.cpp` — `JsHookTest.HookGetProcAddressWithScript`): Loads `GetProcAddress.exe`, inits JS engine, loads `hook_gpa.js`, runs emulation, verifies `globalThis.__gpaResults.length > 0` via `JS_Eval`, confirms API events in report. 5/5 stable runs.
+
+#### Fixed
+- **`std::regex` catastrophic backtracking → stack overflow** (`binemu.cpp`): `get_ansi_strings()` and `get_unicode_strings()` used `std::regex` with patterns like `[ -~]{N,}` on raw binary memory blobs (megabytes). `std::regex` uses recursive backtracking causing stack overflow on large files (al-khaser_x64.exe_, 5 others). Replaced with linear-scan implementations that skip non-printable bytes and record runs ≥ min_len — O(n) single pass, no recursion. Fixed 6 segfaulting capa-testfiles.
+- **QuickJS double-free in `JS_SetPropertyStr`/`JS_DefinePropertyValueStr`** (`jsengine.cpp`): These functions use `set_value()` internally which takes ownership of the value WITHOUT calling `JS_DupValue`. Calling `JS_FreeValue` after them was a double-free causing intermittent heap corruption in `JS_FreeRuntime` GC. Fixed `register_log_functions()` (6 functions), `register_native_class()` (2 functions), `init_emu_object()` (6 properties), `init()` (1 function), and `~JsPluginEngine()` destructor. Root cause identified by user pointing to crash in `register_log_functions`.
+- **Stack-buffer-overflow in `create_thread`** (`winemu.cpp:1768`): `std::string(reinterpret_cast<const char*>(&ctx), reinterpret_cast<const char*>(&ctx) + sizeof(ctx))` called `std::string(const char*, const char*)` which iterates until null byte, reading past the 8-byte `void* ctx` variable. Fixed with `std::string(reinterpret_cast<const char*>(&ctx), sizeof(ctx))` using the bounded-length constructor. Found by ASAN.
+- **Device leak in `init_sys_modules`** (`win32.cpp:630`): `new Device(...)` returned a raw pointer that was never stored or freed. Fixed by creating `std::make_shared<Device>(...)` and registering with `om->add_object(dobj)` for proper lifecycle management.
+- **shared_ptr cycles in NetworkManager** (`netman.h/.cpp`): Two cycles prevented cleanup of 194 `WininetSession`/`WininetRequest` objects (~141KB leaked):
+  - `WininetInstance::sessions` → `shared_ptr<WininetSession>` ↔ `WininetSession::instance` → `shared_ptr<WininetInstance>`
+  - `WininetSession::requests` → `shared_ptr<WininetRequest>` ↔ `WininetRequest::session` → `shared_ptr<WininetSession>`
+  - Fixed by changing `WininetSession::instance` and `WininetRequest::session` to `weak_ptr`, with getters updated to `.lock()`.
+
+#### Verified
+- **Valgrind sweep — 39/39 user-mode binaries CLEAN**: All `tests/bins/*.exe` (7), `tests/bins/*.dll` (2), and 30 randomly-selected `tests/capa-testfiles/*.exe_`/`.dll_` pass valgrind with 0 leaks, 0 errors, all allocs freed.
+- **Valgrind sweep — 6 previously-segfaulting files**: All 6 now run without segfault (regex fix); 1 confirmed CLEAN under valgrind (60,727/60,727 allocs).
+- **WDM kernel-mode leaks** (2 files): All leaks are in Unicorn QEMU internals (`flatview_new`, `qht_map_create`, `memory_region_transaction_commit`) — known QEMU limitation where MMU/TLB/bookkeeping structures aren't fully freed by `uc_close`. Zero leaks from our C++ code.
+- **PmaSampleTest leak**: ASAN confirmed 0 leaks after fixes (previously 141,834 bytes in 1,564 allocations leaked).
+
 ### 2026-06-24 — JavaScript plugin engine ported from Pascal (quickjs-ng integration)
 
 #### Added
