@@ -1192,57 +1192,56 @@ void BinaryEmulator::clean_stack_args(int argc) {
 }
 
 // Python binemu.py:700-717 doc: "Get all ansi strings from a supplied memory blob"
-    // Python uses re.compile(b"[\x20-\x7f]{%d,}" % min_len) for regex-based extraction
-    // C++ uses linear scan (iterative) -- functionally equivalent
+// Uses linear scan over the binary data to find runs of printable ASCII chars.
+// (Formerly used std::regex which caused catastrophic backtracking / stack
+//  overflow on large binary blobs like al-khaser_x64.exe_.
 std::vector<std::tuple<int, std::string>> BinaryEmulator::get_ansi_strings(
     const std::vector<uint8_t>& data, int min_len) {
-    // Python binemu.py:700-717 : regex-based printable ASCII string extraction
     std::vector<std::tuple<int, std::string>> result;
-    std::string s(reinterpret_cast<const char*>(data.data()), data.size());
-    std::string pattern = "[\\x20-\\x7e]{" + std::to_string(min_len) + ",}";
-    try {
-        std::regex re(pattern);
-        std::sregex_iterator it(s.begin(), s.end(), re);
-        std::sregex_iterator end;
-        size_t last_end = 0;
-        for (; it != end; ++it) {
-            size_t match_pos = s.find(it->str(), last_end);
-            if (match_pos == std::string::npos) match_pos = it->position();
-            result.push_back({static_cast<int>(match_pos), it->str()});
-            last_end = match_pos + 1;
+    size_t i = 0;
+    while (i < data.size()) {
+        // Skip non-printable characters
+        while (i < data.size() && (data[i] < 0x20 || data[i] > 0x7e)) i++;
+        if (i >= data.size()) break;
+        size_t start = i;
+        // Run through printable characters
+        while (i < data.size() && data[i] >= 0x20 && data[i] <= 0x7e) i++;
+        size_t len = i - start;
+        if (len >= static_cast<size_t>(min_len)) {
+            std::string s(reinterpret_cast<const char*>(&data[start]), len);
+            result.push_back({static_cast<int>(start), s});
         }
-    } catch (const std::regex_error&) {}
+    }
     return result;
 }
 
 // Python binemu.py:719-736 doc: "Get all unicode strings from a supplied memory blob"
+// Uses linear scan over the binary data to find runs of UTF-16LE printable
+// ASCII (char < 128, second byte 0x00).  (Formerly std::regex — replaced to
+// avoid catastrophic backtracking / stack overflow on large blobs.)
 std::vector<std::tuple<int, std::string>> BinaryEmulator::get_unicode_strings(
     const std::vector<uint8_t>& data, int min_len) {
-    // Python binemu.py:719-736 : regex-based UTF-16LE printable ASCII string extraction
     std::vector<std::tuple<int, std::string>> result;
-    // Build pattern: (?:[ -~]){min_len,}
-    std::string pattern = "(?:[\\x20-\\x7e]\\x00){" + std::to_string(min_len) + ",}";
-    try {
-        std::regex re(pattern);
-        std::string s(reinterpret_cast<const char*>(data.data()), data.size());
-        std::sregex_iterator it(s.begin(), s.end(), re);
-        std::sregex_iterator end;
-        size_t last_end = 0;
-        for (; it != end; ++it) {
-            size_t match_pos = s.find(it->str(), last_end);
-            if (match_pos == std::string::npos) match_pos = it->position();
-            // Decode UTF-16LE to string
-            std::string raw = it->str();
+    size_t i = 0;
+    while (i + 1 < data.size()) {
+        // Skip non-printable UTF-16LE chars (ASCII byte not in [0x20,0x7e] or high byte != 0)
+        while (i + 1 < data.size() &&
+               (data[i] < 0x20 || data[i] > 0x7e || data[i+1] != 0x00)) i++;
+        if (i + 1 >= data.size()) break;
+        size_t start = i;
+        // Run through printable UTF-16LE chars
+        while (i + 1 < data.size() &&
+               data[i] >= 0x20 && data[i] <= 0x7e && data[i+1] == 0x00) i += 2;
+        size_t byte_len = i - start;
+        size_t char_len = byte_len / 2;
+        if (char_len >= static_cast<size_t>(min_len)) {
             std::string decoded;
-            for (size_t i = 0; i + 1 < raw.size(); i += 2) {
-                if (raw[i] >= 0x20 && raw[i] <= 0x7e)
-                    decoded += raw[i];
-            }
-            if ((int)decoded.length() >= min_len)
-                result.push_back({static_cast<int>(match_pos), decoded});
-            last_end = match_pos + 1;
+            decoded.reserve(char_len);
+            for (size_t j = start; j < i; j += 2)
+                decoded += static_cast<char>(data[j]);
+            result.push_back({static_cast<int>(start), decoded});
         }
-    } catch (const std::regex_error&) {}
+    }
     return result;
 }
 
