@@ -376,7 +376,7 @@ void JsPluginEngine::register_native_class(JSContext* ctx) {
     api_class_def.exotic = nullptr;
 
     // Create new class ID
-    JS_NewClassID(&api_class_id_);
+    JS_NewClassID(JS_GetRuntime(ctx), &api_class_id_);
     JS_NewClass(JS_GetRuntime(ctx), api_class_id_, &api_class_def);
 
     // Create prototype object
