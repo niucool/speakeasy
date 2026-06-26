@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 def setup_logging(verbose: bool) -> None:
     root = logging.getLogger("speakeasy")
     root.handlers.clear()
-    root.addHandler(RichHandler(console=Console(stderr=True), show_path=False))
+    root.addHandler(RichHandler(console=Console(stderr=True), show_path=False, show_time=False, show_level=False))
     root.setLevel(logging.DEBUG if verbose else logging.INFO)
 
 
