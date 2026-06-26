@@ -432,7 +432,7 @@ TEST_F(JsEngineIntegrationTest, InitWithLoadedModule) {
     EXPECT_TRUE(engine->eval_buf("2 + 2", "<test>"));
 }
 
-TEST_F(JsEngineIntegrationTest, DISABLED_EvalBufSimple) {
+TEST_F(JsEngineIntegrationTest, EvalBufSimple) {
     ASSERT_TRUE(init_engine());
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);

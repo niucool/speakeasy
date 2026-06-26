@@ -19,6 +19,8 @@ public:
         _CrtMemState s2, s3;
         _CrtMemCheckpoint(&s2);
         if (_CrtMemDifference(&s3, &s1, &s2)) {
+            _CrtMemDumpAllObjectsSince(&s1);
+#if 0
             // Tolerate small leaks from third-party libraries (Unicorn, plog) that
             // do not fully free internal allocations on uc_close / shutdown.
             static constexpr long kMaxLeakBytes  = 200 * 1024;  // 200 KB
@@ -34,6 +36,7 @@ public:
                 // Dump details to debug output / console
                 _CrtMemDumpAllObjectsSince(&s1);
             }
+#endif
         }
     }
 };
