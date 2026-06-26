@@ -1,5 +1,6 @@
 // jsengine.cpp - JavaScript plugin engine for Speakeasy
 #include "jsengine.h"
+#include "quickjspp.hpp"
 #include "jsemuobj.h"
 #include "jsapihook.h"
 #include "speakeasy.h"
@@ -8,6 +9,7 @@
 #include <sstream>
 #include <cstring>
 #include <algorithm>
+#include <filesystem>
 #include <plog/Log.h>
 
 namespace speakeasy {
@@ -39,26 +41,17 @@ JsPluginEngine::JsPluginEngine(Speakeasy& speakeasy)
 }
 
 JsPluginEngine::~JsPluginEngine() {
-    // Clean up in reverse order of init()
-    if (hook_registry_) {
-        hook_registry_->remove_all();
-    }
-    // IMPORTANT: emu_obj_ and api_class_proto_ were passed to
-    // JS_SetPropertyStr / JS_SetClassProto which use set_value()
-    // internally. set_value() takes ownership WITHOUT calling
-    // JS_DupValue, so the property/class now owns the only reference.
-    // We must NOT call JS_FreeValue on them — that would double-free
-    // when the context is destroyed.
-    if (ctx_) {
-        //emu_obj_ = JS_UNDEFINED;
-        //api_class_proto_ = JS_UNDEFINED;
-        JS_FreeContext(ctx_);
-        ctx_ = nullptr;
-    }
-    if (rt_) {
-        JS_FreeRuntime(rt_);
-        rt_ = nullptr;
-    }
+    hook_registry_.reset();
+    context_.reset();
+    runtime_.reset();
+}
+
+JSRuntime* JsPluginEngine::runtime() const {
+    return runtime_ ? runtime_->rt : nullptr;
+}
+
+JSContext* JsPluginEngine::context() const {
+    return context_ ? context_->ctx : nullptr;
 }
 
 // ============================================================================
@@ -66,94 +59,86 @@ JsPluginEngine::~JsPluginEngine() {
 // ============================================================================
 
 bool JsPluginEngine::init() {
-    // 1. Create JSRuntime
-    rt_ = JS_NewRuntime();
-    if (!rt_) {
-        PLOG_ERROR << "JsPluginEngine: failed to create JSRuntime";
+    try {
+        runtime_ = std::make_unique<qjs::Runtime>();
+        JS_SetRuntimeOpaque(runtime_->rt, this);
+
+        context_ = std::make_unique<qjs::Context>(*runtime_);
+        context_->moduleLoader = [](std::string_view module_name) -> qjs::Context::ModuleData {
+            auto source = qjs::detail::readFile(std::filesystem::path(std::string(module_name)));
+            if (!source) {
+                return {};
+            }
+            return { qjs::detail::toUri(module_name), std::move(*source) };
+        };
+
+        JSContext* ctx = context_->ctx;
+        register_native_class(ctx);
+        init_emu_object(ctx);
+        register_log_functions(ctx);
+
+        JSValue global = JS_GetGlobalObject(ctx);
+        JS_SetPropertyStr(ctx, global, "importScripts",
+            JS_NewCFunction2(ctx, js_native_import_scripts, "importScripts", 1,
+                             JS_CFUNC_generic, 0));
+        JS_FreeValue(ctx, global);
+
+        hook_registry_ = std::make_unique<JsApiHookRegistry>(ctx, speakeasy_);
+        return true;
+    } catch (const std::exception& e) {
+        PLOG_ERROR << "JsPluginEngine: init failed: " << e.what();
+        hook_registry_.reset();
+        context_.reset();
+        runtime_.reset();
+        return false;
+    } catch (...) {
+        PLOG_ERROR << "JsPluginEngine: init failed with unknown exception";
+        hook_registry_.reset();
+        context_.reset();
+        runtime_.reset();
         return false;
     }
-    JS_SetRuntimeOpaque(rt_, this);
-
-    // 2. Create JSContext
-    ctx_ = JS_NewContext(rt_);
-    if (!ctx_) {
-        PLOG_ERROR << "JsPluginEngine: failed to create JSContext";
-        return false;
-    }
-
-    // 3. Set up ES6 module loader for file-based imports
-    JS_SetModuleLoaderFunc(rt_, module_normalize_cb, module_loader_cb, this);
-
-    // 4. Register the ApiHook native class
-    register_native_class(ctx_);
-
-    // 5. Create the Emu global object (must be after emulator is running)
-    init_emu_object(ctx_);
-
-    // 6. Register global logging functions (console.log, print, info, warn, error)
-    register_log_functions(ctx_);
-
-    // 7. Register importScripts global — JS_SetPropertyStr takes ownership
-    JSValue global = JS_GetGlobalObject(ctx_);
-    JS_SetPropertyStr(ctx_, global, "importScripts",
-        JS_NewCFunction2(ctx_, js_native_import_scripts, "importScripts", 1,
-                         JS_CFUNC_generic, 0));
-    JS_FreeValue(ctx_, global);
-
-    // 8. Initialize hook registry
-    hook_registry_ = std::make_unique<JsApiHookRegistry>(ctx_, speakeasy_);
-
-    // Note: std/os module bridge is skipped because quickjs-ng vcpkg build
-    // does not include quickjs-libc. All necessary globals (console, print,
-    // info, warn, error, importScripts) are registered above.
-
-    return true;
 }
-
 // ============================================================================
 // eval_buf() / eval_file() / load_script()
 // ============================================================================
 
 bool JsPluginEngine::eval_buf(const std::string& code, const std::string& filename,
                                int eval_flags) {
-    if (!ctx_) {
+    if (!context_) {
         PLOG_ERROR << "JsPluginEngine: eval_buf called before init()";
         return false;
     }
-    JSValue val = JS_Eval(ctx_, code.c_str(), code.size(), filename.c_str(), eval_flags);
-    bool ok = true;
-    if (JS_IsException(val)) {
-        dump_error(ctx_);
-        ok = false;
+
+    try {
+        (void)context_->eval(code, filename.c_str(), eval_flags);
+        return true;
+    } catch (qjs::exception&) {
+        dump_error(context_->ctx);
+        return false;
+    } catch (const std::exception& e) {
+        PLOG_ERROR << "JsPluginEngine: eval_buf failed: " << e.what();
+        return false;
     }
-    JS_FreeValue(ctx_, val);
-    return ok;
 }
 
 bool JsPluginEngine::eval_file(const std::string& filename, int eval_flags) {
-    if (!ctx_) {
+    if (!context_) {
         PLOG_ERROR << "JsPluginEngine: eval_file called before init()";
         return false;
     }
 
-    size_t buf_len = 0;
-    char* buf = load_file_content(ctx_, filename.c_str(), &buf_len);
-    if (!buf) {
-        PLOG_ERROR << "JsPluginEngine: failed to load file: " << filename;
+    try {
+        (void)context_->evalFile(filename.c_str(), eval_flags);
+        return true;
+    } catch (qjs::exception&) {
+        dump_error(context_->ctx);
+        return false;
+    } catch (const std::exception& e) {
+        PLOG_ERROR << "JsPluginEngine: eval_file failed: " << e.what();
         return false;
     }
-
-    bool ok = true;
-    JSValue val = JS_Eval(ctx_, buf, buf_len, filename.c_str(), eval_flags);
-    if (JS_IsException(val)) {
-        dump_error(ctx_);
-        ok = false;
-    }
-    JS_FreeValue(ctx_, val);
-    js_free(ctx_, buf);
-    return ok;
 }
-
 bool JsPluginEngine::load_script(const std::string& filename) {
     // Check if file exists
     std::ifstream f(filename);
@@ -269,7 +254,7 @@ JSValue JsPluginEngine::js_constructor(JSContext* ctx, JSValueConst new_target,
     JSValue args = JS_NewArray(ctx);
     JS_DefinePropertyValueStr(ctx, obj, "args", args,
                               JS_PROP_CONFIGURABLE | JS_PROP_WRITABLE);
-    JS_FreeValue(ctx, args);
+    // JS_DefinePropertyValueStr takes ownership of args.
 
     return obj;
 }
@@ -391,7 +376,7 @@ void JsPluginEngine::register_native_class(JSContext* ctx) {
     api_class_def.exotic = nullptr;
 
     // Create new class ID
-    JS_NewClassID(JS_GetRuntime(ctx), &api_class_id_);
+    JS_NewClassID(&api_class_id_);
     JS_NewClass(JS_GetRuntime(ctx), api_class_id_, &api_class_def);
 
     // Create prototype object
@@ -406,7 +391,7 @@ void JsPluginEngine::register_native_class(JSContext* ctx) {
     JS_SetClassProto(ctx, api_class_id_, api_class_proto_);
 
     // Create constructor function
-    // Add to global object — JS_SetPropertyStr takes ownership of ctor
+    // Add to global object �?JS_SetPropertyStr takes ownership of ctor
     JSValue global = JS_GetGlobalObject(ctx);
     JS_SetPropertyStr(ctx, global, "ApiHook",
         JS_NewCFunction2(ctx, js_constructor, "ApiHook", 1, JS_CFUNC_constructor, 0));
@@ -420,7 +405,7 @@ void JsPluginEngine::register_native_class(JSContext* ctx) {
 void JsPluginEngine::init_emu_object(JSContext* ctx) {
     auto& sp = get_speakeasy(ctx);
 
-    emu_obj_ = JS_NewObject(ctx);
+    JSValue emu_obj = JS_NewObject(ctx);
 
     // === Static properties (read at init time, matching Pascal InitJSEmu) ===
 
@@ -431,21 +416,21 @@ void JsPluginEngine::init_emu_object(JSContext* ctx) {
     };
 
     // isx64
-    define_prop(emu_obj_, "isx64",
+    define_prop(emu_obj, "isx64",
         JS_NewBool(ctx, sp.get_ptr_size() == 8), JS_PROP_CONFIGURABLE);
 
     // PEB address
-    define_prop(emu_obj_, "PEB",
+    define_prop(emu_obj, "PEB",
         JS_NewInt64(ctx, static_cast<int64_t>(sp.get_peb_address())),
         JS_PROP_CONFIGURABLE);
 
     // TEB address
-    define_prop(emu_obj_, "TEB",
+    define_prop(emu_obj, "TEB",
         JS_NewInt64(ctx, static_cast<int64_t>(sp.get_teb_address())),
         JS_PROP_CONFIGURABLE);
 
     // PID
-    define_prop(emu_obj_, "PID",
+    define_prop(emu_obj, "PID",
         JS_NewInt64(ctx, static_cast<int64_t>(sp.get_current_pid())),
         JS_PROP_CONFIGURABLE);
 
@@ -457,8 +442,8 @@ void JsPluginEngine::init_emu_object(JSContext* ctx) {
         image_base = static_cast<int64_t>(modules[0]->base);
         filename = modules[0]->name;
     }
-    define_prop(emu_obj_, "ImageBase", JS_NewInt64(ctx, image_base), JS_PROP_CONFIGURABLE);
-    define_prop(emu_obj_, "Filename", JS_NewString(ctx, filename.c_str()), JS_PROP_CONFIGURABLE);
+    define_prop(emu_obj, "ImageBase", JS_NewInt64(ctx, image_base), JS_PROP_CONFIGURABLE);
+    define_prop(emu_obj, "Filename", JS_NewString(ctx, filename.c_str()), JS_PROP_CONFIGURABLE);
 
     // === Function list (matching Pascal JSEmuObj functions) ===
 
@@ -506,12 +491,12 @@ void JsPluginEngine::init_emu_object(JSContext* ctx) {
         JS_CFUNC_DEF("StackDump", 2, JsEmuObject::stack_dump),
     };
 
-    JS_SetPropertyFunctionList(ctx, emu_obj_, emu_funcs,
+    JS_SetPropertyFunctionList(ctx, emu_obj, emu_funcs,
                                sizeof(emu_funcs) / sizeof(emu_funcs[0]));
 
     // Register as global
     JSValue global = JS_GetGlobalObject(ctx);
-    JS_SetPropertyStr(ctx, global, "Emu", emu_obj_);
+    JS_SetPropertyStr(ctx, global, "Emu", emu_obj);
     JS_FreeValue(ctx, global);
 }
 
@@ -527,10 +512,9 @@ void JsPluginEngine::register_log_functions(JSContext* ctx) {
     JS_SetPropertyStr(ctx, console, "log",
         JS_NewCFunctionMagic(ctx, js_logme, "log", 1, JS_CFUNC_generic_magic, 1));
     JS_SetPropertyStr(ctx, global, "console", console);
-    JS_FreeValue(ctx, console);
 
     // Global logging functions with magic numbers for level control.
-    // NOTE: JS_SetPropertyStr takes OWNERSHIP of the value — do NOT FreeValue it.
+    // NOTE: JS_SetPropertyStr takes OWNERSHIP of the value �?do NOT FreeValue it.
     JS_SetPropertyStr(ctx, global, "print",
         JS_NewCFunctionMagic(ctx, js_logme, "print", 1, JS_CFUNC_generic_magic, 0));
     JS_SetPropertyStr(ctx, global, "log",

@@ -10,6 +10,7 @@
 
 // Forward declarations
 class Speakeasy;
+namespace qjs { class Runtime; class Context; }
 
 namespace speakeasy {
 
@@ -68,8 +69,8 @@ public:
     bool load_script(const std::string& filename);
 
     // Accessors
-    JSRuntime* runtime() const { return rt_; }
-    JSContext* context() const { return ctx_; }
+    JSRuntime* runtime() const;
+    JSContext* context() const;
     Speakeasy& speakeasy() { return speakeasy_; }
     JsApiHookRegistry& hook_registry() { return *hook_registry_; }
 
@@ -81,10 +82,9 @@ public:
 
 private:
     Speakeasy& speakeasy_;
-    std::unique_ptr<JsApiHookRegistry> hook_registry_;  // MUST be before rt_ — destroyed before runtime
-    JSRuntime* rt_ = nullptr;
-    JSContext* ctx_ = nullptr;
-    JSValue emu_obj_ = JS_UNDEFINED;
+    std::unique_ptr<qjs::Runtime> runtime_;
+    std::unique_ptr<qjs::Context> context_;
+    std::unique_ptr<JsApiHookRegistry> hook_registry_;
     JSValue api_class_proto_ = JS_UNDEFINED;
     JSClassID api_class_id_ = 0;
 
