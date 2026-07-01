@@ -215,7 +215,7 @@ TEST(QuickJSSmoke, NewArray) {
 
     JSValue arr = JS_NewArray(ctx);
     EXPECT_TRUE(JS_IsObject(arr));
-    EXPECT_TRUE(JS_IsArray(arr));
+    EXPECT_TRUE(JS_IsArray(ctx, arr));
 
     // Set elements
     JS_SetPropertyUint32(ctx, arr, 0, JS_NewInt32(ctx, 10));

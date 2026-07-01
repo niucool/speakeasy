@@ -1,88 +1,72 @@
-// jsemuobj.h - Emulator object functions exposed to JavaScript
+// jsemuobj.h - Emulator object functions exposed to JavaScript (quickjspp modernized)
 #ifndef SPEAKEASY_JSEMUOBJ_H
 #define SPEAKEASY_JSEMUOBJ_H
 
-#include <quickjs.h>
+#include <string>
+#include <vector>
+#include <cstdint>
+#include <quickjspp.hpp>
+
+class Speakeasy;
 
 namespace speakeasy {
 
-/**
- * Static JS-callable functions that form the "Emu.*" API.
- * Each function matches the JSCFunction callback signature:
- *   JSValue func(JSContext* ctx, JSValueConst this_val, int argc, JSValueConst* argv)
- *
- * These mirror the Pascal JSEmuObj functions from jsemuobj.pas,
- * adapted to call through the Speakeasy facade via the runtime opaque pointer.
- */
-struct JsEmuObject {
-    // === Registers ===
-    static JSValue read_reg(JSContext* ctx, JSValueConst this_val,
-                            int argc, JSValueConst* argv);
-    static JSValue set_reg(JSContext* ctx, JSValueConst this_val,
-                           int argc, JSValueConst* argv);
+    /**
+     * High-level C++ class representing the "Emu" object API.
+     * Methods accept native types directly, and quickjspp marshals
+     * inputs, arguments, exceptions, and return types seamlessly.
+     */
+    class JsEmuObject {
+    public:
+        // Pass a reference to Speakeasy upon instantiation or track it via an internal reference
+        explicit JsEmuObject(Speakeasy& speakeasy);
+        ~JsEmuObject() = default;
 
-    // === Strings ===
-    static JSValue read_string_a(JSContext* ctx, JSValueConst this_val,
-                                 int argc, JSValueConst* argv);
-    static JSValue read_string_w(JSContext* ctx, JSValueConst this_val,
-                                 int argc, JSValueConst* argv);
-    static JSValue write_string_a(JSContext* ctx, JSValueConst this_val,
-                                  int argc, JSValueConst* argv);
-    static JSValue write_string_w(JSContext* ctx, JSValueConst this_val,
-                                  int argc, JSValueConst* argv);
+        // === Registers ===
+        uint64_t read_reg(uint32_t reg_id);
+        bool set_reg(uint32_t reg_id, int64_t value);
 
-    // === Modules ===
-    static JSValue load_library(JSContext* ctx, JSValueConst this_val,
-                                int argc, JSValueConst* argv);
-    static JSValue get_module_name(JSContext* ctx, JSValueConst this_val,
-                                   int argc, JSValueConst* argv);
-    static JSValue get_module_handle(JSContext* ctx, JSValueConst this_val,
-                                     int argc, JSValueConst* argv);
-    static JSValue get_proc_address(JSContext* ctx, JSValueConst this_val,
-                                    int argc, JSValueConst* argv);
+        // === Strings ===
+        std::string read_string_a(int64_t addr, qjs::Value max_chars_val);
+        std::string read_string_w(int64_t addr, qjs::Value max_chars_val);
+        int32_t write_string_a(int64_t addr, const std::string& str);
+        int32_t write_string_w(int64_t addr, const std::string& str);
 
-    // === Memory Write ===
-    static JSValue write_byte(JSContext* ctx, JSValueConst this_val,
-                              int argc, JSValueConst* argv);
-    static JSValue write_word(JSContext* ctx, JSValueConst this_val,
-                              int argc, JSValueConst* argv);
-    static JSValue write_dword(JSContext* ctx, JSValueConst this_val,
-                               int argc, JSValueConst* argv);
-    static JSValue write_qword(JSContext* ctx, JSValueConst this_val,
-                               int argc, JSValueConst* argv);
-    static JSValue write_mem(JSContext* ctx, JSValueConst this_val,
-                             int argc, JSValueConst* argv);
+        // === Modules ===
+        int64_t load_library(const std::string& libname);
+        std::string get_module_name(qjs::Value handle_val);
+        int64_t get_module_handle(qjs::Value name_val);
+        int64_t get_proc_address(int64_t handle, const std::string& fn_name);
 
-    // === Memory Read ===
-    static JSValue read_byte(JSContext* ctx, JSValueConst this_val,
-                             int argc, JSValueConst* argv);
-    static JSValue read_word(JSContext* ctx, JSValueConst this_val,
-                             int argc, JSValueConst* argv);
-    static JSValue read_dword(JSContext* ctx, JSValueConst this_val,
-                              int argc, JSValueConst* argv);
-    static JSValue read_qword(JSContext* ctx, JSValueConst this_val,
-                              int argc, JSValueConst* argv);
-    static JSValue read_mem(JSContext* ctx, JSValueConst this_val,
-                            int argc, JSValueConst* argv);
+        // === Memory Write ===
+        bool write_byte(int64_t addr, uint32_t val);
+        bool write_word(int64_t addr, int32_t val);
+        bool write_dword(int64_t addr, int32_t val);
+        bool write_qword(int64_t addr, int64_t val);
+        int32_t write_mem(int64_t addr, const std::vector<uint8_t>& bytes);
 
-    // === Stack ===
-    static JSValue push(JSContext* ctx, JSValueConst this_val,
-                        int argc, JSValueConst* argv);
-    static JSValue pop(JSContext* ctx, JSValueConst this_val,
-                       int argc, JSValueConst* argv);
+        // === Memory Read ===
+        int32_t read_byte(int64_t addr);
+        int32_t read_word(int64_t addr);
+        int32_t read_dword(int64_t addr);
+        int64_t read_qword(int64_t addr);
+        qjs::Value read_mem(qjs::Context& ctx, int64_t addr, uint32_t length);
 
-    // === Control ===
-    static JSValue stop(JSContext* ctx, JSValueConst this_val,
-                        int argc, JSValueConst* argv);
-    static JSValue last_error(JSContext* ctx, JSValueConst this_val,
-                              int argc, JSValueConst* argv);
+        // === Stack ===
+        bool push(int64_t val);
+        int64_t pop();
 
-    // === Debug ===
-    static JSValue hex_dump(JSContext* ctx, JSValueConst this_val,
-                            int argc, JSValueConst* argv);
-    static JSValue stack_dump(JSContext* ctx, JSValueConst this_val,
-                              int argc, JSValueConst* argv);
-};
+        // === Control ===
+        void stop();
+        std::string last_error();
+
+        // === Debug ===
+        void hex_dump(int64_t addr, uint32_t len, qjs::Value cols_val);
+        void stack_dump(int64_t addr, uint32_t len);
+
+    private:
+        Speakeasy& sp_;
+    };
 
 } // namespace speakeasy
 
