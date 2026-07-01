@@ -13,38 +13,55 @@
 //globalThis.__gpaResults = [];
 
 /* */
-var hook = new ApiHook();
-hook.OnCallBack = function(api, args) {
-    // api:  string like "kernel32.GetProcAddress"
-    // args: array of uint64_t values (hModule, lpProcName, ...)
-    var hModule = args[0];
-    var procName = args[1];
+let hook = ApiHook.install({
+    lib: "kernel32",
+    api: "GetProcAddress",
 
-    var entry = {
-        api: api,
-        hModule: Number(hModule),
-        procName: String(procName),
-    };
-    //globalThis.__gpaResults.push(entry);
+    onCallBack: function(api, args) {
+        // api: string like "kernel32.GetProcAddress"
+        // args: array of uint64_t values (hModule, lpProcName, ...)
 
-    log("[hook] GetProcAddress: hModule=" + entry.hModule.toString(16) +
-        " proc=" + entry.procName);
-};
+        var hModule = args[0];
+        var procName = args[1];
 
-hook.OnExit = function(api, args, retval) {
-    //var last = globalThis.__gpaResults[globalThis.__gpaResults.length - 1];
-    //if (last) {
-    //    last.retval = Number(retval);
-        log("[hook] GetProcAddress returned: 0x" + retval.toString(16));
-    //}
-};
+        var entry = {
+            api: api,
+            hModule: Number(hModule),
+            procName: String(procName),
+        };
 
-if(hook.install("kernel32", "GetProcAddress")) {
-  log("[hook] GetProcAddress hook installed");
+        // globalThis.__gpaResults.push(entry);
+
+        log(
+            "[hook] GetProcAddress: hModule=" +
+            entry.hModule.toString(16) +
+            " proc=" +
+            entry.procName
+        );
+    },
+
+
+    onExit: function(api, args, retval) {
+        // var last =
+        //     globalThis.__gpaResults[
+        //         globalThis.__gpaResults.length - 1
+        //     ];
+
+        // if (last) {
+        //     last.retval = Number(retval);
+        // }
+
+        log(
+            "[hook] GetProcAddress returned: 0x" +
+            retval.toString(16)
+        );
+    }
+});
+
+if (hook) {
+    log("installed: " + hook.id);
 }
-else {
-  log("[hook] GetProcAddress hook install failed");
-}
+
 //log(Reflect.ownKeys(globalThis).sort());
 try {
     const keys = Object.getOwnPropertyNames(globalThis).sort();

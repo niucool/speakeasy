@@ -68,7 +68,7 @@ namespace speakeasy {
         /**
          * Install a hook. Called from js_install() after argument validation.
          */
-        bool install(qjs::Value this_val,
+        bool install(
             const std::string& lib, const std::string& name,
             uint32_t ordinal, bool is_ordinal,
             uint64_t address, bool is_address,

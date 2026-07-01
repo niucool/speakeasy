@@ -12,9 +12,6 @@
 
 namespace speakeasy {
 
-    // Dummy structure to represent the registered JS-facing class in quickjspp
-    struct ApiHookInstance {};
-
     // ============================================================================
     // Constructor / Destructor
     // ============================================================================
@@ -59,6 +56,7 @@ namespace speakeasy {
                 return { qjs::detail::toUri(module_name), std::move(*source) };
                 };
 
+
             register_native_class();
             init_emu_object();
             register_log_functions();
@@ -91,43 +89,31 @@ namespace speakeasy {
     // eval_buf() / eval_file() / load_script()
     // ============================================================================
 
-    bool JsPluginEngine::eval_buf(const std::string& code, const std::string& filename, int eval_flags) {
+    qjs::Value JsPluginEngine::eval_buf(const std::string& code, const std::string& filename, int eval_flags) {
         if (!context_) {
-            PLOG_ERROR << "JsPluginEngine: eval_buf called before init()";
-            return false;
+            throw std::runtime_error("JsPluginEngine: eval_buf called before init()");
         }
 
         try {
-            (void)context_->eval(code, filename.c_str(), eval_flags);
-            return true;
+            return context_->eval(code, filename.c_str(), eval_flags);
         }
         catch (qjs::exception&) {
             dump_error(*context_);
-            return false;
-        }
-        catch (const std::exception& e) {
-            PLOG_ERROR << "JsPluginEngine: eval_buf failed: " << e.what();
-            return false;
+            throw;
         }
     }
 
-    bool JsPluginEngine::eval_file(const std::string& filename, int eval_flags) {
+    qjs::Value JsPluginEngine::eval_file(const std::string& filename, int eval_flags) {
         if (!context_) {
-            PLOG_ERROR << "JsPluginEngine: eval_file called before init()";
-            return false;
+            throw std::runtime_error("JsPluginEngine: eval_file called before init()");
         }
 
         try {
-            (void)context_->evalFile(filename.c_str(), eval_flags);
-            return true;
+            return context_->evalFile(filename.c_str(), eval_flags);
         }
         catch (qjs::exception&) {
             dump_error(*context_);
-            return false;
-        }
-        catch (const std::exception& e) {
-            PLOG_ERROR << "JsPluginEngine: eval_file failed: " << e.what();
-            return false;
+            throw;
         }
     }
 
@@ -139,11 +125,13 @@ namespace speakeasy {
 
         PLOG_INFO << "Loading JS main script: " << filename;
 
-        if (!eval_file(filename, JS_EVAL_TYPE_GLOBAL | JS_EVAL_TYPE_MODULE)) {
-            PLOG_ERROR << "JsPluginEngine: failed to evaluate script: " << filename;
+        try {
+            eval_file(filename, JS_EVAL_TYPE_GLOBAL | JS_EVAL_TYPE_MODULE);
+            return true;
+        } catch (const std::exception& e) {
+            PLOG_ERROR << "JsPluginEngine: failed to evaluate script: " << filename << " - " << e.what();
             return false;
         }
-        return true;
     }
 
     // ============================================================================
@@ -183,105 +171,151 @@ namespace speakeasy {
 
             PLOG_INFO << "JS loading module: " << filename;
 
-            if (!eval_file(filename, JS_EVAL_TYPE_GLOBAL)) {
-                throw std::runtime_error("Failed executing script file: " + filename);
-            }
+            eval_file(filename, JS_EVAL_TYPE_GLOBAL); // throws on error
         }
     }
 
     // ============================================================================
-    // js_install() - ApiHook.prototype.install() method mapping
+    // register_native_class() - Register ApiHook via QuickJS C API
     // ============================================================================
 
-    qjs::Value JsPluginEngine::js_install(qjs::Value this_val, const std::vector<qjs::Value>& args) {
-        if (args.empty()) {
-            throw std::invalid_argument("install expects args (libname, ApiName) or (libname, Ordinal) or (Address)");
+    qjs::Value JsPluginEngine::create_hook_object(
+        std::shared_ptr<JsHook> hook)
+    {
+        auto* ctx = context_->ctx;
+
+
+        qjs::Value obj(
+            ctx,
+            JS_NewObject(ctx));
+
+
+        obj["id"] = (int)hook->id;
+
+
+        obj["disable"] =
+            [hook]()
+            {
+                return hook->disable();
+            };
+
+
+        obj["enable"] =
+            [hook]()
+            {
+                return hook->enable();
+            };
+
+
+        obj["remove"] =
+            [hook]()
+            {
+                return hook->remove();
+            };
+
+
+        return obj;
+    }
+
+    qjs::Value JsPluginEngine::api_hook_install(qjs::Value config)
+    {
+        auto* ctx = context_->ctx;
+
+        if (!JS_IsObject(config.v))
+        {
+            throw std::runtime_error(
+                "ApiHook.install expects an object");
         }
 
-        bool is_address = false;
-        bool is_ordinal = false;
-        std::string lib, name;
+        // --- lib ---
+        qjs::Value lib_value = config["lib"];
+
+        if (!JS_IsString(lib_value.v))
+        {
+            throw std::runtime_error(
+                "\"lib\" must be a string");
+        }
+
+        std::string lib = lib_value.as<std::string>();
+
+        // --- api (name, ordinal, or address) ---
+        std::string api_name;
         uint32_t ordinal = 0;
         uint64_t address = 0;
+        bool is_ordinal = false;
+        bool is_address = false;
 
-        if (args.size() == 1) {
-            is_address = true;
-            if (JS_IsNumber(args[0].v)) {
-                address = static_cast<uint64_t>(static_cast<int64_t>(args[0]));
-            }
-            else {
-                throw std::invalid_argument("install as Address expects arg (Address) to be a Number");
-            }
+        qjs::Value target = config["api"];
+
+        if (JS_IsString(target.v))
+        {
+            api_name = target.as<std::string>();
         }
-        else if (args.size() >= 2) {
-            int tag = JS_VALUE_GET_NORM_TAG(args[1].v);
-            if (tag == JS_TAG_STRING) {
-                lib = static_cast<std::string>(args[0]);
-                name = static_cast<std::string>(args[1]);
-            }
-            else if (tag == JS_TAG_INT) {
-                is_ordinal = true;
-                lib = static_cast<std::string>(args[0]);
-                ordinal = static_cast<uint32_t>(static_cast<int32_t>(args[1]));
-            }
-            else {
-                throw std::invalid_argument("install expects args (libname, ApiName) or (libname, Ordinal)");
-            }
+        else if (JS_IsNumber(target.v))
+        {
+            ordinal = target.as<uint32_t>();
+            is_ordinal = true;
+        }
+        else
+        {
+            throw std::runtime_error(
+                "\"api\" must be string or ordinal");
         }
 
-        // Modern clean validation via quickjspp properties
-        qjs::Value on_call_back = this_val["OnCallBack"];
-        qjs::Value on_exit = this_val["OnExit"];
+        // --- onCallBack ---
+        qjs::Value on_callback = config["onCallBack"];
 
-        if (JS_IsUndefined(on_call_back.v)) {
-            throw std::invalid_argument("\"OnCallBack\" must be set to install the hook");
-        }
-        if (!JS_IsFunction(context_->ctx, on_call_back.v)) {
-            throw std::invalid_argument("\"OnCallBack\" must be a function");
+        if (JS_IsUndefined(on_callback.v))
+        {
+            throw std::runtime_error(
+                "\"onCallBack\" is required");
         }
 
-        if (!JS_IsUndefined(on_exit.v)) {
-            if (!JS_IsFunction(context_->ctx, on_exit.v)) {
-                throw std::invalid_argument("\"OnExit\" must be a function");
-            }
+        if (!JS_IsFunction(ctx, on_callback.v))
+        {
+            throw std::runtime_error(
+                "\"onCallBack\" must be function");
         }
 
-        if (!JS_IsObject(this_val.v)) {
-            return context_->newValue(false);
+        // --- onExit (optional) ---
+        qjs::Value on_exit = config["onExit"];
+
+        if (!JS_IsUndefined(on_exit.v) &&
+            !JS_IsFunction(ctx, on_exit.v))
+        {
+            throw std::runtime_error(
+                "\"onExit\" must be function");
         }
 
-        // Delegate execution to registry with proper qjs::Value types
-        bool success = hook_registry_->install(
-            this_val, lib, name, ordinal, is_ordinal, address, is_address,
-            std::move(on_call_back), std::move(on_exit));
+        auto hook = std::make_shared<JsHook>(*context_);
 
-        return context_->newValue(success);
+        hook->id = (uint64_t)hook_registry_->install(
+            lib,
+            api_name,
+            ordinal,
+            is_ordinal,
+            address,
+            is_address,
+            on_callback,
+            on_exit);
+
+        hook->api = lib + "." + api_name;
+        hook->onCallback = on_callback;
+        hook->onExit = on_exit;
+
+        return create_hook_object(hook);
     }
-
-    // ============================================================================
-    // register_native_class() - Register ApiHook via quickjspp wrapper
-    // ============================================================================
 
     void JsPluginEngine::register_native_class() {
-#if 0
-        // 1. Initialize the class registration framework. 
-        // In quickjspp, registerClass returns a qjs::ClassBind<T> object, but depending on the fork,
-        // it's safer to capture the class binder into a variable rather than chaining blindly.
-        auto apiHookClass = context_->registerClass<ApiHookInstance>("ApiHook");
+        qjs::Value api_hook = context_->newObject();
 
-        // 2. Set the constructor (Fixes C2228 by removing the dot chaining from registerClass)
-        // Also captures [this] explicitly (Fixes C3493, C2327, C2065)
-        apiHookClass.constructor([this](qjs::Value this_val) {
-            qjs::Value args = context_->newArray();
-            this_val["args"] = std::move(args);
-            });
+        api_hook["install"] = [this](qjs::Value config) -> qjs::Value {
+            return this->api_hook_install(std::move(config));
+        };
 
-        // 3. Bind the install function
-        apiHookClass.fun("install", [this](qjs::Value this_val, std::vector<qjs::Value> args) {
-            return this->js_install(std::move(this_val), args);
-            });
-#endif
+        context_->global()["ApiHook"] = api_hook;
     }
+
     // ============================================================================
     // init_emu_object() - Create the Emu global object with properties and list functions
     // ============================================================================

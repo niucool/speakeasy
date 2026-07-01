@@ -14,6 +14,52 @@ namespace speakeasy {
 
     class JsApiHookRegistry;
 
+    class JsHook
+    {
+    public:
+
+        uint64_t id = 0;
+        bool enabled = true;
+
+        std::string api;
+
+        qjs::Value onCallback;
+        qjs::Value onExit;
+
+        explicit JsHook(qjs::Context& ctx)
+            : onCallback(ctx.newValue(JS_UNDEFINED))
+            , onExit(ctx.newValue(JS_UNDEFINED))
+        {}
+
+        bool disable()
+        {
+            enabled = false;
+
+            // call your hook registry
+            // hook_registry_->disable(id);
+
+            return true;
+        }
+
+
+        bool enable()
+        {
+            enabled = true;
+
+            // hook_registry_->enable(id);
+
+            return true;
+        }
+
+
+        bool remove()
+        {
+            // hook_registry_->remove(id);
+
+            return true;
+        }
+    };
+
     /**
      * JavaScript plugin engine that wraps QuickJS for emulator scripting using quickjspp.
      */
@@ -33,14 +79,18 @@ namespace speakeasy {
 
         /**
          * Evaluate JavaScript from a buffer.
+         * @returns The result as a qjs::Value.
+         * @throws qjs::exception on JS error, std::runtime_error if not initialized.
          */
-        bool eval_buf(const std::string& code, const std::string& filename,
+        qjs::Value eval_buf(const std::string& code, const std::string& filename,
             int eval_flags = JS_EVAL_TYPE_GLOBAL);
 
         /**
          * Evaluate JavaScript from a file on the host filesystem.
+         * @returns The result as a qjs::Value.
+         * @throws qjs::exception on JS error, std::runtime_error if not initialized.
          */
-        bool eval_file(const std::string& filename,
+        qjs::Value eval_file(const std::string& filename,
             int eval_flags = JS_EVAL_TYPE_GLOBAL);
 
         /**
@@ -70,12 +120,15 @@ namespace speakeasy {
 
         void js_logme(const std::string& message, int magic);
         void js_native_import_scripts(qjs::Value this_val, const std::vector<std::string>& files);
-        qjs::Value js_install(qjs::Value this_val, const std::vector<qjs::Value>& args);
 
         // ========== Internal helpers ==========
         void register_native_class();
         void init_emu_object();
         void register_log_functions();
+
+        qjs::Value create_hook_object(
+            std::shared_ptr<JsHook> hook);
+        qjs::Value api_hook_install(qjs::Value config);
     };
 
 } // namespace speakeasy

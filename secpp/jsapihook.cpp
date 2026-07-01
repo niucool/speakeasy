@@ -65,7 +65,7 @@ namespace speakeasy {
         remove_all();
     }
 
-    bool JsApiHookRegistry::install(qjs::Value this_val,
+    bool JsApiHookRegistry::install(
         const std::string& lib, const std::string& name,
         uint32_t ordinal, bool is_ordinal,
         uint64_t address, bool is_address,
