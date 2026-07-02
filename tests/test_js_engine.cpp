@@ -378,6 +378,140 @@ TEST_F(JsEngineTest, InitJsEngine) {
 }
 
 // ============================================================================
+// ApiHook Callback Verification — fire_by_key triggers JS callbacks from C++
+// ============================================================================
+
+TEST_F(JsEngineTest, ApiHookCallbackOnCallBackFires) {
+    ASSERT_TRUE(init_engine());
+
+    engine_->eval_buf(
+        "globalThis.__testResults = [];"
+        "ApiHook.install({"
+        "    lib: 'kernel32',"
+        "    api: 'CreateFileA',"
+        "    onCallBack: function(api, args) {"
+        "        globalThis.__testResults.push({"
+        "            event: 'onCallBack',"
+        "            api: api,"
+        "            arg0: Number(args[0]),"
+        "            arg1: Number(args[1])"
+        "        });"
+        "    }"
+        "});",
+        "<test>");
+
+    auto& registry = engine_->hook_registry();
+    ASSERT_TRUE(registry.fire_by_key(
+        "kernel32.CreateFileA",
+        "kernel32.CreateFileA",
+        {0x1234, 0x5678},
+        false  // onCallBack only
+    ));
+
+    // One callback should have fired
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults.length", "<check>").as<int32_t>(), 1);
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[0].event", "<check>").as<std::string>(), "onCallBack");
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[0].api", "<check>").as<std::string>(), "kernel32.CreateFileA");
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[0].arg0", "<check>").as<int64_t>(), 0x1234);
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[0].arg1", "<check>").as<int64_t>(), 0x5678);
+}
+
+TEST_F(JsEngineTest, ApiHookCallbackOnExitFiresWithRetval) {
+    ASSERT_TRUE(init_engine());
+
+    engine_->eval_buf(
+        "globalThis.__testResults = [];"
+        "ApiHook.install({"
+        "    lib: 'kernel32',"
+        "    api: 'CreateFileA',"
+        "    onCallBack: function(api, args) {"
+        "        globalThis.__testResults.push({event:'onCallBack'});"
+        "    },"
+        "    onExit: function(api, args, retval) {"
+        "        globalThis.__testResults.push({"
+        "            event:'onExit',"
+        "            retval: Number(retval)"
+        "        });"
+        "    }"
+        "});",
+        "<test>");
+
+    auto& registry = engine_->hook_registry();
+    ASSERT_TRUE(registry.fire_by_key(
+        "kernel32.CreateFileA",
+        "kernel32.CreateFileA",
+        {100, 200},
+        true,
+        0xCAFEBABE
+    ));
+
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults.length", "<check>").as<int32_t>(), 2);
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[0].event", "<check>").as<std::string>(), "onCallBack");
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[1].event", "<check>").as<std::string>(), "onExit");
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[1].retval", "<check>").as<int64_t>(), 0xCAFEBABE);
+}
+
+TEST_F(JsEngineTest, MultipleHooksFireIndependently) {
+    ASSERT_TRUE(init_engine());
+
+    engine_->eval_buf(
+        "globalThis.__testResults = [];"
+        "ApiHook.install({"
+        "    lib: 'kernel32', api: 'CreateFileA',"
+        "    onCallBack: function(api, args) {"
+        "        globalThis.__testResults.push('CreateFileA');"
+        "    }"
+        "});"
+        "ApiHook.install({"
+        "    lib: 'ntdll', api: 'NtWriteFile',"
+        "    onCallBack: function(api, args) {"
+        "        globalThis.__testResults.push('NtWriteFile');"
+        "    }"
+        "});",
+        "<test>");
+
+    auto& registry = engine_->hook_registry();
+
+    // Fire second hook — only it should fire
+    ASSERT_TRUE(registry.fire_by_key("ntdll.NtWriteFile", "ntdll.NtWriteFile", {}, false));
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults.length", "<check>").as<int32_t>(), 1);
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[0]", "<check>").as<std::string>(), "NtWriteFile");
+
+    // Fire first hook — both should have fired independently
+    ASSERT_TRUE(registry.fire_by_key("kernel32.CreateFileA", "kernel32.CreateFileA", {}, false));
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults.length", "<check>").as<int32_t>(), 2);
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults[1]", "<check>").as<std::string>(), "CreateFileA");
+}
+
+TEST_F(JsEngineTest, FireByKeyReturnsFalseForNonexistentKey) {
+    ASSERT_TRUE(init_engine());
+    auto& registry = engine_->hook_registry();
+    EXPECT_FALSE(registry.fire_by_key("nonexistent.Module", "test", {1, 2, 3}));
+}
+
+TEST_F(JsEngineTest, FireWithUndefinedOnExitDoesNotCrash) {
+    ASSERT_TRUE(init_engine());
+
+    engine_->eval_buf(
+        "globalThis.__testResults = [];"
+        "ApiHook.install({"
+        "    lib: 'kernel32', api: 'VirtualAlloc',"
+        "    onCallBack: function(api, args) {"
+        "        globalThis.__testResults.push('called');"
+        "    }"
+        "});"
+        "/* onExit intentionally omitted */",
+        "<test>");
+
+    auto& registry = engine_->hook_registry();
+    // onExit is undefined — fire_on_exit should guard and return silently
+    EXPECT_NO_THROW(registry.fire_by_key(
+        "kernel32.VirtualAlloc", "kernel32.VirtualAlloc", {}, true, 0));
+
+    EXPECT_EQ(engine_->eval_buf("globalThis.__testResults.length", "<check>").as<int32_t>(), 1);
+}
+
+// ============================================================================
 // JS Engine Integration Tests — require a loaded PE
 //
 // NOTE: Most tests in this suite are disabled because they trigger an

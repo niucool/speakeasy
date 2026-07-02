@@ -151,4 +151,21 @@ namespace speakeasy {
         hooks_.clear();
     }
 
+    bool JsApiHookRegistry::fire_by_key(const std::string& key, const std::string& api,
+                                         const std::vector<uint64_t>& argv,
+                                         bool fire_exit, uint64_t retval) {
+        auto it = hooks_.find(key);
+        if (it == hooks_.end()) {
+            return false;
+        }
+
+        it->second->fire_on_call_back(api, argv);
+
+        if (fire_exit) {
+            it->second->fire_on_exit(api, argv, retval);
+        }
+
+        return true;
+    }
+
 } // namespace speakeasy

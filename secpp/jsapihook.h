@@ -80,6 +80,20 @@ namespace speakeasy {
          */
         void remove_all();
 
+        /**
+         * Manually trigger callbacks for a registered hook by lookup key.
+         * Bypasses emulation to directly invoke JS onCallBack / onExit.
+         * @param key      Hook key (e.g. "kernel32.CreateFileA")
+         * @param api      Full API name passed to callbacks
+         * @param argv     Arguments vector for onCallBack / onExit
+         * @param fire_exit If true, fire onExit with retval
+         * @param retval   Return value for onExit
+         * @returns true if hook was found, false if key not found
+         */
+        bool fire_by_key(const std::string& key, const std::string& api,
+                         const std::vector<uint64_t>& argv,
+                         bool fire_exit = true, uint64_t retval = 0);
+
     private:
         qjs::Context& ctx_;    // Reference to the active C++ context wrapper
         Speakeasy& speakeasy_; // Facade reference
