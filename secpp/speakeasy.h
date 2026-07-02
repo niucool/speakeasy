@@ -209,8 +209,13 @@ public:
     /**
      * Get the address mapping object associated with the specified address
      */
-    void* get_address_map(uint64_t addr);
-    
+    std::shared_ptr<MemMap> get_address_map(uint64_t addr);
+
+    /**
+     * Get all memory regions as (base, size, protection) tuples.
+     */
+    std::vector<std::tuple<uint64_t, uint64_t, uint32_t>> get_mem_regions();
+
     /**
      * Get the address ranges of loaded user modules
      */

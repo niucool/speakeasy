@@ -7,6 +7,7 @@
     "cxxopts",
     "gtest",
     "picosha2",
-    "quickjs-ng"
+    "quickjs-ng",
+    "distorm"
   ]
 }

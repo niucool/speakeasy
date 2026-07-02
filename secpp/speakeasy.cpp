@@ -452,7 +452,13 @@ void* Speakeasy::get_registry_key(int handle, const std::string& path) {
     (void)handle; (void)path; return nullptr; 
 }
 
-void* Speakeasy::get_address_map(uint64_t addr) { (void)addr; return nullptr; }
+std::shared_ptr<MemMap> Speakeasy::get_address_map(uint64_t addr) {
+    return emu_ ? emu_->get_address_map(addr) : nullptr;
+}
+
+std::vector<std::tuple<uint64_t, uint64_t, uint32_t>> Speakeasy::get_mem_regions() {
+    return emu_ ? emu_->get_mem_regions() : std::vector<std::tuple<uint64_t, uint64_t, uint32_t>>{};
+}
 
 std::vector<std::shared_ptr<speakeasy::RuntimeModule>> Speakeasy::get_user_modules() {
     if (!emu_) return {};

@@ -124,6 +124,15 @@ find_package(plog CONFIG REQUIRED)
 find_package(cxxopts CONFIG REQUIRED)
 find_package(qjs CONFIG REQUIRED)
 
+# distorm — plain C library, no CMake config; create imported target manually
+find_library(DISTORM_LIBRARY distorm REQUIRED)
+find_path(DISTORM_INCLUDE_DIR distorm.h REQUIRED)
+add_library(distorm STATIC IMPORTED)
+set_target_properties(distorm PROPERTIES
+    IMPORTED_LOCATION "${DISTORM_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${DISTORM_INCLUDE_DIR}"
+)
+
 
 
 #  Platform Detection 
@@ -144,6 +153,7 @@ file(GLOB_RECURSE SPEAKEASY_SOURCES
 # Filter out test/driver files and incomplete modules
 list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/test/.*")
 list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/main\\.cpp$")
+# list(FILTER SPEAKEASY_SOURCES EXCLUDE REGEX ".*/scylla_wrapper/.*")
 # win32.cpp now compiles with completed winemu.h
 
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/secpp" FILES ${SPEAKEASY_SOURCES})
@@ -165,6 +175,7 @@ target_link_libraries(speakeasy PUBLIC
     miniz::miniz
     utf8cpp
     qjs
+    distorm
 )
 
 if(TARGET capstone::capstone)
