@@ -5,6 +5,37 @@
 
 ## [Unreleased]
 
+### 2026-07-01 — quickjspp integration, ApiHook redesign, GC fix
+
+#### Changed
+- **`eval_buf` / `eval_file` return `qjs::Value`, throw on error** (`jsengine.h/.cpp`): Changed both methods from `bool` return to `qjs::Value` return. On JS error the `qjs::exception` is dumped and rethrown; if not initialized a `std::runtime_error` is thrown. Callers (`load_script`, `js_native_import_scripts`) updated to use try/catch instead of bool checks.
+- **`ApiHook` redesigned to config-object pattern** (`jsengine.h/.cpp`, `jsapihook.h/.cpp`, `test_js_engine.cpp`): Replaced `new ApiHook()` + property-setter + positional-args pattern with a single static call:
+  ```js
+  var hook = ApiHook.install({
+      lib: "kernel32",
+      api: "CreateFileA",
+      onCallBack: function(api, args) { ... }
+  });
+  ```
+  `ApiHook` is now a plain global object (not a constructor). `install()` takes a single config argument with `lib`, `api` (string name or numeric ordinal), `onCallBack`, and optional `onExit`. Returns a hook object with `{id}`.
+- **All integration tests updated** for new ApiHook API (6 tests pass). Two obsolete tests removed (`ApiHookConstructor`, `ApiHookHasArgsProperty`).
+
+#### Fixed
+- **quickjspp compile errors fixed** (5 files):
+  - `jsapihook.cpp`: `ctx.newArray()` doesn't exist → `qjs::Value{ctx, JS_NewArray(ctx)}`; calling a JS function as `operator()` → `.as<std::function<void(...)>>()(...)`; `args_arr[i]` with `size_t` index caused linker error → `static_cast<uint32_t>(i)`
+  - `jsemuobj.cpp`: `qjs::Value::Type::ARRAY_BUFFER` doesn't exist → `qjs::Value{ctx, JS_NewArrayBufferCopy(ctx, ...)}`
+  - `jsengine.cpp`: 25 member function pointers `&JsEmuObject::method` can't be wrapped by quickjspp → replaced with lambda wrappers capturing `shared_ptr<JsEmuObject>`; `uint64_t` return from `ReadReg` lambda → `static_cast<int64_t>()` (quickjspp excludes `uint64_t` due to nan-boxing); `JSValue` passed where `qjs::Value` expected → pass `qjs::Value` directly; `std::bind(...)` → lambda; `context_->ctx` (JSContext*) where `qjs::Context&` expected → `*context_`
+  - `test_js_engine.cpp`: `JS_IsArray(arr)` 1-arg call → `JS_IsArray(ctx, arr)` 2-arg (quickjspp compatibility macro)
+- **Variadic JS function arguments** (`jsengine.cpp`): `make_log_wrapper` and `importScripts` lambdas used `std::vector<T>` for collecting JS call args. quickjspp requires the `qjs::rest<T>` type (inherits `std::vector<T>`, has special `unwrap_arg_impl` specialization that collects all remaining argv entries). Fixed `console.log(...)`, `print(...)`, `info(...)`, `warn(...)`, `error(...)`, and `importScripts(...)` — all now correctly handle variadic JS calls.
+- **`JsHook` default-constructibility** (`jsengine.h/.cpp`): `qjs::Value` has no default constructor, so `JsHook` members `onCallback`/`onExit` prevented `std::make_shared<JsHook>()`. Added explicit constructor `JsHook(qjs::Context& ctx)` that initializes both to `JS_UNDEFINED`. Updated call site to `std::make_shared<JsHook>(*context_)`.
+- **`register_native_class()` dead code** (`jsengine.cpp`): An early `return true;` after `register_native_class()` made `init_emu_object()`, `register_log_functions()`, `importScripts`, and `hook_registry_` creation unreachable. Removed the early return.
+- **QuickJS GC assertion `gc_obj_list`** (`jsengine.cpp`): `create_hook_object` was assigning lambdas (`disable`/`enable`/`remove`) as JS function properties. Each lambda's opaque `detail::function` data held a `shared_ptr<JsHook>` capture. When `JS_FreeContext` released the global scope, those function objects became orphaned on `gc_obj_list`, causing `assert(list_empty(&rt->gc_obj_list))` to fire in `JS_FreeRuntime`. Fixed by simplifying the returned hook object to `{id: N}` only; also added `onUnhandledPromiseRejection`/`moduleLoader` clearing and an extra `JS_RunGC` between context and runtime destruction in `~JsPluginEngine()`.
+
+#### Tests
+- **ApiHook integration tests**: 6/6 pass (ApiHookClassExists, ApiHookHasInstallMethod, ApiHookInstallByName, ApiHookInstallRequiresOnCallBack, ApiHookInstallByOrdinal, MultipleApiHookInstances).
+- **Other integration tests**: 7/7 pass (InitWithLoadedModule, EvalBufSimple, EvalBufWithException, ConsoleLog, PrintInfoWarnError, GlobalLogFunctionsExist, ImportScriptsExists).
+- One test (`RunModuleWithJsEngine`) skipped — requires runnable PE module fixture.
+
 ### 2026-06-25 — CLI JS scripting, JS hook test, memory safety sweep
 
 #### Added

@@ -21,8 +21,26 @@ namespace speakeasy {
     {}
 
     JsPluginEngine::~JsPluginEngine() {
+        // Clear hooks first while context/runtime are still alive — the
+        // JsHookEntry destructors need a valid context to free JSValues.
         hook_registry_.reset();
+
+        if (context_) {
+            context_->moduleLoader = nullptr;
+            context_->onUnhandledPromiseRejection = nullptr;
+        }
+
+        // Destroy the context (runs JS_RunGC then JS_FreeContext internally).
+        // JS_FreeContext drops the global scope, which may orphan QuickJS
+        // function objects that hold C++ opaque data (detail::function).
         context_.reset();
+
+        // Run GC once more to collect any orphaned objects before the runtime
+        // destructor asserts that gc_obj_list is empty.
+        if (runtime_) {
+            JS_RunGC(runtime_->rt);
+        }
+
         runtime_.reset();
     }
 
@@ -62,7 +80,7 @@ namespace speakeasy {
             register_log_functions();
 
             // Modern registration of importScripts with variadic argument capabilities via custom wrapper or standard vector mapping
-            context_->global()["importScripts"] = [this](qjs::Value this_val, std::vector<std::string> args) {
+            context_->global()["importScripts"] = [this](qjs::Value this_val, qjs::rest<std::string> args) {
                 this->js_native_import_scripts(std::move(this_val), args);
                 };
 
@@ -184,35 +202,13 @@ namespace speakeasy {
     {
         auto* ctx = context_->ctx;
 
+        qjs::Value obj(ctx, JS_NewObject(ctx));
 
-        qjs::Value obj(
-            ctx,
-            JS_NewObject(ctx));
+        obj["id"] = static_cast<int32_t>(hook->id);
 
-
-        obj["id"] = (int)hook->id;
-
-
-        obj["disable"] =
-            [hook]()
-            {
-                return hook->disable();
-            };
-
-
-        obj["enable"] =
-            [hook]()
-            {
-                return hook->enable();
-            };
-
-
-        obj["remove"] =
-            [hook]()
-            {
-                return hook->remove();
-            };
-
+        // Disable/enable/remove methods would go here once the GC
+        // interaction between detail::function captures and QuickJS
+        // reference counting is sorted out (see gc_obj_list assertion).
 
         return obj;
     }
@@ -289,7 +285,7 @@ namespace speakeasy {
 
         auto hook = std::make_shared<JsHook>(*context_);
 
-        hook->id = (uint64_t)hook_registry_->install(
+        hook->id = hook_registry_->install(
             lib,
             api_name,
             ordinal,
@@ -382,8 +378,9 @@ namespace speakeasy {
         auto console = context_->newObject();
 
         // Helper syntax matching standard JavaScript engine behavior
+        // Uses qjs::rest<T> so that all JS call arguments are collected into the vector.
         auto make_log_wrapper = [this](int level) {
-            return [this, level](std::vector<qjs::Value> args) {
+            return [this, level](qjs::rest<qjs::Value> args) {
                 std::ostringstream oss;
                 for (size_t i = 0; i < args.size(); ++i) {
                     if (i > 0) oss << ' ';

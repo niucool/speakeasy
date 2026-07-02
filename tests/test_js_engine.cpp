@@ -454,9 +454,10 @@ TEST_F(JsEngineIntegrationTest,ConsoleLog) {
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);
 
-    engine->eval_buf("print('hello from test');", "<test>");
+    // this doesn't throw errors
+    engine->eval_buf("a = 'hello from test';", "<test>");
     // console.log should not throw
-    EXPECT_NO_THROW(engine->eval_buf("print('hello from test');", "<test>"));
+    EXPECT_NO_THROW(engine->eval_buf("console.log('hello from test');", "<test>"));
 }
 
 TEST_F(JsEngineIntegrationTest,PrintInfoWarnError) {
@@ -521,22 +522,25 @@ TEST_F(JsEngineIntegrationTest,EmuStaticProperties) {
     ASSERT_TRUE(JS_IsObject(emu));
 
     // These properties should exist (values depend on loaded module)
-    auto check_prop = [&](const char* name, bool expect_number) {
+    auto check_prop = [&](const char* name, int js_tag) {
         JSValue prop = JS_GetPropertyStr(ctx, emu, name);
-        if (expect_number) {
+        if (js_tag == JS_TAG_INT) {
             EXPECT_TRUE(JS_IsNumber(prop)) << name << " should be a number";
-        } else {
+        }
+        else if (js_tag == JS_TAG_BOOL) {
+            EXPECT_TRUE(JS_IsBool(prop)) << name << " should be a bool";
+        } else if (js_tag == JS_TAG_STRING) {
             EXPECT_TRUE(JS_IsString(prop)) << name << " should be a string";
         }
         JS_FreeValue(ctx, prop);
     };
 
-    check_prop("TEB", true);
-    check_prop("PEB", true);
-    check_prop("PID", true);
-    check_prop("isx64", true);
-    check_prop("ImageBase", true);
-    check_prop("Filename", false);
+    check_prop("TEB", JS_TAG_INT);
+    check_prop("PEB", JS_TAG_INT);
+    check_prop("PID", JS_TAG_INT);
+    check_prop("isx64", JS_TAG_BOOL);     //bool
+    check_prop("ImageBase", JS_TAG_INT);
+    check_prop("Filename", JS_TAG_STRING);
 
     JS_FreeValue(ctx, emu);
     JS_FreeValue(ctx, global);
@@ -665,21 +669,9 @@ TEST_F(JsEngineIntegrationTest,ApiHookClassExists) {
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);
 
-    // ApiHook should be a constructor
+    // ApiHook should be an object with an install method
     EXPECT_NO_THROW(engine->eval_buf(
-        "typeof ApiHook === 'function' ? 'ok' : 'fail';", "<test>"));
-}
-
-TEST_F(JsEngineIntegrationTest,ApiHookConstructor) {
-    ASSERT_TRUE(init_engine());
-    auto* engine = speakeasy_->js_engine();
-    ASSERT_NE(engine, nullptr);
-
-    // Create an instance
-    EXPECT_NO_THROW(engine->eval_buf(
-        "var hook = new ApiHook();"
-        "hook !== null && typeof hook === 'object' ? 'ok' : 'fail';",
-        "<test>"));
+        "typeof ApiHook === 'object' ? 'ok' : 'fail';", "<test>"));
 }
 
 TEST_F(JsEngineIntegrationTest,ApiHookHasInstallMethod) {
@@ -687,21 +679,9 @@ TEST_F(JsEngineIntegrationTest,ApiHookHasInstallMethod) {
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);
 
+    // ApiHook.install should be a function
     EXPECT_NO_THROW(engine->eval_buf(
-        "var hook = new ApiHook();"
-        "typeof hook.install === 'function' ? 'ok' : 'fail';",
-        "<test>"));
-}
-
-TEST_F(JsEngineIntegrationTest,ApiHookHasArgsProperty) {
-    ASSERT_TRUE(init_engine());
-    auto* engine = speakeasy_->js_engine();
-    ASSERT_NE(engine, nullptr);
-
-    EXPECT_NO_THROW(engine->eval_buf(
-        "var hook = new ApiHook();"
-        "Array.isArray(hook.args) ? 'ok' : 'fail';",
-        "<test>"));
+        "typeof ApiHook.install === 'function' ? 'ok' : 'fail';", "<test>"));
 }
 
 TEST_F(JsEngineIntegrationTest,ApiHookInstallByName) {
@@ -709,12 +689,14 @@ TEST_F(JsEngineIntegrationTest,ApiHookInstallByName) {
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);
 
-    // Install a hook by name — should work (callbacks are optional in registry)
+    // Install a hook by name via config object
     EXPECT_NO_THROW(engine->eval_buf(
-        "var hook = new ApiHook();"
-        "hook.OnCallBack = function(api, args) {};"
-        "var result = hook.install('kernel32', 'CreateFileA');"
-        "typeof result === 'boolean' ? 'ok' : 'fail';",
+        "var hook = ApiHook.install({"
+        "    lib: 'kernel32',"
+        "    api: 'CreateFileA',"
+        "    onCallBack: function(api, args) {}"
+        "});"
+        "hook !== null && typeof hook === 'object' ? 'ok' : 'fail';",
         "<test>"));
 }
 
@@ -723,12 +705,12 @@ TEST_F(JsEngineIntegrationTest,ApiHookInstallRequiresOnCallBack) {
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);
 
-    // install() without OnCallBack should throw; the JS try/catch handles it
-    // The eval should succeed without throwing
+    // install() without onCallBack should throw; the JS try/catch handles it
     EXPECT_NO_THROW(engine->eval_buf(
-        "var hook = new ApiHook();"
-        "try { hook.install('kernel32', 'CreateFileA'); 'fail'; } "
-        "catch(e) { 'ok'; }",
+        "try {"
+        "    ApiHook.install({ lib: 'kernel32', api: 'CreateFileA' });"
+        "    'fail';"
+        "} catch(e) { 'ok'; }",
         "<test>"));
 }
 
@@ -737,12 +719,14 @@ TEST_F(JsEngineIntegrationTest,ApiHookInstallByOrdinal) {
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);
 
-    // Install a hook by ordinal
+    // Install a hook by ordinal via config object
     EXPECT_NO_THROW(engine->eval_buf(
-        "var hook = new ApiHook();"
-        "hook.OnCallBack = function(api, args) {};"
-        "var result = hook.install('kernel32', 42);"
-        "typeof result === 'boolean' ? 'ok' : 'fail';",
+        "var hook = ApiHook.install({"
+        "    lib: 'kernel32',"
+        "    api: 42,"
+        "    onCallBack: function(api, args) {}"
+        "});"
+        "hook !== null && typeof hook === 'object' ? 'ok' : 'fail';",
         "<test>"));
 }
 
@@ -751,12 +735,19 @@ TEST_F(JsEngineIntegrationTest,MultipleApiHookInstances) {
     auto* engine = speakeasy_->js_engine();
     ASSERT_NE(engine, nullptr);
 
-    // Create multiple hook instances
+    // Create multiple independent hooks
     EXPECT_NO_THROW(engine->eval_buf(
-        "var h1 = new ApiHook(); h1.OnCallBack = function() {};"
-        "var h2 = new ApiHook(); h2.OnCallBack = function() {};"
-        "h1.args.push('test');"
-        "h1.args.length === 1 && h2.args.length === 0 ? 'ok' : 'fail';",
+        "var h1 = ApiHook.install({"
+        "    lib: 'kernel32',"
+        "    api: 'CreateFileA',"
+        "    onCallBack: function(api, args) {}"
+        "});"
+        "var h2 = ApiHook.install({"
+        "    lib: 'kernel32',"
+        "    api: 'GetProcAddress',"
+        "    onCallBack: function(api, args) {}"
+        "});"
+        "h1 !== null && h2 !== null && h1 !== h2 ? 'ok' : 'fail';",
         "<test>"));
 }
 
@@ -767,11 +758,13 @@ TEST_F(JsEngineIntegrationTest,RunModuleWithJsEngine) {
 
     // Install a simple hook that logs API calls
     engine->eval_buf(
-        "var hook = new ApiHook();"
-        "hook.OnCallBack = function(api, args) {"
-        "    log('API called: ' + api);"
-        "};"
-        "hook.install('kernel32', 'GetCommandLineA');",
+        "var hook = ApiHook.install({"
+        "    lib: 'kernel32',"
+        "    api: 'GetCommandLineA',"
+        "    onCallBack: function(api, args) {"
+        "        log('API called: ' + api);"
+        "    }"
+        "});",
         "<test>");
 
     // Run the loaded module

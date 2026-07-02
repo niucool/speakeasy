@@ -65,7 +65,7 @@ namespace speakeasy {
         remove_all();
     }
 
-    bool JsApiHookRegistry::install(
+    uint64_t JsApiHookRegistry::install(
         const std::string& lib, const std::string& name,
         uint32_t ordinal, bool is_ordinal,
         uint64_t address, bool is_address,
@@ -89,8 +89,10 @@ namespace speakeasy {
         // Check for duplicate hook records
         if (hooks_.find(key) != hooks_.end()) {
             PLOG_WARNING << "[JsApiHook] duplicate hook: " << key;
-            return false;
+            return 0;
         }
+
+        uint64_t id = next_id_++;
 
         // Instantiating wrapper automatically manages assignment/duplication inside internal storage objects
         auto entry = std::make_unique<JsHookEntry>(ctx_);
@@ -111,7 +113,7 @@ namespace speakeasy {
         if (is_address) {
             PLOG_WARNING << "[JsApiHook] address-based hooks not yet implemented: " << key
                 << " (use install by name: Emu.install('lib', 'Func'))";
-            return true;
+            return id;
         }
 
         // The bridge lambda execution structure remains clean. entry_ptr outlives callbacks.
@@ -140,8 +142,8 @@ namespace speakeasy {
         // Register into system facade definitions
         speakeasy_.add_api_hook(bridge, entry_ptr->module, api_name_for_hook, 0, "stdcall");
 
-        PLOG_INFO << "[JsApiHook] installed hook: " << key;
-        return true;
+        PLOG_INFO << "[JsApiHook] installed hook #" << id << ": " << key;
+        return id;
     }
 
     void JsApiHookRegistry::remove_all() {

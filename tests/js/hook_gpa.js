@@ -24,16 +24,21 @@ let hook = ApiHook.install({
         var hModule = args[0];
         var procName = args[1];
 
+		if(procName < 0xFFFF)
+		    procName = "ordinal_" + String(procName);
+		else
+		    procName = Emu.ReadStringA(procName, 0);
+		  
         var entry = {
             api: api,
             hModule: Number(hModule),
-            procName: String(procName),
+            procName: procName,
         };
 
         // globalThis.__gpaResults.push(entry);
 
         log(
-            "[hook] GetProcAddress: hModule=" +
+            "[hook] " + api + ": hModule=" +
             entry.hModule.toString(16) +
             " proc=" +
             entry.procName

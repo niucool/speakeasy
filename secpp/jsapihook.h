@@ -66,9 +66,10 @@ namespace speakeasy {
         JsApiHookRegistry& operator=(const JsApiHookRegistry&) = delete;
 
         /**
-         * Install a hook. Called from js_install() after argument validation.
+         * Install a hook. Called from api_hook_install() after argument validation.
+         * @returns A unique hook ID on success, or 0 on failure.
          */
-        bool install(
+        uint64_t install(
             const std::string& lib, const std::string& name,
             uint32_t ordinal, bool is_ordinal,
             uint64_t address, bool is_address,
@@ -83,6 +84,7 @@ namespace speakeasy {
         qjs::Context& ctx_;    // Reference to the active C++ context wrapper
         Speakeasy& speakeasy_; // Facade reference
         std::map<std::string, std::unique_ptr<JsHookEntry>> hooks_;
+        uint64_t next_id_ = 1; // Monotonically increasing hook ID counter
     };
 
 } // namespace speakeasy

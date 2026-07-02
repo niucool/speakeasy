@@ -1,13 +1,89 @@
 # PORTING PROGRESS — Speakeasy Python → C++ (secpp/)
 
-> Last Updated: 2026-06-25
+> Last Updated: 2026-07-01
 > Build Status: ✅ **0 compiler errors, 0 warnings** (/W4 clean)
 > Valgrind: ✅ **39/39 user-mode CLEAN** (0 leaks, 0 errors) | ASAN: ✅ **0 leaks** (PmaSampleTest)
 > Emulation Status: ✅ **GetProcAddress.exe runs to ExitProcess** (207+ APIs, clean exit)
-> JS Engine: ✅ **quickjs-ng v0.14.0 static linked** | ✅ **JsPluginEngine + ApiHook + Emu global**
+> JS Engine: ✅ **quickjs-ng v0.14.0 + quickjspp static linked** | ✅ **JsPluginEngine + ApiHook + Emu global**
 > Remaining TODOs: **0**
 > CLI JS: ✅ **`--js-script` / `-j` option** | Hook test: ✅ **JsHookTest 5/5 stable**
+> JS Integration Tests: ✅ **13/13 pass** (ApiHook ×6, Engine ×7)
 > Known Issue: _except_handler4_common calls on_run_complete() (CRT SEH not fully emulated)
+
+---
+
+## 2026-07-01: quickjspp integration, ApiHook redesign, compile fixes
+
+### quickjspp header adopted
+
+The project switched from raw QuickJS C API to `quickjspp.hpp` (a C++ wrapper over QuickJS), which required significant refactoring of the JS engine code. Key fixes:
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `jsapihook.cpp` | `ctx.newArray()` doesn't exist | `qjs::Value{ctx, JS_NewArray(ctx)}` |
+| `jsapihook.cpp` | Calling JS function via `operator()` on Value | `.as<std::function<void(...)>>()(...)` |
+| `jsapihook.cpp` | `args_arr[i]` with `size_t` index → linker error | `static_cast<uint32_t>(i)` |
+| `jsemuobj.cpp` | `qjs::Value::Type::ARRAY_BUFFER` doesn't exist | `qjs::Value{ctx, JS_NewArrayBufferCopy(ctx, ...)}` |
+| `jsengine.cpp` | 25× `&JsEmuObject::method` member pointers | Lambda wrappers with `shared_ptr<JsEmuObject>` |
+| `jsengine.cpp` | `uint64_t` return from `ReadReg` lambda | `static_cast<int64_t>()` (quickjspp excludes uint64_t) |
+| `jsengine.cpp` | Raw `JSValue` passed where `qjs::Value` expected | Pass `qjs::Value` objects directly |
+| `jsengine.cpp` | `std::bind(...)` can't be wrapped | Lambda `[this](qjs::Value) -> qjs::Value` |
+| `jsengine.cpp` | `context_->ctx` (JSContext*) → `qjs::Context&` | `*context_` |
+| `test_js_engine.cpp` | `JS_IsArray(arr)` 1-arg call | `JS_IsArray(ctx, arr)` 2-arg (compat macro) |
+
+### Variadic JS functions fixed
+
+`make_log_wrapper` and `importScripts` lambdas used `std::vector<T>` for collecting JS call args. quickjspp requires `qjs::rest<T>` (inherits `std::vector<T>`, has special `unwrap_arg_impl` that collects all remaining argv entries). Fixed `console.log(...)`, `print(...)`, `info(...)`, `warn(...)`, `error(...)`, and `importScripts(...)`.
+
+### ApiHook API redesigned
+
+Old pattern (removed):
+```js
+var hook = new ApiHook();
+hook.OnCallBack = function(api, args) {};
+hook.install('kernel32', 'CreateFileA');
+```
+
+New pattern:
+```js
+var hook = ApiHook.install({
+    lib: "kernel32",
+    api: "CreateFileA",
+    onCallBack: function(api, args) {}
+});
+```
+
+`ApiHook` is now a plain global object with an `install(config)` static method. Config fields: `lib` (string), `api` (string name or numeric ordinal), `onCallBack` (function, required), `onExit` (function, optional). Returns a hook object with `{id}`.
+
+### `eval_buf` / `eval_file` API changed
+
+Changed from `bool` return to `qjs::Value` return. On JS error, `qjs::exception` is dumped and rethrown. If not initialized, throws `std::runtime_error`. Callers (`load_script`, `js_native_import_scripts`) updated to use try/catch.
+
+### `JsHook` class
+
+Added to `jsengine.h` with explicit constructor `JsHook(qjs::Context& ctx)` — `qjs::Value` has no default constructor, so `onCallback`/`onExit` members needed explicit initialization to `JS_UNDEFINED`.
+
+### GC assertion fix
+
+`create_hook_object` was assigning lambdas as JS function properties. Each lambda's opaque `detail::function` data held a `shared_ptr<JsHook>` capture. When `JS_FreeContext` released the global scope, orphaned function objects remained on `gc_obj_list` → assertion in `JS_FreeRuntime`. Fixed by simplifying the returned hook object to `{id: N}`. Also added `onUnhandledPromiseRejection`/`moduleLoader` clearing and an extra `JS_RunGC` between context and runtime destruction.
+
+### JS integration tests
+
+| Test | Status |
+|------|--------|
+| ApiHookClassExists | ✅ PASSED |
+| ApiHookHasInstallMethod | ✅ PASSED |
+| ApiHookInstallByName | ✅ PASSED |
+| ApiHookInstallRequiresOnCallBack | ✅ PASSED |
+| ApiHookInstallByOrdinal | ✅ PASSED |
+| MultipleApiHookInstances | ✅ PASSED |
+| InitWithLoadedModule | ✅ PASSED |
+| EvalBufSimple | ✅ PASSED |
+| EvalBufWithException | ✅ PASSED |
+| ConsoleLog | ✅ PASSED |
+| PrintInfoWarnError | ✅ PASSED |
+| GlobalLogFunctionsExist | ✅ PASSED |
+| ImportScriptsExists | ✅ PASSED |
 
 ---
 
